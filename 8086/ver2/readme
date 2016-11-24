@@ -1,0 +1,6 @@
+This is version 2.1 of the UCR Standard library.
+The documentation appears in the "STDLIB.TXT" file appearing in the
+SOURCES zip file
+Most of these sources assemble on any assembler.  However, I've been
+switching (as of late) to masm 6.0, so beware.
+

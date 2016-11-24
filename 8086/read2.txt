@@ -1,3 +1,9 @@
+part of a file from:
+http://files.mpoli.fi/unpacked/software/programm/general/ddj0392.zip/readme.asc
+//--------------------------------------------------------------------------------
+
+info on:
+
 UCRASM.ASC
 Title: THE UCR STANDARD ASSEMBLY LANGUAGE LIBRARY
 Keywords: MAR92  ASM  LIBRARY 

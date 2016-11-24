@@ -19,8 +19,12 @@ ucrasm.arc
 
 //----------------------------------------------------------
 
-UNZIP
-inside of my ucrasm folder:
+folders:
+- ver2 = unar ucrasm.arc
+- ucrasm = unzip ucrasm.zip
+
+
+inside of ucrasm folder:
     subfolder's .ZIP contain unmodified code
     - lib = {STDLIB.A, STDLIB.LIB, STDLIB6.A}
     - source
