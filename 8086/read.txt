@@ -1,23 +1,27 @@
-The UCR Standard Assembly Language Library for 80x86
-By Randall Hyde, March 01, 1992
+The UCR Standard Assembly Language Library for 80x86 By Randall Hyde
 Provides a slate of useful high-level assembly language routines.
 
 //---------------------------------------------------------
 
-useful online description:
+useful online descriptions:
 http://www.drdobbs.com/parallel/the-ucr-standard-assembly-language-libra/parallel/the-ucr-standard-assembly-language-libra/184408724#0086_000a
+http://collaboration.cmc.ec.gc.ca/science/rpn/biblio/ddj/Website/articles/DDJ/1992/9203/9203a/9203a.htm
 
-files from:
+files:
 http://files.mpoli.fi/unpacked/software/programm/general/ddj0392.zip/
-
 package name:
 ucrasm.zip
+
+files:
+http://www.vectorbd.com/bfd/8086/index.html
+package name:
+ucrasm.arc
 
 //----------------------------------------------------------
 
 UNZIP
 inside of my ucrasm folder:
-    subfolder's zips contain unmodified code
+    subfolder's .ZIP contain unmodified code
     - lib = {STDLIB.A, STDLIB.LIB, STDLIB6.A}
     - source
         -- src = { *.ASM }
