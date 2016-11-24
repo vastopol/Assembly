@@ -1,0 +1,924 @@
+stdlib		segment		para public 'slcode'
+		externdef	sl_getc:far, sl_GetcStdIn:far,
+				sl_GetcBIOS:far, sl_SetInBIOS:far,
+				sl_SetInStd:far, sl_GetInAdrs:far,
+				sl_PushInAdrs:far, sl_PopInAdrs:far,
+				sl_Gets:far, sl_atol:far, sl_atoul:far,
+				sl_atol2:far, sl_atoul2:far
+;
+		externdef	sl_atoi:far, sl_atou:far, sl_atoi2:far,
+				sl_atou2:far, sl_atoh:far, sl_atoh2:far,
+				sl_atolh:far, sl_atolh2:far, sl_isize:far,
+				sl_usize:far, sl_lsize:far, sl_ulsize:far,
+				sl_print:far, sl_printf:far, sl_scanf:far,
+				sl_printff:far
+;
+		externdef	sl_sprintf:far, sl_sscanf:far,
+				sl_sbprintf:far, sl_putc:far,
+				sl_putcstdout:far, sl_putcbios:far,
+				sl_setoutadrs:far, sl_getoutadrs:far,
+				sl_pushoutadrs:far, sl_popoutadrs:far,
+				sl_PutUSize:far, sl_PutLSize:far
+;
+		externdef	sl_PutULSize:far, sl_PutISize:far,
+				sl_Puti:far, sl_Puth:far, sl_Putw:far,
+				sl_Putu:far, sl_Putul:far, sl_Putl:far,
+				sl_itoa:far, sl_utoa:far, sl_htoa:far,
+				sl_wtoa:far, sl_ltoa:far, sl_ultoa:far
+;
+		externdef	sl_MemInit:far, sl_malloc:far,
+				sl_realloc:far, sl_DupPtr:far,
+				sl_free:far, sl_IsInHeap:far,
+				sl_IsPtr:far, sl_IsAlNum:far,
+				sl_IsxDigit:far, sl_strcpy:far,
+				sl_strcpyl:far, sl_strdup:far
+;
+		externdef	sl_strdupl:far, sl_strlen:far,
+				sl_strcat:far, sl_strcatl:far,
+				sl_strcat2:far, sl_strcat2l:far,
+				sl_strchr:far, sl_strstr:far,
+				sl_strstrl:far, sl_strcmp:far
+;
+		externdef	sl_stricmp:far, sl_stricmpl:far,
+				sl_strcmpl:far, sl_strupr:far,
+				sl_strupr2:far, sl_strlwr:far,
+				sl_strlwr2:far, sl_strset:far,
+				sl_strset2:far, sl_strspan:far,
+				sl_strspanl:far, sl_strcspan:far
+;
+		externdef	sl_strcspanl:far, sl_strins:far,
+				sl_strinsl:far, sl_strins2:far,
+				sl_strins2l:far, sl_strdel:far,
+				sl_strdel2:far, sl_strrev:far,
+				sl_strrev2:far, sl_CreateSets:far
+;
+		externdef	sl_EmptySet:far, sl_RangeSet:far,
+				sl_AddStr:far, sl_AddStrl:far,
+				sl_RmvStr:far, sl_RmvStrl:far,
+				sl_AddChar:far, sl_RmvChar:far,
+				sl_Member:far, sl_CopySet:far,
+				sl_SetUnion:far, sl_SetIntersect:far,
+				sl_SetDifference:far, sl_NextItem:far,
+				sl_RmvItem:far
+;
+		externdef	sl_lsfpa:far, sl_ssfpa:far, sl_ldfpa:far,
+				sl_sdfpa:far, sl_lefpa:far, sl_sefpa:far,
+				sl_lefpal:far
+;
+		externdef	sl_lsfpo:far, sl_ldfpo:far,
+				sl_lefpo:far, sl_lefpol:far,
+				sl_itof:far, sl_utof:far,
+				sl_ultof:far, sl_ltof:far
+;
+		externdef	sl_fadd:far, sl_fsub:far,
+				sl_fcmp:far, sl_fdiv:far,
+				sl_fmul:far
+;
+		externdef	sl_ftoa:far, sl_ftoa2:far,
+				sl_ftoam:far, sl_etoa:far,
+				sl_etoa2:far, sl_etoam:far
+;
+		externdef	sl_atof:far, sl_ftoi:far,
+				sl_ftou:far, sl_ftol:far,
+				sl_ftoul:far, sl_AccOp:far,
+				sl_XAccOp:far, sl_putf:far,
+				sl_pute:far
+;
+		externdef	sl_fcreate:far, sl_fopen:far, sl_readon:far,
+				sl_freadoff:far, sl_fclose:far,
+				sl_fflush:far, sl_fwriteon:far,
+				sl_fwriteoff:far, sl_fseek:far,
+				sl_DOSHandle:far, sl_fdel:far,
+				sl_frename:far
+;
+		externdef	sl_argc:far, sl_argv:far, sl_tohex:far,
+				sl_Randomize:far, sl_random:far,
+				sl_cpuid:far
+;
+;
+;
+;
+Putc		macro
+		call	far ptr sl_putc
+		endm
+;
+;
+Putcr		macro
+		call	far ptr sl_putcr
+		endm
+;
+;
+;
+PutcStdOut	macro
+		call	far ptr sl_putcStdOut
+		endm
+;
+;
+;
+PutcBIOS	macro
+		call	far ptr sl_putcBIOS
+		endm
+;
+;
+;
+SetOutAdrs	macro
+		call	far ptr sl_SetOutAdrs
+		endm
+;
+;
+GetOutAdrs	macro
+		call	far ptr sl_GetOutAdrs
+		endm
+;
+;
+PushOutAdrs	macro
+		call	far ptr sl_PushOutAdrs
+		endm
+;
+;
+PopOutAdrs	macro
+		call	far ptr sl_PopOutAdrs
+		endm
+;
+getc		macro
+		call	far ptr sl_getc
+		endm
+;
+;
+;
+GetcStdIn	macro
+		call	far ptr sl_GetcStdIn
+		endm
+;
+GetcBIOS	macro
+		call	far ptr sl_GetcBIOS
+		endm
+;
+SetInBIOS	macro
+		call	far ptr sl_SetInBIOS
+		endm
+;
+SetInStd	macro
+		call	far ptr sl_SetInStd
+		endm
+;
+;
+;
+SetInAdrs	macro
+		call	far ptr sl_SetInAdrs
+		endm
+;
+;
+GetInAdrs	macro
+		call	far ptr sl_GetInAdrs
+		endm
+;
+;
+PushInAdrs	macro
+		call	far ptr sl_PushInAdrs
+		endm
+;
+;
+PopInAdrs	macro
+		call	far ptr sl_PopInAdrs
+		endm
+;
+;
+gets		macro
+		call	far ptr sl_gets
+		endm
+;
+;
+atol		macro
+		call	far ptr sl_atol
+		endm
+;
+atoul		macro
+		call	far ptr sl_atoul
+		endm
+;
+;
+;
+atol2		macro
+		call	far ptr sl_atol2
+		endm
+;
+atoul2		macro
+		call	far ptr sl_atoul2
+		endm
+;
+;
+; atoi and atou from atoi.asm
+;
+atoi		macro
+		call	far ptr sl_atoi
+		endm
+;
+atou		macro
+		call	far ptr sl_atou
+		endm
+;
+;
+atoi2		macro
+		call	far ptr sl_atoi2
+		endm
+;
+atou2		macro
+		call	far ptr sl_atou2
+		endm
+;
+atoh		macro
+		call	far ptr sl_atoh
+		endm
+;
+;
+atolh		macro
+		call	far ptr sl_atolh
+		endm
+;
+;
+atoh2		macro
+		call	far ptr sl_atoh2
+		endm
+;
+;
+atolh2		macro
+		call	far ptr sl_atolh2
+		endm
+;
+ISize		macro
+		call	far ptr sl_Isize
+		endm
+;
+USize		macro
+		call	far ptr sl_USize
+		endm
+;
+;
+; LSize and ULSize from lsize.asm
+;
+LSize		macro
+		call	far ptr sl_Lsize
+		endm
+;
+ULSize		macro
+		call	far ptr sl_ULSize
+		endm
+;
+;
+Print		macro
+		call	far ptr sl_print
+		endm
+;
+Printf		macro
+		ifdef	sl_printff
+		echo	You are using both PRINTF and PRINTFF.  Just use PRINTFF.
+		endif
+		call	far ptr sl_printf
+		endm
+;
+Printff		macro
+		ifdef	sl_printf
+		echo	You are using both PRINTF and PRINTFF.  Just use PRINTFF.
+		endif
+		call	far ptr sl_printff
+		endm
+;
+;
+;
+SPrintf		macro
+		call	far ptr sl_sprintf
+		endm
+;
+;
+SBPrintf	macro
+		call	far ptr sl_sbprintf
+		endm
+;
+;
+;
+Scanf		macro
+		call	far ptr sl_scanf
+		endm
+;
+SScanf		macro
+		call	far ptr sl_sscanf
+		endm
+;
+;
+;
+;
+;
+PutISize	macro
+		call	sl_putisize
+		endm
+;
+;
+PutUSize	macro
+		call	sl_putusize
+		endm
+;
+;
+;
+PutLSize	macro
+		call	sl_putlsize
+		endm
+;
+;
+PutULSize	macro
+		call	sl_putulsize
+		endm
+;
+;
+;
+Puts		macro
+		call	sl_puts
+		endm
+;
+Puth		macro
+		call	sl_puth
+		endm
+;
+Putw		macro
+		call	sl_putw
+		endm
+;
+Puti		macro
+		call	sl_puti
+		endm
+;
+Putu		macro
+		call	sl_putu
+		endm
+;
+Putl		macro
+		call	sl_putl
+		endm
+;
+PutUL		macro
+		call	sl_putul
+		endm
+;
+itoa		macro
+		call	sl_itoa
+		endm
+;
+utoa		macro
+		call	sl_utoa
+		endm
+;
+htoa		macro
+		call	sl_htoa
+		endm
+;
+wtoa		macro
+		call	sl_wtoa
+		endm
+;
+ltoa		macro
+		call	sl_ltoa
+		endm
+;
+ultoa		macro
+		call	sl_ultoa
+		endm
+;
+MemInit		macro
+		call	sl_MemInit
+		endm
+;
+malloc		macro
+		call	sl_malloc
+		endm
+;
+realloc		macro
+		call	sl_realloc
+		endm
+;
+DupPtr		macro
+		call	sl_dupptr
+		endm
+;
+free		macro
+		call	sl_free
+		endm
+;
+IsInHeap	macro
+		call	sl_IsInHeap
+		endm
+;
+IsPtr		macro
+		call	sl_IsPtr
+		endm
+;
+IsAlNum		macro
+		call	sl_IsAlNum
+		endm
+;
+IsxDigit	macro
+		call	sl_IsxDigit
+		endm
+;
+ToLower		macro
+		local	NoCnvrt
+		cmp	al, 'A'
+		jb	NoCnvrt
+		cmp	al, 'Z'
+		ja	NoCnvrt
+		or	al, 20h
+NoCnvrt:
+		endm
+;
+ToUpper		macro
+		local	NoCnvrt
+		cmp	al, 'a'
+		jb	NoCnvrt
+		cmp	al, 'z'
+		ja	NoCnvrt
+		and	al, 05fh
+NoCnvrt:
+		endm
+;
+IsDigit		macro
+		local	NotDigit, IsDigit
+		cmp	al, '0'
+		jb	NotDigit 		;Note: this also clears ZF.
+		cmp	al, '9'
+		ja	NotDigit		;Also clears ZF.
+		cmp	al, al			;Set Zero flag
+NotDigit:
+		endm
+;
+IsAlpha		macro
+		local	IsAl, NotAlpha
+		cmp	al, 'A'
+		jb	NotAlpha		;Also clears ZF.
+		cmp	al, 'Z'
+		jbe	IsAl
+		cmp	al, 'a'
+		jb	NotAlpha
+		cmp	al, 'z'
+		ja	NotAlpha
+IsAl:		cmp	al, al			;Set ZF.
+NotAlpha:
+		endm
+;
+IsLower		macro
+		local	NotLower
+		cmp	al, 'a'
+		jb	NotLower
+		cmp	al, 'z'
+		ja	NotLower
+		cmp	al, al			;Set ZF.
+NotLower:
+		endm
+;
+IsUpper		macro
+		local	NotUpper
+		cmp	al, 'A'
+		jb	NotUpper
+		cmp	al, 'Z'
+		ja	NotUpper
+		cmp	al, al			;Set ZF.
+NotUpper:
+		endm
+;
+strcpy		macro
+		call	sl_strcpy
+		endm
+;
+strcpyl		macro
+		call	sl_strcpyl
+		endm
+;
+strdup		macro
+		call	sl_strdup
+		endm
+;
+strdupl		macro
+		call	sl_strdupl
+		endm
+;
+strlen		macro
+		call	sl_strlen
+		endm
+;
+strcat		macro
+		call	sl_strcat
+		endm
+;
+strcatl		macro
+		call	sl_strcatl
+		endm
+;
+strcat2		macro
+		call	sl_strcat2
+		endm
+;
+strcat2l	macro
+		call	sl_strcat2l
+		endm
+;
+strchr		macro
+		call	sl_strchr
+		endm
+;
+strstr		macro
+		call	sl_strstr
+		endm
+;
+strstrl		macro
+		call	sl_strstrl
+		endm
+;
+strcmp		macro
+		call	sl_strcmp
+		endm
+;
+stricmp		macro
+		call	sl_stricmp
+		endm
+;
+stricmpl	macro
+		call	sl_stricmpl
+		endm
+;
+strcmpl		macro
+		call	sl_strcmpl
+		endm
+;
+strupr		macro
+		call	sl_strupr
+		endm
+;
+strupr2		macro
+		call	sl_strupr2
+		endm
+;
+strlwr		macro
+		call	sl_strlwr
+		endm
+;
+strlwr2		macro
+		call	sl_strlwr2
+		endm
+;
+strset		macro
+		call	sl_strset
+		endm
+;
+strset2		macro
+		call	sl_strset2
+		endm
+;
+strspan		macro
+		call	sl_strspan
+		endm
+;
+strspanl	macro
+		call	sl_strspanl
+		endm
+;
+strcspan	macro
+		call	sl_strcspan
+		endm
+;
+strcspanl	macro
+		call	sl_strcspanl
+		endm
+;
+strins		macro
+		call	sl_strins
+		endm
+;
+strinsl		macro
+		call	sl_strinsl
+		endm
+;
+strins2		macro
+		call	sl_strins2
+		endm
+;
+strins2l	macro
+		call	sl_strins2l
+		endm
+;
+strdel		macro
+		call	sl_strdel
+		endm
+;
+strdel2		macro
+		call	sl_strdel2
+		endm
+;
+strrev		macro
+		call	sl_strrev
+		endm
+;
+strrev2		macro
+		call	sl_strrev2
+		endm
+;
+;
+; Macro used to declare up to eight separate sets interleaved with
+; one another (1 bit from each byte to each set).
+;
+set		macro	n0,n1,n2,n3,n4,n5,n6,n7
+n0		db	1
+n1		db	2
+n2		db	4
+n3		db	8
+n4		db	10h
+n5		db	20h
+n6		db	40h
+n7		db	80h
+		db	264 dup (0)
+		endm
+;
+;
+CreateSets	macro
+		call	sl_CreateSets
+		endm
+;
+EmptySet	macro
+		call	sl_EmptySet
+		endm
+;
+RangeSet	macro
+		call	sl_RangeSet
+		endm
+;
+AddStr		macro
+		call	sl_AddStr
+		endm
+;
+AddStrl		macro
+		call	sl_AddStrl
+		endm
+;
+RmvStr		macro
+		call	sl_RmvStr
+		endm
+;
+RmvStrl		macro
+		call	sl_RmvStrl
+		endm
+;
+AddChar		macro
+		call	sl_AddChar
+		endm
+;
+RmvChar		macro
+		call	sl_RmvChar
+		endm
+;
+Member		macro
+		call	sl_member
+		endm
+;
+CopySet		macro
+		call	sl_CopySet
+		endm
+;
+setunion	macro
+		call	sl_union
+		endm
+;
+SetIntersect	macro
+		call	sl_Intersect
+		endm
+;
+SetDifference	macro
+		call	sl_Difference
+		endm
+;
+NextItem	macro
+		call	sl_NextItem
+		endm
+;
+RmvItem		macro
+		call	sl_RmvItem
+		endm
+;
+lsfpa		macro
+		call	sl_lsfpa
+		endm
+;
+ssfpa		macro
+		call	sl_ssfpa
+		endm
+;
+ldfpa		macro
+		call	sl_ldfpa
+		endm
+;
+sdfpa		macro
+		call	sl_sdfpa
+		endm
+;
+lefpa		macro
+		call	sl_lefpa
+		endm
+;
+lefpal		macro
+		call	sl_lefpal
+		endm
+;
+sefpa		macro
+		call	sl_sefpa
+		endm
+;
+;
+lsfpo		macro
+		call	sl_lsfpo
+		endm
+;
+ldfpo		macro
+		call	sl_ldfpo
+		endm
+;
+lefpo		macro
+		call	sl_lefpo
+		endm
+;
+lefpol		macro
+		call	sl_lefpol
+		endm
+;
+itof		macro
+		call	sl_itof
+		endm
+;
+utof		macro
+		call	sl_utof
+		endm
+;
+ultof		macro
+		call	sl_ultof
+		endm
+;
+ltof		macro
+		call	sl_ltof
+		endm
+;
+fpadd		macro
+		call	sl_fadd
+		endm
+;
+fpsub		macro
+		call	sl_fsub
+		endm
+;
+fpcmp		macro
+		call	sl_fcmp
+		endm
+;
+fpdiv		macro
+		call	sl_fdiv
+		endm
+;
+fpmul		macro
+		call	sl_fmul
+		endm
+;
+ftoa		macro
+		call	sl_ftoa
+		endm
+;
+ftoa2		macro
+		call	sl_ftoa2
+		endm
+;
+ftoam		macro
+		call	sl_ftoam
+		endm
+;
+etoa		macro
+		call	sl_etoa
+		endm
+;
+etoa2		macro
+		call	sl_etoa2
+		endm
+;
+etoam		macro
+		call	sl_etoam
+		endm
+;
+atof		macro
+		call	sl_atof
+		endm
+;
+ftoi		macro
+		call	sl_ftoi
+		endm
+;
+ftou		macro
+		call	sl_ftou
+		endm
+;
+ftoul		macro
+		call	sl_ftoul
+		endm
+;
+ftol		macro
+		call	sl_ftol
+		endm
+;
+AccOp		macro
+		call	sl_AccOp
+		endm
+;
+XAccOp		macro
+		call	sl_XAccOp
+		endm
+;
+Putf		macro
+		call	sl_putf
+		endm
+;
+Pute		macro
+		call	sl_pute
+		endm
+;
+fcreate		macro
+		call	sl_fcreate
+		endm
+;
+fopen		macro
+		call	sl_fopen
+		endm
+;
+freadon		macro
+		call	sl_freadon
+		endm
+;
+freadoff	macro
+		call	sl_freadoff
+		endm
+;
+fgetc		macro
+		call	sl_fgetc
+		endm
+;
+fclose		macro
+		call	sl_fclose
+		endm
+;
+fflush		macro
+		call	sl_fflush
+		endm
+;
+fwriteon	macro
+		call	sl_fwriteon
+		endm
+;
+fwriteoff	macro
+		call	sl_fwriteoff
+		endm
+;
+fseek		macro
+		call	sl_fseek
+		endm
+;
+fdel		macro
+		call	sl_fdel
+		endm
+;
+frename		macro
+		call	sl_frename
+		endm
+;
+fDOSHandle	macro
+		call	sl_fDOSHandle
+		endm
+;
+argc		macro
+		call	sl_argc
+		endm
+;
+argv		macro
+		call	sl_argv
+		endm
+;
+toHex		macro
+		call	sl_tohex
+		endm
+;
+Randomize	macro
+		call	sl_Randomize
+		endm
+;
+Random		macro
+		call	sl_Random
+		endm
+;
+CPUID		macro
+		call	sl_CPUID
+		endm
+;
+;
+;
+stdlib		ends
+;
+;

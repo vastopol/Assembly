@@ -1,0 +1,2019 @@
+StdGrp		group	stdlib, stddata
+;
+stddata		segment	para public 'sldata'
+stddata		ends
+stdlib		segment	para public 'slcode'
+stdlib		ends
+;
+;
+; Interface to standard library routines.
+;
+;
+;
+slcall	macro	adrs
+	db	9ah			;Far call opcode
+	dd	adrs
+	endm
+;------------------------------------------------
+;
+getc		macro
+		ifndef	sl_getc
+stdlib		segment	para public 'slcode'
+		extrn	sl_getc:far
+stdlib		ends
+		endif
+		slcall	sl_getc
+		endm
+;
+;
+;
+GetcStdIn	macro
+		ifndef	sl_GetcStdIn
+stdlib		segment	para public 'slcode'
+		extrn	sl_GetcStdIn:far
+stdlib		ends                
+		endif
+		slcall	sl_GetcStdIn
+		endm
+;
+;
+;
+;
+GetcBIOS	macro
+		ifndef	sl_GetcBIOS
+stdlib		segment	para public 'slcode'
+		extrn	sl_GetcBIOS:far
+stdlib		ends
+		endif
+		slcall	sl_GetcBIOS
+		endm
+;
+;
+SetInBIOS	macro
+		ifndef	sl_SetInBIOS
+stdlib		segment	para public 'slcode'
+		extrn	sl_SetInBIOS:far
+stdlib		ends
+		endif
+		slcall	sl_SetInBIOS
+		endm
+;
+SetInStd	macro
+		ifndef	sl_SetInStd
+stdlib		segment	para public 'slcode'
+		extrn	sl_SetInStd:far
+stdlib		ends
+		endif
+		slcall	sl_SetInStd
+		endm
+;
+;
+;
+SetInAdrs	macro
+		ifndef	sl_SetInAdrs
+stdlib		segment	para public 'slcode'
+		extrn	sl_SetInAdrs:far
+stdlib		ends                
+		endif
+		slcall	sl_SetInAdrs
+		endm
+;
+;
+GetInAdrs	macro
+		ifndef	sl_GetInAdrs
+stdlib		segment	para public 'slcode'
+		extrn	sl_GetInAdrs:far
+stdlib		ends                
+		endif
+		slcall	sl_GetInAdrs
+		endm
+;
+;
+PushInAdrs	macro
+		ifndef	sl_PushInAdrs
+stdlib		segment	para public 'slcode'
+		extrn	sl_PushInAdrs:far
+stdlib		ends                
+		endif
+		slcall	sl_PushInAdrs
+		endm
+;
+;
+PopInAdrs	macro
+		ifndef	sl_PopInAdrs
+stdlib		segment	para public 'slcode'
+		extrn	sl_PopInAdrs:far
+stdlib		ends                
+		endif
+		slcall	sl_PopInAdrs
+		endm
+;
+;
+;
+gets		macro
+		ifndef	sl_gets
+stdlib		segment	para public 'slcode'
+		extrn	sl_gets:far
+stdlib		ends
+		endif
+		slcall	sl_gets
+		endm
+;
+getsm		macro
+		ifndef	sl_getsm
+stdlib		segment	para public 'slcode'
+		extrn	sl_getsm:far
+stdlib		ends
+		endif
+		slcall	sl_getsm
+		endm
+;
+;
+atol		macro
+		ifndef	sl_atol
+stdlib		segment	para public 'slcode'
+		extrn	sl_atol:far
+stdlib		ends                
+		endif
+		slcall	sl_atol
+		endm
+;
+atoul		macro
+		ifndef	sl_atoul
+stdlib		segment	para public 'slcode'
+		extrn	sl_atoul:far
+stdlib		ends                
+		endif
+		slcall	sl_atoul
+		endm
+;
+;
+;
+atol2		macro
+		ifndef	sl_atol2
+stdlib		segment	para public 'slcode'
+		extrn	sl_atol2:far
+stdlib		ends                
+		endif
+		slcall	sl_atol2
+		endm
+;
+atoul2		macro
+		ifndef	sl_atoul2
+stdlib		segment	para public 'slcode'
+		extrn	sl_atoul2:far
+stdlib		ends                
+		endif
+		slcall	sl_atoul2
+		endm
+;
+;
+; atoi and atou from atoi.asm
+;
+atoi		macro
+		ifndef	sl_atoi
+stdlib		segment	para public 'slcode'
+		extrn	sl_atoi:far
+stdlib		ends                
+		endif
+		slcall	sl_atoi
+		endm
+;
+atou		macro
+		ifndef	sl_atou
+stdlib		segment	para public 'slcode'
+		extrn	sl_atou:far
+stdlib		ends                
+		endif
+		slcall	sl_atou
+		endm
+;
+;
+atoi2		macro
+		ifndef	sl_atoi2
+stdlib		segment	para public 'slcode'
+		extrn	sl_atoi2:far
+stdlib		ends                
+		endif
+		slcall	sl_atoi2
+		endm
+;
+atou2		macro
+		ifndef	sl_atou2
+stdlib		segment	para public 'slcode'
+		extrn	sl_atou2:far
+stdlib		ends                
+		endif
+		slcall	sl_atou2
+		endm
+;
+;
+;
+atoh		macro
+		ifndef	sl_atoh
+stdlib		segment	para public 'slcode'
+		extrn	sl_atoh:far
+stdlib		ends                
+		endif
+		slcall	sl_atoh
+		endm
+;
+;
+atolh		macro
+		ifndef	sl_atolh
+stdlib		segment	para public 'slcode'
+		extrn	sl_atolh:far
+stdlib		ends                
+		endif
+		slcall	sl_atolh
+		endm
+;
+;
+atoh2		macro
+		ifndef	sl_atoh2
+stdlib		segment	para public 'slcode'
+		extrn	sl_atoh2:far
+stdlib		ends                
+		endif
+		slcall	sl_atoh2
+		endm
+;
+;
+atolh2		macro
+		ifndef	sl_atolh2
+stdlib		segment	para public 'slcode'
+		extrn	sl_atolh2:far
+stdlib		ends                
+		endif
+		slcall	sl_atolh2
+		endm
+;
+;
+;------------------------------------------------
+;
+;
+ISize		macro
+		ifndef	sl_ISize
+stdlib		segment	para public 'slcode'
+		extrn	sl_ISize:far
+stdlib		ends                
+		endif
+		slcall	sl_Isize
+		endm
+;
+USize		macro
+		ifndef	sl_USize
+stdlib		segment	para public 'slcode'
+		extrn	sl_USize:far
+stdlib		ends                
+		endif
+		slcall	sl_USize
+		endm
+;
+;
+;
+LSize		macro
+		ifndef	sl_LSize
+stdlib		segment	para public 'slcode'
+		extrn	sl_LSize:far
+stdlib		ends                
+		endif
+		slcall	sl_Lsize
+		endm
+;
+ULSize		macro
+		ifndef	sl_ULSize
+stdlib		segment	para public 'slcode'
+		extrn	sl_ULSize:far
+stdlib		ends                
+		endif
+		slcall	sl_ULSize
+		endm
+;
+;
+;-----------------------------------------------------------------------
+;
+;
+Print		macro
+		ifndef	sl_print
+stdlib		segment	para public 'slcode'
+		extrn	sl_print:far
+stdlib		ends
+		endif
+		slcall	sl_print
+		endm
+;
+;---------------------------------------------------------------------------
+;
+;
+Printf		macro
+		ifdef	sl_printff
+		%out	Warning: You're using both PRINTFF and PRINTF, just use PRINTFF
+		endif
+		ifndef	sl_printf
+stdlib		segment	para public 'slcode'
+		extrn	sl_printf:far
+stdlib		ends                
+		endif
+		slcall	sl_printf
+		endm
+;
+;
+printff		macro
+		ifdef	sl_printf
+		%out	Warning: You're using both PRINTFF and PRINTF, just use PRINTFF
+		endif
+		ifndef	sl_Printff
+stdlib		segment	para public 'slcode'
+		extrn	sl_Printff:far
+stdlib		ends
+		endif
+		call	sl_Printff
+		endm
+;
+;
+SPrintf		macro
+		ifndef	sl_sprintf
+stdlib		segment	para public 'slcode'
+		extrn	sl_sprintf:far
+		ifndef	sp_BufSize
+		extrn	sp_BufSize:word
+		endif
+stdlib		ends                
+		endif
+		slcall	sl_sprintf
+		endm
+;
+;
+SPrintfm	macro
+		ifndef	sl_sprintfm
+stdlib		segment	para public 'slcode'
+		extrn	sl_sprintfm:far
+stdlib		ends                
+		endif
+		slcall	sl_sprintfm
+		endm
+;
+;
+;
+Scanf		macro
+		ifndef	sl_scanf
+stdlib		segment	para public 'slcode'
+		extrn	sl_scanf:far
+stdlib		ends                
+		endif
+		slcall	sl_scanf
+		endm
+;
+SScanf		macro
+		ifndef	sl_sscanf
+stdlib		segment	para public 'slcode'
+		extrn	sl_sscanf:far
+stdlib		ends                
+		endif
+		slcall	sl_sscanf
+		endm
+;
+;
+;---------------------------------------------------------------------------
+;
+;
+Putc		macro
+		ifndef	sl_putc
+stdlib		segment	para public 'slcode'
+		extrn	sl_putc:far
+stdlib		ends                
+		endif
+		slcall	sl_putc
+		endm
+;
+;
+Putcr		macro
+		ifndef	sl_putcr
+stdlib		segment	para public 'slcode'
+		extrn	sl_putcr:far
+stdlib		ends                
+		endif
+		slcall	sl_putcr
+		endm
+;
+;
+;
+PutcStdOut	macro
+		ifndef	sl_putcStdOut
+stdlib		segment	para public 'slcode'
+		extrn	sl_putcStdOut:far
+stdlib		ends                
+		endif
+		slcall	sl_putcStdOut
+		endm
+;
+;
+;
+PutcBIOS	macro
+		ifndef	sl_putcBIOS
+stdlib		segment	para public 'slcode'
+		extrn	sl_putcBIOS:far
+stdlib		ends                
+		endif
+		slcall	sl_putcBIOS
+		endm
+;
+;
+;
+SetOutAdrs	macro
+		ifndef	sl_SetOutAdrs
+stdlib		segment	para public 'slcode'
+		extrn	sl_SetOutAdrs:far
+stdlib		ends                
+		endif
+		slcall	sl_SetOutAdrs
+		endm
+;
+;
+GetOutAdrs	macro
+		ifndef	sl_GetOutAdrs
+stdlib		segment	para public 'slcode'
+		extrn	sl_GetOutAdrs:far
+stdlib		ends                
+		endif
+		slcall	sl_GetOutAdrs
+		endm
+;
+;
+PushOutAdrs	macro
+		ifndef	sl_PushOutAdrs
+stdlib		segment	para public 'slcode'
+		extrn	sl_PushOutAdrs:far
+stdlib		ends                
+		endif
+		slcall	sl_PushOutAdrs
+		endm
+;
+;
+PopOutAdrs	macro
+		ifndef	sl_PopOutAdrs
+stdlib		segment	para public 'slcode'
+		extrn	sl_PopOutAdrs:far
+stdlib		ends                
+		endif
+		slcall	sl_PopOutAdrs
+		endm
+;
+;
+PutISize	macro
+		ifndef	sl_putisize
+stdlib		segment	para public 'slcode'
+		extrn	sl_putisize:far
+stdlib		ends                
+		endif
+		slcall	sl_putisize
+		endm
+;
+;
+PutUSize	macro
+		ifndef	sl_putusize
+stdlib		segment	para public 'slcode'
+		extrn	sl_putusize:far
+stdlib		ends                
+		endif
+		slcall	sl_putusize
+		endm
+;
+;
+;
+PutLSize	macro
+		ifndef	sl_putlsize
+stdlib		segment	para public 'slcode'
+		extrn	sl_putlsize:far
+stdlib		ends                
+		endif
+		slcall	sl_putlsize
+		endm
+;
+;
+PutULSize	macro
+		ifndef	sl_putulsize
+stdlib		segment	para public 'slcode'
+		extrn	sl_putulsize:far
+stdlib		ends                
+		endif
+		slcall	sl_putulsize
+		endm
+;
+;
+;---------------------------------------------------------------------------
+;
+;
+Puts		macro
+		ifndef	sl_puts
+stdlib		segment	para public 'slcode'
+		extrn	sl_puts:far
+stdlib		ends                
+		endif
+		slcall	sl_puts
+		endm
+;
+;
+;----------------------------------------------------------------------------
+;
+;
+Puth		macro
+		ifndef	sl_puth
+stdlib		segment	para public 'slcode'
+		extrn	sl_puth:far
+stdlib		ends                
+		endif
+		slcall	sl_puth
+		endm
+;
+;
+Putw		macro
+		ifndef	sl_putw
+stdlib		segment	para public 'slcode'
+		extrn	sl_putw:far
+stdlib		ends                
+		endif
+		slcall	sl_putw
+		endm
+;
+;---------------------------------------------------------------------------
+;
+Puti		macro
+		ifndef	sl_puti
+stdlib		segment	para public 'slcode'
+		extrn	sl_puti:far
+stdlib		ends                
+		endif
+		slcall	sl_puti
+		endm
+;
+;
+Putu		macro
+		ifndef	sl_putu
+stdlib		segment	para public 'slcode'
+		extrn	sl_putu:far
+stdlib		ends                
+		endif
+		slcall	sl_putu
+		endm
+;
+;
+;
+Putl		macro
+		ifndef	sl_putl
+stdlib		segment	para public 'slcode'
+		extrn	sl_putl:far
+stdlib		ends                
+		endif
+		slcall	sl_putl
+		endm
+;
+;
+PutUL		macro
+		ifndef	sl_putul
+stdlib		segment	para public 'slcode'
+		extrn	sl_putul:far
+stdlib		ends                
+		endif
+		slcall	sl_putul
+		endm
+;
+;
+;--------------------------------------------------------------------------
+;
+;
+itoa		macro
+		ifndef	sl_itoa
+stdlib		segment	para public 'slcode'
+		extrn	sl_itoa:far
+stdlib		ends
+		endif
+		slcall	sl_itoa
+		endm
+;
+;
+itoam		macro
+		ifndef	sl_itoam
+stdlib		segment	para public 'slcode'
+		extrn	sl_itoam:far
+stdlib		ends
+		endif
+		slcall	sl_itoam
+		endm
+;
+itoa2		macro
+		ifndef	sl_itoa2
+stdlib		segment	para public 'slcode'
+		extrn	sl_itoa2:far
+stdlib		ends
+		endif
+		slcall	sl_itoa2
+		endm
+;
+;
+utoa		macro
+		ifndef	sl_utoa
+stdlib		segment	para public 'slcode'
+		extrn	sl_utoa:far
+stdlib		ends
+		endif
+		slcall	sl_utoa
+		endm
+;
+utoam		macro
+		ifndef	sl_utoam
+stdlib		segment	para public 'slcode'
+		extrn	sl_utoam:far
+stdlib		ends
+		endif
+		slcall	sl_utoam
+		endm
+;
+utoa2		macro
+		ifndef	sl_utoa2
+stdlib		segment	para public 'slcode'
+		extrn	sl_utoa2:far
+stdlib		ends
+		endif
+		slcall	sl_utoa2
+		endm
+;
+;
+;
+htoa		macro
+		ifndef	sl_htoa
+stdlib		segment	para public 'slcode'
+		extrn	sl_htoa:far
+stdlib		ends
+		endif
+		slcall	sl_htoa
+		endm
+;
+htoam		macro
+		ifndef	sl_htoam
+stdlib		segment	para public 'slcode'
+		extrn	sl_htoam:far
+stdlib		ends
+		endif
+		slcall	sl_htoam
+		endm
+;
+htoa2		macro
+		ifndef	sl_htoa2
+stdlib		segment	para public 'slcode'
+		extrn	sl_htoa2:far
+stdlib		ends
+		endif
+		slcall	sl_htoa2
+		endm
+;
+;
+wtoa		macro
+		ifndef	sl_wtoa
+stdlib		segment	para public 'slcode'
+		extrn	sl_wtoa:far
+stdlib		ends
+		endif
+		slcall	sl_wtoa
+		endm
+;
+wtoam		macro
+		ifndef	sl_wtoam
+stdlib		segment	para public 'slcode'
+		extrn	sl_wtoam:far
+stdlib		ends
+		endif
+		slcall	sl_wtoam
+		endm
+;
+wtoa2		macro
+		ifndef	sl_wtoa2
+stdlib		segment	para public 'slcode'
+		extrn	sl_wtoa2:far
+stdlib		ends
+		endif
+		slcall	sl_wtoa2
+		endm
+;
+;
+;
+ltoa		macro
+		ifndef	sl_ltoa
+stdlib		segment	para public 'slcode'
+		extrn	sl_ltoa:far
+stdlib		ends
+		endif
+		slcall	sl_ltoa
+		endm
+;
+ltoam		macro
+		ifndef	sl_ltoam
+stdlib		segment	para public 'slcode'
+		extrn	sl_ltoam:far
+stdlib		ends
+		endif
+		slcall	sl_ltoam
+		endm
+;
+ltoa2		macro
+		ifndef	sl_ltoa2
+stdlib		segment	para public 'slcode'
+		extrn	sl_ltoa2:far
+stdlib		ends
+		endif
+		slcall	sl_ltoa2
+		endm
+;
+;
+;
+ultoa		macro
+		ifndef	sl_ultoa
+stdlib		segment	para public 'slcode'
+		extrn	sl_ultoa:far
+stdlib		ends
+		endif
+		slcall	sl_ultoa
+		endm
+;
+ultoam		macro
+		ifndef	sl_ultoam
+stdlib		segment	para public 'slcode'
+		extrn	sl_ultoam:far
+stdlib		ends
+		endif
+		slcall	sl_ultoam
+		endm
+;
+ultoa2		macro
+		ifndef	sl_ultoa2
+stdlib		segment	para public 'slcode'
+		extrn	sl_ultoa2:far
+stdlib		ends
+		endif
+		slcall	sl_ultoa2
+		endm
+;
+;
+;
+MemInit		macro
+		ifndef	sl_MemInit
+stdlib		segment	para public 'slcode'
+		extrn	sl_MemInit:far
+stdlib		ends
+		endif
+		slcall	sl_MemInit
+		endm
+;
+;
+;
+malloc		macro
+		ifndef	sl_malloc
+stdlib		segment	para public 'slcode'
+		extrn	sl_malloc:far
+stdlib		ends
+		endif
+		slcall	sl_malloc
+		endm
+;
+;
+realloc		macro
+		ifndef	sl_realloc
+stdlib		segment	para public 'slcode'
+		extrn	sl_realloc:far
+stdlib		ends
+		endif
+		slcall	sl_realloc
+		endm
+;
+;
+DupPtr		macro
+		ifndef	sl_dupptr
+stdlib		segment	para public 'slcode'
+		extrn	sl_dupptr:far
+stdlib		ends
+		endif
+		slcall	sl_dupptr
+		endm
+;
+;
+free		macro
+		ifndef	sl_free
+stdlib		segment	para public 'slcode'
+		extrn	sl_free:far
+stdlib		ends
+		endif
+		slcall	sl_free
+		endm
+;
+;
+;
+;
+IsInHeap	macro
+		ifndef	sl_IsInHeap
+stdlib		segment	para public 'slcode'
+		extrn	sl_IsInHeap:far
+stdlib		ends
+		endif
+		slcall	sl_IsInHeap
+		endm
+;
+;
+IsPtr		macro
+		ifndef	sl_IsPtr
+stdlib		segment	para public 'slcode'
+		extrn	sl_IsPtr:far
+stdlib		ends
+		endif
+		slcall	sl_IsPtr
+		endm
+;
+;
+;---------------------------------------------------------------------------
+;
+IsAlNum		macro
+		ifndef	sl_IsAlNum
+stdlib		segment	para public 'slcode'
+		extrn	sl_IsAlNum:far
+stdlib		ends
+		endif
+		slcall	sl_IsAlNum
+		endm
+;
+;
+; IsxDigit- Checks al to see if it is a hex digit.
+;
+IsxDigit	macro
+		ifndef	sl_IsxDigit
+stdlib		segment	para public 'slcode'
+		extrn	sl_IsxDigit:far
+stdlib		ends
+		endif
+		slcall	sl_IsxDigit
+		endm
+;
+;
+;
+ToLower		macro
+		local	NoCnvrt
+		cmp	al, 'A'
+		jb	NoCnvrt
+		cmp	al, 'Z'
+		ja	NoCnvrt
+		or	al, 20h
+NoCnvrt:
+		endm
+;
+;
+;
+ToUpper		macro
+		local	NoCnvrt
+		cmp	al, 'a'
+		jb	NoCnvrt
+		cmp	al, 'z'
+		ja	NoCnvrt
+		and	al, 05fh
+NoCnvrt:
+		endm
+;
+;
+;
+IsDigit		macro
+		local	NotDigit, IsDigit
+		cmp	al, '0'
+		jb	NotDigit 		;Note: this also clears ZF.
+		cmp	al, '9'
+		ja	NotDigit		;Also clears ZF.
+		cmp	al, al			;Set Zero flag
+NotDigit:
+		endm
+;
+;
+;
+IsAlpha		macro
+		local	IsAl, NotAlpha
+		cmp	al, 'A'
+		jb	NotAlpha		;Also clears ZF.
+		cmp	al, 'Z'
+		jbe	IsAl
+		cmp	al, 'a'
+		jb	NotAlpha
+		cmp	al, 'z'
+		ja	NotAlpha
+IsAl:		cmp	al, al			;Set ZF.
+NotAlpha:
+		endm
+;
+;
+IsLower		macro
+		local	NotLower
+		cmp	al, 'a'
+		jb	NotLower
+		cmp	al, 'z'
+		ja	NotLower
+		cmp	al, al			;Set ZF.
+NotLower:
+		endm
+;
+;
+; IsUpper-	Checks to see if the character in al is upper case.
+;
+IsUpper		macro
+		local	NotUpper
+		cmp	al, 'A'
+		jb	NotUpper
+		cmp	al, 'Z'
+		ja	NotUpper
+		cmp	al, al			;Set ZF.
+NotUpper:
+		endm
+;
+;
+;--------------------------------------------------------------------------
+;
+;
+strcpy		macro
+		ifndef	sl_strcpy
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcpy:far
+stdlib		ends
+		endif
+		slcall	sl_strcpy
+		endm
+;
+;
+;
+;
+strcpyl		macro
+		ifndef	sl_strcpyl
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcpyl:far
+stdlib		ends
+		endif
+		slcall	sl_strcpyl
+		endm
+;
+;
+;
+strdup		macro
+		ifndef	sl_strdup
+stdlib		segment	para public 'slcode'
+		extrn	sl_strdup:far
+stdlib		ends
+		endif
+		slcall	sl_strdup
+		endm
+;
+;
+;
+strdupl		macro
+		ifndef	sl_strdupl
+stdlib		segment	para public 'slcode'
+		extrn	sl_strdupl:far
+stdlib		ends
+		endif
+		slcall	sl_strdupl
+		endm
+;
+;
+strlen		macro
+		ifndef	sl_strlen
+stdlib		segment	para public 'slcode'
+		extrn	sl_strlen:far
+stdlib		ends
+		endif
+		slcall	sl_strlen
+		endm
+;
+;
+strcat		macro
+		ifndef	sl_strcat
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcat:far
+stdlib		ends
+		endif
+		slcall	sl_strcat
+		endm
+;
+;
+strcatl		macro
+		ifndef	sl_strcatl
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcatl:far
+stdlib		ends
+		endif
+		slcall	sl_strcatl
+		endm
+;
+;
+strcatm		macro
+		ifndef	sl_strcatm
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcatm:far
+stdlib		ends
+		endif
+		slcall	sl_strcatm
+		endm
+;
+;
+;
+strcatml	macro
+		ifndef	sl_strcatml
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcatml:far
+stdlib		ends
+		endif
+		slcall	sl_strcatml
+		endm
+;
+;
+;
+strchr		macro
+		ifndef	sl_strchr
+stdlib		segment	para public 'slcode'
+		extrn	sl_strchr:far
+stdlib		ends
+		endif
+		slcall	sl_strchr
+		endm
+;
+;
+strstr		macro
+		ifndef	sl_strstr
+stdlib		segment	para public 'slcode'
+		extrn	sl_strstr:far
+stdlib		ends
+		endif
+		slcall	sl_strstr
+		endm
+;
+;
+;
+strstrl		macro
+		ifndef	sl_strstrl
+stdlib		segment	para public 'slcode'
+		extrn	sl_strstrl:far
+stdlib		ends
+		endif
+		slcall	sl_strstrl
+		endm
+;
+;
+;
+strcmp		macro
+		ifndef	sl_strcmp
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcmp:far
+stdlib		ends
+		endif
+		slcall	sl_strcmp
+		endm
+;
+;
+; stricmp-	As with strcmp above, except it is case insensitive.
+;
+stricmp		macro
+		ifndef	sl_stricmp
+stdlib		segment	para public 'slcode'
+		extrn	sl_stricmp:far
+stdlib		ends
+		endif
+		slcall	sl_stricmp
+		endm
+;
+;
+stricmpl	macro
+		ifndef	sl_stricmpl
+stdlib		segment	para public 'slcode'
+		extrn	sl_stricmpl:far
+stdlib		ends
+		endif
+		slcall	sl_stricmpl
+		endm
+;
+strcmpl		macro
+		ifndef	sl_strcmpl
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcmpl:far
+stdlib		ends
+		endif
+		slcall	sl_strcmpl
+		endm
+;
+;
+strupr		macro
+		ifndef	sl_strupr
+stdlib		segment	para public 'slcode'
+		extrn	sl_strupr:far
+stdlib		ends
+		endif
+		slcall	sl_strupr
+		endm
+;
+;
+struprm		macro
+		ifndef	sl_struprm
+stdlib		segment	para public 'slcode'
+		extrn	sl_struprm:far
+stdlib		ends
+		endif
+		slcall	sl_struprm
+		endm
+;
+;
+strlwr		macro
+		ifndef	sl_strlwr
+stdlib		segment	para public 'slcode'
+		extrn	sl_strlwr:far
+stdlib		ends
+		endif
+		slcall	sl_strlwr
+		endm
+;
+;
+strlwrm		macro
+		ifndef	sl_strlwrm
+stdlib		segment	para public 'slcode'
+		extrn	sl_strlwrm:far
+stdlib		ends
+		endif
+		slcall	sl_strlwrm
+		endm
+;
+;
+strset		macro
+		ifndef	sl_strset
+stdlib		segment	para public 'slcode'
+		extrn	sl_strset:far
+stdlib		ends
+		endif
+		slcall	sl_strset
+		endm
+;
+;
+strsetm		macro
+		ifndef	sl_strsetm
+stdlib		segment	para public 'slcode'
+		extrn	sl_strsetm:far
+stdlib		ends
+		endif
+		slcall	sl_strsetm
+		endm
+;
+;
+strspan		macro
+		ifndef	sl_strspan
+stdlib		segment	para public 'slcode'
+		extrn	sl_strspan:far
+stdlib		ends
+		endif
+		slcall	sl_strspan
+		endm
+;
+;
+;
+strspanl	macro
+		ifndef	sl_strspanl
+stdlib		segment	para public 'slcode'
+		extrn	sl_strspanl:far
+stdlib		ends
+		endif
+		slcall	sl_strspanl
+		endm
+;
+;
+;
+strcspan	macro
+		ifndef	sl_strcspan
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcspan:far
+stdlib		ends
+		endif
+		slcall	sl_strcspan
+		endm
+;
+;
+;
+strcspanl	macro
+		ifndef	sl_strcspanl
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcspanl:far
+stdlib		ends
+		endif
+		slcall	sl_strcspanl
+		endm
+;
+;
+strins		macro
+		ifndef	sl_strins
+stdlib		segment	para public 'slcode'
+		extrn	sl_strins:far
+stdlib		ends
+		endif
+		slcall	sl_strins
+		endm
+;
+strinsl		macro
+		ifndef	sl_strinsl
+stdlib		segment	para public 'slcode'
+		extrn	sl_strinsl:far
+stdlib		ends
+		endif
+		slcall	sl_strinsl
+		endm
+;
+;
+strinsm		macro
+		ifndef	sl_strinsm
+stdlib		segment	para public 'slcode'
+		extrn	sl_strinsm:far
+stdlib		ends
+		endif
+		slcall	sl_strinsm
+		endm
+;
+strinsml	macro
+		ifndef	sl_strinsml
+stdlib		segment	para public 'slcode'
+		extrn	sl_strinsml:far
+stdlib		ends
+		endif
+		slcall	sl_strinsml
+		endm
+;
+strdel		macro
+		ifndef	sl_strdel
+stdlib		segment	para public 'slcode'
+		extrn	sl_strdel:far
+stdlib		ends
+		endif
+		slcall	sl_strdel
+		endm
+;
+strdelm		macro
+		ifndef	sl_strdelm
+stdlib		segment	para public 'slcode'
+		extrn	sl_strdelm:far
+stdlib		ends
+		endif
+		slcall	sl_strdelm
+		endm
+;
+strrev		macro
+		ifndef	sl_strrev
+stdlib		segment	para public 'slcode'
+		extrn	sl_strrev:far
+stdlib		ends
+		endif
+		slcall	sl_strrev
+		endm
+;
+strrevm		macro
+		ifndef	sl_strrevm
+stdlib		segment	para public 'slcode'
+		extrn	sl_strrevm:far
+stdlib		ends
+		endif
+		slcall	sl_strrevm
+		endm
+;
+;
+;
+;
+set		macro	n0,n1,n2,n3,n4,n5,n6,n7
+n0		db	1
+n1		db	2
+n2		db	4
+n3		db	8
+n4		db	10h
+n5		db	20h
+n6		db	40h
+n7		db	80h
+		db	264 dup (0)
+		endm
+;
+;
+CreateSets	macro
+		ifndef	sl_CreateSets
+stdlib		segment	para public 'slcode'
+		extrn	sl_CreateSets:far
+stdlib		ends
+		endif
+		slcall	sl_CreateSets
+		endm
+;
+;
+EmptySet	macro
+		ifndef	sl_EmptySet
+stdlib		segment	para public 'slcode'
+		extrn	sl_EmptySet:far
+stdlib		ends
+		endif
+		slcall	sl_EmptySet
+		endm
+;
+;
+RangeSet	macro
+		ifndef	sl_RangeSet
+stdlib		segment	para public 'slcode'
+		extrn	sl_RangeSet:far
+stdlib		ends
+		endif
+		slcall	sl_RangeSet
+		endm
+;
+;
+AddStr		macro
+		ifndef	sl_AddStr
+stdlib		segment	para public 'slcode'
+		extrn	sl_AddStr:far
+stdlib		ends
+		endif
+		slcall	sl_AddStr
+		endm
+;
+;
+AddStrl		macro
+		ifndef	sl_AddStrl
+stdlib		segment	para public 'slcode'
+		extrn	sl_AddStrl:far
+stdlib		ends
+		endif
+		slcall	sl_AddStrl
+		endm
+;
+;
+RmvStr		macro
+		ifndef	sl_RmvStr
+stdlib		segment	para public 'slcode'
+		extrn	sl_RmvStr:far
+stdlib		ends
+		endif
+		slcall	sl_RmvStr
+		endm
+;
+;
+RmvStrl		macro
+		ifndef	sl_RmvStrl
+stdlib		segment	para public 'slcode'
+		extrn	sl_RmvStrl:far
+stdlib		ends
+		endif
+		slcall	sl_RmvStrl
+		endm
+;
+;
+AddChar		macro
+		ifndef	sl_AddChar
+stdlib		segment	para public 'slcode'
+		extrn	sl_AddChar:far
+stdlib		ends
+		endif
+		slcall	sl_AddChar
+		endm
+;
+;
+RmvChar		macro
+		ifndef	sl_RmvChar
+stdlib		segment	para public 'slcode'
+		extrn	sl_RmvChar:far
+stdlib		ends
+		endif
+		slcall	sl_RmvChar
+		endm
+;
+;
+Member		macro
+		ifndef	sl_member
+stdlib		segment	para public 'slcode'
+		extrn	sl_member:far
+stdlib		ends
+		endif
+		slcall	sl_member
+		endm
+;
+;
+CopySet		macro
+		ifndef	sl_CopySet
+stdlib		segment	para public 'slcode'
+		extrn	sl_CopySet:far
+stdlib		ends
+		endif
+		slcall	sl_CopySet
+		endm
+;
+;
+setunion	macro
+		ifndef	sl_union
+stdlib		segment	para public 'slcode'
+		extrn	sl_union:far
+stdlib		ends
+		endif
+		slcall	sl_union
+		endm
+;
+;
+SetIntersect	macro
+		ifndef	sl_Intersect
+stdlib		segment	para public 'slcode'
+		extrn	sl_Intersect:far
+stdlib		ends
+		endif
+		slcall	sl_Intersect
+		endm
+;
+;
+SetDifference	macro
+		ifndef	sl_Difference
+stdlib		segment	para public 'slcode'
+		extrn	sl_Difference:far
+stdlib		ends
+		endif
+		slcall	sl_Difference
+		endm
+;
+;
+NextItem	macro
+		ifndef	sl_NextItem
+stdlib		segment	para public 'slcode'
+		extrn	sl_NextItem:far
+stdlib		ends
+		endif
+		slcall	sl_NextItem
+		endm
+;
+;
+RmvItem		macro
+		ifndef	sl_RmvItem
+stdlib		segment	para public 'slcode'
+		extrn	sl_RmvItem:far
+stdlib		ends
+		endif
+		slcall	sl_RmvItem
+		endm
+;
+;---------------------------------------------------------------------------
+;
+;
+; Macros for floating point arithmetic.
+;
+; Load single precision value into FPACC:
+;
+lsfpa		macro
+		ifndef	sl_lsfpa
+stdlib		segment	para public 'slcode'
+		extrn	sl_lsfpa:far
+stdlib		ends
+		endif
+		call	sl_lsfpa
+		endm
+;
+;
+; Store FPACC to a single precision value:
+;
+ssfpa		macro
+		ifndef	sl_ssfpa
+stdlib		segment	para public 'slcode'
+		extrn	sl_ssfpa:far
+stdlib		ends
+		endif
+		call	sl_ssfpa
+		endm
+;
+; Load double precision value into FPACC:
+;
+ldfpa		macro
+		ifndef	sl_ldfpa
+stdlib		segment	para public 'slcode'
+		extrn	sl_ldfpa:far
+stdlib		ends
+		endif
+		call	sl_ldfpa
+		endm
+;
+;
+; Store FPACC into a double precision variable:
+;
+sdfpa		macro
+		ifndef	sl_sdfpa
+stdlib		segment	para public 'slcode'
+		extrn	sl_sdfpa:far
+stdlib		ends
+		endif
+		call	sl_sdfpa
+		endm
+;
+;
+; Load extended precision value into FPACC:
+;
+lefpa		macro
+		ifndef	sl_lefpa
+stdlib		segment	para public 'slcode'
+		extrn	sl_lefpa:far
+stdlib		ends
+		endif
+		call	sl_lefpa
+		endm
+;
+; Load double precision value into FPACC:
+;
+lefpal		macro
+		ifndef	sl_lefpal
+stdlib		segment	para public 'slcode'
+		extrn	sl_lefpal:far
+stdlib		ends
+		endif
+		call	sl_lefpal
+		endm
+;
+; Store FPACC into an extended precision variable:
+;
+sefpa		macro
+		ifndef	sl_sefpa
+stdlib		segment	para public 'slcode'
+		extrn	sl_sefpa:far
+stdlib		ends
+		endif
+		call	sl_sefpa
+		endm
+;
+; Load single precision value into FPOP:
+;
+lsfpo		macro
+		ifndef	sl_lsfpo
+stdlib		segment	para public 'slcode'
+		extrn	sl_lsfpo:far
+stdlib		ends
+		endif
+		call	sl_lsfpo
+		endm
+;
+; Load double precision value into FPOP:
+;
+ldfpo		macro
+		ifndef	sl_ldfpo
+stdlib		segment	para public 'slcode'
+		extrn	sl_ldfpo:far
+stdlib		ends
+		endif
+		call	sl_ldfpo
+		endm
+;
+; Load extended precision value into FPOP:
+;
+lefpo		macro
+		ifndef	sl_lefpo
+stdlib		segment	para public 'slcode'
+		extrn	sl_lefpo:far
+stdlib		ends
+		endif
+		call	sl_lefpo
+		endm
+;
+; Load extended precision value into FPOP:
+;
+lefpol		macro
+		ifndef	sl_lefpol
+stdlib		segment	para public 'slcode'
+		extrn	sl_lefpol:far
+stdlib		ends
+		endif
+		call	sl_lefpol
+		endm
+;
+; ITOF-	Convert integer to floating point.
+;
+itof		macro
+		ifndef	sl_itof
+stdlib		segment	para public 'slcode'
+		extrn	sl_itof:far
+stdlib		ends
+		endif
+		call	sl_itof
+		endm
+;
+; UTOF-	Convert unsigned integer to floating point.
+;
+utof		macro
+		ifndef	sl_utof
+stdlib		segment	para public 'slcode'
+		extrn	sl_utof:far
+stdlib		ends
+		endif
+		call	sl_utof
+		endm
+;
+; ULTOF-	Convert unsigned 32-bit integer to floating point.
+;
+ultof		macro
+		ifndef	sl_ultof
+stdlib		segment	para public 'slcode'
+		extrn	sl_ultof:far
+stdlib		ends
+		endif
+		call	sl_ultof
+		endm
+;
+; LTOF-	Convert 32-bit signed integer to floating point.
+;
+ltof		macro
+		ifndef	sl_ltof
+stdlib		segment	para public 'slcode'
+		extrn	sl_ltof:far
+stdlib		ends
+		endif
+		call	sl_ltof
+		endm
+;
+; ADD FPOP to FPACC:
+;
+fpadd		macro
+		ifndef	sl_fadd
+stdlib		segment	para public 'slcode'
+		extrn	sl_fadd:far
+stdlib		ends
+		endif
+		call	sl_fadd
+		endm
+;
+; Subtract FPOP from FPACC:
+;
+fpsub		macro
+		ifndef	sl_fsub
+stdlib		segment	para public 'slcode'
+		extrn	sl_fsub:far
+stdlib		ends
+		endif
+		call	sl_fsub
+		endm
+;
+;
+; Compare FPACC to FPOP:
+;
+fpcmp		macro
+		ifndef	sl_fcmp
+stdlib		segment	para public 'slcode'
+		extrn	sl_fcmp:far
+stdlib		ends
+		endif
+		call	sl_fcmp
+		endm
+;
+;
+; Multiply FPACC by FPOP:
+;
+fpmul		macro
+		ifndef	sl_fmul
+stdlib		segment	para public 'slcode'
+		extrn	sl_fmul:far
+stdlib		ends
+		endif
+		call	sl_fmul
+		endm
+;
+;
+; Divide FPACC by FPOP:
+;
+fpdiv		macro
+		ifndef	sl_fdiv
+stdlib		segment	para public 'slcode'
+		extrn	sl_fdiv:far
+stdlib		ends
+		endif
+		call	sl_fdiv
+		endm
+;
+;
+; Convert FPACC to a string of digits.
+;
+ftoa		macro
+		ifndef	sl_ftoa
+stdlib		segment	para public 'slcode'
+		extrn	sl_ftoa:far
+stdlib		ends
+		endif
+		call	sl_ftoa
+		endm
+;
+ftoa2		macro
+		ifndef	sl_ftoa2
+stdlib		segment	para public 'slcode'
+		extrn	sl_ftoa2:far
+stdlib		ends
+		endif
+		call	sl_ftoa2
+		endm
+;
+ftoam		macro
+		ifndef	sl_ftoam
+stdlib		segment	para public 'slcode'
+		extrn	sl_ftoam:far
+stdlib		ends
+		endif
+		call	sl_ftoam
+		endm
+;
+;
+; Convert FPACC to a string of digits (scientific notation)
+;
+etoa		macro
+		ifndef	sl_etoa
+stdlib		segment	para public 'slcode'
+		extrn	sl_etoa:far
+stdlib		ends
+		endif
+		call	sl_etoa
+		endm
+;
+etoa2		macro
+		ifndef	sl_etoa2
+stdlib		segment	para public 'slcode'
+		extrn	sl_etoa2:far
+stdlib		ends
+		endif
+		call	sl_etoa2
+		endm
+;
+etoam		macro
+		ifndef	sl_etoam
+stdlib		segment	para public 'slcode'
+		extrn	sl_etoam:far
+stdlib		ends
+		endif
+		call	sl_etoam
+		endm
+;
+;
+;
+; Convert a string of digits (scientific notation) to FPACC
+;
+atof		macro
+		ifndef	sl_atof
+stdlib		segment	para public 'slcode'
+		extrn	sl_atof:far
+stdlib		ends
+		endif
+		call	sl_atof
+		endm
+;
+;
+;
+;
+ftoi		macro
+		ifndef	sl_ftoi
+stdlib		segment	para public 'slcode'
+		extrn	sl_ftoi:far
+stdlib		ends
+		endif
+		call	sl_ftoi
+		endm
+;
+ftou		macro
+		ifndef	sl_ftou
+stdlib		segment	para public 'slcode'
+		extrn	sl_ftou:far
+stdlib		ends
+		endif
+		call	sl_ftou
+		endm
+;
+ftol		macro
+		ifndef	sl_ftol
+stdlib		segment	para public 'slcode'
+		extrn	sl_ftol:far
+stdlib		ends
+		endif
+		call	sl_ftol
+		endm
+;
+ftoul		macro
+		ifndef	sl_ftoul
+stdlib		segment	para public 'slcode'
+		extrn	sl_ftoul:far
+stdlib		ends
+		endif
+		call	sl_ftoul
+		endm
+;
+AccOp		macro
+		ifndef	sl_AccOp
+stdlib		segment	para public 'slcode'
+		extrn	sl_AccOp:far
+stdlib		ends
+		endif
+		call	sl_AccOp
+		endm
+;
+XAccOp		macro
+		ifndef	sl_XAccOp
+stdlib		segment	para public 'slcode'
+		extrn	sl_XAccOp:far
+stdlib		ends
+		endif
+		call	sl_XAccOp
+		endm
+;
+putf		macro
+		ifndef	sl_Putf
+stdlib		segment	para public 'slcode'
+		extrn	sl_Putf:far
+stdlib		ends
+		endif
+		call	sl_Putf
+		endm
+;
+pute		macro
+		ifndef	sl_Pute
+stdlib		segment	para public 'slcode'
+		extrn	sl_Pute:far
+stdlib		ends
+		endif
+		call	sl_Pute
+		endm
+;
+;
+;
+;***************************************************************************
+;
+; File I/O goodies
+;
+fcreate		macro
+		ifndef	sl_fcreate
+stdlib		segment	para public 'slcode'
+		extrn	sl_fcreate:far
+stdlib		ends
+		endif
+		call	sl_fcreate
+		endm
+;
+fopen		macro
+		ifndef	sl_fopen
+stdlib		segment	para public 'slcode'
+		extrn	sl_fopen:far
+stdlib		ends
+		endif
+		call	sl_fopen
+		endm
+;
+fReadOn		macro
+		ifndef	sl_fReadOn
+stdlib		segment	para public 'slcode'
+		extrn	sl_fReadOn:far
+stdlib		ends
+		endif
+		call	sl_fReadOn
+		endm
+;
+fReadOff	macro
+		ifndef	sl_fReadOff
+stdlib		segment	para public 'slcode'
+		extrn	sl_fReadOff:far
+stdlib		ends
+		endif
+		call	sl_fReadOff
+		endm
+;
+fClose		macro
+		ifndef	sl_fClose
+stdlib		segment	para public 'slcode'
+		extrn	sl_fClose:far
+stdlib		ends
+		endif
+		call	sl_fClose
+		endm
+;
+fFlush		macro
+		ifndef	sl_fFlush
+stdlib		segment	para public 'slcode'
+		extrn	sl_fFlush:far
+stdlib		ends
+		endif
+		call	sl_fFlush
+		endm
+;
+fWriteOn	macro
+		ifndef	sl_fWriteOn
+stdlib		segment	para public 'slcode'
+		extrn	sl_fWriteOn:far
+stdlib		ends
+		endif
+		call	sl_fWriteOn
+		endm
+;
+fWriteOff	macro
+		ifndef	sl_fWriteOff
+stdlib		segment	para public 'slcode'
+		extrn	sl_fWriteOff:far
+stdlib		ends
+		endif
+		call	sl_fWriteOff
+		endm
+;
+fSeek		macro
+		ifndef	sl_fSeek
+stdlib		segment	para public 'slcode'
+		extrn	sl_fSeek:far
+stdlib		ends
+		endif
+		call	sl_fSeek
+		endm
+;
+DOSHandle	macro
+		ifndef	sl_DOSHandle
+stdlib		segment	para public 'slcode'
+		extrn	sl_DOSHandle:far
+stdlib		ends
+		endif
+		call	sl_DOSHandle
+		endm
+;
+fDel		macro
+		ifndef	sl_fDel
+stdlib		segment	para public 'slcode'
+		extrn	sl_fDel:far
+stdlib		ends
+		endif
+		call	sl_fDel
+		endm
+;
+fRename		macro
+		ifndef	sl_fRename
+stdlib		segment	para public 'slcode'
+		extrn	sl_fRename:far
+stdlib		ends
+		endif
+		call	sl_frename
+		endm
+;
+;
+;
+; Intel hex conversion routine:
+;
+ToHex		macro
+		ifndef	sl_ToHex
+stdlib		segment	para public 'slcode'
+		extrn	sl_ToHex:far
+stdlib		ends
+		endif
+		call	sl_ToHex
+		endm
+;
+;
+; ARGC- Counts the command line parameters
+;
+Argc		macro
+		ifndef	sl_Argc
+stdlib		segment	para public 'slcode'
+		extrn	sl_Argc:far
+stdlib		ends
+		endif
+		call	sl_Argc
+		endm
+;
+; Argv-	Returns a specified cmd line parameter
+;
+Argv		macro
+		ifndef	sl_Argv
+stdlib		segment	para public 'slcode'
+		extrn	sl_Argv:far
+stdlib		ends
+		endif
+		call	sl_Argv
+		endm
+;
+;
+; Randomize-	Randomizes the random number generator
+;
+Randomize	macro
+		ifndef	sl_randomize
+stdlib		segment	para public 'slcode'
+		extrn	sl_randomize:far
+stdlib		ends
+		endif
+		call	sl_randomize
+		endm
+;
+;
+; Random-	Generates a random number and returns this number in AX
+;
+Random		macro
+		ifndef	sl_random
+stdlib		segment	para public 'slcode'
+		extrn	sl_random:far
+stdlib		ends
+		endif
+		call	sl_random
+		endm
+;
+;
+; CPUID-	Returns CPU id in AX & BX
+;
+CPUID		macro
+		ifndef	sl_cpuid
+stdlib		segment	para public 'slcode'
+		extrn	sl_cpuid:far
+stdlib		ends
+		endif
+		call	sl_cpuid
+		endm
+;

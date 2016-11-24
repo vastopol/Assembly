@@ -1,0 +1,74 @@
+Logic Gates in more detail...
+==============================
+
+NAND Logic
+
+
+NAND = NOT(A AND B)
+//----------------------------------
+
+NOT = NOT(A AND A)
+//----------------------------------
+
+AND =
+    NOT
+    {
+      NOT(A AND B) 
+      AND 
+      NOT(A AND B)
+    }
+//----------------------------------
+
+OR = 
+    NOT
+    {
+      NOT(A AND A) 
+      AND 
+      NOT(B AND B)
+    }
+//----------------------------------
+
+XOR = 
+    NOT
+    {
+      NOT[A AND NOT(A AND B)] 
+      AND 
+      NOT[B AND NOT(A AND B)]
+    } 
+//----------------------------------
+
+NOR = 
+    NOT
+    {
+      NOT
+      [
+      	NOT(A AND A) 
+      	AND 
+      	NOT(B AND B)
+      ]
+      AND 
+      NOT
+      [
+      	NOT(A AND A) 
+      	AND 
+      	NOT(B AND B)
+      ]
+    }
+//----------------------------------
+
+XNOR = 
+      NOT
+      {
+      	NOT
+      	(
+      	  NOT[A AND NOT(A AND B)] 
+      	  AND 
+      	  NOT[B AND NOT(A AND B)]
+      	)
+      }
+//----------------------------------
+
+
+//////////////////////////////////////////////////////
+
+** NOR is also functionally complete
