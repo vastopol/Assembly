@@ -1,0 +1,5 @@
+rand_uniform_safe.o
+rand_range_safe.o
+rand_random_safe.o
+rand_urange_safe.o
+rand_deal_safe.o

@@ -1,0 +1,682 @@
+#if( ! @defined( overload_hhf ))
+?overload_hhf := true;
+
+namespace hla;
+
+	// This is the macro to be used inside a user-written macro
+	// to overload a bunch of different procedure names with
+	// the user-written macro.
+	//
+	// Usage:
+	//
+	//	overload( <parms passed to user-written macro> )
+	//
+	//		signature( usrProc1( <list of zero or more HLA types> ))
+	//		signature( usrProc2( <list of zero or more HLA types> ))
+	//		signature( usrProc3( <list of zero or more HLA types> ))
+	//		etc.
+	//
+	//	endoverload
+	//
+	// The above invocation template would generate code to match
+	// the user-supplied parameter list against one of the signatures
+	// and make a call to the matching function.
+	//
+	// Example:
+	//
+	//	const
+	//		i:int32 := -1;
+	//		k:uns32 :=  2;
+	//		s:string := "";
+	//		
+	//	const
+	//
+	//	#macro proc1( __i );
+	//		#print( "int32=", __i )
+	//	#endmacro
+	//
+	//	#macro proc2( __i, __j );
+	//		#print( "int32=", __i, " uns32=", __j )
+	//	#endmacro
+	//
+	//	#macro proc3( _dummy[] );
+	//		#print( "Invoked proc3" )
+	//	#endmacro
+	//
+	//		
+	//	#macro somename( parms[] );
+	//
+	//		hla.overload( parms )
+	//		
+	//			hla.signature( proc1( int32 ))
+	//			hla.signature( proc2( int32, uns32))
+	//			hla.signature( proc3() )
+	//			
+	//		hla.endoverload
+	//		
+	//	#endmacro
+	//
+	//	somename( i );
+	//	somename( i, k );
+	//	somename( );
+	//
+	// The following table maps ptypes for the unsigned, hex, and
+	// signed integer types from an actual type to a promoted type.
+	//
+	// The mapping is done as follows:
+	//
+	//	1.	Take a constant's ptype value (this only works for constants!)
+	//
+	//	2.	Take the formal parameter's ptype.
+	//
+	//	3.	if both ptypes are in the range ptBoolean..ptString, then
+	//		subtract ptBoolean from both values.
+	//	3a.	The entry _ovld_const_type_promotion[ actual, formal]
+	//		produces the promoted ptype, which is used as the actual type.
+	//
+	//	4.	If either ptype is not in the range ptBoolean..ptString,
+	//		then just use the original types. (Note: the ptPointer type
+	//		is handled as a special case to reduce the size of the
+	//		following table). 
+	 
+const
+	
+	_ovld_const_type_promotion:
+		uns8[ 25, 25 ] :=	//[actualconst, formalType] 
+		[
+			ptBoolean, ptBoolean,							// Boolean->
+			ptBoolean, ptBoolean, ptBoolean, ptBoolean, ptBoolean,
+			ptByte, ptWord, ptDWord, ptQWord, ptTByte, ptLWord,
+			ptBoolean, ptBoolean, ptBoolean, ptBoolean, ptBoolean,
+			ptBoolean, ptBoolean,
+			ptBoolean, ptBoolean, ptBoolean, ptBoolean, 
+			ptBoolean,
+			
+			ptEnum, ptEnum,									// Enum->
+			ptEnum, ptEnum, ptEnum, ptEnum, ptEnum,
+			ptByte, ptWord, ptDWord, ptQWord, ptTByte, ptLWord,
+			ptEnum, ptEnum, ptEnum, ptEnum, ptEnum,
+			ptEnum, ptEnum,
+			ptEnum, ptEnum, ptEnum, ptEnum, 
+			ptEnum,
+			
+			ptUns8, ptUns8,
+			ptUns8, ptUns16, ptUns32, ptUns64, ptUns128,	// Uns8->
+			ptByte, ptWord, ptDWord, ptQWord, ptTByte, ptLWord,
+			ptUns8, ptUns16, ptUns32, ptUns64, ptUns128,
+			ptUns8, ptUns8,
+			ptReal32, ptReal64, ptReal80, ptUns8,
+			ptUns8,
+			
+			ptUns16, ptUns16, 
+			ptUns16, ptUns16, ptUns32, ptUns64, ptUns128,	// Uns16->
+			ptWord, ptWord, ptDWord, ptQWord, ptTByte, ptLWord,
+			ptUns16, ptUns16, ptUns32, ptUns64, ptUns128,
+			ptUns16, ptUns16, 
+			ptReal32, ptReal64, ptReal80, ptUns16,
+			ptUns16,
+			
+			ptUns32, ptUns32, 
+			ptUns32, ptUns32, ptUns32, ptUns64, ptUns128,	// Uns32->
+			ptDWord, ptDWord, ptDWord, ptQWord, ptTByte, ptLWord,
+			ptUns32, ptUns32, ptUns32, ptUns64, ptUns128,
+			ptUns32, ptUns32, 
+			ptReal32, ptReal64, ptReal80, ptUns32,
+			ptUns32,
+			
+			ptUns64, ptUns64, 
+			ptUns64, ptUns64, ptUns64, ptUns64, ptUns128,	// Uns64->
+			ptQWord, ptQWord, ptQWord, ptQWord, ptTByte, ptLWord,
+			ptUns64, ptUns64, ptUns64, ptUns64, ptUns128,
+			ptUns64, ptUns64, 
+			ptReal32, ptReal64, ptReal80, ptUns64,
+			ptUns64,
+			
+			ptUns128, ptUns128, 
+			ptUns128, ptUns128, ptUns128, ptUns128, ptUns128,	// Uns128->
+			ptLWord, ptLWord, ptLWord, ptLWord, ptLWord, ptLWord,
+			ptUns128, ptUns128, ptUns128, ptUns128, ptUns128, 
+			ptUns128, ptUns128, 
+			ptReal32, ptReal64, ptReal80, ptUns128,	
+			ptUns128,
+							
+			
+			
+			ptBoolean, ptEnum, 
+			ptUns8, ptUns16, ptUns32, ptUns64, ptUns128,	// Byte->
+			ptByte, ptWord, ptDWord, ptQWord, ptTByte, ptLWord,
+			ptInt8, ptInt16, ptInt32, ptInt64, ptInt128,
+			ptChar, ptByte,
+			ptReal32, ptReal64, ptReal80, ptByte,
+			ptByte,
+
+			
+			ptWord, ptWord, 
+			ptUns16, ptUns16, ptUns32, ptUns64, ptUns128,	// Word->
+			ptWord, ptWord, ptDWord, ptQWord, ptTByte, ptLWord,
+			ptInt16, ptInt16, ptInt32, ptInt64, ptInt128,
+			ptWord, ptWChar,
+			ptReal32, ptReal64, ptReal80, ptWord,
+			ptWord,
+
+			
+			ptDWord, ptDWord, 
+			ptUns32, ptUns32, ptUns32, ptUns64, ptUns128,	// DWord->
+			ptDWord, ptDWord, ptDWord, ptQWord, ptTByte, ptLWord,
+			ptInt32, ptInt32, ptInt32, ptInt64, ptInt128,
+			ptDWord, ptDWord, 
+			ptReal32, ptReal64, ptReal80, ptDWord,
+			ptString,
+
+			
+			ptQWord, ptQWord, 
+			ptUns64, ptUns64, ptUns64, ptUns64, ptUns128,	// QWord->
+			ptQWord, ptQWord, ptQWord, ptQWord, ptTByte, ptLWord,
+			ptInt64, ptInt64, ptInt64, ptInt64, ptInt128,
+			ptQWord, ptQWord, 
+			ptReal32, ptReal64, ptReal80, ptQWord,
+			ptQWord,
+			
+			ptTByte, ptTByte, 
+			ptTByte, ptTByte, ptTByte, ptTByte, ptUns128,	// TByte->
+			ptTByte, ptTByte, ptTByte, ptTByte, ptTByte, ptLWord,
+			ptTByte, ptTByte, ptTByte, ptTByte, ptInt128,
+			ptTByte, ptTByte, 
+			ptReal32, ptReal64, ptReal80, ptTByte,
+			ptTByte,
+			
+			ptLWord, ptLWord, 
+			ptUns128, ptUns128, ptUns128, ptUns128, ptUns128,	// LWord->
+			ptLWord, ptLWord, ptLWord, ptLWord, ptLWord, ptLWord,
+			ptInt128, ptInt128, ptInt128, ptInt128, ptInt128,
+			ptLWord, ptLWord, 
+			ptReal32, ptReal64, ptReal80, ptLWord,
+			ptLWord,
+
+													  
+									
+													  
+			ptInt8, ptInt8, 
+			ptInt8, ptInt16, ptInt32, ptInt64, ptInt128,	// Int8->
+			ptByte, ptWord, ptDWord, ptQWord, ptTByte, ptLWord,
+			ptInt8, ptInt16, ptInt32, ptInt64, ptInt128,
+			ptInt8, ptInt8, 
+			ptReal32, ptReal64, ptReal80, ptInt8,
+			ptInt8,
+			
+			ptInt16, ptInt16, 
+			ptInt16, ptInt16, ptInt32, ptInt64, ptInt128,	// Int16->
+			ptWord, ptWord, ptDWord, ptQWord, ptTByte, ptLWord,
+			ptInt16, ptInt16, ptInt32, ptInt64, ptInt128,
+			ptInt16, ptInt16, 
+			ptReal32, ptReal64, ptReal80, ptInt16,
+			ptInt16,
+			
+			ptInt32, ptInt32, 
+			ptInt32, ptInt32, ptInt32, ptInt64, ptInt128,	// Int32->
+			ptDWord, ptDWord, ptDWord, ptQWord, ptTByte, ptLWord,
+			ptInt32, ptInt32, ptInt32, ptInt64, ptInt128,
+			ptInt32, ptInt32, 
+			ptReal32, ptReal64, ptReal80, ptInt32,
+			ptInt32,
+			
+			ptInt64, ptInt64, 
+			ptInt64, ptInt64, ptInt64, ptInt64, ptInt128,	// Int64->
+			ptQWord, ptQWord, ptQWord, ptQWord, ptTByte, ptLWord,
+			ptInt64, ptInt64, ptInt64, ptInt64, ptInt128,
+			ptInt64, ptInt64, 
+			ptReal32, ptReal64, ptReal80, ptInt64,
+			ptInt64,
+			
+			ptInt128, ptInt128, 
+			ptInt128, ptInt128, ptInt128, ptInt128, ptInt128,	// Int64->
+			ptLWord, ptLWord, ptLWord, ptLWord, ptLWord, ptLWord,
+			ptInt128, ptInt128, ptInt128, ptInt128, ptInt128,
+			ptInt128, ptInt128, 
+			ptInt128, ptInt128, ptInt128, ptInt128,
+			ptInt128,
+			
+			ptChar, ptChar, 
+			ptChar, ptChar, ptChar, ptChar, ptChar,			// char->
+			ptByte, ptChar, ptChar, ptChar, ptChar, ptChar,
+			ptChar, ptChar, ptChar, ptChar, ptChar,
+			ptChar, ptChar, 
+			ptChar, ptChar, ptChar, ptChar, 
+			ptChar,
+			
+			ptWChar, ptWChar, 
+			ptWChar, ptWChar, ptWChar, ptWChar, ptWChar,			// WChar->
+			ptWChar, ptWord,  ptWChar, ptWChar, ptWChar, ptWChar,
+			ptWChar, ptWChar, ptWChar, ptWChar, ptWChar,
+			ptWChar, ptWChar, 
+			ptWChar, ptWChar, ptWChar, ptWChar, 
+			ptWChar,
+			
+			ptReal32, ptReal32, 
+			ptReal32, ptReal32, ptReal32, ptReal32, ptReal32,		// Real32->
+			ptReal32, ptReal32, ptReal32, ptReal32, ptReal32, ptReal32,
+			ptReal32, ptReal32, ptReal32, ptReal32, ptReal32,
+			ptReal32, ptReal32, 
+			ptReal32, ptReal64, ptReal80, ptReal32, 
+			ptReal32,
+			
+			ptReal64, ptReal64, 
+			ptReal64, ptReal64, ptReal64, ptReal64, ptReal64,		// Real64->
+			ptReal64, ptReal64, ptReal64, ptReal64, ptReal64, ptReal64,
+			ptReal64, ptReal64, ptReal64, ptReal64, ptReal64,
+			ptReal64, ptReal64, 
+			ptReal32, ptReal64, ptReal80, ptReal64, 
+			ptReal64,
+			
+			ptReal80, ptReal80, 
+			ptReal80, ptReal80, ptReal80, ptReal80, ptReal80,		// Real80->
+			ptReal80, ptReal80, ptReal80, ptReal80, ptReal80, ptReal80,
+			ptReal80, ptReal80, ptReal80, ptReal80, ptReal80,
+			ptReal80, ptReal80, 
+			ptReal32, ptReal64, ptReal80, ptReal80, 
+			ptReal80,
+			
+			ptReal128, ptReal128, 
+			ptReal128, ptReal128, ptReal128, ptReal128, ptReal128,	// Real128->
+			ptReal128, ptReal128, ptReal128, ptReal128, ptReal128, ptReal128,
+			ptReal128, ptReal128, ptReal128, ptReal128, ptReal128,
+			ptReal128, ptReal128, 
+			ptReal128, ptReal128, ptReal128, ptReal128, 
+			ptReal128,
+			
+			ptString, ptString, 
+			ptString, ptString, ptString, ptString, ptString,	// String->
+			ptString, ptString, ptDWord, ptString, ptString, ptString,
+			ptString, ptString, ptString, ptString, ptString,
+			ptString, ptString, 
+			ptString, ptString, ptString, ptString, 
+			ptString,
+		]; 
+			
+			
+			
+	// The following is used to promote non-constant object types.
+		 
+	_ovld_type_promotion:
+		uns8[ 25, 25 ] :=	//[actualconst, formalType] 
+		[
+			ptBoolean, ptBoolean,							// Boolean->
+			ptBoolean, ptBoolean, ptBoolean, ptBoolean, ptBoolean,
+			ptByte, ptBoolean, ptBoolean, ptBoolean, ptBoolean, ptBoolean,
+			ptBoolean, ptBoolean, ptBoolean, ptBoolean, ptBoolean,
+			ptBoolean, ptBoolean,
+			ptBoolean, ptBoolean, ptBoolean, ptBoolean, 
+			ptBoolean,
+			
+			ptEnum, ptEnum,									// Enum->
+			ptEnum, ptEnum, ptEnum, ptEnum, ptEnum,
+			#if( @enumsize = 2) )
+			
+				ptEnum, ptWord, ptEnum, ptEnum, ptEnum, ptEnum,
+				
+			#elseif( @enumsize = 4 )
+			
+				ptEnum, ptEnum, ptDWord, ptEnum, ptEnum, ptEnum,
+			
+			#else // If @enumsize is not 2 or 4, assume it's 1.
+
+				ptByte, ptEnum, ptEnum, ptEnum, ptEnum, ptEnum,
+
+			#endif				
+			ptEnum, ptEnum, ptEnum, ptEnum, ptEnum,
+			ptEnum, ptEnum,
+			ptEnum, ptEnum, ptEnum, ptEnum, 
+			ptEnum,
+			
+			ptUns8, ptUns8,
+			ptUns8, ptUns8, ptUns8, ptUns8, ptUns8,	// Uns8->
+			ptByte, ptUns8, ptUns8, ptUns8, ptUns8, ptUns8,
+			ptUns8, ptUns8, ptUns8, ptUns8, ptUns8,
+			ptUns8, ptUns8,
+			ptUns8, ptUns8, ptUns8, ptUns8,
+			ptUns8,
+			
+			ptUns16, ptUns16, 
+			ptUns16, ptUns16, ptUns16, ptUns16, ptUns16,	// Uns16->
+			ptUns16, ptWord,  ptUns16, ptUns16, ptUns16, ptUns16,
+			ptUns16, ptUns16, ptUns16, ptUns16, ptUns16,
+			ptUns16, ptUns16, 
+			ptUns16, ptUns16, ptUns16, ptUns16,
+			ptUns16,
+			
+			ptUns32, ptUns32, 
+			ptUns32, ptUns32, ptUns32, ptUns32, ptUns32,	// Uns32->
+			ptUns32, ptUns32, ptDWord, ptUns32, ptUns32, ptUns32,
+			ptUns32, ptUns32, ptUns32, ptUns32, ptUns32,
+			ptUns32, ptUns32, 
+			ptUns32, ptUns32, ptUns32, ptUns32,
+			ptUns32,
+			
+			ptUns64, ptUns64, 
+			ptUns64, ptUns64, ptUns64, ptUns64, ptUns128,	// Uns64->
+			ptUns64, ptUns64, ptUns64, ptQWord, ptUns64, ptUns64,
+			ptUns64, ptUns64, ptUns64, ptUns64, ptUns64,
+			ptUns64, ptUns64, 
+			ptUns64, ptUns64, ptUns64, ptUns64,
+			ptUns64,
+			
+			ptUns128, ptUns128, 
+			ptUns128, ptUns128, ptUns128, ptUns128, ptUns128,	// Uns128->
+			ptUns128, ptUns128, ptUns128, ptUns128, ptUns128, ptLWord,
+			ptUns128, ptUns128, ptUns128, ptUns128, ptUns128, 
+			ptUns128, ptUns128, 
+			ptUns128, ptUns128, ptUns128, ptUns128,	
+			ptUns128,
+							
+			
+			
+			ptBoolean, ptEnum, 
+			ptUns8, ptByte, ptByte, ptByte, ptByte,	// Byte->
+			ptByte, ptByte, ptByte, ptByte, ptByte, ptByte,
+			ptInt8, ptByte, ptByte, ptByte, ptByte,
+			ptChar, ptByte,
+			ptByte, ptByte, ptByte, ptByte,
+			ptByte,
+
+			
+			ptWord, ptWord, 
+			ptWord, ptUns16, ptWord, ptWord, ptWord,	// Word->
+			ptWord, ptWord, ptWord, ptWord, ptWord, ptWord,
+			ptWord, ptInt16, ptWord, ptWord, ptWord,
+			ptWord, ptWChar,
+			ptWord, ptWord, ptWord, ptWord,
+			ptWord,
+
+			
+			ptDWord, ptDWord, 
+			ptDWord, ptDWord, ptUns32, ptDWord, ptDWord,	// DWord->
+			ptDWord, ptDWord, ptDWord, ptDWord, ptDWord, ptDWord,
+			ptDWord, ptDWord, ptInt32, ptDWord, ptDWord,
+			ptDWord, ptDWord, 
+			ptDWord, ptDWord, ptDWord, ptDWord,
+			ptString,
+
+			
+			ptQWord, ptQWord, 
+			ptQWord, ptQWord, ptQWord, ptUns64, ptQWord,	// QWord->
+			ptQWord, ptQWord, ptQWord, ptQWord, ptQWord, ptQWord,
+			ptQWord, ptQWord, ptQWord, ptInt64, ptQWord,
+			ptQWord, ptQWord, 
+			ptQWord, ptQWord, ptQWord, ptQWord,
+			ptQWord,
+			
+			ptTByte, ptTByte, 
+			ptTByte, ptTByte, ptTByte, ptTByte, ptTByte,	// TByte->
+			ptTByte, ptTByte, ptTByte, ptTByte, ptTByte, ptTByte,
+			ptTByte, ptTByte, ptTByte, ptTByte, ptTByte,
+			ptTByte, ptTByte, 
+			ptTByte, ptTByte, ptTByte, ptTByte,
+			ptTByte,
+			
+			ptLWord, ptLWord, 
+			ptLWord, ptLWord, ptLWord, ptLWord, ptUns128,	// LWord->
+			ptLWord, ptLWord, ptLWord, ptLWord, ptLWord, ptLWord,
+			ptLWord, ptLWord, ptLWord, ptLWord, ptInt128,
+			ptLWord, ptLWord, 
+			ptLWord, ptLWord, ptLWord, ptLWord,
+			ptLWord,
+
+													  
+									
+													  
+			ptInt8, ptInt8, 
+			ptInt8, ptInt8, ptInt8, ptInt8, ptInt8,	// Int8->
+			ptByte, ptInt8, ptInt8, ptInt8, ptInt8, ptLWord,
+			ptInt8, ptInt8, ptInt8, ptInt8, ptInt8,
+			ptInt8, ptInt8, 
+			ptInt8, ptInt8, ptInt8, ptInt8,
+			ptInt8,
+			
+			ptInt16, ptInt16, 
+			ptInt16, ptInt16, ptInt16, ptInt16, ptInt16,	// Int16->
+			ptInt16, ptWord,  ptInt16, ptInt16, ptInt16, ptInt16,
+			ptInt16, ptInt16, ptInt16, ptInt16, ptInt16,
+			ptInt16, ptInt16, 
+			ptInt16, ptInt16, ptInt16, ptInt16,
+			ptInt16,
+			
+			ptInt32, ptInt32, 
+			ptInt32, ptInt32, ptInt32, ptInt32, ptInt32,	// Int32->
+			ptInt32, ptInt32, ptDWord, ptInt32, ptInt32, ptInt32,
+			ptInt32, ptInt32, ptInt32, ptInt32, ptInt32,
+			ptInt32, ptInt32, 
+			ptInt32, ptInt32, ptInt32, ptInt32,
+			ptInt32,
+			
+			ptInt64, ptInt64, 
+			ptInt64, ptInt64, ptInt64, ptInt64, ptInt64,	// Int64->
+			ptInt64, ptInt64, ptInt64, ptQWord, ptInt64, ptInt64,
+			ptInt64, ptInt64, ptInt64, ptInt64, ptInt64,
+			ptInt64, ptInt64, 
+			ptInt64, ptInt64, ptInt64, ptInt64,
+			ptInt64,
+			
+			ptInt128, ptInt128, 
+			ptInt128, ptInt128, ptInt128, ptInt128, ptInt128,	// Int64->
+			ptInt128, ptInt128, ptInt128, ptInt128, ptInt128, ptLWord,
+			ptInt128, ptInt128, ptInt128, ptInt128, ptInt128,
+			ptInt128, ptInt128, 
+			ptInt128, ptInt128, ptInt128, ptInt128,
+			ptInt128,
+			
+			ptChar, ptChar, 
+			ptChar, ptChar, ptChar, ptChar, ptChar,			// char->
+			ptByte, ptChar, ptChar, ptChar, ptChar, ptChar,
+			ptChar, ptChar, ptChar, ptChar, ptChar,
+			ptChar, ptChar, 
+			ptChar, ptChar, ptChar, ptChar, 
+			ptChar,
+			
+			ptWChar, ptWChar, 
+			ptWChar, ptWChar, ptWChar, ptWChar, ptWChar,			// WChar->
+			ptWChar, ptWord,  ptWChar, ptWChar, ptWChar, ptWChar,
+			ptWChar, ptWChar, ptWChar, ptWChar, ptWChar,
+			ptWChar, ptWChar, 
+			ptWChar, ptWChar, ptWChar, ptWChar, 
+			ptWChar,
+			
+			ptReal32, ptReal32, 
+			ptReal32, ptReal32, ptReal32, ptReal32, ptReal32,		// Real32->
+			ptReal32, ptReal32, ptReal32, ptReal32, ptReal32, ptReal32,
+			ptReal32, ptReal32, ptReal32, ptReal32, ptReal32,
+			ptReal32, ptReal32, 
+			ptReal32, ptReal32, ptReal32, ptReal32, 
+			ptReal32,
+			
+			ptReal64, ptReal64, 
+			ptReal64, ptReal64, ptReal64, ptReal64, ptReal64,		// Real64->
+			ptReal64, ptReal64, ptReal64, ptReal64, ptReal64, ptReal64,
+			ptReal64, ptReal64, ptReal64, ptReal64, ptReal64,
+			ptReal64, ptReal64, 
+			ptReal64, ptReal64, ptReal64, ptReal64, 
+			ptReal64,
+			
+			ptReal80, ptReal80, 
+			ptReal80, ptReal80, ptReal80, ptReal80, ptReal80,		// Real80->
+			ptReal80, ptReal80, ptReal80, ptReal80, ptReal80, ptReal80,
+			ptReal80, ptReal80, ptReal80, ptReal80, ptReal80,
+			ptReal80, ptReal80, 
+			ptReal80, ptReal80, ptReal80, ptReal80, 
+			ptReal80,
+			
+			ptReal128, ptReal128, 
+			ptReal128, ptReal128, ptReal128, ptReal128, ptReal128,	// Real128->
+			ptReal128, ptReal128, ptReal128, ptReal128, ptReal128, ptReal128,
+			ptReal128, ptReal128, ptReal128, ptReal128, ptReal128,
+			ptReal128, ptReal128, 
+			ptReal128, ptReal128, ptReal128, ptReal128, 
+			ptReal128,
+			
+			ptString, ptString, 
+			ptString, ptString, ptString, ptString, ptString,	// String->
+			ptString, ptString, ptDWord, ptString, ptString, ptString,
+			ptString, ptString, ptString, ptString, ptString,
+			ptString, ptString, 
+			ptString, ptString, ptString, ptString, 
+			ptString,
+		]; 
+			
+			
+			
+
+	#macro overload( _ovld_parms_ );
+		?@global:hla._ovld_count := 0;
+		
+	  #keyword signature( string theSig ):_theSigStr_;
+	  
+	  	?_theSigStr_ :text := theSig;
+	  	?@global:hla._ovld_curSig := @global:hla._parseSignature_( _theSigStr_ );
+		#if( (@elements(@global:hla._ovld_curSig)-1 ) = @elements( _ovld_parms_ ))
+		 
+			?@global:hla._ovld_matched := true;
+			#for
+			( 
+				@global:hla._ovld_index := 
+					0 to (@elements( _ovld_parms_ )-1)
+			)
+			
+				// See if the type of the actual parameter matches
+				// the corresponding formal type in the signature.
+				//
+				// Note that we have to use a different promotion algorithm
+				// for constant operands versus other operands. This is because
+				// constants can be easily promoted to other types by the
+				// compiler. The actual promotion function is handled by
+				// the 	 _ovld_const_type_promotion and _ovld_type_promotion
+				// lookup tables.
+				//
+				// Note: The lookup tables do not handle ptPointer types. They are
+				// handled as a special case (converted to dword) in the code below
+				// to save space in the lookup tables.
+				
+				?@global:hla._ptypeFormal := 
+					@ptype( @text (@global:hla._ovld_curSig[@global:hla._ovld_index]));
+					
+				#if( @global:hla._ptypeFormal == @global:hla.ptPointer )
+				
+					?@global:hla._ptypeFormal := ptDWord;
+					
+				#endif
+				
+				?@global:hla._ptypeActual := 
+					@ptype( @text(_ovld_parms_[@global:hla._ovld_index]));
+				
+				#if( @global:hla._ptypeActual == @global:hla.ptPointer )
+				
+					?@global:hla._ptypeActual := @global:hla.ptDWord;
+					
+				#endif				
+				#if
+				( 
+						@global:hla._ptypeFormal >= @global:hla.ptBoolean
+					&	@global:hla._ptypeFormal <= @global:hla.ptString
+					&	@global:hla._ptypeActual >= @global:hla.ptBoolean
+					&	@global:hla._ptypeActual <= @global:hla.ptString 
+				)
+				
+					#if( @isconst( @text(_ovld_parms_[@global:hla._ovld_index])))
+				
+						?@global:hla._ptypeActual :=
+							@global:hla._ovld_const_type_promotion
+							[
+								@global:hla._ptypeActual - @global:hla.ptBoolean,
+								@global:hla._ptypeFormal - @global:hla.ptBoolean
+							];
+																
+					#else
+										
+						?@global:hla._ptypeActual :=
+							@global:hla._ovld_type_promotion
+							[
+								@global:hla._ptypeActual - @global:hla.ptBoolean,
+								@global:hla._ptypeFormal - @global:hla.ptBoolean
+							];
+													
+
+					#endif
+						
+				#endif
+				
+				// Lame, make all enum types compatible:
+				
+				#if
+				( 
+						@global:hla._ptypeActual <> @global:hla.ptEnum
+					&	@global:hla._ptypeFormal <> @global:hla.ptEnum
+				)
+				
+					?@global:hla._typeStr :=
+						@global:hla.ptypeStrs[ @global:hla._ptypeActual ];
+
+					?@global:hla._ovld_matched := 
+						@global:hla._ovld_matched 
+							& @global:hla._ovld_curSig[@global:hla._ovld_index]
+								= @global:hla._typeStr;
+								
+				#endif
+											
+			#endfor
+			#if( @global:hla._ovld_matched )
+			
+				?@global:hla._ovld_count := @global:hla._ovld_count + 1;
+				?@global:hla._ovld_parmStr := "(";
+						
+				#for
+				( 
+					@global:hla._ovld_index := 
+						0 to (@elements( _ovld_parms_ )-2) 
+				)
+
+					?@global:hla._ovld_parmStr :=
+						@global:hla._ovld_parmStr +
+							_ovld_parms_[ @global:hla._ovld_index ] +
+								",";
+							  
+				#endfor
+
+				?@global:hla._ovld_parmStr :=
+					@global:hla._ovld_parmStr +
+						#if( @elements(_ovld_parms_) >= 1 )
+							_ovld_parms_
+							[ 
+								@elements( _ovld_parms_) - 1 
+							] +
+						#endif
+							")";
+			 
+				@text
+				( 
+					@global:hla._ovld_curSig
+					[ 
+						@elements( @global:hla._ovld_curSig )-1 
+					] +
+						@global:hla._ovld_parmStr
+				)
+				
+			#endif
+			
+		#endif
+	  
+	  #terminator endoverload;
+	  
+	  	#if( @global:hla._ovld_count = 0 )
+		
+			#error( "Failed to match any signatures" )
+			
+		#elseif( @global:hla._ovld_count > 1 )
+		
+			#error( "Invocation matched more than one signature" )
+			
+		#endif
+		
+	#endmacro
+
+
+end hla;
+
+#endif

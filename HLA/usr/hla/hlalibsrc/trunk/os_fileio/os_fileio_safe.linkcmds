@@ -1,0 +1,14 @@
+fileio_opennew_safe.o
+fileio_close_safe.o
+fileio_eof_safe.o
+fileio_position_safe.o
+fileio_newln_safe.o
+fileio_gets_safe.o
+fileio_write_safe.o
+fileio_seek_safe.o
+fileio_eoln_safe.o
+fileio_open_safe.o
+fileio_flush_safe.o
+fileio_truncate_safe.o
+fileio_read_safe.o
+fileio_readln_safe.o

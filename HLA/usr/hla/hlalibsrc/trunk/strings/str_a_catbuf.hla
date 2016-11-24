@@ -1,0 +1,127 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+
+
+//  a_catbuf2( src1:buf_t; src2:string );
+//  a_catbuf3( startBuf:dword; endBuf:dword; src2:string );
+//
+//  These two functions are the same. They are just different prototypes
+//  for the exact same code (the buf_t data type maps to the two dword
+//  arguments for a_catbuf3).
+//
+//  This function concatenates the sequence of characters of length
+//  (endBuf-startBuf) starting at memory address startBuf to the
+//  end of the string src1. Storage for the new string is allocated
+//  on the heap and a pointer to the result is returned in EAX.
+
+
+ 
+procedure str.a_catbuf3
+(
+	startBuf	:dword; 
+	endBuf		:dword;
+	src			:string 
+); @noframe;
+var
+	saveEAX		:dword;
+	saveECX		:dword;
+	saveESI		:dword;
+	saveEDI		:dword;
+	
+begin a_catbuf3;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	pushfd();
+	cld();
+	
+	mov( eax, saveEAX );
+	mov( ecx, saveECX );
+	mov( esi, saveESI );
+	mov( edi, saveEDI );
+	
+	// Make sure that endBuf >= startBuf:
+	
+	mov( endBuf, ecx );
+	test( ecx, ecx );
+	jz AttemptToDerefNULL;
+	
+	mov( startBuf, esi );
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+	sub( esi, ecx );
+	jb StringOverflow;
+
+	mov( src, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+	
+	// Compute the amount of storage we need to allocate
+	// and then allocate storage for a new string.
+	
+	add( (type str.strRec [edi]).length, ecx );
+	str.alloc( ecx );
+	
+	// Now copy the src1 string to the destination string:
+	
+	str.cpy( edi, eax );
+	
+	
+	// Initialize the result string's length:
+	
+	mov( ecx, (type str.strRec [eax]).length );
+	 
+	// Now copy the buffer to the end of the destination string:
+	
+	mov( (type str.strRec [eax]).length, edi );
+	add( eax, edi );
+	mov( endBuf, ecx );
+	sub( startBuf, ecx );
+	rep.movsb();
+	mov( 0, (type byte [edi]));
+	
+	mov( saveEAX, eax );
+	mov( saveECX, ecx );
+	mov( saveESI, esi );
+	mov( saveEDI, edi );
+	popfd();
+	leave();
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+StringOverflow:
+	raise( ex.StringOverflow );
+	
+end a_catbuf3;
+
+end stringUnit;
+
+
+
+
+	
+

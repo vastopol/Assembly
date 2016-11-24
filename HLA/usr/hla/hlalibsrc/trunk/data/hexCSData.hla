@@ -1,0 +1,30 @@
+unit stdlib_data;
+#include( "../include/conversions.hhf" )
+#include( "stdlibdata.hhf" )
+
+// The following items are local to the HLA stdlib and should not
+// be accessed directly by application programs.
+
+
+
+
+// The following objects are accessible from application programs as well
+// as the HLA stdlib code.
+
+namespace stdlib;
+
+  readonly(16)
+
+	// HexCS-
+	//	Character set that includes all the valid hexadecimal characters.
+
+	hexCS	:cset; @nostorage;
+			cset { '0'..'9', 'A'..'F', 'a'..'f' };
+			cset {};
+
+
+end stdlib;
+
+end stdlib_data;
+
+													

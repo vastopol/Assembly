@@ -1,0 +1,61 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit StdInput;
+#include( "../include/stdinunit.hhf" )
+
+
+/********************************************************/
+/*                                                      */
+/* a_gets-                                              */
+/*                                                      */
+/* Just like gets except this routine allocates storage */
+/* for the string on the heap and returns a pointer to  */
+/* the string in the EAX register (after reading the    */
+/* data into the string's storage).                     */
+/*                                                      */
+/********************************************************/
+
+procedure a_gets; @noframe;
+begin a_gets;
+
+	// If the input buffer is empty, read a new line from the
+	// standard input device.
+	
+	cmp( NeedsInput, false );
+	je noNewInput;
+
+		ReadLn();
+
+	noNewInput:
+
+	// Determine the length of the string left in the input
+	// buffer and allocate sufficient storage to hold that string.
+	
+	mov( CharsInBuf, eax );
+	sub( InputIndex, eax );
+	stralloc( eax );
+	gets( eax );
+	ret();
+		
+end a_gets;
+
+
+end StdInput;
+
+
+
+
+	
+

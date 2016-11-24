@@ -1,0 +1,78 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileClass;
+
+#include( "fileclass.hhf" )
+#include( "excepts.hhf" )
+#include( "conv.hhf" )
+
+?@NoStackAlign := true;
+?@NoDisplay := true;
+?@NoFrame := true;		
+		
+
+
+
+method virtualFile_t.putr80
+( 
+	r:real80; 
+	width:uns32; 
+	decpts:uns32;
+	fill	:char 
+); 
+var
+	eaxSave	:dword;
+	ecxSave	:dword;
+	ediSave	:dword;
+
+	buffer	:char[4096];
+	
+begin putr80;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( edi, ediSave );
+	mov( ecx, ecxSave );
+	mov( eax, eaxSave );
+	
+	mov( width, eax );		// Get size we need to allocate.
+	cmp( eax, 4096 );
+	jg wtb;
+	cmp( eax, -4096 );
+	jl wtb;
+
+	// Convert the real80 value to a string and print it.
+
+	lea( edi, buffer );
+	conv.r80ToBuf( r, width, decpts, fill, [edi] );
+	lea( eax, buffer );
+	mov( edi, ecx );
+	sub( eax, ecx );
+	this.write( buffer, ecx );
+	
+	mov( ediSave, edi );
+	mov( ecxSave, ecx );
+	mov( eaxSave, eax );
+	leave();
+	ret( _parms_ );
+
+wtb:
+	raise( ex.WidthTooBig );		  	
+	
+end putr80;
+
+
+end FileClass;

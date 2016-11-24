@@ -1,0 +1,123 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+
+
+/*****************************************************/
+/*                                                   */
+/* atoi32-                                           */
+/*                                                   */
+/* ASCII to signed integer.                          */
+/*                                                   */
+/* ESI points at a string containing decimal digits. */
+/* This function converts that string to a 32-bit    */
+/* unsigned integer.                                 */
+/*                                                   */
+/* On return, EAX contains the converted value.      */
+/* ESI points at the first non-digit in the string.  */
+/*                                                   */
+/* On entry, ESI must point at at least one legal    */
+/* decimal digit character or a minus sign.          */
+/*                                                   */
+/* A legal delimiter character (see the Delimiters   */
+/* cset above) must terminate the string of digits,  */
+/* otherwise this routine raises an exception.       */
+/*                                                   */
+/* If the string of digits corresponds to a value    */
+/* too large for 32 bits, this routine raises an     */
+/* exception.                                        */
+/*                                                   */
+/* If any character in the string of digits has its  */
+/* H.O. bit set, this routine raises an exception.   */
+/*                                                   */
+/*****************************************************/
+
+	
+procedure conv.atoi32( var buffer:var in esi ); 
+	@nodisplay; 
+	@noframe;
+begin atoi32;
+
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( edi );
+
+	test( esi, esi );
+	jz refNULL;
+	
+	mov( _hla.get_Delimiters(), edi );
+	dec( esi );
+	whileDelimLoop:
+	
+		NextChar;
+		cmp( eax, $80 );
+		jae IllegalChar;
+		bt( eax, (type dword [edi] ));	// Delimiters
+		jc whileDelimLoop;
+
+	cmp( al, '-' );
+	jne notNegative;
+	
+		// If this number has a leading minus sign, then skip over it,
+		// convert the number to an unsigned integer, check for overflow,
+		// and then negate the result.
+		
+		inc( esi );
+		_atou32();
+
+		// We need to pass $8000_0000 on through, but all other
+		// values greater than this cause an exception.
+		 
+		cmp( eax, $8000_0000 );
+		ja raiseVOR;
+		neg( eax );		// Because of the leading '-'.
+		jmp done;
+		
+	notNegative:
+	
+		// If the number does not have a leading "-" character, then
+		// treat it like an unsigned integer.  Note, however, that
+		// the H.O. bit of the result must be clear or we have an
+		// overflow.
+		
+		_atou32();
+		cmp( eax, $8000_0000 );
+		jae raiseVOR;
+
+done:		
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	ret();
+
+raiseVOR:
+	raise( ex.ValueOutOfRange );
+
+refNULL:
+	raise( ex.AttemptToDerefNULL );
+
+IllegalChar:
+	raise( ex.IllegalChar );
+
+end atoi32;
+
+
+end ConvUnit;

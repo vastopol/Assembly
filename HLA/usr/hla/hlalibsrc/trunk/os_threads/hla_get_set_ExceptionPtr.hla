@@ -1,0 +1,107 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ThreadUnit;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "threads.hhf" )
+#includeOnce( "../include/thread_private.hhf" )
+#includeOnce( "excepts.hhf" )
+
+#if( os.linux | os.freeBSD | os.macOS )
+
+	#if( @thread )
+
+		// push_ExceptionPtr:
+		//
+		// Note: caller must leave room on the stack for
+		// the ExceptionPtr value to be pushed.
+		//
+		//	stack	desc
+		//
+		//	+8		Space pushed by caller to hold ExceptionPtr value
+		//	+4		Return address
+		//	+0		eax
+		
+		procedure _hla.push_ExceptionPtr;
+		begin push_ExceptionPtr;
+
+			push( eax );
+			pthread_getspecific( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			mov( (type _hla.stdlib_tls_t [eax]).ExceptionPtr, eax );
+			mov( eax, [esp+8] );
+			pop( eax );
+			ret();
+			
+		ThreadError:
+			raise( ex.ThreadError ); 
+			
+		end push_ExceptionPtr;
+
+		procedure _hla.get_ExceptionPtrEBP;
+		begin get_ExceptionPtrEBP;
+
+			push( eax );
+			pthread_getspecific( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			mov( (type _hla.stdlib_tls_t [eax]).ExceptionPtr, ebp );
+			pop( eax );
+			ret();
+			
+		ThreadError:
+			raise( ex.ThreadError ); 
+			
+		end get_ExceptionPtrEBP;
+
+		// set_ExceptionPtr:
+		//
+		//	stack	desc
+		//
+		//	+12		ExceptionPtr value to set
+		//	+8		Return address
+		//	+4		eax
+		//	+0		ecx
+
+		procedure _hla.set_ExceptionPtr( exPtr:dword );
+		begin set_ExceptionPtr;
+
+			push( eax );
+			push( ecx );
+			pthread_getspecific( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			mov( [esp+12], ecx );
+			mov( ecx, (type _hla.stdlib_tls_t [eax]).ExceptionPtr );
+			pop( ecx );
+			pop( eax );
+			ret( _parms_ ); 
+			
+		ThreadError:
+			raise( ex.ThreadError );
+			
+		end set_ExceptionPtr;
+
+	// Non-thread-safe version simply accesses a static variable.
+	
+	#endif
+	
+// Windows provides a global ptr at FSEG:[0], so this function is unnecessary.
+	
+#endif
+
+end ThreadUnit;

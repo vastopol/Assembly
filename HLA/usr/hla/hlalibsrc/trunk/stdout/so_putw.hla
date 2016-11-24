@@ -1,0 +1,83 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit StdOutput;
+
+
+
+#include( "../include/stdoutunit.hhf" );
+
+
+/*****************************************************/
+/*                                                   */
+/* putw-                                             */
+/*                                                   */
+/* Outputs the 16-bit value passed as a parameter    */
+/* as four hex digits to the standard output device. */
+/*                                                   */
+/*****************************************************/
+
+
+procedure stdout.putw( w:word ); 
+	@noframe;
+	@nodisplay;
+	@nostackalign;
+
+begin putw;
+
+	push( ebp );
+	mov( esp, ebp );
+	ChkStdOut;
+	fileio.putw( StdOutHandle, w );
+	pop( ebp );
+	ret( _parms_ );
+	
+end putw;
+
+/***********************************************/
+/*                                             */
+/* putwSize-                                   */
+/*                                             */
+/* Outputs a 16-bit hexadecimal value to the   */
+/* standard output device.  Lets the caller    */
+/* specify a minimum field width and a padding */
+/* character (usually a space).                */
+/*                                             */
+/***********************************************/
+
+procedure stdout.putwSize( w:word; width:int32; fill:char ); 
+	@noframe;
+	@nodisplay;
+	@nostackalign;
+
+begin putwSize;
+
+	push( ebp );
+	mov( esp, ebp );
+	ChkStdOut;
+	fileio.putwSize( StdOutHandle, w, width, #{push((type dword fill));}# );
+	pop( ebp );
+	ret( _parms_ );
+	
+end putwSize;
+
+
+
+end StdOutput;
+
+
+
+
+	
+

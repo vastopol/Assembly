@@ -1,0 +1,412 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+//20020108 Mark de Wever
+// calls fseek and avoid lseek
+// NOT TESTED
+
+//Is this include still valid? Not fileio.hhf?
+#include( "../include/fileiounit.hhf" )
+#include( "os.hhf" )
+
+
+
+/***************************************************************/
+/*                                                             */
+/* feoln-                                                      */
+/*                                                             */
+/* Returns true (1) in AL if the input file pointer is pointer */
+/* at an end of line sequence.                                 */
+/*                                                             */
+/***************************************************************/
+
+
+
+
+#if( os.linux )
+
+	procedure fileio.eoln( Handle:dword ); @nodisplay; @noframe;
+	var
+		offset		:linux.loff_t;
+		eofOffset	:linux.loff_t;
+		dummy		:linux.loff_t;
+		c:			 byte;
+		AtEoln:		 boolean;
+
+	begin eoln;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( edx );
+		
+		mov( true, AtEoln );
+		
+		// Find the current position and the EOF position.
+		
+		lea( eax, offset );
+		linux.llseek( Handle, 0, 0, [eax], linux.seek_cur );
+		test( eax, eax );
+		jnz FileSeekError;
+		
+		lea( eax, eofOffset );
+		linux.llseek( Handle, 0, 0, [eax], linux.seek_end );
+		test( eax, eax );
+		jnz FileSeekError;
+		
+		// Reset back to the current position:
+		
+		lea( eax, dummy );
+		linux.llseek
+		( 
+			Handle, 
+			(type dword offset[4]), 
+			(type dword offset), 
+			[eax], 
+			linux.seek_set 
+		);
+		test( eax, eax );
+		jnz FileSeekError;
+		
+		// Compare the two file offsets to see if they are the
+		// same (meaning we've hit EOF):
+		
+		mov( (type dword offset), eax );
+		cmp( eax, (type dword eofOffset));
+		jne readChar;
+		
+			mov( (type dword offset[4]), eax );
+			cmp( eax, (type dword eofOffset[4]));
+			je noCharRead;
+		
+		readChar:
+		
+			// If we're not at EOF, then read a single character
+			// from the file and reset the file pointer afterwards.
+			// PREAD would be a great call right here, but I couldn't
+			// find a 64-bit version.
+			
+			lea( eax, c );
+			linux.read( Handle, [eax], 1 );
+			
+			test( eax, eax );
+			js FileReadError;
+			jz noCharRead;
+			
+				// If we read a character (meaning we've advanced the file
+				// pointer), then reset the file pointer to it's original
+				// value.
+				
+				lea( eax, dummy );
+				linux.llseek
+				( 
+					Handle, 
+					(type dword offset[4]), 
+					(type dword offset), 
+					[eax], 
+					linux.seek_set 
+				);
+				test( eax, eax );
+				jnz FileSeekError;
+				
+				
+				// See if we read the newline character:
+				
+				mov( c, al );
+				cmp( c, #$a );
+				sete( AtEoln );
+			
+		noCharRead:
+		
+		movzx( AtEoln, eax );		// Return status in EAX.
+		pop( edx );
+		leave();
+		ret( _parms_ );
+	
+	FileSeekError:
+		raise( ex.FileSeekError );
+		
+	FileReadError:
+		raise( ex.FileReadError );
+			
+	end eoln;
+
+#elseif( os.freeBSD )
+
+	procedure fileio.eoln( Handle:dword ); @nodisplay; @noframe;
+	var
+		offset		:bsd.off_t;
+		eofOffset	:bsd.off_t;
+		dummy		:bsd.off_t;
+		c:			 byte;
+		AtEoln:		 boolean;
+
+	begin eoln;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( edx );
+		
+		mov( true, AtEoln );
+		
+		// Find the current position and the EOF position.
+		
+		bsd.lseek( Handle, 0, bsd.SEEK_CUR );
+		jc FileSeekError;
+		mov( edx:eax, offset );
+		
+		bsd.lseek( Handle, 0, bsd.SEEK_END );
+		jc FileSeekError;
+		mov( edx:eax, eofOffset );
+		
+		// Reset back to the current position:
+		
+		bsd.lseek
+		( 
+			Handle, 
+			offset, 
+			bsd.SEEK_SET 
+		);
+		jc FileSeekError;
+		
+		// Compare the two file offsets to see if they are the
+		// same (meaning we've hit EOF):
+		
+		mov( (type dword offset), eax );
+		cmp( eax, (type dword eofOffset));
+		jne readChar;
+		
+			mov( (type dword offset[4]), eax );
+			cmp( eax, (type dword eofOffset[4]));
+			je noCharRead;
+		
+		readChar:
+		
+			// If we're not at EOF, then read a single character
+			// from the file and reset the file pointer afterwards.
+			// PREAD would be a great call right here, but I couldn't
+			// find a 64-bit version.
+			
+			lea( eax, c );
+			bsd.read( Handle, [eax], 1 );
+			jc FileReadError;
+			test( eax, eax );
+			jz noCharRead;
+							
+				// See if we read the newline character:
+				
+				mov( c, al );
+				cmp( c, #$a );
+				sete( AtEoln );
+				
+				// Reset the file pointer after the read.
+				
+				bsd.lseek( Handle, offset, bsd.SEEK_SET );
+			
+		noCharRead:
+		
+		movzx( AtEoln, eax );		// Return status in EAX.
+		pop( edx );
+		leave();
+		ret( _parms_ );
+	
+	FileSeekError:
+		raise( ex.FileSeekError );
+		
+	FileReadError:
+		raise( ex.FileReadError );
+			
+	end eoln;
+
+#elseif( os.macOS )
+
+	procedure fileio.eoln( Handle:dword ); @nodisplay; @noframe;
+	var
+		offset		:mac.off_t;
+		eofOffset	:mac.off_t;
+		dummy		:mac.off_t;
+		c:			 byte;
+		AtEoln:		 boolean;
+
+	begin eoln;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( edx );
+		
+		mov( true, AtEoln );
+		
+		// Find the current position and the EOF position.
+		
+		mac.lseek( Handle, 0, mac.SEEK_CUR );
+		jc FileSeekError;
+		mov( edx:eax, offset );
+		
+		mac.lseek( Handle, 0, mac.SEEK_END );
+		jc FileSeekError;
+		mov( edx:eax, eofOffset );
+		
+		// Reset back to the current position:
+		
+		mac.lseek
+		( 
+			Handle, 
+			offset, 
+			mac.SEEK_SET 
+		);
+		jc FileSeekError;
+		
+		// Compare the two file offsets to see if they are the
+		// same (meaning we've hit EOF):
+		
+		mov( (type dword offset), eax );
+		cmp( eax, (type dword eofOffset));
+		jne readChar;
+		
+			mov( (type dword offset[4]), eax );
+			cmp( eax, (type dword eofOffset[4]));
+			je noCharRead;
+		
+		readChar:
+		
+			// If we're not at EOF, then read a single character
+			// from the file and reset the file pointer afterwards.
+			// PREAD would be a great call right here, but I couldn't
+			// find a 64-bit version.
+			
+			lea( eax, c );
+			mac.read( Handle, [eax], 1 );
+			jc FileReadError;
+			test( eax, eax );
+			jz noCharRead;
+							
+				// See if we read the newline character:
+				
+				mov( c, al );
+				cmp( c, #$a );
+				sete( AtEoln );
+				
+				// Reset the file pointer after the read.
+				
+				mac.lseek( Handle, offset, mac.SEEK_SET );
+			
+		noCharRead:
+		
+		movzx( AtEoln, eax );		// Return status in EAX.
+		pop( edx );
+		leave();
+		ret( _parms_ );
+	
+	FileSeekError:
+		raise( ex.FileSeekError );
+		
+	FileReadError:
+		raise( ex.FileReadError );
+			
+	end eoln;
+
+#elseif( os.win32 )
+
+	procedure fileio.eoln( Handle:dword ); @nodisplay; @noframe;
+	var
+		FilePosnLow: dword;
+		BytesRead:	 dword;
+		c:			 byte;
+		AtEoln:		 boolean;
+
+	begin eoln;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		pushfd();
+		push( ecx );
+		push( edx );
+		
+		cld();
+		
+		mov( false, AtEoln );
+		SetFilePointer( win.FILE_CURRENT, 0, 0, Handle );
+		mov( eax, FilePosnLow );
+		ReadFile( 0, BytesRead, 1, c, Handle );
+		test( eax, eax );
+		jz fileReadError;
+			
+		cmp( BytesRead, 1 );
+		jne noBytesRead;
+		
+			// If not at the end of the file, check to
+			// see if the next character is a cr.
+
+			cmp( c, stdio.cr );
+			jne tryLF;
+			
+				// If it was a cr, read the next character
+				// to see if it is a lf.
+				
+				ReadFile( 0, BytesRead, 1, c, Handle );
+				test( eax, eax );
+				jz fileReadError;
+				cmp( BytesRead, 1 );
+				jne tryLF;
+				
+					// If EOF, then force EOLN to true.
+					
+					mov( true, AtEoln );
+					jmp resetFilePtr;
+			
+			tryLF:
+			cmp( c, stdio.lf );
+			jne resetFilePtr;
+
+				mov( true, AtEoln );
+				jmp resetFilePtr;
+				
+			
+		noBytesRead:
+		
+			// If EOF, then force EOLN to true.
+			
+			mov( true, AtEoln );
+			
+		resetFilePtr:
+		
+		// Reset the file pointer.
+
+		SetFilePointer( win.FILE_BEGIN, 0, FilePosnLow, Handle );
+		movzx( AtEoln, eax );
+
+		pop( edx );
+		pop( ecx );
+		popfd();
+		leave();
+		ret( _parms_ );
+	
+	fileReadError:
+		raise( ex.FileReadError );
+	
+	end eoln;
+	
+#else
+
+	#print( "Unknown OS!" )
+	
+#endif
+	
+end FileIOUnit;
+

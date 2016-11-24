@@ -1,0 +1,80 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit StdOutput;
+
+
+
+#include( "../include/stdoutunit.hhf" )
+#include( "os.hhf" )
+
+
+
+
+
+/*******************************************************/
+/*                                                     */
+/* puts-                                               */
+/*                                                     */
+/* Writes an HLA string to the standard output device. */
+/*                                                     */
+/*******************************************************/
+
+
+
+procedure stdout.puts( s:string ); 
+	@noframe;
+	@nodisplay;
+	@nostackalign;
+
+begin puts;
+
+	push( ebp );
+	mov( esp, ebp );
+	ChkStdOut;
+	fileio.puts( StdOutHandle, s );
+	pop( ebp );
+	ret( _parms_ );
+			
+end puts;
+
+
+/**********************************************************/
+/*                                                        */
+/* putsSize-                                              */
+/* Prints a string to the standard output using a minimum */
+/* field width and a fill character.                      */
+/*                                                        */
+/**********************************************************/
+
+procedure stdout.putsSize( s:string; width:int32; fill:char ); @noframe;
+begin putsSize;
+
+	push( ebp );
+	mov( esp, ebp );
+	ChkStdOut;
+	fileio.putsSize( StdOutHandle, s, width, #{push((type dword fill));}# );
+	pop( ebp );
+	ret( _parms_ );
+
+end putsSize;
+
+
+end StdOutput;
+
+
+
+
+	
+

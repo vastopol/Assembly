@@ -1,0 +1,64 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "dtClass.hhf" )
+#include( "memory.hhf" )
+#include( "excepts.hhf" )
+#includeOnce( "../include/datetime_private.hhf" )
+
+?@noframe := true;
+?@nodisplay := true;
+
+// dateClass_t version of a_toString:
+// (see date.a_toString for more details).
+
+procedure dateClass_t.a_toString;
+begin a_toString;
+
+	push( ebx );
+	push( ecx );
+	test( esi, esi );
+	jz badObj;
+	
+	// Save the global format and separator values, set them
+	// to this object's values, and then call date._toString
+	// to do the real work:
+	
+	_hla.get_DateSeparator();
+	mov( al, bl );
+	_hla.set_DateSeparator( this.Separator );
+	_hla.get_DateFormat();
+	mov( al, cl );
+	_hla.set_DateFormat( this.OutFmt );
+	
+	str.alloc( 20 );
+	date._toString( this.theDate, eax );
+	
+	// Restore the global values:
+	
+	_hla.set_DateSeparator( bl );
+	_hla.set_DateFormat( cl );
+	
+	pop( ecx );
+	pop( ebx );
+	ret();
+	
+badObj:
+	raise( ex.BadObjPtr );
+	
+end a_toString;
+
+end DateTime;			

@@ -1,0 +1,68 @@
+program DayNumber_test;
+#include( "stdlib.hhf" )
+
+static
+	incDate		:date.daterec;
+	endDate		:date.daterec;
+	
+	dayNum		:dword;
+	
+	curYear		:word;
+	
+	
+begin DayNumber_test;
+
+	 
+	date.setFormat( date.mmddyyyy );
+	
+	mov( 1, dayNum );
+	mov( date.minYear, curYear );
+	date.pack( 1, 1, date.minYear, incDate );
+	
+	date.pack( 12, 31, date.maxYear-1, endDate );
+	
+	while( mov( endDate, eax ) >= (type dword incDate) ) do
+	
+		date.dayNumber( incDate );		
+		if( eax <> dayNum ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"date.dayNumber failed!", nl,
+				"incDate= ", (type uns32 eax ), nl
+				"dayNum=  ", (type uns32 dayNum ), nl,
+				"date =  '"
+			);
+			date.a_toString( incDate );
+			stderr.put
+			(
+				(type string eax), "'" nl
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		
+		inc( dayNum );
+		date.addDays( 1, incDate );
+		mov( incDate.year, ax );
+		if( ax <> curYear ) then
+		
+			mov( ax, curYear );
+			mov( 1, dayNum );
+			
+		endif;
+		
+		
+	endwhile;
+	stderr.put( "date.dayNumber succeeded!" nl );
+	os.exitProcess(0);
+		
+end DayNumber_test;
+
+													

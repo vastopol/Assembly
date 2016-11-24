@@ -1,0 +1,574 @@
+program sgethex_test; 
+#include( "stdlib.hhf" )
+#includeOnce( "sockets.hhf" )
+	
+static
+	quit		:dword := 0;
+	hostIPadrs	:dword;
+	s			:server_t;
+	i			:int32;
+	timeout		:thunk;
+	calls		:dword := 0;
+	inputL		:lword;
+	
+	ipAdrsStr	:str.strvar(256);
+	cmdLine		:str.strvar(256);
+	exmsg		:str.strvar(256);
+	
+
+	procedure cmp128( left:int128; right:int128 ); @returns( "@ne" );
+	begin cmp128;
+	
+		cld();
+		lea( esi, left );
+		lea( edi, right );
+		mov( 4, ecx );
+		repe.cmpsd();
+		
+	end cmp128;
+	
+	
+	procedure connected;
+		@nodisplay;
+		@nostackalign;
+		@noframe;
+	var
+		handle		:dword;
+		bufIndex	:dword;
+		object		:pointer to server_t;
+		ipAdrs		:hla.sockaddr;
+		
+		buffer		:char[64];
+		
+	begin connected;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		pushad();
+		pushfd();
+		
+		mov( eax, handle );
+		mov( esi, object );
+		
+		/*****************************************************************/
+		
+		// Testing fileio.geth128
+		
+		try
+		
+			object.geth128( inputL );
+			if( cmp128( inputL, 1 ) ) then
+			
+				raise($2001);
+			
+			endif;	
+			
+			object.geth128( inputL );
+			if( cmp128( inputL, 2 ) ) then
+			
+				raise($2002);
+			
+			endif;	
+			
+			object.geth128( inputL );
+			if( cmp128( inputL, $FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF ) ) then
+			
+				raise($2003);
+			
+			endif;	
+			
+			object.geth128( inputL );
+			if( cmp128( inputL, 0 ) ) then
+			
+				raise($2004);
+			
+			endif;
+			
+			try
+			
+				object.geth128( inputL );
+
+			  unprotected
+			  
+			  	// We we got to this point, we failed to raise a conversion error.
+				
+			  	raise($2005 );
+				
+			  exception( ex.ConversionError )
+			  
+			  	// Okay, we succeeded if we got this exception.
+				
+			  anyexception
+			  
+			  	// Anything else? Pass it on.
+				
+			  	raise($2006 );
+				
+			endtry;
+			object.readLn( );	// Clean up after ourselves.
+			  		
+			
+			try
+			
+				object.geth128( inputL );
+
+			  unprotected
+			  
+			  	// If we got to this point, we failed to raise an overflow error.
+				
+			  	raise($2007 );
+				
+			  exception( ex.ValueOutOfRange )
+			  
+			  	// Okay, we succeeded if we got this exception.
+				
+			  anyexception
+			  
+			  	// Anything else? Pass it on.
+				
+			  	raise($2008 );
+				
+			endtry;
+			object.readLn( );
+			stderr.put( "socket.geth128 succeeded!" nl );
+			
+		  anyexception
+		  
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"socket.geth128 failed! eax=", eax, nl
+				"Data read did not match data expected in file" nl
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endtry;
+
+
+
+
+
+		// Testing socket.geth64
+		
+		try
+		
+			object.geth64( );
+			if( eax <> 1 && edx <> 0 ) then
+			
+				raise($1001);
+			
+			endif;	
+			
+			object.geth64( );
+			if( eax <> 2 && edx <> 0 ) then
+			
+				raise($1002);
+			
+			endif;	
+			
+			object.geth64( );
+			if( eax<> $30 && edx <> 0 ) then
+			
+				raise($1003);
+			
+			endif;	
+			
+			object.geth64( );
+			if( eax<> $4a && edx <> 0 ) then
+			
+				raise($1004);
+			
+			endif;
+			
+			try
+			
+				object.geth64( );
+
+			  unprotected
+			  
+			  	// We we got to this point, we failed to raise a conversion error.
+				
+			  	raise($1005 );
+				
+			  exception( ex.ConversionError )
+			  
+			  	// Okay, we succeeded if we got this exception.
+				
+			  anyexception
+			  
+			  	// Anything else? Pass it on.
+				
+			  	raise($1006 );
+				
+			endtry;
+			object.readLn( );	// Clean up after ourselves.
+			  		
+			
+			try
+			
+				object.geth64( );
+
+			  unprotected
+			  
+			  	// We we got to this point, we failed to raise an overflow error.
+				
+			  	raise($1007 );
+				
+			  exception( ex.ValueOutOfRange )
+			  
+			  	// Okay, we succeeded if we got this exception.
+				
+			  anyexception
+			  
+			  	// Anything else? Pass it on.
+				
+			  	raise($1008 );
+				
+			endtry;
+			object.readLn( );
+			stderr.put( "socket.geth64 succeeded!" nl );
+			
+		  anyexception
+		  
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"socket.geth64 failed! eax=", eax, nl
+				"Data read did not match data expected in file" nl
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endtry;
+
+
+
+
+
+		// Testing socket.geth32
+		
+		try
+		
+			object.geth32( );
+			if( eax <> $A ) then
+			
+				raise($1011);
+			
+			endif;	
+			
+			object.geth32( );
+			if( eax <> $B ) then
+			
+				raise($1012);
+			
+			endif;	
+			
+			object.geth32( );
+			if( eax <> $C0 ) then
+			
+				raise($1013);
+			
+			endif;	
+			
+			object.geth32( );
+			if( eax <> -1 ) then
+			
+				raise($1014);
+			
+			endif;
+			
+			try
+			
+				object.geth32( );
+
+			  unprotected
+			  
+			  	// We we got to this point, we failed to raise an overflow error.
+				
+			  	raise($1015 );
+				
+			  exception( ex.ValueOutOfRange )
+			  
+			  	// Okay, we succeeded if we got this exception.
+				
+			  anyexception
+			  
+			  	// Anything else? Pass it on.
+				
+			  	raise($1016 );
+				
+			endtry;
+			object.readLn( );
+			stderr.put( "socket.geth32 succeeded!" nl );
+			
+		  anyexception
+		  
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"socket.geth32 failed! eax=", eax, nl
+				"Data read did not match data expected in file" nl
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endtry;
+
+
+
+
+
+
+
+
+		// Testing socket.geth16
+		
+		try
+		
+			object.geth16( );
+			if( eax <> $1000 ) then
+			
+				raise($1021);
+			
+			endif;	
+			
+			object.geth16( );
+			if( eax <> $FFFF ) then
+			
+				raise($1022);
+			
+			endif;	
+			
+			object.geth16( );
+			if( eax <> $0C ) then
+			
+				raise($1023);
+			
+			endif;	
+			
+			object.geth16( );
+			if( eax <> $ff ) then
+			
+				raise($1024);
+			
+			endif;
+			
+			try
+			
+				object.geth16( );
+
+			  unprotected
+			  
+			  	// We we got to this point, we failed to raise an overflow error.
+				
+			  	raise($1025 );
+				
+			  exception( ex.ValueOutOfRange )
+			  
+			  	// Okay, we succeeded if we got this exception.
+				
+			  anyexception
+			  
+			  	// Anything else? Pass it on.
+				
+			  	raise($1026 );
+				
+			endtry;
+			object.readLn( );
+			stderr.put( "socket.geth16 succeeded!" nl );
+			
+		  anyexception
+		  
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"socket.geth16 failed! eax=", eax, nl
+				"Data read did not match data expected in file" nl
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endtry;
+
+
+
+
+
+		// Testing socket.geth8
+		
+		try
+		
+			object.geth8( );
+			if( eax <> $b ) then
+			
+				raise($1031);
+			
+			endif;	
+			
+			object.geth8( );
+			if( eax <> $bb ) then
+			
+				raise($1032);
+			
+			endif;	
+			
+			object.geth8( );
+			if( eax <> $0 ) then
+			
+				raise($1033);
+			
+			endif;	
+			
+			object.geth8( );
+			if( eax <> $ff ) then
+			
+				raise($1034);
+			
+			endif;
+			
+			try
+			
+				object.geth8( );
+
+			  unprotected
+			  
+			  	// We we got to this point, we failed to raise an overflow error.
+				
+			  	raise($1035 );
+				
+			  exception( ex.ValueOutOfRange )
+			  
+			  	// Okay, we succeeded if we got this exception.
+				
+			  anyexception
+			  
+			  	// Anything else? Pass it on.
+				
+			  	raise($1036 );
+				
+			endtry;
+			object.readLn( );
+			stderr.put( "socket.geth8 succeeded!" nl );
+			
+		  anyexception
+		  
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"socket.geth8 failed! eax=", eax, nl
+				"Data read did not match data expected in file" nl
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endtry;
+			
+		/*****************************************************************/
+		
+		object.close();
+		mov( 1, quit );
+		popfd();
+		popad();
+		leave();
+		ret( _parms_ );
+		
+	end connected;
+	
+begin sgethex_test; 
+
+	thunk timeout :=
+		#{
+			// On entry to thunk, EAX contains the address of the timeout
+			// variable. Set this as desired for the timeout (2 seconds,
+			// in this case).
+			
+			mov( 2, (type hla.timeval [eax]).tv_sec );
+			stderr.put( "server", nl );
+			
+			// On the second call to this thunk, start the client application:
+			
+			cmp( calls, 1 );
+			jne dontRunApp;
+			
+				#if( os.win32 )
+				
+					str.put
+					(
+						cmdLine,
+						"cmd /C rclient socket_gethex.data ",
+						ipAdrsStr,
+						" 8806"
+					);
+					stdout.put( "cmd=", cmdLine, "'" nl );
+					
+				#else
+				
+					str.put
+					(
+						cmdLine,
+						"rclient.exe socket_gethex.data ",
+						ipAdrsStr,
+						" 8806"
+					);
+					stdout.put( "cmd=", cmdLine, "'" nl );
+					
+				#endif
+				os.bkgnd( cmdLine );
+			
+			dontRunApp:
+			inc( calls );
+			mov( quit, eax );
+				
+		}#;
+	
+	try
+	
+		mov( 0, i );
+		s.create();
+		
+		sock.hostAdrs(); 
+		mov( eax, hostIPadrs );
+		sock.ipToStr( eax, ipAdrsStr );
+		
+		s.start
+		( 
+			hostIPadrs, 
+			$8806, 
+			timeout,
+			&connected,
+			0
+		);
+		
+	  anyexception
+	  
+	  	ex.exceptionMsg( eax, exmsg );
+	  	stdout.put( "Server Exception: ", exmsg, nl );
+		fileio.close( s.handle );
+		s.destroy();
+		
+	endtry;
+	 
+end sgethex_test; 

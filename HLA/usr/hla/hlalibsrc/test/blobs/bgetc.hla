@@ -1,0 +1,109 @@
+program bgetc_test;
+#include( "stdlib.hhf" )
+
+const
+	bufData_c : char[] :=
+				[
+					'a', #$d, #$a,
+					'b', 'c',  #$d, #$a,
+					'd', ' ', 'e', 'f', #$d, #$a,
+					#$d, #$a,
+					'1', '0', '0', #$d, #$a
+				];
+	
+
+var
+	b			:blob.blob;
+	bufIndex	:dword;
+	buffer		:char[64];
+	
+readonly
+	bufData		:char[ @elements( bufData_c )] := bufData_c;
+					 
+begin bgetc_test;
+
+	try
+	
+
+		blob.a_load( "bgetc.wdata" );
+
+		mov( eax, b );
+		
+		mov( 0, bufIndex );
+		repeat
+		
+
+			blob.getc( b );
+
+			mov( bufIndex, ebx );
+			cmp( al, bufData[ebx] );
+			if( @ne ) then
+			
+				stderr.put
+				( 
+					"blob.getc did not match input file at index ",
+					(type uns32 ebx), 
+					nl,
+					"Read: $", 
+					al, 
+					" expected: $", 
+					(type byte bufData[ebx]),
+					nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			mov( al, buffer[ebx] );
+			inc( bufIndex );
+			
+
+		until( blob.eof( b ));
+
+		cld();
+		mov( bufIndex, ecx );
+		if( ecx <> @elements( bufData_c )) then
+		
+			mov( @elements( bufData_c ), eax );
+			stderr.put
+			( 
+				"blob.getc read the wrong # of chars (read:",
+				(type uns32 ecx),
+				", should have read ",
+				(type uns32 eax),
+				")" nl 
+			);
+			os.exitProcess( 2 );
+			
+		endif;
+		stderr.put( "blob.getc succeeded!" nl );
+		os.exitProcess(0);
+		
+	  anyexception
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"blob.getc failed!" nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		os.exitProcess(3);
+		
+	endtry;
+	stderr.put
+	( 
+		nl nl 
+		"***************************************************" nl
+		"blob.getc failed!" nl
+		"Did not properly read the data from the file" nl
+		nl 
+	);
+	os.exitProcess(4);
+			
+end bgetc_test;
+
+													

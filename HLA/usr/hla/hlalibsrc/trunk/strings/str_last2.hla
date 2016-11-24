@@ -1,0 +1,126 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeOnce( "strings.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "x86.hhf" )
+
+//  last2,                                                     
+//  last3,                                                     
+//  a_last-                                                    
+//                                                             
+//  These routines remove characters from the beginning of a   
+//  string. (that is, they return the characters at the end of 
+//  the string). The last3 routine destructively removes       
+//  characters from a specified string variable.  The a_last   
+//  routine allocates storage for a new string and copies the  
+//  string, minus the deleted portion, to the newly allocated  
+//  storage. The last3 function copies the substring to a dest 
+//  string provided by the caller. The original string is left 
+//  unchanged by a_last and last3.                             
+//                                                             
+//  Inputs-                                                    
+//                                                             
+//  dest-   Pointer to string to remove characters from.       
+//  length- Number of characters to delete from the end        
+//          of the string.                                     
+
+
+
+
+
+
+procedure str.last2
+(
+      s		:string;
+      len	:dword
+); 
+	@noframe;
+var
+	saveECX		:dword;
+	saveESI		:dword;
+	saveEDI		:dword;
+	saveFlags	:dword;
+	
+begin last2;
+      
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_-4), esp );
+	stc();						// Assume we return success
+	pushfd();					// Allocate and initialize saveFlags.
+	
+	mov( edi, saveEDI );
+	mov( esi, saveESI );
+	mov( ecx, saveECX );
+	cld();
+
+	// verify that s is non-NULL
+
+	mov( s, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+
+
+	// string_length-len is the starting index to use.
+	
+	mov( len, ecx );
+	mov( (type str.strRec [edi]).length, esi );
+	cmp( esi, ecx );
+	jae useLen;
+		mov( esi, ecx );
+		and( !x86.flag_carry, saveFlags );	// Return false
+		
+	useLen:
+	sub( ecx, esi );
+	add( edi, esi );
+	
+	// Save as new string length:
+	
+	mov( ecx, (type str.strRec [edi]).length );
+
+	// Don't do anything if we're copying the whole string:
+	
+	cmp( esi, edi );
+	je allDone;
+	
+		add( 4, ecx );	// Copy the zero byte, too!
+		shr( 2, ecx );	// div by 4 to copy dwords		
+		rep.movsd();
+		
+		mov( 0, (type byte [edi]));	//Zero terminate
+	
+	allDone:		                    
+	mov( saveEDI, edi );
+	mov( saveESI, esi );
+	mov( saveECX, ecx );
+	popfd();	// Return carry state and restore direction flag.
+	leave();
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise(ex.AttemptToDerefNULL);
+
+end last2;
+end stringUnit;
+
+
+
+
+	
+

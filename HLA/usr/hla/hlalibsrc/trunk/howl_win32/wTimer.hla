@@ -1,0 +1,332 @@
+unit wTimer_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+
+readonly		
+	align( 4 );
+	vmt( wTimer_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+//
+// Constructor for wTimer_t object.
+
+
+procedure wTimer_t.create_wTimer
+(
+	timerName		:string;
+	parentHandle	:dword;
+	periodInMsec	:dword;
+	timing			:dword;
+	onTimeOut		:widgetProc
+);;
+	
+_begin( wTimer_t, create_wTimer );
+
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wTimer_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	(type wVisual_t [esi]).create_wVisual
+	( 
+		timerName,
+		parentHandle,
+		0,					//x
+		0,					//y
+		1,					//w
+		1					//h 
+	);
+	(type wVisual_t [esi]).hide();
+
+	// Generic initialization for all timer objects:
+	
+	mov( cl, this.wBase_private.onHeap );		
+	mov( NULL, this.wTimer_private.threadHandle );
+	mov( 0, this.wTimer_private.trigger );
+	mov( periodInMsec, eax );
+	mov( eax, this.wTimer_private.period );
+	mov( timing, eax );
+	mov( eax, this.wTimer_private.timing );
+	mov( onTimeOut, eax );
+	mov( eax, this.wTimer_private.onTimeOut );
+	
+	if( this.messageCode = 0 ) then
+	
+		// Create a system-wide unique message identifier for timers:
+		
+		w.RegisterWindowMessage( "wTimer_t" );
+		mov( eax, this.messageCode );
+	
+	endif;
+	
+	// Although this is a non-visual object, we have to create
+	// a window for it so we can receive messages from the
+	// timeout thread.
+	
+	w.CreateWindowEx
+	( 
+		0, 
+		howl.Window_t_ClassName, 
+		"wTimer_t_Window", 
+		w.WS_CHILD,
+		0,
+		0,
+		1,
+		1,
+		parentHandle,
+		NULL,
+		howl.howlInstance,
+		NULL
+	);
+	mov( eax, this.handle );
+	w.SetWindowLong( eax, w.GWL_USERDATA, esi );
+
+	// Initialize the type string field:
+		
+	howl.setType( wTimer_c );
+	mov( &wTimer_t._VMT_, this._pVMT_ );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wTimer_t, create_wTimer );
+
+
+// Destructor for the generic wBase_t class.
+// This destructor must be called *after* any derived class' constructor
+// code.
+
+method wTimer_t.destroy;;
+_begin( wTimer_t, destroy );
+
+	if( this.wTimer_private.threadHandle <> NULL ) then
+	
+		w.TerminateThread( this.wTimer_private.threadHandle, 0 );
+		w.WaitForSingleObject( this.wTimer_private.threadHandle, 2000 );
+		
+	endif;
+	w.DestroyWindow( this.handle );
+	super.destroy();
+		
+_end( wTimer_t, destroy );
+
+
+
+
+// Accessor/mutator functions:
+
+method wTimer_t.get_onTimeOut; @noframe;;
+_begin( wTimer_t, get_onTimeOut );
+
+	mov( this.wTimer_private.onTimeOut, eax );
+	ret();
+	 
+_end( wTimer_t, get_onTimeOut );
+
+
+method wTimer_t.get_period; @noframe;;
+_begin( wTimer_t, get_period );
+
+	mov( this.wTimer_private.period, eax );
+	ret();
+	 
+_end( wTimer_t, get_period );
+
+
+method wTimer_t.get_timing; @noframe;;
+_begin( wTimer_t, get_timing );
+
+	mov( this.wTimer_private.timing, eax );
+	ret();
+	 
+_end( wTimer_t, get_timing );
+
+
+
+
+// Mutator functions:
+
+
+method wTimer_t.set_period( period:dword );;
+_begin( wTimer_t, set_period );
+
+	push( eax );
+	
+	mov( period, eax );
+	mov( eax, this.wTimer_private.period );
+
+	pop( eax );
+	
+_end( wTimer_t,set_period );
+
+
+method wTimer_t.set_timing( timing:dword );;
+_begin( wTimer_t, set_timing );
+
+	push( eax );
+	
+	mov( timing, eax );
+	mov( eax, this.wTimer_private.timing );
+
+	pop( eax );
+	
+_end( wTimer_t,set_timing );
+
+
+method wTimer_t.set_onTimeOut( onTimeOut:widgetProc );;
+_begin( wTimer_t, set_onTimeOut );
+
+	push( eax );
+	mov( onTimeOut, eax );
+	mov( eax, this.wTimer_private.onTimeOut );
+	pop( eax );
+			
+_end( wTimer_t, set_onTimeOut );
+
+
+
+
+
+// Here is the code for the thread that does the timing:
+
+procedure wTimer_t._timerThread( wTimerObj:wTimer_p );;
+_begin( wTimer_t, _timerThread );
+
+	forever
+	
+		mov( wTimerObj, esi );
+		w.Sleep( this.wTimer_private.period );
+		w.PostMessage( this.handle, this.messageCode, 0, 0 );
+		breakif( this.wTimer_private.timing = wTimer_t.oneShot );
+				
+	endfor;
+	w.ExitThread( 0 );
+		
+_end( wTimer_t, _timerThread );
+
+	
+// start-
+//
+//	If the timer isn't already running, this guy starts it running.
+
+method wTimer_t.start;
+var
+	threadID	:dword;
+	
+_begin( wTimer_t, start );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	// If the timer was already running, kill it:
+	
+	if( this.wTimer_private.threadHandle <> NULL ) then
+	
+		w.TerminateThread( this.wTimer_private.threadHandle, 0 );
+		w.WaitForSingleObject( this.wTimer_private.threadHandle, w.INFINITE );
+		
+	endif;
+	w.CreateThread
+	(
+		NULL,					// attributes
+		1024,					// Initial stack size
+		&wTimer_t._timerThread,	// Thread function address.
+		esi,					// Thread parameter
+		0,						// Thread creation flag (run immediately)
+		threadID				// Receives thread ID.
+	);
+	mov( eax, this.wTimer_private.threadHandle );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wTimer_t, start );
+
+	
+// stop-
+//
+//	If the timer is already running, this guy stops it the next
+// time it times out (this method is really only meaningful for
+// a periodic timer).
+
+method wTimer_t.stop;;
+_begin( wTimer_t, stop );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( this.wTimer_private.threadHandle <> NULL ) then
+	
+		w.TerminateThread( this.wTimer_private.threadHandle, 0 );
+		w.WaitForSingleObject( this.wTimer_private.threadHandle, w.INFINITE );
+		
+	endif;
+	mov( NULL, this.wTimer_private.threadHandle );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+		
+_end( wTimer_t, stop );
+		
+
+
+
+
+method wTimer_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);
+var
+	dropIndex	:dword;
+	itemData	:dword;
+	itemString	:string;
+	
+_begin( wTimer_t, processMessage );
+
+	mov( uMsg, eax );
+	if( eax = this.messageCode ) then
+	
+		// If an onTimeOut handler is installed, call it.
+		
+		if( this.wTimer_private.onTimeOut <> NULL ) then
+		
+			this.wTimer_private.onTimeOut( esi, wParam, lParam );
+			
+		endif;
+	
+	else
+	
+		super.processMessage( hwnd, uMsg, wParam, lParam );
+		
+	endif;
+			
+_end( wTimer_t, processMessage );
+
+end	wTimer_u;

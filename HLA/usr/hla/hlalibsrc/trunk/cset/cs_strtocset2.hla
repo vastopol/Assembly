@@ -1,0 +1,120 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit charSets;
+
+#include( "cset.hhf" )
+#include( "strings.hhf" )
+#include( "excepts.hhf" )
+#include( "memory.hhf" )
+
+
+/********************************************************/
+/*                                                      */
+/* strToCset2-                                          */
+/*                                                      */
+/* Converts a string of characters to a character set   */
+/* like the strToCset function except this one also     */
+/* lets the caller specify a starting index within      */
+/* the string.                                          */
+/*                                                      */
+/********************************************************/
+
+
+
+
+procedure cs.strToCset2( s:string; offs:uns32; var dest:cset ); 
+	@nodisplay; 
+	@noframe;
+const
+	_s		:text	:= "(type string [esp+24])";
+	_offs	:text	:= "(type uns32 [esp+20])";
+	_dest	:text	:= "(type dword [esp+16])";
+	
+begin strToCset2;
+
+	push( eax );
+	push( ebx );
+	push( ecx );
+	
+	// Stack at this point:
+	//
+	//	esp+24	_s:string
+	//	esp+20	offs:uns32
+	//	esp+16	dest:dword
+	//	esp+12	return address
+	//	esp+8	eax
+	//	esp+4	ebx
+	//	esp		ecx
+	
+	
+	// Be sure we have valid pointers to the string and CSET:
+	
+	mov( _dest, ebx );
+	mov( _s, ecx );
+	test( ebx, ebx );
+	jz NULLptr;
+	test( ecx, ecx );
+	jz NULLptr;
+	
+	// Make sure the offset doesn't exceed the string length.
+	// If not, adjust the string index by adding in the offs value.
+	
+	mov( _offs, eax );
+	cmp( eax, (type str.strRec [ecx]).length );
+	jge indexError;
+	add( eax, ecx );
+	
+	// Create an empty set:
+	
+	xor( eax, eax );
+	mov( eax, [ebx] );
+	mov( eax, [ebx+4] );
+	mov( eax, [ebx+8] );
+	mov( eax, [ebx+12] );
+
+	// Union in the characters from the string:
+	
+	mov( [ecx], al );
+	cmp( al, 0 );
+	jz atEOS;
+	whileNotAtEOS:
+	
+		bts( eax, [ebx] );
+		inc( ecx );
+		mov( [ecx], al );
+		cmp( al, 0 );
+		jnz whileNotAtEOS;
+		
+	atEOS:
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	ret( _parms_ );
+		
+NULLptr:
+	raise( ex.AttemptToDerefNULL );
+
+indexError:
+	raise( ex.StringIndexError );
+
+end strToCset2;
+
+end charSets;
+
+
+
+
+	
+

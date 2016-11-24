@@ -1,0 +1,49 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "blobs.hhf" )
+#includeOnce( "hla.hhf" )
+
+
+
+// baseSocketClass_t.geth128
+//
+//	Read a 128-bit hexadecimal integer from a socket and return
+//	that value in the location specified by the l parameter.
+
+procedure blob.geth128( src:blob.blob; var dest:lword ); 
+begin geth128;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	push( dest );
+	pushd( &blob._getc );	// Fake thunk!
+	push( src );
+	call hla.geth128;
+	
+	leave();
+	ret( _parms_ );
+
+end geth128;
+
+
+	
+end blobUnit;
+

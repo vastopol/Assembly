@@ -1,0 +1,496 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+ 
+
+/************************************************************/
+/*                                                          */
+/* atof-                                                    */
+/*                                                          */
+/* ESI points at a string of characters that represent a    */
+/* floating point value.  This routine converts that string */
+/* to the corresponding FP value and leaves the result on   */
+/* the top of the FPU stack.  On return, ESI points at the  */
+/* first character this routine couldn't convert.           */
+/*                                                          */
+/* Like the other ATOx routines, this routine raises an     */
+/* exception if there is a conversion error or if ESI       */
+/* contains NULL.                                           */
+/*                                                          */
+/************************************************************/
+
+
+procedure conv.atof;  
+	@nodisplay;
+	@noframe; 
+	@noalignstack;
+
+const
+	sign:		text := "cl";
+	expSign:	text := "ch";
+	
+var
+	DigitStr:	char[20];
+	BCDValue:	tbyte;
+	
+readonly
+
+	align( 4 );
+	PotTbl:		real80[ 14 ] :=
+					[
+						1.0e+4096,
+						1.0e+2048,
+						1.0e+1024,
+						1.0e+512,
+						1.0e+256,
+						1.0e+128,
+						1.0e+64,
+						1.0e+32,
+						1.0e+16,
+						1.0e+8,
+						1.0e+4,
+						1.0e+2,
+						1.0e+1,
+						1.0e+0
+					];
+	
+	
+	procedure DigitsToRightOfDecPt; 
+		@nodisplay; 
+		@noframe;
+	begin DigitsToRightOfDecPt;
+	
+		dec( esi );
+		DigitLoop:
+		
+			NextChar;
+			sub( '0', al );
+			cmp( al, 10 );
+			jae EndDigits;
+			
+			dec( edx );
+ 		
+			// If we've not yet processed 18 significant
+			// digits, save away the current digit.
+			
+			test( ebx, ebx );
+			jz DigitLoop;
+			mov( al, ebp::DigitStr[ ebx ]);
+			dec( ebx );
+			jmp DigitLoop;
+				
+		
+		EndDigits:
+		ret();
+		
+	end DigitsToRightOfDecPt;
+
+
+
+	
+	
+	#macro Merge4( DSOffset, BCDOffset );
+	
+		mov( DigitStr[ DSOffset+1 ], al );
+		shl( 4, al );
+		or(	DigitStr[ DSOffset ], al );
+		mov( al, (type byte BCDValue[ BCDOffset ]) );
+		
+	#endmacro
+
+
+
+
+	
+begin atof;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	
+	// Verify that ESI is not NULL.
+	
+	test( esi, esi );
+	jz refNULL;
+		
+	// Zero out the DigitStr array.
+	
+	xor( eax, eax );
+	mov( eax, (type dword DigitStr ));
+	mov( eax, (type dword DigitStr[4] ));
+	mov( eax, (type dword DigitStr[8] ));
+	mov( eax, (type dword DigitStr[12] ));
+	mov( eax, (type dword DigitStr[16] ));
+	
+	mov( eax, (type dword BCDValue ));
+	mov( eax, (type dword BCDValue[4] ));
+	mov( ax, (type word BCDValue[8] ));
+	
+	// Skip over any leading delimiter characters in the sequence.
+	
+	dec( esi );
+	_hla.get_Delimiters();
+	mov( eax, ebx );
+	whileDelimLoop:
+	
+		NextChar;
+		cmp( eax, $80 );
+		jae illChar;
+		bt( eax, (type dword [ebx] ));	// See if in Delimiters set.
+		jc whileDelimLoop;
+	
+	
+	
+	// Check for + or -
+	
+	cmp( al, '-' );
+	sete( sign );
+	je doNextChar;
+		cmp( al, '+' );
+		jne notPlus;
+	doNextChar:
+		NextChar;			// Skip over '+' or '-'
+
+	notPlus:
+	
+	// Initialize edx with -18 since we have to account
+	// for BCD conversion (which generates a number *10^18 by
+	// default).
+	
+	mov( -18, edx );
+	
+	// Initialize ebx with 18, the number of significant
+	// digits left to process and also the index into the
+	// DigitStr array.
+	
+	mov( 18, ebx );
+	
+	// At this point we're beyond any leading sign character.
+	// Therefore, the next character must be a decimal digit
+	// or a decimal point.
+
+	push( esi );		// Save so we can look ahead one digit.
+	cmp( al, '.' );
+	jne notPeriod;
+
+		// If the first character is a decimal point, then the
+		// second character needs to be a decimal digit.
+			
+		NextChar;
+		
+	notPeriod:
+
+	cmp( al, '0' );
+	jb convError;
+	cmp( al, '9' );
+	ja convError;
+	pop( esi );			// Okay, go back to our original character
+	CurChar;			// since we've verified that we have a digit.
+	
+
+	// Eliminate any leading zeros (they do not affect the value or
+	// the number of significant digits).
+	
+	jmp testWhileAL0;
+	whileAL0:
+
+		NextChar;
+	testWhileAL0:
+		cmp( al, '0' );
+		je whileAL0;
+
+	
+	
+	// If we're looking at a decimal point, we need to get rid of the
+	// zeros immediately after the decimal point since they don't
+	// count as significant digits.  Unlike zeros before the decimal
+	// point, however, these zeros do affect the number's value as
+	// we must decrement the current exponent for each such zero.
+	
+	cmp( al, '.' );
+	jne notDecPt;
+	
+		add( 1, edx );
+		repeatUntilALnot0:
+		
+			dec( edx );
+			NextChar;
+			cmp( al, '0' );
+			je repeatUntilALnot0;
+			jmp wasDecPt;
+		
+		
+	notDecPt:
+	
+		// If we didn't encounter a decimal point after removing leading
+		// zeros, then we've got a sequence of digits before a decimal
+		// point.  Process those digits here.
+		
+		jmp testDigit;
+		whileADigit:
+
+			// Each digit to the left of the decimal point increases
+			// the number by an additional power of ten.  Deal with
+			// that here.
+			
+			add( 1, edx );	
+
+			// Save all the significant digits, but ignore any digits
+			// beyond the 18th digit.
+			
+			test( ebx, ebx );
+			jz Beyond18;
+			
+				mov( al, DigitStr[ ebx ]);
+				sub( 1, ebx );
+				
+			Beyond18:
+			NextChar;
+			
+		testDigit:
+			sub( '0', al );
+			cmp( al, 10 );
+			jb whileADigit;
+
+			cmp( al, (@uns8( '.' ) - @uns8( '0' )) );
+			jne noDecPt2;
+
+				NextChar;		// Skip over decimal point.
+						
+			noDecPt2:
+		
+	wasDecPt:
+	
+
+	// Okay, process any digits to the right of the decimal point.
+	
+	CurChar;
+	jmp testDigit2;
+	whileDigit2:
+
+		test( ebx, ebx );
+		jz Beyond18_2;	
+		
+			mov( al, DigitStr[ ebx ]);
+			sub( 1, ebx );
+			
+		Beyond18_2:
+		NextChar;
+		
+	testDigit2:
+		sub( '0', al );
+		cmp( al, 10 );
+		jb whileDigit2;
+			
+		
+	// At this point, we've finished processing the mantissa.
+	// Now see if there is an exponent we need to deal with.
+	
+	CurChar;
+	cmp( al, 'E' );
+	je hasExponent;
+	cmp( al, 'e' );
+	jne noExponent;
+	
+	hasExponent:
+		NextChar;				// Skip the "E".
+		cmp( al, '-' );
+		sete( expSign );
+		cmp( al, '-' );
+		je doNextChar_2;
+		cmp( al, '+' );
+		jne getExponent;
+		
+		doNextChar_2:
+			NextChar;			// Skip sign character.
+			
+		getExponent:
+		
+		// Okay, we're past the "E" and the optional sign at this
+		// point.  We must have at least one decimal digit.
+		
+		sub( '0', al );
+		cmp( al, 10 );
+		jae convError;
+		
+		xor( ebx, ebx );		// Compute exponent value in ebx.
+		ExpLoop:
+		
+			movzx( (type byte [esi]), eax );
+			sub( '0', al );
+			cmp( al, 10 );
+			jae	ExpDone;
+			
+			intmul( 10, ebx );
+			add( eax, ebx );
+			inc( esi );
+			jmp ExpLoop;
+			
+		ExpDone:
+		
+		// If the exponent was negative, negate our computed result.
+		
+		cmp( expSign, false );
+		je noNegExp;
+		
+			neg( ebx );
+			
+		noNegExp:
+
+		// Add in the BCD adjustment (remember, values in DigitStr, when
+		// loaded into the FPU, are multiplied by 10^18 by default.
+		// The value in edx adjusts for this).
+		
+		add( ebx, edx );
+		
+	noExponent:
+		
+	// verify that the exponent is between -4930..+4930 (which
+	// is the maximum dynamic range for an 80-bit FP value).
+
+	cmp( edx, 4930 );
+	jg voor;
+	cmp( edx, -4930 );
+	jl voor;
+	
+	
+	// Now convert the DigitStr variable (unpacked BCD) to a packed
+	// BCD value.
+	
+	Merge4( 17, 8 );
+	Merge4( 15, 7 );
+	Merge4( 13, 6 );
+	Merge4( 11, 5 );
+	Merge4( 9, 4 );
+	Merge4( 7, 3 );
+	Merge4( 5, 2 );
+	Merge4( 3, 1 )
+	Merge4( 1, 0 );
+
+	fbld( BCDValue );
+	
+	
+	// Okay, we've got the mantissa into the FPU.  Now multiply the
+	// Mantissa by 10 raise the the value of the computed exponent
+	// (currently in edx).
+	//
+	// This code uses power of 10 tables to help make the computation
+	// a little more accurate.
+	//
+	// We want to determine which power of ten is just less than the
+	// value of our exponent.  The powers of ten we are checking are
+	// 10**4096, 10**2048, 10**1024, 10**512, etc.  A slick way to
+	// do this check is by shifting the bits in the exponent
+	// to the left.  Bit #12 is the 4096 bit.  So if this bit is set,
+	// our exponent is >= 10**4096.  If not, check the next bit down
+	// to see if our exponent >= 10**2048, etc.
+
+	mov( -10, ebx );	// Initial index into power of ten table.
+	test( edx, edx );
+	jns positiveExponent;
+	
+		// Handle negative exponents here.
+		
+		neg( edx );
+		shl( 19, edx );		// Bits 0..12 -> 19..31
+		whileEDXne0:
+		
+			add( 10, ebx );
+			shl( 1, edx );
+			jnc testEDX0;
+			
+				fld( PotTbl[ ebx ]);
+				fdivp();
+				
+			testEDX0:
+			test( edx, edx );
+			jnz whileEDXne0;
+
+		jmp doMantissaSign;
+
+
+		
+	positiveExponent:
+	
+		// Handle positive exponents here.
+	
+		shl( 19, edx );		// Bits 0..12 -> 19..31.
+		jmp testEDX0_2;
+		whileEDXne0_2:
+
+			add( 10, ebx );
+			shl( 1, edx );
+			jnc testEDX0_2;
+			
+				fld( PotTbl[ ebx ]);
+				fmulp();
+			
+		testEDX0_2:
+			test( edx, edx );
+			jnz whileEDXne0_2;
+		
+	doMantissaSign:
+	
+	
+	// If the mantissa was negative, negate the result down here.
+
+	cmp( sign, false );
+	je mantNotNegative;
+	
+		fchs();
+		
+	mantNotNegative:
+	
+	// Finally, verify that we stopped on a legal character.
+
+	_hla.get_Delimiters();
+	mov( eax, ebx );
+	movzx( (type byte [esi]), eax );
+	cmp( eax, $80 );
+	jae illChar;
+	bt( eax, (type dword [ebx] ));
+	jnc convError;
+				
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	leave();
+	ret();
+
+refNULL:
+	raise( ex.AttemptToDerefNULL );
+
+convError:
+	raise( ex.ConversionError );
+
+voor:
+	raise( ex.ValueOutOfRange );
+
+illChar:
+	raise( ex.IllegalChar );
+
+end atof;
+
+
+end ConvUnit;

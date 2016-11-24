@@ -1,0 +1,272 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+
+#include( "../include/fileiounit.hhf" )
+
+
+
+/**************************************************/
+/*                                                */
+/* feof-                                          */
+/*                                                */
+/* Returns true in AL if the specified file is at */
+/* the end of file.                               */
+/*                                                */
+/**************************************************/
+
+#if( os.linux )
+
+
+	procedure fileio.eof( Handle:dword ); @nodisplay; @noframe;
+	var
+		curPosition	:dword;
+		buf			:char;
+		offset		:linux.loff_t;
+		eofOffset	:linux.loff_t;
+		
+	begin eof;
+		
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+			
+		// Find the current position and the EOF position.
+		
+		linux.llseek( Handle, 0, 0, offset, linux.seek_cur );
+		linux.llseek( Handle, 0, 0, eofOffset, linux.seek_end );
+		
+		// Reset back to the current position:
+		
+		linux.llseek
+		( 
+			Handle, 
+			(type dword offset[4]), 
+			(type dword offset), 
+			offset, 
+			linux.seek_set 
+		);
+		
+		// Compare the two file offsets to see if they are the
+		// same (meaning we've hit EOF):
+		
+		mov( (type dword offset), eax );
+		cmp( eax, (type dword eofOffset));
+		jne SetEOF;
+		
+		mov( (type dword offset[4]), eax );
+		cmp( eax, (type dword eofOffset[4]));
+
+	  SetEOF:
+	  	sete( al );
+	  	movzx( al, eax );
+		leave();
+		ret( _parms_ );	
+
+	end eof;
+
+#elseif( os.freeBSD )
+
+
+	procedure fileio.eof( Handle:dword ); @nodisplay; @noframe;
+	var
+		buf			:char;
+		offset		:bsd.off_t;
+		eofOffset	:bsd.off_t;
+		
+	begin eof;
+		
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( edx );
+			
+		// Find the current position and the EOF position.
+		
+		bsd.lseek( Handle, 0, bsd.SEEK_CUR );
+		mov( edx:eax, offset );
+		bsd.lseek( Handle, 0, bsd.SEEK_END );
+		mov( edx:eax, eofOffset );
+		
+		
+		// Reset back to the current position:
+		
+		bsd.lseek
+		( 
+			Handle, 
+			offset, 
+			bsd.SEEK_SET 
+		);
+		
+		// Compare the two file offsets to see if they are the
+		// same (meaning we've hit EOF):
+		
+		mov( offset, edx:eax );
+		cmp( eax, (type dword eofOffset));
+		jne SetEOF;
+		
+		cmp( edx, (type dword eofOffset[4]));
+
+	  SetEOF:
+	  	sete( al );
+	  	movzx( al, eax );
+	  	pop( edx );
+		leave();
+		ret( _parms_ );	
+
+	end eof;
+
+#elseif( os.macOS )	 
+
+
+	procedure fileio.eof( Handle:dword ); @nodisplay; @noframe;
+	var
+		buf			:char;
+		offset		:mac.off_t;
+		eofOffset	:mac.off_t;
+		
+	begin eof;
+		
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( edx );
+			
+		// Find the current position and the EOF position.
+		
+		mac.lseek( Handle, 0, mac.SEEK_CUR );
+		mov( edx:eax, offset );
+		mac.lseek( Handle, 0, mac.SEEK_END );
+		mov( edx:eax, eofOffset );
+		
+		
+		// Reset back to the current position:
+		
+		mac.lseek
+		( 
+			Handle, 
+			offset, 
+			mac.SEEK_SET 
+		);
+		
+		// Compare the two file offsets to see if they are the
+		// same (meaning we've hit EOF):
+		
+		mov( offset, edx:eax );
+		cmp( eax, (type dword eofOffset));
+		jne SetEOF;
+		
+		cmp( edx, (type dword eofOffset[4]));
+
+	  SetEOF:
+	  	sete( al );
+	  	movzx( al, eax );
+	  	pop( edx );
+		leave();
+		ret( _parms_ );	
+
+	end eof;
+
+#elseif( os.win32 )
+
+	#include( "w.hhf" )
+
+	procedure fileio.eof( Handle:dword ); @nodisplay; @noframe;
+	var
+		filePosnHO	:dword;
+		fileSizeLO	:dword;
+		fileSizeHO	:dword;
+				
+	begin eof;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( ebx );
+		push( ecx );
+		push( edx );
+		pushfd();
+		cld();
+
+		mov( true, ebx );	// Assume we're at the EOF.
+		
+		// To test for end of file, we first have to see if this
+		// is an actual disk file, a character device, or some other
+		// type of device file.
+		
+		w.GetFileType( Handle );
+		cmp( eax, w.FILE_TYPE_CHAR );
+		je rtnFalse;		// Always return false for character devices.
+		
+		cmp( eax, w.FILE_TYPE_DISK );
+		jne	rtnTrue;		// Always return true for other devices
+		
+		// Okay, it's a disk file, now get the file's size:
+		
+		w.GetFileSize( Handle, fileSizeHO );
+		mov( eax, fileSizeLO );
+		
+		// If GetFileSize returns -1 in EAX, we have to call
+		// GetLastError to determine if there was an error
+		
+		cmp( eax, -1 );
+		jne noError;
+		
+			w.GetLastError();
+			cmp( eax, w.NO_ERROR );
+			jne FileSeekError;
+			
+		noError:
+		
+		// Okay, get the current file position and see if it
+		// is greater than or equal to the file size. 
+		// If so, return true.
+		
+		mov( 0, filePosnHO );
+		w.SetFilePointer( Handle, 0, filePosnHO, w.FILE_CURRENT );
+		mov( filePosnHO, ecx );
+		cmp( ecx, fileSizeHO );
+		ja rtnTrue;
+		jb rtnFalse;
+		cmp( eax, fileSizeLO );
+		jae rtnTrue;
+		
+		rtnFalse:
+			xor( ebx, ebx );	// Sets EBX to false.
+			
+		rtnTrue:
+			mov( ebx, eax );
+			popfd();
+			pop( edx );
+			pop( ecx );
+			pop( ebx );
+			leave();
+			ret( _parms_ );
+		
+	FileSeekError:
+		raise( ex.FileSeekError );
+		
+	end eof;
+	
+#else
+
+	#print( "Unknown OS!" )
+	
+#endif
+	
+end FileIOUnit;
+

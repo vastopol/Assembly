@@ -1,0 +1,210 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit threads;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "os.hhf" )
+#includeOnce( "threads.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "datetime.hhf" )
+#includeOnce( "../include/thread_private.hhf" )
+#include( "stdlib.hhf" )
+
+
+#if( os.win32 )
+	#include( "w.hhf" )
+#elseif( os.linux )
+	#include( "linux.hhf" )
+#elseif( os.freeBSD )
+	#include( "bsd.hhf" )
+#elseif( os.macOS )
+	#include( "mac.hhf" )
+#else
+	#error( "Unsupported OS" )
+#endif
+
+// thread.waitForEventTimeout-
+//
+//	Waits until an event is signalled or a timeout occurs.
+//
+//	Returns EAX = 0 if we return on event signal, EAX=1 if timeout.
+
+#if( os.win32 )
+
+	procedure thread.waitForEventTimeout( event:dword; milliseconds:dword );
+	begin waitForEventTimeout;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( ecx );
+		push( edx );
+		
+		w.WaitForSingleObject( event, milliseconds );
+		cmp( eax, w.WAIT_TIMEOUT );
+		je timedOut;
+		cmp( eax, w.WAIT_OBJECT_0 );
+		#if( os.linux )
+			jnz linuxThreadError;
+		#else
+			jnz ThreadError;
+		#endif
+
+		pop( edx );
+		pop( ecx );
+		xor( eax, eax );
+		leave();
+		ret( _parms_ );
+		
+   timedOut:
+   		pop( edx );
+		pop( ecx );
+		mov( 1, eax );
+		leave();
+		ret( _parms_ );
+		
+	#if( os.linux )
+	linuxThreadError:
+		neg( eax );
+		mov( eax, edx );
+	#endif
+	
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end waitForEventTimeout;
+
+
+#elseif( os.linux | os.freeBSD | os.macOS )
+
+	procedure thread.waitForEventTimeout( event:dword; milliseconds:dword );
+	var
+		tv		:hla.timeval;
+		timeout	:hla.timespec;
+		
+	begin waitForEventTimeout;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( ebx );
+		push( edx );
+		
+		#if( os.linux )
+			linux.gettimeofday( tv, NULL );
+		#elseif( os.freeBSD )
+			bsd.gettimeofday( tv, NULL );
+		#elseif( os.macOS )
+			mac.gettimeofday( tv, NULL );
+		#endif
+			
+		
+		mov( milliseconds, eax );
+		xor( edx, edx );
+		div( 1_000, edx:eax );
+		add( tv.tv_sec, eax );
+		mov( eax, timeout.tv_sec );
+		intmul( 1_000, edx );
+		add( tv.tv_usec, edx );
+		intmul( 1_000, edx );
+		ReduceBy1Billion:
+			cmp( edx, 1_000_000_000 );
+			jb lessThan1Billion;
+			sub( 1_000_000_000, edx );
+			add( 1, timeout.tv_sec );
+			jmp ReduceBy1Billion;
+
+		lessThan1Billion:
+		mov( edx, timeout.tv_nsec );
+
+		mov( event, ebx );
+		pthread_mutex_lock( (type event_t [ebx]).mutex );
+		test( eax, eax );
+		#if( os.linux )
+			jnz linuxThreadError;
+		#else
+			jnz ThreadError;
+		#endif
+		
+		whileNotSignaled:
+			cmp( (type event_t [ebx]).signal, true );
+			je itsSignaled;
+				
+			pthread_cond_timedwait
+			( 
+				(type event_t [ebx]).cond, 
+				(type event_t [ebx]).mutex,
+				timeout 
+			);
+			cmp( eax, pthread_timeoutError );
+			je timedOut;
+			test( eax, eax );
+			#if( os.linux )
+				jnz linuxThreadError;
+			#else
+				jnz ThreadError;
+			#endif
+			jmp whileNotSignaled;
+			
+		itsSignaled:
+		mov( false, (type event_t [ebx]).signal );
+		pthread_mutex_unlock( (type event_t [ebx]).mutex );
+		test( eax, eax );
+		#if( os.linux )
+			jnz linuxThreadError;
+		#else
+			jnz ThreadError;
+		#endif
+		
+		pop( edx );
+		pop( ebx );
+		xor( eax, eax );
+		leave();
+		ret( _parms_ );
+		
+	timedOut:
+		pthread_mutex_unlock( (type event_t [ebx]).mutex );
+		test( eax, eax );
+		#if( os.linux )
+			jnz linuxThreadError;
+		#else
+			jnz ThreadError;
+		#endif
+		pop( edx );
+		pop( ebx );
+		mov( 1, eax );
+		leave();
+		ret( _parms_ );
+		
+	#if( os.linux )
+	linuxThreadError:
+		mov( eax, edx );
+	#endif
+	
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end waitForEventTimeout;
+
+
+#else
+
+	#error( "Unknown OS!" )
+	
+#endif
+
+
+end threads;

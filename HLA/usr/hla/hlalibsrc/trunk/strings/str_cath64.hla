@@ -1,0 +1,78 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+#include( "conv.hhf" );
+
+
+/**********************************************************/
+/*                                                        */
+/* str.cath64-                                            */
+/*                                                        */
+/* Concatenates the hexadecimal representation of the "q" */
+/* parameter to the end of the destination string.        */
+/*                                                        */
+/**********************************************************/
+
+procedure str.cath64( dest:string; q:qword ); @noframe;
+const
+	MaxByteStrLen := 20;
+	chars: text := "(type str.strRec chrs[8])";
+
+var
+	chrs:	byte[ MaxByteStrLen + 8];
+
+begin cath64;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( eax );
+
+	// Initialize maximum string length
+
+	mov( MaxByteStrLen, chars.maxlen );
+
+	// Convert the dword to a string of hex digits and 
+	// copy the string.
+
+	push( (type dword q[4]) );
+	push( (type dword q[0]) );
+	pushd( 0 );
+	pushd( '0' );			// Fill character.
+	lea( eax, chars );		// create pointer to string 'chars'
+	push( eax ); 
+	call( conv.h64ToStr );
+	str.cat( (type string eax), dest );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+end cath64;
+
+
+
+end stringUnit;
+
+
+
+
+	
+

@@ -1,0 +1,32 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit LinuxUnit;
+#include( "linux.hhf" )
+
+// sched_get_priority_min - Retrieves the minimum priority value.
+
+procedure linux.sched_get_priority_min( policy:dword );
+	@nodisplay;
+begin sched_get_priority_min;
+
+	linux.pushregs;
+	mov( linux.sys_sched_get_priority_min, eax );
+	mov( policy, ebx );
+	int( $80 );
+	linux.popregs;	
+	
+end sched_get_priority_min;
+
+end LinuxUnit;

@@ -1,0 +1,93 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobClass;
+?@NoStackAlign := true;
+?@NoDisplay := true;
+?@NoFrame := true;		
+
+#includeOnce( "excepts.hhf" )
+#includeOnce( "hla.hhf" )
+#includeOnce( "blobs.hhf" )
+#include( "threads.hhf" )
+
+
+// blob.__getc-                                         
+//                                               
+// Reads a single character from the blob. 
+// Returns Carry = 1 if EOF, carry = 0 and AL=char read if not EOF.
+//
+// This is a pseudo-thunk used by all the blob GET*** functions.
+// It expects SRC, rather than the caller's EBP, to be passed on the
+// stack; so the blob GET*** functions have to pass the address of the
+// source blob rather than the EBP of the GET*** function.                  
+
+
+
+procedure blob._getc( src:blob.blob ); 
+begin _getc;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ebx );
+	
+	mov( src, ebx );
+	test( ebx, ebx );
+	jz AttemptToDerefNULL;
+	
+	#if( @thread )
+	try
+	
+		thread.enterCriticalSection( (type blob.blobRec [ebx]).criticalSection );
+	
+	#endif
+	
+	mov( (type blob.blobRec [ebx]).rcursor, eax );
+	cmp( eax, (type blob.blobRec [ebx]).length );
+	jae EOFerror;
+		
+		movzx( (type byte [ebx+eax]), eax );
+		inc( (type blob.blobRec [ebx]).rcursor );
+		stc();
+	
+	EOFerror:
+	cmc();
+	
+	#if( @thread )
+	
+	  anyexception
+	  
+	  	mov( src, ebx );
+		thread.leaveCriticalSection( (type blob.blobRec [ebx]).criticalSection );
+	  	reraise( eax );
+		
+	endtry;
+	pushfd();
+	thread.leaveCriticalSection( (type blob.blobRec [ebx]).criticalSection );
+	popfd();
+		
+	#endif
+	pop( ebx );
+	leave();
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+					
+end _getc;
+
+
+
+
+end blobClass;

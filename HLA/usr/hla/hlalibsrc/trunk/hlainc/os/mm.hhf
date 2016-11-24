@@ -1,0 +1,29 @@
+#if( !@defined( mm_hhf ))
+?mm_hhf := true;
+
+#includeonce( "os/atomic.hhf" )
+#includeonce( "os/lists.hhf" )
+#includeonce( "os/wait.hhf" )
+
+namespace linux; @fast;
+
+type
+  	page: record
+  		list		:list_head;
+  		mapping		:dword;		// pointer to address_space
+  		index		:dword;
+  		next_hash	:dword;		// pointer to page
+  		count		:atomic_t;
+  		flags		:dword;
+  		lru			:list_head;
+  		age			:dword;
+  		_wait		:wait_queue_head_t;
+  		pprev_hash	:dword;		// ptr to ptr to page
+  		buffers		:dword;		// ptr to buffer_head
+  		virtual		:dword;
+  		zone		:dword;		// pointer to zone_struct
+  	endrecord;
+  	
+
+end linux;
+#endif //mm_hhf

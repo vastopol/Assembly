@@ -1,0 +1,81 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+?@noframe := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+/*************************************************************/
+/*                                                           */
+/* oneCset2-                                                 */
+/* oneCset3-                                                 */
+/* oneCset4-                                                 */
+/*                                                           */
+/* Returns true if the first character of the source string  */
+/* is a member of the cst character set.                     */
+/*                                                           */
+/* oneCset3-	returns the remainder of the string in rem,  */
+/* 			if the first char of src is a member of cst      */
+/* 			(does not modify rem otherwise)                  */
+/* 			                                                 */
+/* oneCset4-	returns remainder and matched strings in the */
+/* 			rem and mat parameter strings if the first       */
+/* 			char of src is in cst. Does not modify           */
+/* 			rem or mat otherwise.                            */
+/* 			                                                 */
+/*************************************************************/
+			
+
+procedure str.oneCset2( src:string; cst:cset ); 
+begin oneCset2;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( esi );
+	
+	mov( src, esi );
+	test( esi, esi );		// Note: also clears the carry flag.
+	jz AttemptToDerefNULL;
+	
+	mov( (type str.strRec [esi]).length, eax );	// Fail if empty string
+	test( eax, eax );							// Clears carry flag!
+	jz allDone;
+
+		movzx( (type char [esi]), eax );
+		bt( eax, cst );
+		
+	allDone:	
+	pop( esi );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end oneCset2;
+
+end stringUnit;
+
+
+
+
+	
+

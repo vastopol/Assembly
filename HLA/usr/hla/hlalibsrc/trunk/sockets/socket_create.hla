@@ -1,0 +1,63 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit sockets;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "sockets.hhf" )
+#includeOnce( "memory.hhf" )
+
+readonly
+	align( 4 );
+	vmt( baseSocketClass_t );
+
+procedure baseSocketClass_t.create;
+begin create;
+
+	push( eax );
+	test( esi, esi );
+	jnz haveObjPtr;
+	
+		mov( mem.alloc( @size( baseSocketClass_t ) ), esi );
+		
+	haveObjPtr:
+	
+	// Initialize the pointer to the VMT:
+	
+	mov( &baseSocketClass_t._VMT_, this._pVMT_ );
+	
+	// Initialize socket fields:
+	
+	mov( 0, this.handle );
+	
+	sock.zeroSockAddr( this.IPadrs );
+	
+	// Initialize the socket system if that hasn't already been done.
+	
+	sock.socketInit();
+	
+	
+	// Initialize the time fields (does not actually set the timeout,
+	// must explicitly call set/getTimeout to do this):
+	
+	mov( 0, this.timeout.tv_sec );
+	mov( 0, this.timeout.tv_usec );
+	
+	pop( eax );
+	ret();
+	
+end create;
+
+
+end sockets;

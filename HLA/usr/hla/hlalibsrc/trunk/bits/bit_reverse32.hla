@@ -1,0 +1,45 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit bitsUnit;
+
+#include( "bits.hhf" )
+
+
+procedure bits.reverse32( BitsToReverse:dword in eax ); @nodisplay; @noframe;
+begin reverse32;
+
+	push( ebx );
+	push( eax );
+	movzx( (type byte [esp+3]), ebx );
+	movzx( bits.reversedBits[ebx], eax );
+	movzx( (type byte [esp+2]), ebx );
+	mov( bits.reversedBits[ebx], ah );
+	bswap( eax );
+	movzx( (type byte [esp+0]), ebx );
+	mov( bits.reversedBits[ebx], al );
+	movzx( (type byte [esp+1]), ebx );
+	mov( bits.reversedBits[ebx], ah );
+	
+	add( 4, esp );
+	pop( ebx );
+	ret();
+	
+	
+end reverse32;
+ 
+
+
+	
+end bitsUnit;	

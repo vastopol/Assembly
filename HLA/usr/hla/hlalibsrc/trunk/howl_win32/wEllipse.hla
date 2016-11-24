@@ -1,0 +1,168 @@
+unit wEllipse_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly		
+	align( 4 );
+	vmt( wEllipse_t );
+
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wEllipse objects here:
+
+
+					
+procedure wEllipse_t.create_wEllipse
+(
+	wrName			:string;
+	parent			:dword;
+	x				:dword; 
+	y				:dword;
+	width			:dword;
+	height			:dword;
+	lineColor		:dword;
+	fillColor		:dword;
+	bkgColor		:dword 
+);;
+	
+_begin( wEllipse_t, create_wEllipse );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wEllipse_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	
+	// We're going to create a wFilledFrame object here.
+	
+	(type wFilledFrame_t [esi]).create_wFilledFrame
+	(
+		wrName,
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height,
+		lineColor,
+		fillColor,
+		bkgColor
+	);
+	mov( cl, this.wBase_private.onHeap );
+	
+	// Set up the roundRect-specific fields:
+		
+	howl.setType( wEllipse_c );
+	mov( &wEllipse_t._VMT_, this._pVMT_ );
+
+	pop( edx );
+	pop( ecx );			   
+	pop( eax );
+	
+_end( wEllipse_t, create_wEllipse );
+
+
+
+method wEllipse_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);
+var
+	r			:w.RECT;
+	hdc			:dword;
+	oldBrush	:dword;
+	oldPen		:dword;
+	ps			:w.PAINTSTRUCT;
+
+_begin( wEllipse_t, processMessage );
+
+	if( uMsg = w.WM_PAINT ) then
+	
+		w.BeginPaint( this.handle, ps );
+			
+			mov( eax, hdc );
+			
+			mov( 0, r.left );
+			mov( this.wVisual_private.width, eax );
+			mov( eax, r.right );
+			
+			mov( 0, r.top );
+			mov( this.wVisual_private.height, eax );
+			mov( eax, r.bottom );
+			
+			if
+			( 
+					ps.fErase 
+				||	(type byte this.wVisual_private.bkgColor[3]) <> $FF 
+			) then
+			
+				// Fill the wEllipse's window with the background color:
+				
+				w.FillRect( hdc, r, this.wVisual_private.bkgBrush );
+				
+			endif;
+			
+			// Select the object's pen and fill values:
+			
+			w.SelectObject( hdc, this.wFilledFrame_private._linePen );
+			mov( eax, oldPen );
+			w.SelectObject( hdc, this.wFilledFrame_private._fillBrush );
+			mov( eax, oldBrush );
+								   			
+			// Draw the wEllipse:
+			
+			w.Ellipse
+			( 
+				hdc, 
+				0,
+				0,
+				this.wVisual_private.width,
+				this.wVisual_private.height
+			);
+			
+			w.SelectObject( hdc, oldBrush );
+			w.SelectObject( hdc, oldPen );
+						
+		w.EndPaint( this.handle, ps );
+		exit processMessage;
+		
+	elseif( uMsg = w.WM_MOUSEACTIVATE ) then
+	
+		if( this.wClickable_private.onClick <> NULL ) then
+		
+			this.wClickable_private.onClick( esi, wParam, lParam );
+			mov( w.MA_NOACTIVATEANDEAT, eax );
+			exit processMessage;
+		
+		endif;
+	
+	endif;
+	super.processMessage( hwnd, uMsg, wParam, lParam );
+	
+_end( wEllipse_t, processMessage );
+
+
+end	wEllipse_u;

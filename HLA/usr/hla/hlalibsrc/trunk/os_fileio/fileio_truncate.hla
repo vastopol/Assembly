@@ -1,0 +1,164 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+
+#include( "../include/fileiounit.hhf" )
+
+
+/***************************************************/
+/*                                                 */
+/* fTruncate-                                      */
+/*                                                 */
+/* Truncates the file at the current file position */
+/*                                                 */
+/***************************************************/
+
+
+#if( os.linux )
+
+	procedure fileio.truncate( Handle:dword ); @nodisplay; @noframe;
+	var
+		filePosn	:qword;
+		
+	begin truncate;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( eax );
+		push( edx );
+		
+		lea( eax, filePosn );
+		linux.llseek( Handle, 0, 0, [eax], linux.seek_cur );
+		cmp( eax, -1 );
+		je fileSeekError;
+		
+		linux.ftruncate( Handle, filePosn );
+		cmp( eax, -1 );
+		je fileWriteError;
+
+		pop( edx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	fileSeekError:
+		raise( ex.FileSeekError );
+	
+	fileWriteError:
+		raise( ex.FileWriteError );
+					
+	end truncate;
+	
+#elseif( os.freeBSD )
+
+	procedure fileio.truncate( Handle:dword ); @nodisplay; @noframe;
+	var
+		filePosn	:qword;
+		
+	begin truncate;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( eax );
+		push( edx );
+		
+		bsd.lseek( Handle, 0, bsd.SEEK_CUR );
+		jc fileSeekError;
+		
+		bsd.ftruncate( Handle, edx:eax );
+		jc fileWriteError;
+
+		pop( edx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	fileSeekError:
+		raise( ex.FileSeekError );
+	
+	fileWriteError:
+		raise( ex.FileWriteError );
+					
+	end truncate;
+	
+#elseif( os.macOS )
+
+	procedure fileio.truncate( Handle:dword ); @nodisplay; @noframe;
+	var
+		filePosn	:qword;
+		
+	begin truncate;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( eax );
+		push( edx );
+		
+		mac.lseek( Handle, 0, mac.SEEK_CUR );
+		jc fileSeekError;
+		
+		mac.ftruncate( Handle, edx:eax );
+		jc fileWriteError;
+
+		pop( edx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	fileSeekError:
+		raise( ex.FileSeekError );
+	
+	fileWriteError:
+		raise( ex.FileWriteError );
+					
+	end truncate;
+	
+#elseif( os.win32 )
+
+	procedure fileio.truncate( Handle:dword ); @nodisplay; @noframe;
+	begin truncate;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( eax );
+		push( ecx );
+		push( edx );
+		pushfd();
+		cld();
+		win.SetEndOfFile( Handle );
+		popfd();
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ );
+		
+	end truncate;
+	
+#else
+
+	#print( "Unknown OS!" )
+
+#endif
+		
+end FileIOUnit;
+

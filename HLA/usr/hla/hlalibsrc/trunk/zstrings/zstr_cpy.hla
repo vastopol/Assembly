@@ -1,0 +1,106 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+
+
+/****************************************************************/
+/*                                                         		*/
+/* zcpy-                                                        */
+/*                                                              */
+/* Copies one zero-terminated string to another					*/
+/* Also returns the length of the string in EAX.				*/
+/*                                                              */
+/****************************************************************/
+
+procedure zstr.cpy( zsrc:zstring; zdest:zstring ); 
+	@noframe;
+	
+const
+	zsrcp	:text := "[esp+16]";
+	zdestp	:text := "[esp+12]";
+	
+begin cpy;
+
+	push( esi );
+	push( edi );
+
+	mov( zsrcp, esi );
+	mov( zdestp, edi );
+	sub( 4, esi );
+	sub( 4, edi );
+	
+	zcpyLoop:
+		add( 4, esi );
+		add( 4, edi );
+		mov( [esi], al );
+		mov( al, [edi] );
+		cmp( al, 0 );
+		je EOS0;
+		
+		mov( [esi+1], al );
+		mov( al, [edi+1] );
+		cmp( al, 0 );
+		je EOS1;
+		
+		mov( [esi+2], al );
+		mov( al, [edi+2] );
+		cmp( al, 0 );
+		je EOS2;
+		
+		mov( [esi+3], al );
+		mov( al, [edi+3] );
+		cmp( al, 0 );
+		jne zcpyLoop;
+		
+		lea( eax, [edi+3] );		// Return length in EAX.
+		sub( zdestp, eax );
+		pop( edi );
+		pop( esi );
+		ret( 8 );
+	
+	EOS2:
+		lea( eax, [edi+2] );		// Return length in EAX.
+		sub( zdestp, eax );
+		pop( edi );
+		pop( esi );
+		ret( 8 );
+	
+	EOS1:
+		lea( eax, [edi+1] );		// Return length in EAX.
+		sub( zdestp, eax );
+		pop( edi );
+		pop( esi );
+		ret( 8 );
+	
+	EOS0:
+		mov( edi, eax );		// Return length in EAX.
+		sub( zdestp, eax );
+		pop( edi );
+		pop( esi );
+		ret( _parms_ );
+		
+end cpy;
+	
+end stringUnit;
+
+
+
+
+	
+

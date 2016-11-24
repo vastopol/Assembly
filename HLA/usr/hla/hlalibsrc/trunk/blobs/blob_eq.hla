@@ -1,0 +1,195 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" );
+#include( "excepts.hhf" );
+#includeOnce( "threads.hhf" );
+
+// blob.eq-
+//
+//	Returns carry set if two blobs contain the same bytes.
+
+procedure blob.eq( src1:blob.blob; src2:blob.blob ); @noframe;
+begin eq;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( esi );
+	push( edi );
+	push( ecx );
+	xor( eax, eax ); // Assume not equal.
+	
+	
+		// Get the blob pointers and make sure they are non-NULL.
+		
+		mov( src1, esi );
+		mov( src2, edi );
+		test( esi, esi );
+		jz AttemptToDerefNULL;
+		test( edi, edi );
+		jz AttemptToDerefNULL;
+		 				
+		#if( @thread )
+		try
+		
+			thread.enterCriticalSection
+			( 
+				(type blob.blobRec [esi]).criticalSection 
+			);
+			cmp( esi, edi );
+			je noEnterSrc2;
+			
+				thread.enterCriticalSection
+				( 
+					(type blob.blobRec [edi]).criticalSection 
+				);
+				
+			noEnterSrc2:
+		
+		#endif
+
+			mov( (type blob.blobRec [esi]).length, ecx );
+			
+			// If the lengths are not equal, the blobs
+			// cannot be equal; so do a quick check for that
+			// first.
+
+			cmp( ecx, (type blob.blobRec [edi]).length );
+			jne blobcmp;
+			
+			// Okay, the lengths are equal, so compare the blobs.
+			//
+			// repe.cmpsb(); -- This is slow, don't use it!
+			
+				test( ecx, ecx );
+				je BlobsNE;			// If lengths are zero, they're equal.
+				cmp( ecx, 4 );
+				jb CmpLT4;
+				
+			whileGE4:
+				mov( [esi+ecx-4], eax );
+				cmp( eax, [edi+ecx-4] );
+				jne BlobsNE;
+				
+				sub( 4, ecx );
+				ja whileGE4;
+				je BlobsNE;
+				add( 4, ecx );
+				
+			// Less than four bytes, but greater than zero, to compare here.
+			
+			CmpLT4:
+				cmp( ecx, 2 );
+				jb	Cmp1;
+				ja Cmp3;
+				
+				// Two extra bytes, compare them here:
+				
+				mov( [esi+ecx-2], ax );
+				cmp( ax, [edi+ecx-2] );
+				jmp BlobsNE;
+				
+			Cmp1:
+			
+				// One extra pair of bytes, compare them here:
+				
+				mov( [esi+ecx-1], al );
+				cmp( al, [edi+ecx-1] );
+				jmp BlobsNE;
+				
+			Cmp3:
+			
+				// Three extra bytes, compare them here:
+				
+				mov( [esi+ecx-2], ax );
+				cmp( ax, [edi+ecx-2] );
+				jne	BlobsNE;
+				mov( [esi+ecx-3], al );
+				cmp( al, [edi+ecx-3] );
+	 
+
+			// Set EAX according to the comparison result.
+			
+			BlobsNE:
+				mov( 0, eax );	// Clear H.O. three bytes of EAX.
+				sete( al );
+			
+		blobcmp:
+		
+	#if( @thread )
+	
+	  anyexception
+	  
+	  	mov( src2, edx );
+		thread.leaveCriticalSection
+		( 
+			(type blob.blobRec [edx]).criticalSection 
+		);
+		cmp( edx, src1 );
+		je noLeaveSrc1;
+		
+		  	mov( src1, edx );
+			thread.leaveCriticalSection
+			( 
+				(type blob.blobRec [edx]).criticalSection 
+			);
+			
+		noLeaveSrc1:
+		reraise( eax );
+		
+	endtry;
+  	mov( src2, esi );
+	thread.leaveCriticalSection
+	( 
+		(type blob.blobRec [esi]).criticalSection 
+	);
+	cmp( esi, src1 );
+	je noLeaveSrc1a;
+	
+	  	mov( src1, esi );
+		thread.leaveCriticalSection
+		( 
+			(type blob.blobRec [esi]).criticalSection 
+		);
+		
+	noLeaveSrc1a:
+		
+	#endif
+	
+	cmp( al, 1 );		// Set carry flag for return.
+	cmc();
+	pop( ecx );
+	pop( edi );
+	pop( esi );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+			
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end eq;
+
+end blobUnit;
+
+
+
+
+	
+

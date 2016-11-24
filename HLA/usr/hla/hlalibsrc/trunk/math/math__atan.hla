@@ -1,0 +1,48 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit mathUnit;
+
+#include( "math.hhf" )
+
+/*****************************************************************/
+/*                                                               */
+/* atan-                                                         */
+/*                                                               */
+/* Computes atan(st0) by using the fpatan instruction.           */
+/*                                                               */
+/* The x87 fsincos instruction requires the operand to be in the */
+/* range -2**63..2**63. If it is outside this range, the sincos  */
+/* instruction leaves ST0 unchanged and sets the C2 flag in the  */
+/* FP status register. This function will handle the case of     */
+/* st0 being outside this range (it will compute the remainder   */
+/* of st0 divided by 2pi prior to computing fsincos).            */
+/*                                                               */
+/*****************************************************************/
+
+
+procedure math._atan; @nodisplay; @noframe;
+begin _atan;
+
+	push( eax );
+	
+	fld1();
+	fpatan();
+	pop( eax );
+	ret();
+
+end _atan;
+
+
+end mathUnit;

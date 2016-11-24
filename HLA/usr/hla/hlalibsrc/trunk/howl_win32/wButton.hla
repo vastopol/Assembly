@@ -1,0 +1,407 @@
+unit wButton_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+
+readonly		
+	align( 4 );
+	vmt( wButton_t );
+
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wButton objects here:
+
+
+
+procedure wButton_t.create_wButton
+(
+	wbName	:string;
+	parent	:dword; 									
+	x		:dword; 
+	y		:dword; 
+	width	:dword; 
+	height	:dword;
+	onClick	:widgetProc  
+);;
+	
+_begin( wButton_t, create_wButton );
+
+	push( eax );
+
+	// wButton_t is an abstract class and ESI must contain the address
+	// of a derived object when this constructor is called.
+	
+	assert( esi <> NULL );
+	
+	
+	// Generic initialization for all objects:
+	
+	(type wClickable_t [esi]).create_wClickable
+	(
+		wbName,
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height,
+		onClick
+	);
+	
+	// Also copy the onClick pointer to onDblClick because if the user
+	// doesn't attach a double-click handler, you lose the double click
+	// which is very annoying.
+	
+	mov( onClick, eax );
+	mov( eax, this.wClickable_private.onDblClick );
+	
+	// User must explicitly set the other event handlers:
+	
+	xor( eax, eax );
+	mov( eax, this.wButton_private.onPaint );				
+	mov( eax, this.wButton_private.onHilite );			
+	mov( eax, this.wButton_private.onUnHilite );			
+	mov( eax, this.wButton_private.onDisable );			
+	mov( eax, this.wButton_private.onSetFocus );			
+	mov( eax, this.wButton_private.onKillFocus );
+					
+	
+	
+	// Because wButton_t is an abstract class, the following assignments
+	// are for naught; however, best to initialize these fields with something
+	// just to be on the safe side.
+	
+	howl.setType( wButton_c );
+	mov( &wButton_t._VMT_, this._pVMT_ );
+	
+	pop( eax );
+	
+_end( wButton_t, create_wButton );
+
+
+
+
+
+// Accessor/mutator functions:
+
+
+method wButton_t.get_onPaint; @noframe;;
+_begin( wButton_t, get_onPaint );
+
+	mov( this.wButton_private.onPaint, eax );
+	ret();
+	 
+_end( wButton_t, get_onPaint );
+
+
+method wButton_t.get_onHilite; @noframe;;
+_begin( wButton_t, get_onHilite );
+
+	mov( this.wButton_private.onHilite, eax );
+	ret();
+	 
+_end( wButton_t, get_onHilite );
+
+
+method wButton_t.get_onUnHilite; @noframe;;
+_begin( wButton_t, get_onUnHilite );
+
+	mov( this.wButton_private.onUnHilite, eax );
+	ret();
+	 
+_end( wButton_t, get_onUnHilite );
+
+
+method wButton_t.get_onDisable; @noframe;;
+_begin( wButton_t, get_onDisable );
+
+	mov( this.wButton_private.onDisable, eax );
+	ret();
+	 
+_end( wButton_t, get_onDisable );
+
+
+method wButton_t.get_onSetFocus; @noframe;;
+_begin( wButton_t, get_onSetFocus );
+
+	mov( this.wButton_private.onSetFocus, eax );
+	ret();
+	 
+_end( wButton_t, get_onSetFocus );
+
+
+method wButton_t.get_onKillFocus; @noframe;;
+_begin( wButton_t, get_onKillFocus );
+
+	mov( this.wButton_private.onKillFocus, eax );
+	ret();
+	 
+_end( wButton_t, get_onKillFocus );
+
+
+
+
+
+// Mutator functions:
+
+
+method wButton_t.set_onPaint( onPaint:widgetProc );;
+_begin( wButton_t, set_onPaint );
+
+	push( onPaint );
+	pop( this.wButton_private.onPaint );
+	
+_end( wButton_t,set_onPaint );
+
+
+method wButton_t.set_onHilite( onHilite:widgetProc );;
+_begin( wButton_t, set_onHilite );
+
+	push( onHilite );
+	pop( this.wButton_private.onHilite );
+	
+_end( wButton_t,set_onHilite );
+
+
+method wButton_t.set_onUnHilite( onUnHilite:widgetProc );;
+_begin( wButton_t, set_onUnHilite );
+
+	push( onUnHilite );
+	pop( this.wButton_private.onUnHilite );
+	
+_end( wButton_t,set_onUnHilite );
+
+
+method wButton_t.set_onDisable( onDisable:widgetProc );;
+_begin( wButton_t, set_onDisable );
+
+	push( onDisable );
+	pop( this.wButton_private.onDisable );
+	
+_end( wButton_t,set_onDisable );
+
+
+method wButton_t.set_onSetFocus( onSetFocus:widgetProc );;
+_begin( wButton_t, set_onSetFocus );
+
+	push( onSetFocus );
+	pop( this.wButton_private.onSetFocus );
+	
+_end( wButton_t,set_onSetFocus );
+
+
+method wButton_t.set_onKillFocus( onKillFocus:widgetProc );;
+_begin( wButton_t, set_onKillFocus );
+
+	push( onKillFocus );
+	pop( this.wButton_private.onKillFocus );
+	
+_end( wButton_t,set_onKillFocus );
+
+
+
+
+
+
+
+
+method wButton_t.get_text( txt:string );;
+_begin( wButton_t, get_text );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.WM_GETTEXTLENGTH, 0, 0 );
+	mov( txt, ecx );
+	if( eax > (type str.strRec [ecx]).maxlen ) then
+	
+		raise( ex.StringOverflow );
+		
+	endif;
+	mov( eax, (type str.strRec [ecx]).length );
+	add( 1, eax );
+	w.SendMessage( this.handle, w.WM_GETTEXT, eax, txt );
+	
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wButton_t, get_text );
+
+
+method wButton_t.a_get_text;;
+_begin( wButton_t, a_get_text );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.WM_GETTEXTLENGTH, 0, 0 );
+	mov( eax, ecx );
+	str.alloc( eax );
+	mov( ecx, (type str.strRec [eax]).length );
+	add( 1, ecx );
+	push( eax );
+	w.SendMessage( this.handle, w.WM_GETTEXT, ecx, eax );
+	pop( eax );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wButton_t, a_get_text );
+
+
+method wButton_t.set_text( txt:string );;			
+_begin( wButton_t, set_text );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.WM_SETTEXT, 0, txt );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wButton_t, set_text );
+
+
+
+method wButton_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);;
+_begin( wButton_t, processMessage );
+
+ 	// It's a wButton_t object. The H.O. word of wParam
+	// contains the button notification code.  Call the
+	// appropriate button event handler (if installed)
+	// based on this event notification code.
+	//
+	// Note that the event handler pointers will contain
+	// NULL if there is no event handler installed.
+	
+	if( uMsg = w.WM_CTLCOLORBTN ) then 
+	
+		// This is destined for an editBox/passwdBox/textEdit control.
+		// But hwnd points at the parent window. We need to send the
+		// command to the editor's processMessage function.
+			
+		w.GetWindowLong( lParam, w.GWL_USERDATA );
+		if( eax = NULL ) then
+	
+			w.DefWindowProc( hwnd, uMsg, wParam, lParam );
+		
+		else
+
+			mov( this.wVisual_private.bkgBrush, eax );
+			
+		endif;
+		exit processMessage;
+
+	elseif( uMsg = w.WM_COMMAND ) then
+	
+
+		movzx( (type word wParam[2]), eax );
+		switch( eax )
+		
+			case( w.BN_CLICKED )
+			
+				if( this.wClickable_private.onClick <> NULL ) then
+				
+					this.wClickable_private.onClick( esi, wParam, lParam );
+					
+				endif;
+				
+			case( w.BN_PAINT )        
+			
+				if( this.wButton_private.onPaint <> NULL ) then
+				
+					this.wButton_private.onPaint( esi, wParam, lParam );
+					
+				endif;
+				
+			case( w.BN_HILITE )       
+
+				if( this.wButton_private.onHilite <> NULL ) then
+				
+					this.wButton_private.onHilite( esi, wParam, lParam );
+					
+				endif;
+				
+			case( w.BN_UNHILITE )     
+			
+				if( this.wButton_private.onUnHilite <> NULL ) then
+				
+					this.wButton_private.onUnHilite( esi, wParam, lParam );
+					
+				endif;
+				
+			case( w.BN_DISABLE )      
+			
+				if( this.wButton_private.onDisable <> NULL ) then
+				
+					this.wButton_private.onDisable( esi, wParam, lParam );
+					
+				endif;
+				
+			case( w.BN_DOUBLECLICKED )
+			
+				if( this.wClickable_private.onDblClick <> NULL ) then
+				
+					this.wClickable_private.onDblClick( esi, wParam, lParam );
+					
+				endif;
+				
+			case( w.BN_SETFOCUS )     
+			
+				if( this.wButton_private.onSetFocus <> NULL ) then
+				
+					this.wButton_private.onSetFocus( esi, wParam, lParam );
+					
+				endif;
+				
+			case( w.BN_KILLFOCUS )    
+			
+				if( this.wButton_private.onKillFocus <> NULL ) then
+				
+					this.wButton_private.onKillFocus( esi, wParam, lParam );
+					
+				endif;
+				
+					
+			default
+					
+				super.processMessage( hwnd, uMsg, wParam, lParam );
+			
+		endswitch;
+		
+	else
+	
+		super.processMessage( hwnd, uMsg, wParam, lParam );
+		
+	endif;
+		
+
+_end( wButton_t, processMessage );
+
+ 
+
+
+
+
+
+end	wButton_u;

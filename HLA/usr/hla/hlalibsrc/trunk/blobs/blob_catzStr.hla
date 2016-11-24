@@ -1,0 +1,52 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" )
+#include( "strings.hhf" )
+#include( "excepts.hhf" )
+
+// blob.catzStr-                                            
+//                                                       
+// Concatenates a zero-terminated string to the end of an
+// HLA blob.                                           
+
+procedure blob.catzStr( zsrc:zstring; dest:blob.blob ); 
+	@noframe;
+	
+begin catzStr;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	
+	zstr.len( zsrc );
+	blob._catbuf( dest, val zsrc, eax );
+				
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+			
+end catzStr;
+	
+end blobUnit;
+
+
+
+
+	
+

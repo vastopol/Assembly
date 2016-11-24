@@ -1,0 +1,1209 @@
+program strchar_test;
+#include( "stdlib.hhf" )
+												 
+	
+const		
+	exStr	:= $8000;
+	
+	base_c	:string[] :=
+					[
+						"Hello World",
+						"",
+						"hello world",
+						"Hello",
+						"world",
+						"  Hello World  ",
+						"  Hello world  "
+					];
+				
+	test_c	:char[] :=
+				[
+					'H',
+					'e',
+					'l',
+					'o',
+					' ',
+					'W',
+					'r',
+					'l',
+					'd'
+				];
+				
+				
+
+					 
+	chPos2Result_c	:int32[] :=
+					[
+						#for( i:= 0 to @elements(base_c)-1 )
+							#for( j := 0 to @elements(test_c)-1)
+
+								@index( base_c[i], 0, test_c[j] ),
+																	
+							#endfor
+						#endfor
+					];				 
+				
+
+					 
+	chPos3Result_c	:int32[] :=
+					[
+						#for( i:= 0 to @elements(base_c)-1 )
+							#for( j := 0 to @elements(test_c)-1)
+								#for( k := 0 to @length(base_c[i])-1) 
+
+									@index( base_c[i], k, test_c[j] ),
+									
+								#endfor								
+							#endfor
+						#endfor
+					];				 
+				
+				
+				
+
+					 
+	ichPos2Result_c	:int32[] :=
+					[
+						#for( i:= 0 to @elements(base_c)-1 )
+							#for( j := 0 to @elements(test_c)-1)
+
+								#if( test_c[j] = "" )
+									
+									-1,
+										
+								#else
+									 
+									@index
+									( 
+										@uppercase( base_c[i], 0 ), 
+										0, 
+										@uppercase( test_c[j], 0 )
+									),
+								
+								#endif
+																	
+							#endfor
+						#endfor
+					];				 
+				
+
+					 
+	ichPos3Result_c	:int32[] :=
+					[
+						#for( i:= 0 to @elements(base_c)-1 )
+							#for( j := 0 to @elements(test_c)-1)
+								#for( k := 0 to @length(base_c[i])-1) 
+
+									#if( test_c[j] = "" )
+										
+										-1,
+											
+									#else
+										 
+									@index
+									( 
+										@uppercase( base_c[i], 0 ), 
+										k, 
+										@uppercase( test_c[j], 0 )
+									),
+									
+									#endif
+									
+								#endfor								
+							#endfor
+						#endfor
+					];				 
+				
+				
+
+					 
+	rchPos2Result_c	:int32[] :=
+					[
+						#for( i:= 0 to @elements(base_c)-1 )
+							#for( j := 0 to @elements(test_c)-1)
+
+								#if( test_c[j] = "" )
+									
+									-1,
+										
+								#else
+									 
+									@rindex( base_c[i], 0, test_c[j] ),
+								
+								#endif
+																	
+							#endfor
+						#endfor
+					];				 
+				
+
+					 
+	rchPos3Result_c	:int32[] :=
+					[
+						#for( i:= 0 to @elements(base_c)-1 )
+							#for( j := 0 to @elements(test_c)-1)
+								#for( k := 0 to @length(base_c[i])-1) 
+
+									#if( test_c[j] = "" )
+										
+										-1,
+											
+									#else
+										 
+										@rindex( base_c[i], k, test_c[j] ),
+									
+									#endif
+									
+								#endfor								
+							#endfor
+						#endfor
+					];				 
+				
+				
+				
+
+					 
+	irchPos2Result_c	:int32[] :=
+					[
+						#for( i:= 0 to @elements(base_c)-1 )
+							#for( j := 0 to @elements(test_c)-1)
+
+								#if( test_c[j] = "" )
+									
+									-1,
+										
+								#else
+									 
+									@rindex
+									( 
+										@uppercase( base_c[i], 0 ), 
+										0, 
+										@uppercase( test_c[j], 0 )
+									),
+								
+								#endif
+																	
+							#endfor
+						#endfor
+					];				 
+				
+
+					 
+	irchPos3Result_c	:int32[] :=
+					[
+						#for( i:= 0 to @elements(base_c)-1 )
+							#for( j := 0 to @elements(test_c)-1)
+								#for( k := 0 to @length(base_c[i])-1) 
+
+									#if( test_c[j] = "" )
+										
+										-1,
+											
+									#else
+										 
+									@rindex
+									( 
+										@uppercase( base_c[i], 0 ), 
+										k, 
+										@uppercase( test_c[j], 0 )
+									),
+									
+									#endif
+									
+								#endfor								
+							#endfor
+						#endfor
+					];				 
+				
+				
+static
+	index		:int32;
+	index2		:int32;
+	index3		:int32;
+	index4		:int32;
+	length		:int32;
+	rslt		:int32;
+	boolrslt	:boolean;
+	intrslt		:int32;
+	shortStr	:str.strvar(2);
+	rsltStr		:str.strvar(256);
+	rsltPtr		:string;
+	
+	baseStr			:string[ @elements(base_c) ] := base_c;
+	testStr			:char[ @elements(test_c) ] := test_c;
+	
+	chpos2Result	:int32[ @elements( chPos2Result_c ) ] := chPos2Result_c;
+	chpos3Result	:int32[ @elements( chPos3Result_c ) ] := chPos3Result_c;
+	ichpos2Result	:int32[ @elements( ichPos2Result_c ) ] := ichPos2Result_c;
+	ichpos3Result	:int32[ @elements( ichPos3Result_c ) ] := ichPos3Result_c;
+	
+	rchpos2Result	:int32[ @elements( rchPos2Result_c ) ] := rchPos2Result_c;
+	rchpos3Result	:int32[ @elements( rchPos3Result_c ) ] := rchPos3Result_c;
+	irchpos2Result	:int32[ @elements( irchPos2Result_c ) ] := irchPos2Result_c;
+	irchpos3Result	:int32[ @elements( irchPos3Result_c ) ] := irchPos3Result_c;
+
+
+begin strchar_test;
+
+
+
+
+	try
+	
+		for( mov( 0, ecx); ecx < @elements(base_c); inc( ecx )) do
+		
+			mov( ecx, index );
+			for( mov( 0, edx ); edx < @elements(test_c); inc( edx )) do
+			
+				mov( edx, index2 );
+				str.chpos( baseStr[ ecx*4 ], testStr[ edx ] );
+				mov( eax, intrslt );
+				intmul( @elements(test_c), ecx, ebx );
+				add( edx, ebx );
+				cmp( eax, chpos2Result[ ebx*4 ] );
+				if( @ne ) then
+				
+					raise( exStr );
+					
+				endif;
+				
+				str.chpos2( baseStr[ ecx*4 ], testStr[ edx ] );
+				mov( eax, intrslt );
+				intmul( @elements(test_c), ecx, ebx );
+				add( edx, ebx );
+				cmp( eax, chpos2Result[ ebx*4 ] );
+				if( @ne ) then
+				
+					raise( exStr );
+					
+				endif;
+				
+			endfor;
+			
+		endfor;
+		
+	  exception( exStr )
+	  
+	  	mov( index, ecx );
+		mov( index2, edx );
+		intmul( @elements(test_c), ecx, ebx );
+		add( edx, ebx );
+	  	stderr.put
+		(
+			"***********************************************" nl
+			" Error in str.chpos2(1):" nl
+			" Index = ", index, nl
+			" Index2 = ", index2, nl
+			" Result = ", intrslt, nl
+			" chpos2( """, baseStr[ ecx*4 ], """, """,
+				  testStr[ edx ], """ ) should be ",
+				  chpos2Result[ ebx*4 ], nl
+			nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"***********************************************" nl
+			"str.chpos2(1) raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", index, nl,
+			"Index2 = ", index2, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;	
+	
+	try
+	
+		str.chpos2( NULL, ' ' );
+		stderr.put
+		( 
+			"***********************************************" nl
+			"str.chpos2(2) failed! Expected ex.AttemptToDerefNULL" nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  	
+		// This is expected
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"***********************************************" nl
+			"str.chpos2(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  	
+	endtry;
+	stderr.put( "str.chpos2 succeeded!" nl );
+
+
+			
+
+
+	////////
+			
+
+	try
+	
+		xor( ebx, ebx ); 
+		for( mov( 0, ecx); ecx < @elements(base_c); inc( ecx )) do
+		
+			mov( ecx, index );
+			for( mov( 0, edx ); edx < @elements(test_c); inc( edx )) do
+			
+				mov( edx, index2 );
+				str.length( baseStr[ ecx*4 ] );
+				mov( eax, length );
+				for
+				( 
+					mov( 0, esi ); 
+					esi < length; 
+					inc( esi )
+				) do
+				
+					mov( esi, index3 );
+					mov( ebx, index4 );
+					str.chpos( baseStr[ ecx*4 ], esi, testStr[ edx ] );
+					mov( eax, intrslt );
+					
+					cmp( eax, chpos3Result[ ebx*4 ] );
+					if( @ne ) then
+					
+						raise( exStr );
+						
+					endif;
+					
+					str.chpos3( baseStr[ ecx*4 ], esi, testStr[ edx ] );
+					mov( eax, intrslt );
+					cmp( eax, chpos3Result[ ebx*4 ] );
+					if( @ne ) then
+					
+						raise( exStr );
+						
+					endif;
+					inc( ebx );
+					
+				endfor;
+				
+			endfor;
+			
+		endfor;
+		
+	  exception( exStr )
+	  
+	  	mov( index, ecx );
+		mov( index2, edx );
+		mov( index3, esi );
+		mov( index4, ebx );		 
+	  	stderr.put
+		(
+			"***********************************************" nl
+			" Error in str.chpos3(1):" nl
+			" Index = ", index, nl
+			" Index2 = ", index2, nl
+			" Index3 = ", index3, nl
+			" Result = ", intrslt, nl
+			" index( """, baseStr[ ecx*4 ], """, ",
+				index3, ", """,
+				  testStr[ edx ], """ ) should be ",
+				  chpos3Result[ ebx*4 ], nl
+			nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"***********************************************" nl
+			"str.chpos3(1) raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", index, nl,
+			"Index2 = ", index2, nl 
+			"Index3 = ", index3, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;	
+	
+	try
+	
+		str.chpos3( NULL, 0, ' ' );
+		stderr.put
+		( 
+			"***********************************************" nl
+			"str.chpos3(2) failed! Expected ex.AttemptToDerefNULL" nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  	
+		// This is expected
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"***********************************************" nl
+			"str.chpos3(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  	
+	endtry;
+	stderr.put( "str.chpos3 succeeded!" nl );
+
+
+			
+			
+	////////
+		
+		
+		
+
+
+	try
+	
+		for( mov( 0, ecx); ecx < @elements(base_c); inc( ecx )) do
+		
+			mov( ecx, index );
+			for( mov( 0, edx ); edx < @elements(test_c); inc( edx )) do
+			
+				mov( edx, index2 );
+				str.ichpos( baseStr[ ecx*4 ], testStr[ edx ] );
+				mov( eax, intrslt );
+				intmul( @elements(test_c), ecx, ebx );
+				add( edx, ebx );
+				cmp( eax, ichpos2Result[ ebx*4 ] );
+				if( @ne ) then
+				
+					raise( exStr );
+					
+				endif;
+				
+				str.ichpos2( baseStr[ ecx*4 ], testStr[ edx ] );
+				mov( eax, intrslt );
+				intmul( @elements(test_c), ecx, ebx );
+				add( edx, ebx );
+				cmp( eax, ichpos2Result[ ebx*4 ] );
+				if( @ne ) then
+				
+					raise( exStr );
+					
+				endif;
+				
+			endfor;
+			
+		endfor;
+		
+	  exception( exStr )
+	  
+	  	mov( index, ecx );
+		mov( index2, edx );
+		intmul( @elements(test_c), ecx, ebx );
+		add( edx, ebx );
+	  	stderr.put
+		(
+			"***********************************************" nl
+			" Error in str.ichpos2(1):" nl
+			" Index = ", index, nl
+			" Index2 = ", index2, nl
+			" Result = ", intrslt, nl
+			" ichpos( """, baseStr[ ecx*4 ], """, """,
+				  testStr[ edx ], """ ) should be ",
+				  ichpos2Result[ ebx*4 ], nl
+			nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"***********************************************" nl
+			"str.ichpos2(1) raised an unexpected exception! eax=",
+			eax, nl 
+			"ichpos = ", index, nl,
+			"Index2 = ", index2, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;	
+	
+	
+	try
+	
+		str.ichpos2( NULL, ' ' );
+		stderr.put
+		( 
+			"***********************************************" nl
+			"str.ichpos2(2) failed! Expected ex.AttemptToDerefNULL" nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  	
+		// This is expected
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"***********************************************" nl
+			"str.ichpos2(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  	
+	endtry;
+	stderr.put( "str.ichpos2 succeeded!" nl );
+
+
+			
+
+
+	////////
+			
+
+	try
+	
+		xor( ebx, ebx ); 
+		for( mov( 0, ecx); ecx < @elements(base_c); inc( ecx )) do
+		
+			mov( ecx, index );
+			for( mov( 0, edx ); edx < @elements(test_c); inc( edx )) do
+			
+				mov( edx, index2 );
+				str.length( baseStr[ ecx*4 ] );
+				mov( eax, length );
+				for
+				( 
+					mov( 0, esi ); 
+					esi < length; 
+					inc( esi )
+				) do
+				
+					mov( esi, index3 );
+					mov( ebx, index4 );
+					str.ichpos( baseStr[ ecx*4 ], esi, testStr[ edx ] );
+					mov( eax, intrslt );
+					
+					cmp( eax, ichpos3Result[ ebx*4 ] );
+					if( @ne ) then
+					
+						raise( exStr );
+						
+					endif;
+					
+					str.ichpos3( baseStr[ ecx*4 ], esi, testStr[ edx ] );
+					mov( eax, intrslt );
+					cmp( eax, ichpos3Result[ ebx*4 ] );
+					if( @ne ) then
+					
+						raise( exStr );
+						
+					endif;
+					inc( ebx );
+					
+				endfor;
+				
+			endfor;
+			
+		endfor;
+		
+	  exception( exStr )
+	  
+	  	mov( index, ecx );
+		mov( index2, edx );
+		mov( index3, esi );
+		mov( index4, ebx );		 
+	  	stderr.put
+		(
+			"***********************************************" nl
+			" Error in str.ichpos3(1):" nl
+			" Index = ", index, nl
+			" Index2 = ", index2, nl
+			" Index3 = ", index3, nl
+			" Result = ", intrslt, nl
+			" index( """, baseStr[ ecx*4 ], """, ",
+				index3, ", """,
+				  testStr[ edx ], """ ) should be ",
+				  ichpos3Result[ ebx*4 ], nl
+			nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"***********************************************" nl
+			"str.ichpos3(1) raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", index, nl,
+			"Index2 = ", index2, nl 
+			"Index3 = ", index3, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;	
+	
+	try
+	
+		str.ichpos3( NULL, 0, ' ' );
+		stderr.put
+		( 
+			"***********************************************" nl
+			"str.ichpos3(2) failed! Expected ex.AttemptToDerefNULL" nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  	
+		// This is expected
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"***********************************************" nl
+			"str.ichpos3(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  	
+	endtry;
+	stderr.put( "str.ichpos3 succeeded!" nl );
+
+
+
+	////////
+		
+		
+		
+
+
+	try
+	
+		for( mov( 0, ecx); ecx < @elements(base_c); inc( ecx )) do
+		
+			mov( ecx, index );
+			for( mov( 0, edx ); edx < @elements(test_c); inc( edx )) do
+			
+				mov( edx, index2 );
+				str.rchpos( baseStr[ ecx*4 ], testStr[ edx ] );
+				mov( eax, intrslt );
+				intmul( @elements(test_c), ecx, ebx );
+				add( edx, ebx );
+				cmp( eax, rchpos2Result[ ebx*4 ] );
+				if( @ne ) then
+				
+					raise( exStr );
+					
+				endif;
+				
+				str.rchpos2( baseStr[ ecx*4 ], testStr[ edx ] );
+				mov( eax, intrslt );
+				intmul( @elements(test_c), ecx, ebx );
+				add( edx, ebx );
+				cmp( eax, rchpos2Result[ ebx*4 ] );
+				if( @ne ) then
+				
+					raise( exStr );
+					
+				endif;
+				
+			endfor;
+			
+		endfor;
+		
+	  exception( exStr )
+	  
+	  	mov( index, ecx );
+		mov( index2, edx );
+		intmul( @elements(test_c), ecx, ebx );
+		add( edx, ebx );
+	  	stderr.put
+		(
+			"***********************************************" nl
+			" Error in str.rchpos2(1):" nl
+			" Index = ", index, nl
+			" Index2 = ", index2, nl
+			" Result = ", intrslt, nl
+			" rchpos( """, baseStr[ ecx*4 ], """, """,
+				  testStr[ edx ], """ ) should be ",
+				  rchpos2Result[ ebx*4 ], nl
+			nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"***********************************************" nl
+			"str.rchpos2(1) raised an unexpected exception! eax=",
+			eax, nl 
+			"index = ", index, nl,
+			"Index2 = ", index2, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;	
+	
+	try
+	
+		str.rchpos2( NULL, ' ' );
+		stderr.put
+		( 
+			"***********************************************" nl
+			"str.rchpos2(2) failed! Expected ex.AttemptToDerefNULL" nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  	
+		// This is expected
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"***********************************************" nl
+			"str.rchpos2(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  	
+	endtry;
+	stderr.put( "str.rchpos2 succeeded!" nl );
+
+
+			
+
+
+	////////
+			
+
+	try
+	
+		xor( ebx, ebx ); 
+		for( mov( 0, ecx); ecx < @elements(base_c); inc( ecx )) do
+		
+			mov( ecx, index );
+			for( mov( 0, edx ); edx < @elements(test_c); inc( edx )) do
+			
+				mov( edx, index2 );
+				str.length( baseStr[ ecx*4 ] );
+				mov( eax, length );
+				for
+				( 
+					mov( 0, esi ); 
+					esi < length; 
+					inc( esi )
+				) do
+				
+					mov( esi, index3 );
+					mov( ebx, index4 );
+					str.rchpos( baseStr[ ecx*4 ], esi, testStr[ edx ] );
+					mov( eax, intrslt );
+					
+					cmp( eax, rchpos3Result[ ebx*4 ] );
+					if( @ne ) then
+					
+						raise( exStr );
+						
+					endif;
+					
+					str.rchpos3( baseStr[ ecx*4 ], esi, testStr[ edx ] );
+					mov( eax, intrslt );
+					cmp( eax, rchpos3Result[ ebx*4 ] );
+					if( @ne ) then
+					
+						raise( exStr );
+						
+					endif;
+					inc( ebx );
+					
+				endfor;
+				
+			endfor;
+			
+		endfor;
+		
+	  exception( exStr )
+	  
+	  	mov( index, ecx );
+		mov( index2, edx );
+		mov( index3, esi );
+		mov( index4, ebx );		 
+	  	stderr.put
+		(
+			"***********************************************" nl
+			" Error in str.rchpos3(1):" nl
+			" Index = ", index, nl
+			" Index2 = ", index2, nl
+			" Index3 = ", index3, nl
+			" Result = ", intrslt, nl
+			" rchpos( """, baseStr[ ecx*4 ], """, ",
+				index3, ", """,
+				  testStr[ edx ], """ ) should be ",
+				  rchpos3Result[ ebx*4 ], nl
+			nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"***********************************************" nl
+			"str.rchpos3(1) raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", index, nl,
+			"Index2 = ", index2, nl 
+			"Index3 = ", index3, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;	
+	
+	try
+	
+		str.rchpos3( NULL, 0, ' ' );
+		stderr.put
+		( 
+			"***********************************************" nl
+			"str.rchpos3(2) failed! Expected ex.AttemptToDerefNULL" nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  	
+		// This is expected
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"***********************************************" nl
+			"str.rchpos3(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  	
+	endtry;
+	stderr.put( "str.rchpos3 succeeded!" nl );
+
+
+			
+			
+	////////
+		
+		
+		
+
+
+	try
+	
+		for( mov( 0, ecx); ecx < @elements(base_c); inc( ecx )) do
+		
+			mov( ecx, index );
+			for( mov( 0, edx ); edx < @elements(test_c); inc( edx )) do
+			
+				mov( edx, index2 );
+				str.irchpos( baseStr[ ecx*4 ], testStr[ edx ] );
+				mov( eax, intrslt );
+				intmul( @elements(test_c), ecx, ebx );
+				add( edx, ebx );
+				cmp( eax, irchpos2Result[ ebx*4 ] );
+				if( @ne ) then
+				
+					raise( exStr );
+					
+				endif;
+				
+				str.irchpos2( baseStr[ ecx*4 ], testStr[ edx ] );
+				mov( eax, intrslt );
+				intmul( @elements(test_c), ecx, ebx );
+				add( edx, ebx );
+				cmp( eax, irchpos2Result[ ebx*4 ] );
+				if( @ne ) then
+				
+					raise( exStr );
+					
+				endif;
+				
+			endfor;
+			
+		endfor;
+		
+	  exception( exStr )
+	  
+	  	mov( index, ecx );
+		mov( index2, edx );
+		intmul( @elements(test_c), ecx, ebx );
+		add( edx, ebx );
+	  	stderr.put
+		(
+			"***********************************************" nl
+			" Error in str.irchpos2(1):" nl
+			" Index = ", index, nl
+			" Index2 = ", index2, nl
+			" Result = ", intrslt, nl
+			" irchpos( """, baseStr[ ecx*4 ], """, """,
+				  testStr[ edx ], """ ) should be ",
+				  irchpos2Result[ ebx*4 ], nl
+			nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"***********************************************" nl
+			"str.irchpos2(1) raised an unexpected exception! eax=",
+			eax, nl 
+			"irchpos = ", index, nl,
+			"Index2 = ", index2, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;	
+	
+	try
+	
+		str.irchpos2( NULL, ' ' );
+		stderr.put
+		( 
+			"***********************************************" nl
+			"str.irchpos2(2) failed! Expected ex.AttemptToDerefNULL" nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  	
+		// This is expected
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"***********************************************" nl
+			"str.irchpos2(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  	
+	endtry;
+	stderr.put( "str.irchpos2 succeeded!" nl );
+
+
+			
+
+
+	////////
+			
+
+	try
+	
+		xor( ebx, ebx ); 
+		for( mov( 0, ecx); ecx < @elements(base_c); inc( ecx )) do
+		
+			mov( ecx, index );
+			for( mov( 0, edx ); edx < @elements(test_c); inc( edx )) do
+			
+				mov( edx, index2 );
+				str.length( baseStr[ ecx*4 ] );
+				mov( eax, length );
+				for
+				( 
+					mov( 0, esi ); 
+					esi < length; 
+					inc( esi )
+				) do
+				
+					mov( esi, index3 );
+					mov( ebx, index4 );
+					str.irchpos( baseStr[ ecx*4 ], esi, testStr[ edx ] );
+					mov( eax, intrslt );
+					
+					cmp( eax, irchpos3Result[ ebx*4 ] );
+					if( @ne ) then
+					
+						raise( exStr );
+						
+					endif;
+					
+					str.irchpos3( baseStr[ ecx*4 ], esi, testStr[ edx ] );
+					mov( eax, intrslt );
+					cmp( eax, irchpos3Result[ ebx*4 ] );
+					if( @ne ) then
+					
+						raise( exStr );
+						
+					endif;
+					inc( ebx );
+					
+				endfor;
+				
+			endfor;
+			
+		endfor;
+		
+	  exception( exStr )
+	  
+	  	mov( index, ecx );
+		mov( index2, edx );
+		mov( index3, esi );
+		mov( index4, ebx );		 
+	  	stderr.put
+		(
+			"***********************************************" nl
+			" Error in str.irchpos3(1):" nl
+			" Index = ", index, nl
+			" Index2 = ", index2, nl
+			" Index3 = ", index3, nl
+			" Result = ", intrslt, nl
+			" index( """, baseStr[ ecx*4 ], """, ",
+				index3, ", """,
+				  testStr[ edx ], """ ) should be ",
+				  irchpos3Result[ ebx*4 ], nl
+			nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"***********************************************" nl
+			"str.irchpos3(1) raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", index, nl,
+			"Index2 = ", index2, nl 
+			"Index3 = ", index3, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;	
+	
+	try
+	
+		str.irchpos3( NULL, 0, ' ' );
+		stderr.put
+		( 
+			"***********************************************" nl
+			"str.irchpos3(2) failed! Expected ex.AttemptToDerefNULL" nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  	
+		// This is expected
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"***********************************************" nl
+			"str.irchpos3(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  	
+	endtry;
+	stderr.put( "str.irchpos3 succeeded!" nl );
+
+			
+end strchar_test;
+
+													

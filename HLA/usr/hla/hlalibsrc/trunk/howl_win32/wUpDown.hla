@@ -1,0 +1,269 @@
+unit wUpDown_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( wUpDown_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wUpDown objects here:
+
+
+
+procedure wUpDown_t.create_wUpDown
+(
+	wudName		:string;
+	parent		:dword;
+	style		:dword; 									
+	x			:dword; 
+	y			:dword;
+	width		:dword;
+	height		:dword;
+	lowerRange	:dword;
+	upperRange	:dword;
+	initialPosn	:dword;
+	onClick		:widgetProc 
+);;
+	
+_begin( wUpDown_t, create_wUpDown );
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wUpDown_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+
+	// We need to create a window that will hold this object.
+
+	(type wClickable_t [esi]).create_wClickable
+	(
+		wudName,
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height,
+		onClick
+	);
+	mov( cl, this.wBase_private.onHeap );
+	
+	mov( upperRange, eax );
+	mov( eax, this.wUpDown_private.upperRange );
+	
+	mov( lowerRange, eax );
+	mov( eax, this.wUpDown_private.lowerRange );
+	
+	mov( w.WS_CHILD | w.WS_BORDER | w.WS_VISIBLE, eax );
+	or( style, eax );
+	mov( eax, this.wVisual_private.style );
+	w.CreateUpDownControl
+	(
+		eax,
+		x,
+		y,
+		width,
+		height,
+		parent,
+		this.wBase_private.objectID,
+		howl.howlInstance,
+		NULL,
+		upperRange,
+		lowerRange,
+		initialPosn
+	);
+	mov( eax, this.handle );
+	w.SetWindowLong( eax, w.GWL_USERDATA, esi );
+	
+	// Initialize the type string field:
+		
+	howl.setType( wUpDown_c );
+	
+	// Initialize the VMT pointer:
+	
+	mov( &wUpDown_t._VMT_, this._pVMT_ );
+			   
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wUpDown_t, create_wUpDown );
+
+
+
+
+
+
+
+
+method wUpDown_t.get_lowerRange;;
+_begin( wUpDown_t, get_lowerRange );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.UDM_GETRANGE, 0, 0 );
+	shr( 16, eax );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wUpDown_t, get_lowerRange );
+
+
+
+method wUpDown_t.get_upperRange;;
+_begin( wUpDown_t, get_upperRange );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.UDM_GETRANGE, 0, 0 );
+	and( $FFFF, eax );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wUpDown_t, get_upperRange );
+
+
+
+
+method wUpDown_t.get_position;;
+_begin( wUpDown_t, get_position );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.UDM_GETPOS, 0, 0 );
+	and( $FFFF, eax );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wUpDown_t, get_position );
+
+
+
+
+method wUpDown_t.set_lowerRange( lowerRange:word );;
+_begin( wUpDown_t, set_lowerRange );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.UDM_GETRANGE, 0, 0 );
+	movzx( lowerRange, ecx );
+	shl( 16, ecx );
+	or( ecx, eax );
+	w.SendMessage( this.handle, w.UDM_SETRANGE, 0, eax );
+		
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wUpDown_t, set_lowerRange );
+
+
+
+method wUpDown_t.set_upperRange( upperRange:word );;
+_begin( wUpDown_t, set_upperRange );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.UDM_GETRANGE, 0, 0 );
+	movzx( upperRange, ecx );
+	and( $FFFF_0000, eax );
+	or( ecx, eax );
+	w.SendMessage( this.handle, w.UDM_SETRANGE, 0, eax );
+		
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wUpDown_t, set_upperRange );
+
+
+
+method wUpDown_t.set_position( position:word );;
+_begin( wUpDown_t, set_position );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	movzx( position, eax );
+	w.SendMessage( this.handle, w.UDM_SETPOS, 0, eax );
+		
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wUpDown_t, set_position );
+
+
+
+method wUpDown_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);;
+_begin( wUpDown_t, processMessage );
+
+	mov( uMsg, eax );
+	if( eax = w.WM_NOTIFY ) then
+	
+		mov( lParam, ebx );
+		mov( (type w.NMHDR [ebx]).code, ecx );
+		
+		// See if they clicked on a TAB in the window:
+		
+		if( ecx = w.UDN_DELTAPOS ) then
+		
+			// Get a pointer to the corresponding wUpDown_t object:
+			
+			mov( lParam, ebx );
+			w.GetWindowLong( (type w.NMHDR [ebx]).hwndFrom, w.GWL_USERDATA );
+			mov( eax, esi );
+			if( this.wClickable_private.onClick <> NULL ) then
+
+				this.wClickable_private.onClick( esi, wParam, lParam );
+				exit processMessage;
+				
+			endif;
+			
+		endif;
+		
+	endif;
+	w.DefWindowProc( hwnd, uMsg, wParam, lParam );
+
+_end( wUpDown_t, processMessage );
+
+
+end	wUpDown_u;

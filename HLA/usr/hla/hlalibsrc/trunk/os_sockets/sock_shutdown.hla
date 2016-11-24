@@ -1,0 +1,117 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit sockets;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#include( "sockets.hhf" )
+#include( "excepts.hhf" )
+#include( "os.hhf" )
+
+#if( os.win32 )
+
+	// Note: must explicitly include wsock32.lib under Windows
+
+	#include( "w.hhf" )
+
+#elseif( os.linux )
+	#include( "linux.hhf" )
+#elseif( os.freeBSD )
+
+	#include( "bsd.hhf" )
+	
+	procedure _shutdown( s:dword; how:dword );
+		@cdecl;
+		@external( "shutdown" );
+	
+#elseif( os.macOS )
+	#include( "mac.hhf" )
+#else
+	#error( "shutdown.hla: unsupported OS" )
+#endif
+
+
+procedure sock.shutdown
+( 
+	s		:dword; 
+	how		:dword 
+);
+begin shutdown;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	
+	#if( os.win32 )
+	
+		push( ecx );
+		push( edx );
+		
+		w.shutdown( s, how );
+		cmp( eax, w.SOCKET_ERROR );
+		je WinSocketError;
+		
+		pop( edx );
+		pop( ecx );
+		
+	#elseif( os.linux )
+	
+		linux.shutdown( s, how );
+		test( eax, eax );
+		js LinuxSocketError;
+		
+	#elseif( os.freeBSD )
+	
+		push( ecx );
+		push( edx );
+		_shutdown( s, how );
+		add( 8, esp );
+		cmp( eax, -1 );
+		je SocketError;
+		pop( edx );
+		pop( ecx );
+		
+	#elseif( os.macOS )
+	
+		mac.shutdown( s, how );
+		jc SocketError;
+		
+	#else
+	
+		#error( "Unknown OS!" );
+		
+	#endif	
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+#if( os.win32 )
+WinSocketError:
+	w.WSAGetLastError();
+	mov( eax, edx );
+#endif
+	
+#if( os.linux )
+LinuxSocketError:
+	neg( eax );
+	mov( eax, edx );
+#endif
+
+SocketError:
+	raise( ex.SocketError );
+	
+end shutdown;
+
+
+end sockets;

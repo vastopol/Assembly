@@ -1,0 +1,168 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit StdInput;
+#include( "../include/stdinunit.hhf" )
+#include( "os.hhf" )
+
+
+
+
+/***************************************************/
+/*                                                 */
+/* ReadLn-                                         */
+/*                                                 */
+/* For the buffered input routines.                */
+/* This routine reads a new line of text (up to    */
+/* 1023 characters) from the standard input device */
+/* and stores these characters into the stdin      */
+/* internal _input_buffer_ array.  This routine    */
+/* also initializes the _input_buffer_index_       */
+/* and _needs_input_ variables.                    */
+/*                                                 */
+/***************************************************/
+
+procedure ReadLn; 
+	@noframe;
+	@nodisplay;
+	@noalignstack;
+
+// Ugly static variables means this code is not reentrant, but then,
+// we couldn't have two separate threads simultaneously reading from
+// the stdin, anyway.
+
+static
+	lastWasEOF	:boolean := false;
+	lastWasCR	:boolean := false;
+	inputChar	:char;
+	
+begin ReadLn;
+
+	push( eax );
+	push( ecx );
+	mov( -1, ecx );		// Becomes 0 on first iteration.
+	repeatUntilEOLN:
+
+		add( 1, ecx );	
+		stdin.read( inputChar, 1 );
+		test( eax, eax );			// Check for EOF
+		mov( inputChar, al );
+		jnz notAtEOF;
+
+			// If we hit end of file, then return a linefeed
+			// on the first EOF and raise EOF on the second.
+
+			cmp( lastWasEOF, false );
+			jne raiseEOF;
+			
+				mov( stdio.lf, al );
+				mov( true, lastWasEOF );
+				jmp processChar;
+
+		notAtEOF:
+			mov( false, lastWasEOF );
+		
+		processChar:
+		mov( al, InputBuffer[ecx] );
+
+		// If the last character we read was a CR, then set
+		// lastWasCR to true so we'll ignore the next character
+		// if it is a LF.
+		//
+		// Technically, this is a win32-ism, but it probably
+		// doesn't hurt to do this for the *NIX OSes as well.
+
+		cmp( al, stdio.cr );
+		jne tryLF;
+
+			// Carriage return is a special case.
+			// If the input is coming from the console,
+			// we treat CR like the end of line. But if
+			// we're reading data from a file, then we
+			// need to read one more character to see if
+			// it is a LF (because we don't want to leave
+			// the LF around for the next read operation).
+			//
+			// Technically, this is a win32-ism, but it probably
+			// doesn't hurt to do this for the *NIX OSes as well.
+
+			mov( true, lastWasCR );
+			jmp readlnDone;
+
+
+		// Bail if we encounter a LF:
+
+		tryLF:
+			cmp( al, stdio.lf );		
+			jne chkIndex;
+
+				// If the current character is a LF and the
+				// last character was a CR, then quietly ignore
+				// this LF because we've already processed the
+				// end of the line.
+
+				cmp( lastWasCR, false );
+				je readlnDone;
+
+				// At this point, the last character was a LF, not
+				// a CR, so set lastWasCR to false:
+
+				mov( false, lastWasCR );
+				sub( 1, ecx );			// Don't use this LF char.
+				jmp repeatUntilEOLN; 
+
+		// Bail if buffer overflow:
+
+		chkIndex:
+			mov( false, lastWasCR );	// At this point, the last char
+			cmp( ecx, 1022 );			//  was not a CR.
+			jb repeatUntilEOLN;
+
+
+	readlnDone:
+
+	// Save away the character count:
+
+	mov( ecx, CharsInBuf );
+	
+	// Zero terminate the input buffer (other stdlib code depends
+	// upon this buffer being zero terminated).
+	
+	mov( 0, InputBuffer[ ecx ] );
+	
+	// Initialize the index into the input buffer.
+	
+	mov( 0, InputIndex );
+	
+	// Initialize the NeedsInput variable with false
+	// since we just read some input (even if it was
+	// the empty string we should do this).
+	
+	mov( false, NeedsInput );
+	pop( ecx );
+	pop( eax );
+	ret();
+	
+raiseEOF:
+	raise( ex.EndOfFile );
+	
+end ReadLn;
+
+end StdInput;
+
+
+
+
+	
+

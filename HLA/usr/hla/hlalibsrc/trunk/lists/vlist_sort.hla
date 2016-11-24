@@ -1,0 +1,306 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+//
+// Changes since 7/12/2006:
+//
+// Author         Date         Comments
+// -----------------------------------------------------
+// Magnus Undin   2009-07-13   Fixed quicksort routine (in-place quicksort) 
+//                             and optimized code
+//
+
+unit lists;
+#include( "lists.hhf" )
+
+?@nodisplay := true;
+?@noframe := true;
+
+
+// To prevent a duplicate symbol error under windows
+// when making all symbols global:
+
+procedure dummy; @noframe;
+begin dummy;
+end dummy;
+
+// list_t.sort-
+//
+// This function sorts the nodes in a list in ascending/descending order
+
+
+method virtualList_t.sort;
+var
+	headNode    :node_t;
+	tailNode    :node_t;
+	thisSave    :dword;
+	eaxSave     :dword; 
+	
+	
+	procedure quicksort( lowPtr:nodePtr_t; highPtr:nodePtr_t; low:int32; high:int32  );
+	var
+		ecxSave     :dword;
+		thisSave	:dword;
+		i           :int32; 
+		j           :int32;
+		
+	begin quicksort;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		mov( ecx, ecxSave );
+		mov( esi, thisSave );
+		
+		// Special cases for lists with 2 nodes (just to
+		// improve performance by reducing recursive calls)
+		
+		mov( low, eax );
+		add( 1, eax );
+		cmp( eax, high );
+		jb threeOrMoreNodes;
+		
+			// Fast sort of two nodes:
+			
+			mov( lowPtr, ebx );
+			mov( highPtr, edx );
+
+			(type node_t [ebx]).cmpNodes( edx );
+			jb endQuickSort;
+				
+				mov( thisSave, esi );
+				this.xchgNodes( ebx, edx );
+				jmp endQuickSort;
+			
+		threeOrMoreNodes:
+		
+		// Choose a pivot element.
+		// We'll pick the middle element of the list
+		// and use that as our pivot node:
+		
+		mov( lowPtr, ecx );
+		mov( ecx, ebx );
+		mov( highPtr, edx );
+
+		mov( high, edi );
+		mov( low, eax );
+		mov( eax, i );
+		mov( eax, j );
+		add( edi, eax );
+		shr( 1, eax );
+		sub( low, eax );
+		jz foundPivot;
+		
+			findPivot:
+				mov( (type node_t [ecx]).Next, ecx );
+				sub( 1, eax );
+				jnz findPivot;
+			
+		foundPivot:		
+		
+		// swap pivot node with the last element
+		mov( thisSave, esi );
+		this.xchgNodes( edx, ecx );
+
+            // EDX must point at lowPtr in the beginning
+		mov (lowPtr, edx);	
+
+		// update highPtr with pivot node
+		mov (ecx, highPtr);
+
+		// EBX points at the low element (ith element)
+		// ECX points at the pivot element
+		// EDX points at the store element (jth element)
+		// Repeat the following until i = high
+		
+		for (mov (low, eax); eax < high; inc(eax)) do
+		
+			// Scan from low to the pivot and find the
+			// first value that is less than or equals 
+                  // the pivot value:
+			
+			(type node_t [ebx]).cmpNodes( ecx );
+			ja endOfForLoop;
+				
+			// do not swap if both nodes are the same
+			cmp (ebx, edx);
+			je noSwap;
+
+				mov( thisSave, esi );
+				
+				this.xchgNodes( ebx, edx );
+
+				// Now that we've swapped the node positions in the
+				// list, we need to swap the pointers because the
+				// pointers need to refer to the same indexes
+				// into the list:
+
+				cmp( ebx, lowPtr );
+				jne tryEDXLow;
+					mov( edx, lowPtr );
+					jmp notLowPtr;
+					
+				tryEDXLow:
+				cmp( edx, lowPtr );
+				jne notLowPtr;
+					mov( ebx, lowPtr );
+					
+				notLowPtr:
+				
+				xchg( ebx, edx );
+			
+			noSwap:
+				
+				// get next store node and increase store index
+				inc(j);
+				mov( (type node_t [edx]).Next, edx );
+							
+			endOfForLoop:
+			
+                  // get next element to compare with pivot element
+			mov( (type node_t [ebx]).Next, ebx );
+					
+
+		endfor;
+
+		
+		// swap back our pivot node
+		mov( thisSave, esi );
+		this.xchgNodes( edx, ecx );
+
+		cmp( edx, lowPtr );
+		jne wasNotLowPtr;
+			mov( ecx, lowPtr );
+			
+		wasNotLowPtr:	
+		mov(edx, highPtr);
+
+
+		// If there are two or more items in the 1st partition,
+		// then sort that partition:
+		
+		mov( j, eax );
+		sub( low, eax );
+		cmp( eax, 2 );
+		jb noLowQS;
+		
+			mov( j, eax );
+			sub( 1, eax );
+			mov( (type node_t [ecx]).Prev, edi );
+			mov( thisSave, esi );
+			quicksort( lowPtr, edi, low, eax );
+						
+		noLowQS:
+		
+	
+		// If there are two or more items in the 2nd partition,
+		// then sort that partition:
+		
+		mov( high, eax );
+		sub( j, eax );
+		cmp( eax, 2 );
+		jb noHighQS;
+		
+			mov( j, eax );
+			add( 1, eax );
+			mov( (type node_t [ecx]).Next, edi );
+			mov( thisSave, esi );
+			quicksort( edi, highPtr, eax, high );
+			
+		noHighQS: 
+		
+	endQuickSort:
+		mov( thisSave, esi );	
+		mov( ecxSave, ecx );
+		leave();
+		ret( _parms_ );	
+		
+	end quicksort;
+	
+begin sort;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( esi, thisSave );
+	mov( eax, eaxSave );
+		
+	// Only sort non-empty/non-singleton lists:
+	
+	cmp( this.Cnt, 2 );
+	je twoElementList;
+	jb noSort;
+	
+		// When sorting a 3-element or larger list,
+		// create two dummy nodes for the head and
+		// tail in order to make list processing
+		// a whole lot easier:
+		
+		push( ebx );
+		push( edx );
+		mov( this.Head, eax );
+		mov( eax, headNode.Next );
+		mov( NULL, headNode.Prev );
+		lea( ebx, headNode );
+		mov( ebx, (type node_t [eax]).Prev );
+		mov( ebx, this.Head );
+		
+		mov( this.Tail, eax );
+		mov( eax, tailNode.Prev );
+		mov( NULL, tailNode.Next );
+		lea( edx, tailNode );
+		mov( edx, (type node_t [eax]).Next );
+		mov( edx, this.Tail );
+		
+		mov( this.Cnt, eax );
+		sub( 1, eax );
+		quicksort( (type node_t [ebx]).Next, (type node_t [edx]).Prev, 0, eax );
+		
+		// Because the first and/or last nodes could
+		// have gotten swapped, we need to update the
+		// lists head and tail pointers appropriate.
+		
+		mov( thisSave, esi );
+		mov( headNode.Next, eax );
+		mov( eax, this.Head );
+		mov( NULL, (type node_t [eax]).Prev );
+		
+		mov( tailNode.Prev, eax );
+		mov( eax, this.Tail );
+		mov( NULL, (type node_t [eax]).Next );
+		
+		pop( edx );
+		pop( ebx );
+		jmp noSort;
+		
+	twoElementList:
+		
+		// Handle two element lists as a special case
+		
+		mov( esi, thisSave );
+		mov( this.Head, eax );
+		this.Tail.cmpNodes( eax );
+		jnb noSort;
+		
+			mov( thisSave, esi );
+			this.xchgNodes( this.Head, this.Tail ); 
+		
+	noSort:	
+	mov( eaxSave, eax );
+	mov( thisSave, esi );
+	leave();
+	ret();
+	
+end sort;
+
+
+
+end lists;

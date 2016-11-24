@@ -1,0 +1,88 @@
+program fputcset_test;
+#include( "stdlib.hhf" )
+
+static
+	handle	:dword;
+	c		:cset := {};
+	
+begin fputcset_test;
+
+
+	fileio.openNew( "fputcset.txt" );
+	mov( eax, handle );
+
+	fileio.putcset( handle, c );
+	fileio.newln( handle );
+
+	or( 1, (type dword c) );
+	fileio.putcset( handle, c );
+	fileio.newln( handle );
+
+	for( mov( 0, ecx ); ecx < 31; inc( ecx )) do
+
+		shl( 1, (type dword c) );
+		fileio.putcset( handle, c );
+		fileio.newln( handle );
+
+	endfor;
+	mov( 0, (type dword c) );
+
+	or( 1, (type dword c[4]) );
+	fileio.putcset( handle, c );
+	fileio.newln( handle );
+	for( mov( 0, ecx ); ecx < 31; inc( ecx )) do
+
+		shl( 1, (type dword c[4]) );
+		fileio.putcset( handle, c );
+		fileio.newln( handle );
+
+	endfor;
+	mov( 0, (type dword c[4]) );
+
+
+
+	or( 1, (type dword c[8]) );
+	fileio.putcset( handle, c );
+	fileio.newln( handle );
+	for( mov( 0, ecx ); ecx < 31; inc( ecx )) do
+
+		shl( 1, (type dword c[8]) );
+		fileio.putcset( handle, c );
+		fileio.newln( handle );
+
+	endfor;
+	mov( 0, (type dword c[8]) );
+
+
+
+	or( 1, (type dword c[12]) );
+	fileio.putcset( handle, c );
+	fileio.newln( handle );
+	for( mov( 0, ecx ); ecx < 31; inc( ecx )) do
+
+		shl( 1, (type dword c[12]) );
+		fileio.putcset( handle, c );
+		fileio.newln( handle );
+
+	endfor;
+	mov( 0, (type dword c[12]) );
+
+	or( 1, (type dword c[4]));
+	fileio.putcset( handle, c );
+	fileio.newln( handle );
+	for( mov( 1, ecx ); ecx < 96; inc( ecx )) do
+
+		shl( 1, (type dword c[4]) );
+		rcl( 1, (type dword c[8]) );
+		rcl( 1, (type dword c[12]) );
+		or( 1, (type dword c[4]) );
+		fileio.putcset( handle, c );
+		fileio.newln( handle );
+
+	endfor;
+
+	fileio.close( handle );
+
+end fputcset_test;
+
+													

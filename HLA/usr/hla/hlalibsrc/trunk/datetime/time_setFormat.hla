@@ -1,0 +1,51 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#includeOnce( "datetime.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "../include/datetime_private.hhf" )
+
+// date.setFormat-
+//
+//	Sets the global "date.DateFormat" value to a user-specified
+// format. Used to control date to string conversions.
+
+procedure time.setFormat( f:time.OutputFormat ); 
+	@nodisplay; 
+	@noframe;
+begin setFormat;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	mov( f, al );
+	
+	// Raise an exception if the value is out of range:
+	
+	cmp( al, time.badTimeFormat );
+	jae badTime;
+	
+	_hla.set_TimeFormat( al );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+badTime:
+	raise( ex.InvalidTimeFormat );
+	
+end setFormat;
+	
+	
+end DateTime;			

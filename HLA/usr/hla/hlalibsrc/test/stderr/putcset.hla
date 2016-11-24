@@ -1,0 +1,82 @@
+program fputcset_test;
+#include( "stdlib.hhf" )
+
+static
+	c		:cset := {};
+	
+begin fputcset_test;
+
+
+	stderr.putcset( c );
+	stderr.newln();
+
+	or( 1, (type dword c) );
+	stderr.putcset( c );
+	stderr.newln();
+
+	for( mov( 0, ecx ); ecx < 31; inc( ecx )) do
+
+		shl( 1, (type dword c) );
+		stderr.putcset( c );
+		stderr.newln();
+
+	endfor;
+	mov( 0, (type dword c) );
+
+	or( 1, (type dword c[4]) );
+	stderr.putcset( c );
+	stderr.newln();
+	for( mov( 0, ecx ); ecx < 31; inc( ecx )) do
+
+		shl( 1, (type dword c[4]) );
+		stderr.putcset( c );
+		stderr.newln();
+
+	endfor;
+	mov( 0, (type dword c[4]) );
+
+
+
+	or( 1, (type dword c[8]) );
+	stderr.putcset( c );
+	stderr.newln();
+	for( mov( 0, ecx ); ecx < 31; inc( ecx )) do
+
+		shl( 1, (type dword c[8]) );
+		stderr.putcset( c );
+		stderr.newln();
+
+	endfor;
+	mov( 0, (type dword c[8]) );
+
+
+
+	or( 1, (type dword c[12]) );
+	stderr.putcset( c );
+	stderr.newln();
+	for( mov( 0, ecx ); ecx < 31; inc( ecx )) do
+
+		shl( 1, (type dword c[12]) );
+		stderr.putcset( c );
+		stderr.newln();
+
+	endfor;
+	mov( 0, (type dword c[12]) );
+
+	or( 1, (type dword c[4]));
+	stderr.putcset( c );
+	stderr.newln();
+	for( mov( 1, ecx ); ecx < 96; inc( ecx )) do
+
+		shl( 1, (type dword c[4]) );
+		rcl( 1, (type dword c[8]) );
+		rcl( 1, (type dword c[12]) );
+		or( 1, (type dword c[4]) );
+		stderr.putcset( c );
+		stderr.newln();
+
+	endfor;
+
+end fputcset_test;
+
+													

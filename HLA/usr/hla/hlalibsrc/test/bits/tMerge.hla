@@ -1,0 +1,281 @@
+program merge_test;
+#include( "stdlib.hhf" )
+
+type
+	merge_t:
+		record
+			even		:dword;
+			odd			:dword;
+			resultValue	:qword;
+		endrecord;
+		
+#macro spreadBits(b);
+
+	?_b_ := b;
+	?_result_ := 0;
+	#for( _i_ := 0 to 7 )
+	
+		?_result_ := (_result_ << 2) | ((_b_ & $80) >> 7);
+		?_b_ := _b_ << 1;
+		
+	#endfor
+	_result_
+	
+#endmacro
+
+
+	
+		
+val
+	spread	:word[256] :=
+			[
+				#for( i := 0 to 254 )
+				
+					spreadBits(i),
+					
+				#endfor
+				spreadBits( 255 )
+			];
+			
+			
+	merge_c :merge_t[ 256*256 ];
+		#for( i := 0 to 255 )
+		
+			#for( j := 0 to 255 )
+			
+				?merge_c[ i*256 + j ] :=
+					merge_t:[ i, j, spread[i] | (spread[j] << 1)]; 
+				
+			#endfor
+
+		#endfor
+	
+	merge16_c: merge_t[256];
+		#for( i := 0 to 255 )
+		
+			?resultValue := merge_c[i*256+i].resultValue |
+								(merge_c[i*256+i].resultValue << 16);
+								
+			?oddeven := i*256+i;
+			?merge16_c[ i ] :=
+				merge_t:[ oddeven, oddeven, resultValue ];
+				
+		#endfor			
+	
+	merge32_c: merge_t[256];
+		#for( i := 0 to 255 )
+		
+			?resultValue := 
+					merge_c[i*256+i].resultValue 
+				|	(merge_c[i*256+i].resultValue << 16)
+				|	(merge_c[i*256+i].resultValue << 32)
+				|	(merge_c[i*256+i].resultValue << 48);
+			
+			?oddeven := i<<24 + i<<16 + i <<8 + i;
+			?merge32_c[ i ] :=
+				merge_t:[ oddeven, oddeven, resultValue ];
+				
+		#endfor			
+	
+		
+		
+static
+	merge : merge_t[ @elements( merge_c ) ] := merge_c;
+	merge16 : merge_t[ @elements( merge16_c ) ] := merge16_c;
+	merge32 : merge_t[ @elements( merge32_c ) ] := merge32_c;
+	
+begin merge_test;
+
+	
+		for( mov( 0, ecx ); ecx<@elements( merge_c ); add(@size(merge_t),ecx) )do
+		
+			bits.merge8
+			( 
+				(type byte merge.even[ecx]), 
+				(type byte merge.odd[ecx]) 
+			);
+			if( ax <> (type word merge.resultValue[ecx]) ) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"bit merge8 failed! eax=", eax, " ecx=", ecx, nl
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+					
+			bits.merge16
+			( 
+				(type word merge.even[ecx]), 
+				(type word merge.odd[ecx]) 
+			);
+			if( eax <> (type dword merge.resultValue[ecx]) ) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"bit merge16 failed! eax=", eax, " ecx=", ecx, nl
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+					
+			bits.merge32
+			( 
+				merge.even[ecx], 
+				merge.odd[ecx] 
+			);
+			if
+			( 
+					eax <> (type dword merge.resultValue[ecx])
+				||	edx <> (type dword merge.resultValue[ecx+4]) 
+			) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"bit merge32 failed! edx:eax=", edx, ':', eax, nl,
+					"Should be: ", merge.resultValue[ecx], nl
+				);
+				mov( ecx, eax );
+				xor( edx, edx );
+				div( @size(merge_t), edx:eax );
+				stderr.put
+				(
+					"ecx=", eax, nl
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+					
+			
+		endfor;
+		stderr.put( "bits.merge8 succeeded!" nl );
+
+	
+		for
+		( 
+			mov( 0, ecx ); 
+			ecx<@elements( merge16_c ); 
+			add(@size(merge16_c),ecx) 
+		)do
+		
+			bits.merge16
+			( 
+				(type word merge16.even[ecx]), 
+				(type word merge16.odd[ecx]) 
+			);
+			if( eax <> (type dword merge16.resultValue[ecx]) ) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"bit merge16a failed! eax=", eax, " ecx=", ecx, nl
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+					
+			bits.merge32
+			( 
+				merge16.even[ecx], 
+				merge16.odd[ecx] 
+			);
+			if
+			( 
+					eax <> (type dword merge16.resultValue[ecx])
+				||	edx <> (type dword merge16.resultValue[ecx+4]) 
+			) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"bit merge32a failed! edx:eax=", edx, ':', eax, nl,
+					"Should be: ", merge16.resultValue[ecx], nl
+				);
+				mov( ecx, eax );
+				xor( edx, edx );
+				div( @size(merge_t), edx:eax );
+				stderr.put
+				(
+					"ecx=", eax, nl
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+					
+			
+		endfor;
+		stderr.put( "bits.merge16 succeeded!" nl );
+
+	
+		for
+		( 
+			mov( 0, ecx ); 
+			ecx<@elements( merge32 ); 
+			add(@size(merge32_c),ecx) 
+		)do
+		
+			bits.merge32( merge32.even[ecx], merge32.odd[ecx] );
+			if
+			( 
+					eax <> (type dword merge32.resultValue[ecx])
+				||	edx <> (type dword merge32.resultValue[ecx+4]) 
+			) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"bit merge32b failed! edx:eax=", edx, ':', eax, nl,
+					"Should be: ", merge32.resultValue[ecx], nl
+				);
+				mov( ecx, eax );
+				xor( edx, edx );
+				div( @size(merge_t), edx:eax );
+				stderr.put
+				(
+					"ecx=", eax, nl
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+					
+			
+		endfor;
+		stderr.put( "bits.merge32 succeeded!" nl );
+		os.exitProcess(0);
+		
+end merge_test;
+
+													

@@ -1,0 +1,117 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit sockets;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "sockets.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "os.hhf" )
+
+#if( os.win32 )
+
+	#include( "w.hhf" )
+
+#elseif( os.linux )
+	#include( "linux.hhf" )
+#elseif( os.freeBSD )
+	#include( "bsd.hhf" )
+	
+	procedure _getpeername
+	( 
+			s		:dword; 
+		var	_name	:hla.sockaddr; 
+		var	namelen	:hla.socklen_t 
+	);
+		@cdecl;
+		@external( "getpeername" );
+	
+
+#elseif( os.macOS )
+	#include( "mac.hhf" )
+#else
+	#error( "getpeername.hla: unsupported OS" )
+#endif
+
+
+procedure sock.getpeername
+( 
+		s		:dword; 
+	var	_name	:hla.sockaddr; 
+	var	namelen	:hla.socklen_t 
+);
+begin getpeername;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	
+	#if( os.win32 )
+	
+		push( ecx );
+		push( edx );
+		
+		w.getpeername( s, (type w.sockaddr _name), val (type dword namelen) );
+		cmp( eax, w.SOCKET_ERROR );
+		je WinSocketError;
+		
+		pop( edx );
+		pop( ecx );
+		
+	#elseif( os.linux )
+	
+		linux.getpeername( s, val (type dword _name), val (type dword namelen) );
+		test( eax, eax );
+		js SocketError;
+		
+	#elseif( os.freeBSD )
+	
+		push( ecx );
+		push( edx );
+		
+		_getpeername( s, val (type dword _name), val (type dword namelen) );
+		add( 12, esp );
+		cmp( eax, -1 );
+		je SocketError;
+		
+		pop( edx );
+		pop( ecx );
+		
+	#elseif( os.macOS )
+	
+		mac.getpeername( s, val (type dword _name), val (type dword namelen) );
+		jc SocketError;
+		
+	#else
+	
+		#error( "Unknown OS!" );
+		
+	#endif	
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+#if( os.win32 )
+WinSocketError:
+	w.WSAGetLastError();
+	mov( eax, edx );
+#endif
+	
+SocketError:
+	raise( ex.SocketError );
+	
+end getpeername;
+
+
+end sockets;

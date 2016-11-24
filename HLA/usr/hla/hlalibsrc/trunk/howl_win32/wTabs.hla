@@ -1,0 +1,560 @@
+unit wTabs_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( wTabs_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wTabs objects here:
+
+
+
+procedure wTabs_t.create_wTabs
+(
+	wtName		:string;
+	parent		:window_p; 									
+	x			:dword; 
+	y			:dword;
+	width		:dword;
+	height		:dword 
+);;
+
+_begin( wTabs_t, create_wTabs );
+
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wTabs_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	(type wContainer_t [esi]).create_wContainer
+	(
+		wtName,
+		parent, 									
+		x, 
+		y,
+		width,
+		height 
+	);
+	mov( cl, this.wBase_private.onHeap );
+	
+	w.CreateWindowEx
+	(
+	    w.TCS_FIXEDWIDTH,
+	    w.WC_TABCONTROL, 
+	    "", 
+	    w.WS_CHILD | w.WS_CLIPSIBLINGS | w.WS_VISIBLE,
+	    x,
+	    y,
+	    width,
+	    height,
+	    (type window_t [ebx]).handle,
+	    NULL,
+	    howl.howlInstance,
+	    NULL
+	);
+	mov( eax, this.handle );
+	w.SetWindowLong( eax, w.GWL_USERDATA, esi );
+	
+	xor( eax, eax );
+	mov( eax, this.wTabs_private.curSelection );
+	mov( eax, this.wTabs_private.numTabs );
+	
+	// Because we're going to free the pages array every time we
+	// insert a new tab, we need to allocate *something* here so
+	// we can free the storage on the first insert operation.
+	// Set this.wTabs_private.numElements to one as we've got a single element
+	// already.
+	
+	mem.alloc( @size( wTabPage_p ));
+	mov( eax, this.wTabs_private.pages );
+	mov( 1, this.wTabs_private.numElements );
+	
+	// Usual initialization for a HOWL type:
+	
+	howl.setType( wTabs_c );
+	mov( &wTabs_t._VMT_, this._pVMT_ );
+			 
+	pop( ecx );
+	pop( eax );
+
+_end( wTabs_t, create_wTabs );
+
+
+method wTabs_t.destroy;;
+_begin( wTabs_t, destroy );
+
+	// Must deallocate the storage for the pages array:
+	
+	mem.free( this.wTabs_private.pages );
+	super.destroy();
+
+_end( wTabs_t, destroy );
+
+
+
+
+
+
+
+// wTabs_t.get_numTabs-
+//
+//	Accessor function for the numTabs field.
+
+method wTabs_t.get_numTabs;;
+_begin( wTabs_t, get_numTabs );
+
+	push( ecx );
+	push( edx );
+	
+	// Sanity check- make sure this.wTabs_private.numTabs matches the
+	// actual number of tabs on the control:
+	
+	w.SendMessage( this.handle, w.TCM_GETITEMCOUNT, 0, 0 );
+	assert( eax = this.wTabs_private.numTabs );
+	
+	mov( this.wTabs_private.numTabs, eax );
+	pop( edx );
+	pop( ecx );
+
+_end( wTabs_t, get_numTabs );
+
+
+// get_page-
+//	Gets the page[tabIndex] entry and returns this
+// value in EAX.
+
+method wTabs_t.get_page( tabIndex:dword );;
+_begin( wTabs_t, get_page );
+
+	push( ecx );
+	push( edx );
+	
+	// Sanity check- make sure this.wTabs_private.numTabs matches the
+	// actual number of tabs on the control:
+	
+	w.SendMessage( this.handle, w.TCM_GETITEMCOUNT, 0, 0 );
+	assert( eax = this.wTabs_private.numTabs );
+
+	mov( tabIndex, eax );
+	if( eax >= this.wTabs_private.numTabs || eax >= this.wTabs_private.numElements ) then
+	
+		raise( ex.ValueOutOfRange );
+		
+	endif;
+	mov( this.wTabs_private.pages, edx );
+	mov( [edx+eax*4], eax );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wTabs_t, get_page );
+
+
+					
+// wTabs_t.curTab-
+//
+//	Returns the currently selected tab in EAX.
+			
+method wTabs_t.curTab;;
+_begin( wTabs_t, curTab );
+
+	push( ecx );
+	push( edx );
+	
+	// Sanity check- make sure this.wTabs_private.numTabs matches the
+	// actual number of tabs on the control:
+	
+	w.SendMessage( this.handle, w.TCM_GETITEMCOUNT, 0, 0 );
+	assert( eax = this.wTabs_private.numTabs );
+
+	// Get the current tab number from Windows.
+	
+	w.SendMessage( this.handle, w.TCM_GETCURSEL, 0, 0 );
+	if( eax = -1 ) then	// (-1 if no tab is selected)
+	
+		mov( 0, eax );		// Default to tab 0 if no tab is selected
+		
+	endif;
+	mov( eax, this.wTabs_private.curSelection );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wTabs_t, curTab );
+
+
+// wTabs_t.setTab-
+//
+//	Sets the selected tab to the (zero-based) index passed as
+// a parameter.
+			
+method wTabs_t.setTab( tab:uns32 );;
+_begin( wTabs_t, setTab );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	// Sanity check- make sure this.wTabs_private.numTabs matches the
+	// actual number of tabs on the control:
+	
+	w.SendMessage( this.handle, w.TCM_GETITEMCOUNT, 0, 0 );
+	assert( eax = this.wTabs_private.numTabs );
+
+
+	mov( tab, eax );
+	if( eax >= this.wTabs_private.numTabs ) then
+	
+		raise( ex.ValueOutOfRange );
+		
+	endif;
+	w.SendMessage( this.handle, w.TCM_SETCURSEL, eax, 0 );
+	if( eax = -1 ) then
+	
+		raise( ex.ValueOutOfRange );
+		
+	endif;
+	
+	push( esi );
+	mov( this.wTabs_private.curSelection, edx );
+	mov( this.wTabs_private.pages, esi );
+	mov( [ esi+edx*4 ], esi );
+	(type wTabPage_t [esi]).hide();
+	pop( esi );
+	
+	mov( tab, eax );
+	mov( eax, this.wTabs_private.curSelection );
+	push( esi );
+	mov( this.wTabs_private.pages, esi );
+	mov( [ esi+eax*4 ], esi );
+	(type wTabPage_t [esi]).show();
+	pop( esi );
+		
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wTabs_t, setTab );
+
+
+
+// wTabs_t.deleteTab-
+//
+//	Deletes the selected tab using the (zero-based) index passed as
+// a parameter. Also deletes the wTabPage_t entry from the this.wTabs_private.pages
+// array and returns the deleted pages entry in EAX.
+//
+// Note that we don't shrink the array, so we leave this.wTabs_private.numElements
+// alone. This allows us to insert a new object without having to reallocate
+// storage for the pages array.
+			
+method wTabs_t.deleteTab( tabIndex:dword );;
+_begin( wTabs_t, deleteTab );
+
+	push( ecx );
+	push( edx );
+	
+	// Sanity check- make sure this.wTabs_private.numTabs matches the
+	// actual number of tabs on the control:
+	
+	w.SendMessage( this.handle, w.TCM_GETITEMCOUNT, 0, 0 );
+	assert( eax = this.wTabs_private.numTabs );
+
+	// Make sure the user-supplied tab index is within range:
+	
+	mov( tabIndex, eax );
+	if( eax >= this.wTabs_private.numTabs ) then
+		
+		raise( ex.ValueOutOfRange );
+		
+	endif;
+	
+	// Delete the tab:
+	
+	w.SendMessage( this.handle, w.TCM_DELETEITEM, eax, 0 );
+	if( !eax ) then	// TCM_DELETEITEM returned an error.
+	
+		// Probably a bad index value (or bad handle). Raise an exception.
+		
+		raise( ex.ValueOutOfRange );
+		
+	endif;
+	
+	// Delete the corresponding entry from the this.wTabs_private.pages array:
+	
+	mov( this.wTabs_private.pages, edx );
+	mov( tabIndex, ecx );				// Index to current this.wTabs_private.pages entry.
+	push( (type dword [edx+ecx*4]) );	// Save the wTabPage_t object we delete.
+	
+	// Scoot all the pointers down in the this.wTabs_private.pages array to delete
+	// the current wTabPage_t object.
+	
+	for( add( 1, ecx ); ecx < this.wTabs_private.numTabs; inc( ecx )) do
+	
+		mov( [edx+ecx*4], eax );
+		mov( eax, [edx+ecx*4-4] ); 
+	
+	endfor;
+	dec( this.wTabs_private.numTabs );
+	pop( eax );	// Return deleted wTabPage_t object.
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wTabs_t, deleteTab );
+
+
+
+// insertTab-
+//
+//	Inserts a new tab into tabbed control. Also inserts a new wTabPage_t
+// object into the pages array (allocating additional storage, if necessary).
+
+method wTabs_t.insertTab
+(
+	index	:dword; 
+	tabText	:string; 
+	page	:wTabPage_p 
+);
+var
+	tcItem	:w.TC_ITEM;
+	
+_begin( wTabs_t, insertTab );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	// Sanity check- make sure this.wTabs_private.numTabs matches the
+	// actual number of tabs on the control:
+	
+	w.SendMessage( this.handle, w.TCM_GETITEMCOUNT, 0, 0 );
+	assert( eax = this.wTabs_private.numTabs );
+
+	// Sanity check on the user-supplied index.
+	// Note: index = this.wTabs_private.numTabs is okay, that means
+	// we're appending the tab to the end of the tab list.
+	
+	mov( index, eax );
+	if( eax > this.wTabs_private.numTabs ) then
+	
+		raise( ex.ValueOutOfRange );
+		
+	endif;
+	
+	// Insert the tab onto the tabbed control:
+	
+	mov( w.TCIF_TEXT, tcItem.imask );
+	mov( 0, tcItem.lpReserved1 );
+	mov( 0, tcItem.lpReserved2 );
+	mov( -1, tcItem.iImage );
+	mov( 0, tcItem.lParam );
+	
+	mov( tabText, eax );
+	mov( eax, tcItem.pszText );
+	mov( (type str.strRec [eax]).length, eax );
+	mov( eax, tcItem.cchTextMax ); 
+	lea( eax, tcItem );
+	w.SendMessage
+	(
+		this.handle,
+		w.TCM_INSERTITEM,
+		index,
+		eax
+	);
+	
+	// Okay, now we have to insert the "page" entry into
+	// the this.pages array, expanding the this.wTabs_private.pages array
+	// if necessary.
+	
+	mov( this.wTabs_private.numTabs, eax );
+	if( eax >= this.wTabs_private.numElements ) then
+	
+		// We have to expand the size of the this.wTabs_private.pages array.
+		
+		if( eax = index ) then // Special case when inserting at the end
+		
+			// Expand the array to the new size:
+			
+			add( 1, eax );
+			mov( eax, this.wTabs_private.numElements );
+			shl( 2, eax );		// *@size(pointer)  [4]
+			mem.realloc( this.wTabs_private.pages, eax );
+			mov( eax, this.wTabs_private.pages );
+			
+			// Copy the page element to the end of the array (position index):
+			
+			mov( page, ecx );
+			mov( index, edx );
+			mov( ecx, [eax+edx*4] );
+
+		else // general case - insertion at an arbitrary point
+		
+			add( 1, eax );
+			mov( eax, this.wTabs_private.numElements );
+			shl( 2, eax );		// *@size(pointer)  [4]
+			mem.alloc( eax );
+			mov( this.wTabs_private.pages, edx );
+			push( ebx );
+			for( mov( 1, ecx ); ecx < index; inc( ecx )) do
+			
+				mov( [edx+ecx*4], ebx );
+				mov( ebx, [eax+ecx*4-4] );
+				
+			endfor;
+			mov( page, ebx );
+			mov( ebx, [eax+ecx*4] );
+			while( ecx < this.wTabs_private.numTabs ) do
+			
+				mov( [edx+ecx*4], ebx );
+				mov( ebx, [eax+ecx*4+4] );
+				inc( ecx );
+			
+			endwhile;
+			
+			// Deallocate the storage for the original array
+			// and save away the pointer to the new array.
+			
+			mem.free( edx );
+			mov( eax, this.wTabs_private.pages );
+			pop( ebx );
+						
+		endif;
+		
+	else // the pages array already contains sufficient space to hold the page
+	
+		if( eax = index ) then // Special case- insert at the end
+		
+			mov( page, ecx );
+			mov( this.wTabs_private.pages, edx );
+			mov( ecx, [edx+eax*4] );
+		
+		else	// Inserting somewhere in the middle
+		
+			// Open up space in the array for the insertion:
+			
+			mov( this.wTabs_private.pages, edx );
+			for( mov( eax, ecx ); ecx > index; dec( ecx )) do
+			
+				mov( [edx+ecx*4-4], eax );
+				mov( eax, [edx+ecx*4] );
+				
+			endfor;
+			mov( page, eax );
+			mov( eax, [edx+ecx*4] );
+		
+		endif;
+	
+	endif;
+	
+	// Bump up the number of tabs by one:
+	
+	inc( this.wTabs_private.numTabs );
+	
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wTabs_t, insertTab );
+	
+	
+	
+method wTabs_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);
+var
+	newSel		:uns32;
+	tabs		:wTabs_p;
+	
+_begin( wTabs_t, processMessage );
+
+	mov( uMsg, eax );
+	if( eax = w.WM_NOTIFY ) then
+	
+		mov( lParam, ebx );
+		mov( (type w.NMHDR [ebx]).code, ecx );
+
+		// See if they clicked on a TAB in the window:
+		
+		if( ecx = w.TCN_SELCHANGE ) then
+		
+			w.SendMessage
+			( 
+				(type w.NMHDR [ebx]).hwndFrom, 
+				w.TCM_GETCURSEL, 
+				0, 
+				0 
+			);
+			mov( eax, newSel );
+
+			// Get a pointer to the corresponding wTabs_t object:
+			
+			w.GetWindowLong( (type w.NMHDR [ebx]).hwndFrom, w.GWL_USERDATA );
+			mov( eax, esi );
+			mov( eax, tabs );
+			
+			// Get the page that contains the current selection:
+			
+			mov( tabs, esi );
+			mov( this.wTabs_private.curSelection, ebx );
+			mov( this.wTabs_private.pages, ecx );
+			mov( [ecx+ebx*4], ebx ); 
+
+			// We need to hide all widgets on the current page:
+
+			(type wTabPage_t [ebx]).hide();
+			
+			// Get the page that contains the new selection:
+			
+			
+			// Set curSelection to the new selection:
+			
+			mov( tabs, esi );
+			mov( newSel, eax );
+			mov( eax, this.wTabs_private.curSelection );
+			
+			
+			// Now we need to show the data on the new tab:
+
+			mov( this.wTabs_private.pages, ecx );
+			mov( [ecx+eax*4], ebx ); 
+			(type wTabPage_t [ebx]).show();
+			exit processMessage;
+			
+		endif;
+
+	endif;
+	super.processMessage( hwnd, uMsg, wParam, lParam );
+
+_end( wTabs_t, processMessage );
+
+end	wTabs_u;

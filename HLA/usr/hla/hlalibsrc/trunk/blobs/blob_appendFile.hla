@@ -1,0 +1,116 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeOnce( "blobs.hhf" );
+#includeOnce( "fileio.hhf" );
+#includeOnce( "filesys.hhf" );
+#includeOnce( "excepts.hhf" );
+#includeOnce( "memory.hhf" );
+#includeOnce( "threads.hhf" );
+
+
+
+// blob.appendFile-
+//
+//	Appends a file to the end of a blob.
+
+procedure blob.appendFile( filename:string; b:blob.blob ); @noframe;
+var
+	f		:dword;
+	size	:dword;
+	oldLen	:dword;
+	
+begin appendFile;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( eax );
+	push( ebx );
+	
+	mov( b, ebx );
+	test( ebx, ebx );
+	jz AttemptToDerefNULL;
+	
+	#if( @thread )
+	try
+	
+		thread.enterCriticalSection( (type blob.blobRec [ebx]).criticalSection );
+	
+	#endif
+
+		// Determine the file length and see if there is room
+		// for the file at the end of the blob:
+		
+		filesys.size( filename );
+		mov( eax, size );
+		add( (type blob.blobRec [ebx]).length, eax );
+		cmp( eax, (type blob.blobRec [ebx]).maxlen );
+		jna noBlobOverflow;
+			raise( ex.BlobOverflow );
+		
+		noBlobOverflow:
+		
+		// Adjust the length and wcursor fields to the new
+		// end of the blob:
+		
+		mov( eax, (type blob.blobRec [ebx]).wcursor );
+		push( (type blob.blobRec [ebx]).length );		// Save position.
+		mov( eax, (type blob.blobRec [ebx]).length );
+
+		// Read the file data to the end of the blob:
+		
+		pop( eax );			// Retrieve old length for use as file storage position.
+		add( eax, ebx );
+		fileio.open( filename, fileio.r );
+		mov( eax, f );
+		fileio.read( eax, [ebx], size );
+		fileio.close( f );
+	
+	#if( @thread )
+	
+	  anyexception
+	  	mov( b, edx );
+		thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		reraise( eax );
+		
+	endtry;
+  	mov( b, ebx );
+	thread.leaveCriticalSection( (type blob.blobRec [ebx]).criticalSection );
+		
+	#endif
+	
+	pop( ebx );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end appendFile;
+
+
+
+end blobUnit;
+
+
+
+
+	
+

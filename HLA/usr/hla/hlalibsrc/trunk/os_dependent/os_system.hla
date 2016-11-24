@@ -1,0 +1,402 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+/*
+** systemUnit-
+**
+** Provides the "system("cmd");" call that lets the caller synchronously
+** execute a shell command.
+**	
+*/
+
+
+
+unit systemUnit;
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+#include( "os.hhf") 
+
+
+#if( os.win32 )
+#include( "w.hhf" )
+#include( "stdin.hhf" )
+#include( "stdout.hhf" )
+#include( "stderr.hhf" )
+
+procedure os.system( cmdLn:string ); @nodisplay; @nostackalign; @noframe;
+
+var
+	numArgs	:uns32;
+	exitCode:dword;
+	cmds	:string[256];
+	sui		:w.STARTUPINFO;
+	pi		:w.PROCESS_INFORMATION;
+
+begin system;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	push( ecx );
+	push( edx );
+	
+	str.tokenize( cmdLn, cmds, 256 );
+	mov( eax, numArgs );
+	mov( @size( sui ), sui.cb );
+	mov( NULL, sui.lpDesktop );
+	mov( cmds[0], sui.lpTitle );
+	mov( 0, sui.cbReserved2 );
+	mov( NULL, sui.lpReserved2 );
+	mov( w.STARTF_USESTDHANDLES, sui.dwFlags );
+	mov( stdout.handle(), sui.hStdOutput );
+	mov( stderr.handle(), sui.hStdError );
+	mov( stdin.handle(), sui.hStdInput );
+	w.CreateProcess
+	(
+		NULL,
+		cmdLn,
+		NULL,
+		NULL,
+		true,
+		0,
+		NULL,
+		NULL,
+		sui,
+		pi
+	);
+	w.WaitForSingleObject
+	(
+		pi.hProcess,
+		w.INFINITE
+	);
+
+	// Get the exit code for this process:
+
+	w.GetExitCodeProcess( pi.hProcess, exitCode );
+	
+	// Free up the storage used by the str.tokenize call:
+	
+	mov( numArgs, ecx );
+	test( ecx, ecx );
+	jz freeDone;
+	freeArgs:
+		strfree( cmds[ecx*4-4] );
+		dec( ecx );
+		jnz freeArgs;
+	
+	freeDone:
+	pop( edx );
+	pop( ecx );
+
+	// Return exit code as function result:
+
+	mov( exitCode, eax );
+	leave();
+	ret( _parms_ );
+
+end system;
+
+#elseif( os.linux )
+
+#include( "linux.hhf" )
+#include( "memory.hhf" )
+#include( "strings.hhf" )
+
+procedure os.system( cmdLn:string) ;@nodisplay; @nostackalign; @noframe;
+var
+	binName		:string;
+	rtnCode		:dword;
+	numArgs		:uns32;
+	cmds		:string[256];
+	env			:dword[2];
+
+begin system;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( ecx );
+	
+	str.tokenize4( cmdLn, {' ', ',' }, cmds, 256 );
+	mov( eax, numArgs );
+	mov( 0, (type dword cmds[eax*4]));
+	mov( 0, env[0*4] );
+	mov( 0, env[1*4] );
+	
+	linux.fork();
+	test( eax, eax );
+	jnz isParentProcess;
+
+		linux.execve( cmds[0*4], cmds[0*4], env );
+		
+		// If we get to this point, there was an error
+		// attempting to execute the program and EAX contains
+		// the error code:
+		// Try again with a "/bin/" prefix
+			
+		tstralloc( 256 );
+		mov( eax, binName );
+		str.cpy( "/bin/", binName );
+		str.cat( cmds[0*4], binName );
+		linux.execve( binName, cmds[0*4], env );
+			
+		// If we get to this point, we *still* haven't
+		// been able to execute the code. Try one more time
+		// with a /usr/bin/" prefix:
+			
+		str.cpy( "/usr/bin/", binName );
+		str.cat( cmds[0*4], binName );
+		linux.execve( binName, cmds[0*4], env );
+
+		// Can't succeed at this point, so just give up.
+		
+		linux._exit( 1 );		 
+	
+	isParentProcess:
+	
+	// If we get to this point, we are the parent process.
+	// Begin by freeing the storage that str.tokenize2 allocated:
+	
+	mov( numArgs, ecx );
+	test( ecx, ecx );
+	jz freeDone;
+	freeArgs:
+		strfree( cmds[ecx*4-4] );
+		dec( ecx );
+		jnz freeArgs;
+	
+	freeDone:
+	
+	linux.waitpid( eax, rtnCode, 0 );	
+
+	// Return the process' return code as the return result:
+	
+	pop( ecx );
+	mov( rtnCode, eax );
+	leave();
+	ret( _parms_ );
+
+end system;
+
+#elseif( os.freeBSD )
+
+#include( "bsd.hhf" )
+#include( "memory.hhf" )
+#include( "strings.hhf" )
+
+procedure os.system( cmdLn:string) ;@nodisplay; @nostackalign; @noframe;
+var
+	binName		:string;
+	rtnCode		:dword;
+	numArgs		:uns32;
+	cmds		:string[256];
+	env			:dword[2];
+
+begin system;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( ecx );
+	
+	str.tokenize4( cmdLn, {' ', ',' }, cmds, 256 );
+	mov( eax, numArgs );
+	mov( 0, (type dword cmds[eax*4]));
+	mov( 0, env[0*4] );
+	mov( 0, env[1*4] );
+	
+	bsd.fork();
+	test( eax, eax );
+	jnz isParentProcess;
+
+		bsd.execve( cmds[0*4], cmds[0*4], env );
+		
+		// If we get to this point, there was an error
+		// attempting to execute the program and EAX contains
+		// the error code:
+		// Try again with a "/bin/" prefix
+			
+		tstralloc( 256 );
+		mov( eax, binName );
+		str.cpy( "/bin/", binName );
+		str.cat( cmds[0*4], binName );
+		bsd.execve( binName, cmds[0*4], env );
+			
+		// If we get to this point, we *still* haven't
+		// been able to execute the code. Try one more time
+		// with a /usr/bin/" prefix:
+			
+		str.cpy( "/usr/bin/", binName );
+		str.cat( cmds[0*4], binName );
+		bsd.execve( binName, cmds[0*4], env );
+			
+		// If we get to this point, we *still* haven't
+		// been able to execute the code. Try one more time
+		// with a /sbin/" prefix:
+			
+		str.cpy( "/sbin/", binName );
+		str.cat( cmds[0*4], binName );
+		bsd.execve( binName, cmds[0*4], env );
+
+		// If we get to this point, we *still* haven't
+		// been able to execute the code. Try one more time
+		// with a /usr/sbin/" prefix:
+			
+		str.cpy( "/usr/sbin/", binName );
+		str.cat( cmds[0*4], binName );
+		bsd.execve( binName, cmds[0*4], env );
+
+		// Can't succeed at this point, so just give up.
+		
+		bsd._exit( 1 );		 
+	
+	isParentProcess:
+	
+	// If we get to this point, we are the parent process.
+	// Begin by freeing the storage that str.tokenize2 allocated:
+	
+	mov( numArgs, ecx );
+	test( ecx, ecx );
+	jz freeDone;
+	freeArgs:
+		strfree( cmds[ecx*4-4] );
+		dec( ecx );
+		jnz freeArgs;
+	
+	freeDone:
+	
+	bsd.waitpid( eax, rtnCode, 0 );	
+
+	// Return the process' return code as the return result:
+	
+	pop( ecx );
+	mov( rtnCode, eax );
+	leave();
+	ret( _parms_ );
+
+end system;
+
+#elseif( os.macOS )
+
+#include( "mac.hhf" )
+#include( "memory.hhf" )
+#include( "strings.hhf" )
+
+procedure os.system( cmdLn:string) ;@nodisplay; @nostackalign; @noframe;
+var
+	binName		:string;
+	rtnCode		:dword;
+	numArgs		:uns32;
+	cmds		:string[256];
+	env			:dword[2];
+
+begin system;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( ecx );
+	
+	str.tokenize4( cmdLn, {' ', ',' }, cmds, 256 );
+	mov( eax, numArgs );
+	mov( 0, (type dword cmds[eax*4]));
+	mov( 0, env[0*4] );
+	mov( 0, env[1*4] );
+	
+	mac.fork();
+	test( eax, eax );
+	jnz isParentProcess;
+
+		mac.execve( cmds[0*4], cmds[0*4], env );
+		
+		// If we get to this point, there was an error
+		// attempting to execute the program and EAX contains
+		// the error code:
+		// Try again with a "/bin/" prefix
+			
+		tstralloc( 256 );
+		mov( eax, binName );
+		str.cpy( "/bin/", binName );
+		str.cat( cmds[0*4], binName );
+		mac.execve( binName, cmds[0*4], env );
+			
+		// If we get to this point, we *still* haven't
+		// been able to execute the code. Try one more time
+		// with a /usr/bin/" prefix:
+			
+		str.cpy( "/usr/bin/", binName );
+		str.cat( cmds[0*4], binName );
+		mac.execve( binName, cmds[0*4], env );
+			
+		// If we get to this point, we *still* haven't
+		// been able to execute the code. Try one more time
+		// with a /sbin/" prefix:
+			
+		str.cpy( "/sbin/", binName );
+		str.cat( cmds[0*4], binName );
+		mac.execve( binName, cmds[0*4], env );
+
+		// If we get to this point, we *still* haven't
+		// been able to execute the code. Try one more time
+		// with a /usr/sbin/" prefix:
+			
+		str.cpy( "/usr/sbin/", binName );
+		str.cat( cmds[0*4], binName );
+		mac.execve( binName, cmds[0*4], env );
+
+		// Can't succeed at this point, so just give up.
+		
+		mac._exit( 1 );		 
+	
+	isParentProcess:
+	
+	// If we get to this point, we are the parent process.
+	// Begin by freeing the storage that str.tokenize2 allocated:
+	
+	mov( numArgs, ecx );
+	test( ecx, ecx );
+	jz freeDone;
+	freeArgs:
+		strfree( cmds[ecx*4-4] );
+		dec( ecx );
+		jnz freeArgs;
+	
+	freeDone:
+	
+	mac.waitpid( eax, rtnCode, 0 );	
+
+	// Return the process' return code as the return result:
+	
+	pop( ecx );
+	mov( rtnCode, eax );
+	leave();
+	ret( _parms_ );
+
+end system;
+
+#else
+
+	#print( "Unknown OS!" )
+
+#endif
+
+
+
+end systemUnit;
+
+
+
+	
+

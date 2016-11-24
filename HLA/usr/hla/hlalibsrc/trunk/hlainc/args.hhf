@@ -1,0 +1,49 @@
+
+#if( ! @defined( args_hhf ))
+
+?args_hhf := true;
+
+#if( @thread )
+
+	#includeOnce( "cstdlib.hhf" )
+	
+#endif
+#includeOnce( "_hla.hhf" )
+
+namespace arg;
+
+	proc
+		cmdLn			:procedure {@returns( "eax" )};
+						 	@global:_hla._ext( "ARG_CMDLN" );
+			
+		a_cmdLn			:procedure {@returns( "eax" )};
+						 	@global:_hla._ext( "ARG_A_CMDLN" );
+						 
+		c				:procedure {@returns( "eax" )};
+						 	@global:_hla._ext( "ARG_C" );
+						 
+		v				:procedure( index:uns32 ) {@returns( "eax" )};
+						 	@global:_hla._ext( "ARG_V" );
+						 
+		a_v				:procedure( index:uns32 ) {@returns( "eax" )};
+						 	@global:_hla._ext( "ARG_A_V" );
+							
+		delete			:procedure( index:uns32 );
+							@global:_hla._ext( "ARG_DELETE" );
+							
+		destroy			:procedure; 
+							@global:_hla._ext( "ARG_DESTROY" );
+
+		args			:iterator;
+							@global:_hla._ext( "ARG_ARGS" );
+
+		globalOptions	:iterator( options:cset );
+							@global:_hla._ext( "ARG_GLOBALOPTIONS" );
+
+		localOptions	:iterator( start:uns32; options:cset );
+							@global:_hla._ext( "ARG_LOCALOPTIONS" );
+
+end arg;
+
+#endif
+

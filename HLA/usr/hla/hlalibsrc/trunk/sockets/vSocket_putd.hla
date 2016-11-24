@@ -1,0 +1,84 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit socketUnit;
+		
+
+#includeOnce( "conv.hhf" )
+#includeOnce( "sockets.hhf" )
+
+
+
+
+/****************************************************************/
+/*                                                              */
+/* baseSocketClass_t.putd-                                      */
+/* 	Outputs a number to a socket using hexadecimal format.      */
+/* 	This routine prints the value using exactly 8 or 9 print    */
+/* 	positions (9 if OutputUnderscores is true). The output      */
+/* 	value is filled with zeros to the left if it would normally */
+/* 	have fewer than 8 output digits.                            */
+/*                                                              */
+/****************************************************************/
+
+
+method vBaseSocketClass_t.putd( dw:dword ); @noframe; @nodisplay;
+var
+	eaxSave		:dword;
+	ediSave		:dword;
+	esiSave		:pointer to baseSocketClass_t;
+
+
+	procedure vputdThunk( thunksEBPval:dword ); @noframe; @nodisplay;
+	begin vputdThunk;
+	
+		push( ebp );			// Thunks always do this.
+		mov( [esp+8], ebp );	// Retrieve EBP value passed as parameter
+		
+		mov( ebp::esiSave, esi );
+		(type vBaseSocketClass_t [esi]).puts( (type string eax));
+		
+		pop( ebp );
+		ret( _parms_ );
+		
+	end vputdThunk;
+	
+begin putd;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( esi, esiSave );
+	mov( edi, ediSave );
+	mov( eax, eaxSave );
+	
+	hla.putd
+	( 
+		#{	// Push thunk object on stack: 
+			pushd( &vputdThunk );
+			push( ebp );
+		}#, 
+		dw 
+	);
+
+	mov( eaxSave, eax );
+	mov( ediSave, edi );
+	mov( esiSave, esi );
+	leave();
+	ret( _parms_ );
+				
+end putd;
+
+end socketUnit;
+

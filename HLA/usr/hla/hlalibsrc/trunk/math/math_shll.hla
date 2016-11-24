@@ -1,0 +1,138 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit mathUnit;
+
+#include( "math.hhf" )
+
+/*****************************************************************/
+/*                                                               */
+/* shll( count, dest ) -                                         */
+/*                                                               */
+/* Computes dest := dest << count.                               */
+/* Dest is a 128-bit operand, count is a dword operand.          */
+/* Carry flag will contain the last bit shifted out.             */
+/* Zero flag will be set if the 64-bit result is zero.           */
+/* Sign flag will be set if the H.O. bit of the result is set.   */
+/*                                                               */
+/* Overflow flag is set if there is a sign change on the         */
+/* last bit shifted (does not indicate an overflow for the       */
+/* entire number, only for the last shift).                      */
+/*                                                               */
+/* (All flag settings are identical to a left shift by one bit). */
+/*                                                               */
+/*****************************************************************/
+
+
+
+procedure math.shll( count:dword; source:lword; var dest:lword );
+	@nodisplay;
+	@noalignstack;
+	@noframe;
+begin shll;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	mov( dest, edx );
+	
+	mov( count, ecx );
+	test( ecx, ecx );
+	jz noShift;
+	
+		// If it's 128 bits or less, do the shift (note: 128 bit
+		// shifts set the operand to zero, but we still have to
+		// deal with the carry out of the last bit).
+		
+		cmp( ecx, 128 );
+		ja justZero;
+				
+			// Do the specified number of shifts minus one because
+			// we've got to do the last shift manually.
+			
+			dec( ecx );
+			
+			// Okay, do the bulk of the shifts:
+			
+			mov( (type dword source[8]), eax );
+			mov( (type dword source[12]), ebx );
+			shld( cl, eax, ebx );
+			mov( ebx, (type dword [edx+12]) );
+			
+			mov( (type dword source[4]), ebx );
+			shld( cl, ebx, eax );
+			mov( eax, (type dword [edx+8]) );
+			
+			mov( (type dword source), eax );
+			shld( cl, eax, ebx );
+			mov( ebx, [edx+4] );
+			shl( cl, eax );
+			
+			// Do the last bit shift as a multiprecision
+			// single bit shift so we get the carry and sign flags.
+			
+			shl( 1, eax );
+			mov( eax, [edx] );
+			rcl( 1, (type dword [edx+4]));
+			rcl( 1, (type dword [edx+8]));
+			rcl( 1, (type dword [edx+12]));
+			
+			// Carry and overflow flags are set properly, but zero and
+			// sign flags are not.  The following gymnastics set the
+			// sign and zero flags appropriately.
+			
+			pushfd();			// Save the carry and overflow flag values.
+			and( $3f, (type byte [esp]));	// Clears SF, ZF on stack.
+
+			or( [edx+4], eax );		// Check for a zero result.
+			or( [edx+8], eax );
+			or( [edx+12], eax );
+			setz( cl );
+			
+			cmp( (type byte [edx+15]), 0 );	// Check sign flag.
+			sets( ch );			// Put sign in bit #8 of CX.
+			ror( 1, cl );		// Put ZF in Bit #7 of CX.
+			shr( 1, cx );		// Now SF in bit 7, ZF in bit 6 of cl.
+			or( cl, [esp] );	// Merge with flags on stack.
+			popfd();
+			jmp noShift;
+			
+		justZero:
+		
+			// If it's more than 128 bits, clear the
+			// carry, overflow, and sign bits, set the zero bit,
+			// and set the result to zero:
+			
+			xor( eax, eax );
+			mov( eax, [edx] );
+			mov( eax, [edx+4] );
+			mov( eax, [edx+8] );
+			mov( eax, [edx+12] );
+			
+			
+	noShift:
+	pop( edx );	
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+end shll;
+
+end mathUnit;

@@ -1,0 +1,24 @@
+#if( ! @defined( buf_hhf ))
+?buf_hhf := true;
+
+
+// buf_t-
+//
+//	"buffer" data type. A "buffer" string is one that consists of a pointer to the
+//	start of the string data and a second pointer to the byte just beyond the end
+//	of the string data.
+//
+// At some point, there should be a "buf" namespace.
+
+type
+	buf_t:
+		record
+			startPtr	:dword;		// This order must be preserved to match 
+			endPtr		:dword;		// buf ptrs pushed on the stack.
+		endrecord;
+			
+				
+
+
+
+#endif

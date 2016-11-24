@@ -1,0 +1,202 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 8/17/2006, by Randall Hyde
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "stdlibdata.hhf" )
+#includeOnce( "excepts.hhf" )
+
+
+/*****************************************************************************/
+/*                                                                           */
+/* _intToBuf32Size:                                                          */
+/* 	                                                                         */
+/* 	Converts a signed decimal value to a string and places that              */
+/* 	string in a buffer. Automatically adds padding to fill the buffer        */
+/* 	with the specified fill character.                                       */
+/*                                                                           */
+/* 	d-                                                                       */
+/* 		Signed integer value to convert to a decimal string.                 */
+/* 		                                                                     */
+/* 	width-                                                                   */
+/* 		Minimum number of print position to use. If this number is negative, */
+/* 		the value is left-justified in the padded field. If this number is   */
+/* 		positive, the output is right-justified in the field. If the abso-   */
+/* 		lute value of this number is less than numWidth, then numWidth's     */
+/* 		value is used.                                                       */
+/* 		                                                                     */
+/* 	numWidth-                                                                */
+/* 		Actual number of print positions the number (plus minus sign and     */
+/*      underscores as appropriate) will consume.                            */
+/* 		                                                                     */
+/* 	fill-                                                                    */
+/* 		The padding character to use.                                        */
+/* 		                                                                     */
+/* 	buffer-                                                                  */
+/* 		Pointer to the buffer where this routine will store	it's             */
+/* 		resulting string. Note that the caller must ensure that              */
+/* 		the buffer is large enough to hold the converted string and          */
+/* 		any padding characters.                                              */
+/*                                                                           */
+/* 	maxBufSize-                                                              */
+/* 		Size of the destination buffer.                                      */
+/*                                                                           */
+/* 	Returns:                                                                 */
+/*                                                                           */
+/* 		EDI-                                                                 */
+/* 			Points at the start of the converted characters in the buffer.   */
+/*                                                                           */
+/* 		ECX-                                                                 */
+/* 			Contains the number of characters found in the buffer.           */
+/* 		                                                                     */
+/*****************************************************************************/
+										 
+
+procedure conv._intToBuf32Size
+( 
+		d			:dword; 
+		width		:dword; 
+		numWidth	:uns32; 
+		fill		:char;
+	var	buffer		:var; 
+		maxBufSize	:dword 
+);
+	@noframe; 
+	@nodisplay; 
+	@noalignstack;
+
+begin _intToBuf32Size;
+
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	
+	mov( maxBufSize, edi );
+
+	// If width is negative, we left justify the string in the buffer,
+	// else we right justify the string in the buffer.
+
+	cmp( width, 0 );
+	jl leftJustify;
+
+		// Use the larger of the user-specified width and actual width
+		// for the number:
+
+		mov( numWidth, ebx );
+		cmp( ebx, width );
+		jae haveLargestWidth;
+
+			mov( width, ebx );
+
+		haveLargestWidth:
+		mov( ebx, width );
+
+		// Limit the width to maxBufSize characters:
+
+		cmp( ebx, edi );
+		ja wtb;
+
+		// Compute the number of leading pad characters we'll need:
+
+		sub( numWidth, ebx );
+
+		// Convert the hex value to a string and put it at
+		// the end of the buffer:
+
+		add( buffer, edi );
+		push( edi );		// Save, to compute string length later.
+		sub( 1, edi );
+		conv._intToBuf32( d, numWidth, [edi] );
+
+		// Fill in the required number of characters before
+		// the string to pad it appropriately with the fill char.
+
+		test( ebx, ebx );
+		jz noPad;
+		mov( fill, al );
+		padLoop:
+			sub( 1, edi );
+			mov( al, [edi] );
+			sub( 1, ebx );
+			jnz padLoop;
+
+		noPad:
+		pop( ecx );
+		sub( edi, ecx );			// Compute string size
+		jmp hexBufSizeDone;
+
+
+
+	leftJustify:
+
+		neg( width );				// Compute abs(width)
+
+		// Use the larger of the user-specified width and actual width
+		// for the number:
+
+		mov( numWidth, ebx );
+		cmp( ebx, width );
+		jae _haveLargestWidth;
+
+			mov( width, ebx );
+
+		_haveLargestWidth:
+		mov( ebx, width );
+
+		// Limit the width to maxBufSize characters:
+
+		cmp( ebx, edi );
+		ja wtb;
+
+		// Compute the number of trailing pad characters we'll need:
+
+		add( buffer, edi );
+		push( edi );
+
+		sub( numWidth, ebx );
+		jz _noPad;
+		mov( fill, al );
+		_padLoop:
+			sub( 1, edi );
+			mov( al, [edi] );
+			sub( 1, ebx );
+			jnz _padLoop;
+
+		_noPad:
+
+		// Convert the hex value to a string and put it at
+		// just before the padding characters:
+
+		sub( 1, edi );
+		conv._intToBuf32( d, numWidth, [edi] );
+
+		pop( ecx );			// Compute the length of the
+		sub( edi, ecx );	//  resultant string.
+
+hexBufSizeDone:
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+wtb:
+	raise( ex.WidthTooBig );
+	
+
+end _intToBuf32Size;
+
+end ConvUnit;

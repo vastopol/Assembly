@@ -1,0 +1,113 @@
+unit filesys_extName_unit;
+
+// str.hasExtension:
+//
+// scans pathname for an extension, if found,
+// returns in EAX an index to the character
+// right after the dot '.' in the string
+// and the carry flag set.
+//
+// If no extension is present in the pathname, then
+// it returns EAX = 0 and the carry flag clear.
+
+// a minimum of 3 characters are required for a
+// proper extension, eg: "a.b"
+// filenames that start with '.' are treated as
+// non-extended 
+		
+
+	
+	#includeOnce( "filesys.hhf" )
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "excepts.hhf" )
+
+	procedure filesys.hasExtension( pathname:string );
+		@nodisplay; @noalignstack; @noframe;
+		
+	begin hasExtension;
+		
+		push( ebp );
+		mov( esp, ebp );
+		push( esi );
+		
+		mov( pathname, esi );
+		test( esi, esi );
+		jz radn;
+
+		// we need minimum 3 characters for proper extension
+		// eg: a.b
+		
+		mov( (type str.strRec[esi]).length, eax );
+		cmp( eax, 3 );
+		jb returnFalse;
+			
+		// scan the filename
+		
+		add( eax, esi );		// Point ESI at zero terminating byte.
+		scan:
+			sub( 1, esi );
+			
+			// See if we hit the first character of the filename.
+			// There is no extension if we hit the first character,
+			// even if the first character is a '.', because filenames
+			// that begin with a '.' and have no other periods do not
+			// have an extension.
+			
+			cmp( esi, pathname );
+			je returnFalse;
+			
+			// See if we've hit a directory separator character.
+			// If we have, then there is no extension on the filename.
+			
+			mov( [esi], al );
+			cmp( al, '/' );
+			je returnFalse;
+			cmp( al, '\' );
+			je returnFalse;
+			
+			// Okay, see if we've hit the first '.' while
+			// scanning backward in the string:
+			
+			cmp( al, '.' );
+			jne scan;
+			
+		// esi points to the dot.
+		// if this name ends in a dot, there is no extension!
+		
+		cmp( (type byte[esi+1]), 0 );
+		je returnFalse;
+		
+		// If a directory separator character immediately precedes
+		// the '.', then this isn't an extension.
+		
+		cmp( (type char [esi-1]), '\' );
+		je returnFalse;
+		cmp( (type char [esi-1]), '/' );
+		je returnFalse;
+		
+		// return index to the start of the extension
+		// in eax. Note that eax points at the '.', which
+		// isn't a part of the extension, so we skip over it.
+		
+		lea( eax, [esi+1] );
+		sub( pathname, eax );
+		jmp done;
+		
+		
+		returnFalse:
+			xor( eax, eax );
+			
+		done:
+			cmp( eax, 1 );		// Clear carry if EAX=0, else set carry.
+			cmc();
+			pop( esi );
+			pop( ebp );
+			ret( _parms_ );
+		
+		radn:
+			raise( ex.AttemptToDerefNULL ); 
+		
+	end hasExtension;
+
+
+end filesys_extName_unit;

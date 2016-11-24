@@ -1,0 +1,185 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "strings.hhf" )
+
+/**************************************************************/
+/*                                                            */
+/* StrToi128-                                                 */
+/*                                                            */
+/* This function converts a sequence of characters to the     */
+/* corresponding numeric value.  This routine is separate     */
+/* from the others (atoi/StrToi8/StrToi16/StrToi32/StrToi64)  */
+/* for performance reasons (no reason to slow them down by    */
+/* making them support 128-bit input).                        */
+/*                                                            */
+/* On Entry:                                                  */
+/*                                                            */
+/* 	"s" points at the string containing the sequence of       */
+/* 	decimal digits to convert.                                */
+/* 	"index" contains an index into the string where the       */
+/* 	sequence of decimal digits begins.                        */
+/* 	                                                          */
+/* On Exit:                                                   */
+/*                                                            */
+/* 	StrToi128 returns the                                     */
+/* 	converted integer in the dest operand.                    */
+/* 	                                                          */
+/* Exceptions:                                                */
+/*                                                            */
+/* 	This routine raises an exception if:                      */
+/* 	                                                          */
+/* 		(a) A conversion error occurs (see atou/atoi).        */
+/* 		(b) The resulting value is not within range.          */
+/* 		(c) The supplied string index is out of range.        */
+/* 		(d) "s" contains a NULL pointer.                      */
+/* 		(e) "dest" contains a NULL pointer.                   */
+/*                                                            */
+/**************************************************************/
+
+
+procedure conv.strToi128( s:string; index:dword; var dest:int128 );   
+	@nodisplay;
+	@noframe; 
+	@noalignstack;
+	
+begin strToi128;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( esi );
+	push( edi );
+	
+	mov( _hla.get_Delimiters(), edi );
+	
+	// Get the string pointer and make sure it's valid.
+	
+	mov( s, esi );
+	test( esi, esi );
+	jz refNULL;
+		
+	// Get the starting index and make sure it does not
+	// exceed the string length.
+	
+	mov( index, eax );
+	cmp( eax, (type str.strRec [esi]).length );
+	ja badIndex;
+	
+	add( eax, esi );		// Point at start of integer string.
+	dec( esi );
+	whileDelimLoop:
+	
+		NextChar;
+		cmp( eax, $80 );
+		jae IllegalChar;
+		bt( eax, (type dword [edi] ));	// Delimiters
+		jc whileDelimLoop;
+
+	cmp( al, '-' );
+	jne notNegative;
+	
+		// If this number has a leading minus sign, then skip over it,
+		// convert the number to an unsigned integer, check for overflow,
+		// and then negate the result.
+		
+		inc( esi );
+		_atou128();
+		   
+		// $8000_0000_0000_0000_0000_0000_0000_0000 is okay, but
+		// any other value with the sign bit set is a value that
+		// is out of range.
+
+		test( edx, edx );
+		jns validi128;
+			cmp( edx, $8000_0000 );
+			ja voor;
+			test( eax, eax );
+			jnz voor;
+			test( ebx, ebx );
+			jnz voor;
+			test( ecx, ecx );
+			jnz voor;
+
+		validi128:		
+			xor( edi, edi );
+			sub( eax, edi );
+			mov( 0, eax );
+			sbb( ebx, eax );
+			mov( 0, ebx );
+			sbb( ecx, ebx );
+			mov( 0, ecx );
+			sbb( edx, ecx );
+			
+			mov( dest, edx );
+			mov( edi, [edx] );
+			mov( eax, [edx+4] );
+			mov( ebx, [edx+8] );
+			mov( ecx, [edx+12] );
+			jmp si128Done;
+		
+	notNegative:
+	
+		// If the number does not have a leading "-" character, then
+		// treat it like an unsigned integer.  Note, however, that
+		// the H.O. bit of the result must be clear or we have an
+		// overflow.
+		
+		_atou128();
+		test( edx, edx );
+		js voor;
+
+		// Store the result away in the i128 variable pointed at by dest:
+
+		mov( dest, edi );
+		mov( eax, [edi] );
+		mov( ebx, [edi+4] );
+		mov( ecx, [edi+8] );
+		mov( edx, [edi+12] );
+		
+	si128Done:
+	
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ );	
+
+refNULL:
+	raise( ex.AttemptToDerefNULL );
+
+badIndex:
+	raise( ex.StringIndexError );
+
+voor:
+	raise( ex.ValueOutOfRange );
+
+IllegalChar:
+	raise( ex.IllegalChar );
+
+end strToi128;
+
+
+end ConvUnit;

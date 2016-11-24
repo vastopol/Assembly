@@ -1,0 +1,2335 @@
+#if( !@defined( rpc_hhf ))
+?rpc_hhf := true;
+
+#if( !@thread )
+
+	#print( "Warning! RPC module requires -thread command-line parameter" )
+	
+#endif
+
+#includeOnce( "sockets.hhf" )
+#includeOnce( "threads.hhf" )
+#includeOnce( "blobs.hhf" )
+#includeOnce( "stdio.hhf" )
+#includeOnce( "memory.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "_hla.hhf" )
+
+namespace rpc;
+
+	val printServer := @global:false;
+	val printClient := @global:false;
+	val printCode 	:= printServer | printClient;
+	
+	#macro put( _destRPC_, string _parameters_ ); 
+
+		push( eax );
+		str.alloc( 4096 );
+		push( eax );
+		mov( [esp+4], eax );
+		str.put2( [esp], @text( _parameters_ ));
+		pop( eax );
+		_destRPC_( eax );
+		str.free( eax );
+		pop( eax );
+		
+	#endmacro
+	
+	procedure rpcClientThread( objectPtr:dword );	external( "RPC_RPCCLIENTTHREAD" );
+	
+end rpc;
+
+
+type
+
+	rpcBase_p	:pointer to rpcBase_t;
+	rpcBase_t:
+		class
+			var
+				server				:vServer_t;
+				align( 4 );
+				
+				client				:vClient_t;
+				clientConnectedAdrs	:dword;
+				clientConnectEvent	:dword;
+				clientConnectCode	:dword;
+				
+				quitServer			:boolean;
+				align( 4 );
+				
+				
+				sendPort			:word;
+				rcvPort				:word;
+				ipAdrs				:dword;
+				
+		
+			method getByte( var b:byte );		_hla._ext( "rpcBase_getByte" );
+			method getUns8( var u:uns8 );		_hla._ext( "rpcBase_getByte" );
+			method getInt8( var i:int8 );		_hla._ext( "rpcBase_getByte" );
+			method getBoolean( var b:boolean );	_hla._ext( "rpcBase_getByte" );
+			method getChar( var c:char );		_hla._ext( "rpcBase_getByte" );
+			
+			method getWord( var w:word );		_hla._ext( "rpcBase_getWord" );
+			method getUns16( var u:uns16 );		_hla._ext( "rpcBase_getWord" );
+			method getInt16( var i:int16 );		_hla._ext( "rpcBase_getWord" );
+			
+			method getDword( var d:dword  );	_hla._ext( "rpcBase_getDword" );
+			method getUns32( var u:uns32  );	_hla._ext( "rpcBase_getDword" );
+			method getInt32( var i:int32  );	_hla._ext( "rpcBase_getDword" );
+			method getReal32( var r:real32  );	_hla._ext( "rpcBase_getDword" );
+			
+			method getQword( var q:qword  );	_hla._ext( "rpcBase_getQword" );
+			method getUns64( var u:uns64  );	_hla._ext( "rpcBase_getQword" );
+			method getInt64( var i:int64  );	_hla._ext( "rpcBase_getQword" );
+			method getReal64( var r:real64  );	_hla._ext( "rpcBase_getQword" );
+			
+			method getTbyte( var tb:tbyte );	_hla._ext( "rpcBase_getTbyte" );
+			method getReal80( var r:real80 );	_hla._ext( "rpcBase_getTbyte" );
+			
+			method getLword( var l:lword  );	_hla._ext( "rpcBase_getLword" );
+			method getUns128( var u:uns128  );	_hla._ext( "rpcBase_getLword" );
+			method getInt128( var i:int128  );	_hla._ext( "rpcBase_getLword" );
+			method getCset( var c:cset  );		_hla._ext( "rpcBase_getLword" );
+			
+			method a_getBlob_t;					_hla._ext( "rpcBase_getBlob_t" );
+			method a_getString;					_hla._ext( "rpcBase_getString" );
+			
+			method sendByte( b:byte );			_hla._ext( "rpcBase_sendByte" );
+			method sendUns8( u:uns8 );			_hla._ext( "rpcBase_sendByte" );
+			method sendInt8( i:int8 );			_hla._ext( "rpcBase_sendByte" );
+			method sendChar( c:char );			_hla._ext( "rpcBase_sendByte" );
+			method sendBoolean( b:boolean );	_hla._ext( "rpcBase_sendByte" );
+			
+			method sendWord(   w:word  );		_hla._ext( "rpcBase_sendWord" );
+			method sendUns16( u:uns16  );		_hla._ext( "rpcBase_sendWord" );
+			method sendInt16( i:int16 );		_hla._ext( "rpcBase_sendWord" );
+			
+			method sendDword( d:dword );		_hla._ext( "rpcBase_sendDword" );
+			method sendUns32( u:uns32 );		_hla._ext( "rpcBase_sendDword" );
+			method sendInt32( i:int32 );		_hla._ext( "rpcBase_sendDword" );
+			method sendReal32( r:real32 );		_hla._ext( "rpcBase_sendDword" );
+			
+			method sendQword( q:qword );		_hla._ext( "rpcBase_sendQword" );
+			method sendUns64( u:uns64 );		_hla._ext( "rpcBase_sendQword" );
+			method sendInt64( i:int64 );		_hla._ext( "rpcBase_sendQword" );
+			method sendReal64( r:real64 );		_hla._ext( "rpcBase_sendQword" );
+			
+			method sendTbyte(  tb:tbyte  );		_hla._ext( "rpcBase_sendTbyte" );
+			method sendReal80( r:real80  );		_hla._ext( "rpcBase_sendTbyte" );
+			
+			method sendLword(  l:lword );		_hla._ext( "rpcBase_sendLword" );
+			method sendUns128( u:uns128 );		_hla._ext( "rpcBase_sendLword" );
+			method sendInt128( i:int128 );		_hla._ext( "rpcBase_sendLword" );
+			method sendCset( c:cset );			_hla._ext( "rpcBase_sendLword" );
+			
+			method sendBlob_t( b:blob_t );		_hla._ext( "rpcBase_sendBlob_t" );			
+			method sendString( s:string );		_hla._ext( "rpcBase_sendString" );			
+		
+		endclass;
+
+
+
+
+namespace rpc;
+const
+	tab		:string := @global:stdio.tab;
+	tabs2	:string	:= tab + tab;
+	tabs3	:string	:= tab + tab + tab;
+	tabs4	:string	:= tab + tab + tab + tab;
+	tabs5	:string	:= tab + tab + tab + tab + tab;
+	
+val
+	saveFrame		:boolean;
+	saveStack		:boolean;
+	i				:uns32	:= 0;
+	rpcCnt			:uns32	:= 0;
+	rpcStackSize	:string	:= "65536";	// Default stack size for RPC threads.
+	
+	serverProcCnt			:uns32		:= 0;
+	serverProcConsts		:string 	:= "";
+	serverClass				:string 	:= "";
+	serverClassName			:string		:= "";
+	serverVarName			:string		:= "";
+	serverInitCode			:string		:= "";
+	serverExternals			:string		:= "";
+	genericServerCode		:string 	:= "";
+	
+	clientProcCnt			:uns32		:= 0;
+	clientProcConsts		:string 	:= "";
+	clientClass				:string		:= "";
+	clientClassName			:string		:= "";
+	clientVarName			:string		:= "";
+	clientInitCode			:string		:= "";
+	clientDestroyCode		:string		:= "";
+	clientExternals			:string		:= "";
+	genericClientCode		:string 	:= "";
+	
+	curArgs					:string 	:= "";
+	curProc					:string 	:= "";
+	returnType				:string 	:= "";
+	
+	args					:string[1] 	:= [""];
+	types					:string[1] 	:= [""];
+	
+	temp					:string 	:= "";
+	temp2					:string 	:= "";
+	temp3					:string 	:= "";
+	
+	rpcID					:string 	:= "";
+	rem1					:string 	:= "";
+	rem2					:string 	:= "";
+	rem3					:string 	:= "";
+	rem4					:string 	:= "";
+	rem5					:string 	:= "";
+	rem6					:string 	:= "";
+	rem7					:string 	:= "";
+	rem8					:string 	:= "";
+	
+	replaceString			:string 	:= "";
+	
+	
+	#macro processParms;
+	
+		#if
+		( 
+				@zeroOrMoreWS( rpc.rem1, rpc.rem2 )
+			&	@oneChar( rpc.rem2, '(', rpc.rem3 )
+			&	@zeroOrMoreWS( rpc.rem3, rpc.rem1 )
+		)
+		
+			// For each argument pair of the form "id:type;" repeat
+			// the following loop:
+			
+			?_repeatWhile_ := true;
+			#while( _repeatWhile_ )
+			
+				// Process  "id:type" here:
+				
+				?rpc.rem1 := @trim( rpc.rem1, 0 );
+				#if
+				( 
+						@matchID( rpc.rem1, rpc.rem2, _curArgID_ )
+					&	@zeroOrMoreWS( rpc.rem2, rpc.rem3 )
+					&	@oneChar( rpc.rem3, ':', rpc.rem4 )
+					&	@zeroOrMoreWS( rpc.rem4, rpc.rem5 )
+					&	@matchID( rpc.rem5, rpc.rem6, _curArgType_ )
+					&	@zeroOrMoreWS( rpc.rem6, rpc.rem7 )
+					&	@zeroOrMoreWS( rpc.rem7, rpc.rem8 )
+				)
+				
+					?rpc.curArgs := rpc.curArgs +
+						_curArgID_ + ':' + _curArgType_;
+						
+						
+					#if( !@isType( @text( _curArgType_ )))
+					
+						#error( "Expected a type identifier: " + _curArgType_ )
+						
+					#else
+					
+						?_curArgType_ := 
+							@uppercase( @substr( _curArgType_, 0, 1 ), 0) +
+							@lowercase
+							( 
+								@substr
+								( 
+									_curArgType_, 
+									1, 
+									@length(_curArgType_)-1
+								),
+								0
+							);
+						#if
+						(!( 
+								_curArgType_ = "Byte"
+							| 	_curArgType_ = "Boolean"
+							| 	_curArgType_ = "Char"
+							| 	_curArgType_ = "Uns8"
+							| 	_curArgType_ = "Int8"
+							
+							| 	_curArgType_ = "Word"
+							| 	_curArgType_ = "Uns16"
+							| 	_curArgType_ = "Int16"
+							
+							| 	_curArgType_ = "Dword"
+							| 	_curArgType_ = "Uns32"
+							| 	_curArgType_ = "Int32"
+							| 	_curArgType_ = "Real32"
+							
+							| 	_curArgType_ = "Qword"
+							| 	_curArgType_ = "Uns64"
+							| 	_curArgType_ = "Int64"
+							| 	_curArgType_ = "Real64"
+							
+							| 	_curArgType_ = "Tbyte"
+							| 	_curArgType_ = "Real80"
+							
+							| 	_curArgType_ = "Lword"
+							| 	_curArgType_ = "Uns128"
+							| 	_curArgType_ = "Int128"
+							| 	_curArgType_ = "Cset"
+					
+							| 	_curArgType_ = "String"
+					
+							| 	_curArgType_ = "Blob_t"
+						))
+						
+							#error( "Illegal argument type" )
+							?_curArgType_ := "Dword";
+								
+						#endif
+						
+					#endif
+					?rpc.rem1 := rpc.rem8;
+						
+				#else
+				
+					#error
+					(
+						"Syntax error in argument declaration: " +
+						rpc.rem1
+					)
+					?_curArgID_ := "illegalIdentifier";
+						
+				#endif
+				?rpc.args := [ rpc.args, _curArgID_ ];
+				?rpc.types := [ rpc.types, _curArgType_ ];
+				
+				
+				// If it ends with ';', try again:
+				
+				?_repeatWhile_ := 
+						@oneChar( rpc.rem1, ';', rpc.rem2 )
+					&	@zeroOrMoreWS( rpc.rem2, rpc.rem3 );
+					
+				#if( _repeatWhile_ )
+				
+					?rpc.curArgs 	:= rpc.curArgs + ';';
+					?rpc.rem1 		:= rpc.rem3;
+					
+				#endif 
+				
+			#endwhile
+			
+			// Match closing parenthesis:
+			
+			#if
+			(
+				!( 
+						@zeroOrMoreWS( rpc.rem1, rpc.rem2 )
+					&	@oneChar( rpc.rem2, ')', rpc.rem3 )
+					&	@zeroOrMoreWS( rpc.rem3, rpc.rem4 )
+				)
+			)
+			
+				#error
+				( 
+					"Missing closing parenthesis in " + 
+					rpc.curProc +
+					" declaration"
+				)
+			
+			#endif
+			?rpc.rem1 := rpc.rem4;
+			   
+		#endif
+		#if( !( @zeroOrMoreWS( rpc.rem1, rpc.rem2 ) & @EOS( rpc.rem2 ) ))
+		
+			#error( "Extra garbage at end of declaration: " + rpc.rem2 )
+			
+		#endif
+	
+	#endmacro
+		 
+end rpc;
+
+
+#macro remoteProcedures( string _rpcName_ );
+
+	?rpc.saveFrame := @noFrame;
+	?rpc.saveStack := @noAlignStack;
+	?@noFrame := true;
+	?@noAlignStack := true;
+	
+	?rpc.serverProcCnt			:uns32	:= 0;
+	?rpc.serverProcConsts		:string := "";
+	?rpc.serverClassName		:string := "";
+	?rpc.serverClass			:string := "";
+	?rpc.serverInitCode			:string := "";
+	?rpc.serverExternals		:string := "";
+	?rpc.genericServerCode		:string := "";
+	
+	?rpc.clientProcCnt			:uns32	:= 0;
+	?rpc.clientProcConsts		:string := "";
+	?rpc.clientClassName		:string := "";
+	?rpc.clientClass			:string := "";
+	?rpc.clientInitCode			:string := "";
+	?rpc.clientDestroyCode		:string	:= "";
+	?rpc.clientExternals		:string := "";
+	?rpc.genericClientCode		:string := "";
+	
+	?rpc.rpcID					:string := "";
+	?rpc.rem1					:string := "";
+	?rpc.rem2					:string := "";
+	?rpc.rem3					:string := "";
+	?rpc.rem4					:string := "";
+	?rpc.rem5					:string := "";
+	?rpc.rem6					:string := "";
+	?rpc.rem7					:string := "";
+	?rpc.rem8					:string := "";
+	
+	#if( rpc.rpcCnt > 0 )
+	
+		#error( "Nested remoteProcedures statements are illegal" )
+		
+	#elseif
+	( 
+		!( 
+				@matchID( _rpcName_, rpc.rem1, rpc.rpcID ) 
+			&	@zeroOrMoreWS( rpc.rem1 )
+		) 
+	)
+	
+		#error
+		( 
+			"remoteProcedures argument must be a valid HLA identifier: " +
+			rpcName
+		)
+		
+	#else
+		
+		?rpc.rpcCnt := rpc.rpcCnt + 1;
+		?rpc.serverClassName	:string := rpc.rpcID + "_server_t";
+		?rpc.serverVarName		:string := rpc.rpcID + "_server";
+		
+		// Begin construction of the server class definition:
+		
+		#string( rpc.temp )
+		type
+			rpc.serverVarName_p:pointer to rpc.serverClassName;
+			rpc.serverClassName:
+				class inherits( rpcBase_t );
+				
+					var
+						connectedProc:procedure( parm:dword );
+						
+					procedure create
+					( 
+						port			:word; 
+						connectedProc	:procedure( parm:dword ); 
+						timeout			:thunk 
+					);	external;
+					
+					method destroy; 					external;
+					procedure connected( parm:dword );	external;
+		#endstring
+		?rpc.serverClass := rpc.serverClass +
+			@replace
+			(
+				rpc.temp,
+				[
+					[ "rpc.serverVarName", rpc.serverVarName],
+					[ "rpc.serverClassName", rpc.serverClassName]
+				]
+			) +
+			nl;
+		
+			
+			
+		?rpc.clientClassName	:string := rpc.rpcID + "_client_t";
+		?rpc.clientVarName		:string := rpc.rpcID + "_client";
+		
+		
+		// Begin construction of the client class definition:
+		
+		#string( rpc.temp )
+		type
+			rpc.clientVarName_p:pointer to rpc.clientClassName;
+			rpc.clientClassName:
+				class inherits( rpcBase_t );
+				
+					var
+						marshallCriticalSection	:dword;
+						quitEvent				:dword;
+						
+					procedure create
+					( 
+						ipAdrs	:dword; 
+						port	:word 
+					);	external;
+					
+					method destroy; 					external;
+					procedure connected( parm:dword );	external;
+					
+				
+		#endstring
+		?rpc.clientClass := rpc.clientClass +
+			@replace
+			(
+				rpc.temp,
+				[
+					[ "rpc.clientVarName", rpc.clientVarName ],
+					[ "rpc.clientClassName", rpc.clientClassName ]
+				]
+			);
+		
+		
+		// Generic code for the client side. This is essentially
+		// "library code" except that we have to manually tweak a
+		// bunch of variable names.
+			
+		#string( rpc.temp )
+		
+		// Generate the VMT and a single instance of the client class:
+		
+		static
+			vmt( rpc.clientClassName );
+			rpc.clientVarName : rpc.clientClassName;
+			
+			
+			// Connected gets called when the server process
+			// connects to the client process' server function.
+			
+			procedure rpc.clientClassName.connected( parm:dword );
+			var
+				objectPtr	:rpc.clientVarName_p;
+				mthdOfs		:dword;
+				
+			begin connected;
+			
+				thread.setEvent( rpc.clientVarName.clientConnectEvent );
+				forever
+				
+					try
+					
+						// Wait for a command (function offset)
+						// from the server. This will be the address
+						// of some *_return function that the server
+						// calls for a synchronous or bisynchronous
+						// procedure.
+						
+						lea( esi, rpc.clientVarName.server );
+						(type server_t [esi]).setTimeout2( 2, 0 );
+						rpc.clientVarName.getDword( mthdOfs );
+						
+					  unprotected
+					  
+						// Call the appropriate dispatch method.
+						// Note:-1 is a special code from the server that
+						// tells us that the server is shutting down
+						// and we should too (this is generally initiated
+						// from this client code):
+					  	
+						mov( mthdOfs, eax );
+						breakif( eax = -1 );
+						call( rpc.clientVarName.clientProcPtrs[eax] );
+						
+					  exception( ex.EndOfFile )
+					  
+					  	// On EOF, loop back and try again
+						
+					  //anyexception
+					  
+					  	// on any other exception, re-raise the exception
+						
+					endtry;
+					
+				endfor;
+				
+				// Signal the main thread that the client thread has
+				// quit and we can now quit the program
+				
+				thread.setEvent( rpc.clientVarName.quitEvent );
+				
+			end connected;
+			
+		#endstring
+		?rpc.genericClientCode := rpc.genericClientCode +
+			@replace
+			(
+				rpc.temp,
+				[
+					[ "rpc.clientVarName", rpc.clientVarName ],
+					[ "rpc.clientClassName", rpc.clientClassName ]
+				]
+			);
+								
+		
+		#string( rpc.temp )
+		static
+			vmt( rpc.serverClassName );
+			rpc.serverVarName	:rpc.serverClassName;
+			
+		#endstring			
+		?rpc.genericServerCode := rpc.genericServerCode +
+			@replace
+			(
+				rpc.temp,
+				[
+					[ "rpc.serverVarName", rpc.serverVarName ],
+					[ "rpc.serverClassName", rpc.serverClassName ]
+				]
+			);
+		
+		
+			
+	#endif
+
+
+
+
+
+#keyword sync( string _procDcl_ ):
+	_curArgID_, _curArgType_, _curArgs_, _curParms_, _curGets_, _curActual_, 
+	_repeatWhile_;
+
+	?rpc.curProc		:string := "";
+	?rpc.curArgs		:string := "";
+	?_curArgID_			:string := "";
+	?_curArgType_		:string := "";
+	?rpc.args			:string[1] := [""];
+	?rpc.types			:string[1] := [""];
+	#if( @matchID( _procDcl_, rpc.rem1, rpc.curProc ))
+	
+		// Check for optional parameter list:
+		
+		rpc.processParms;
+				
+		// Add a procedure offset constant declaration to the
+		// header file we're creating. This provides a symbolic
+		// constant that a client-side procedure can use
+		// to tell the server which procedure it wants to execute:
+		 
+		?rpc.serverProcConsts := rpc.serverProcConsts +
+			rpc.tabs2 + "const " + rpc.curProc + "_offset := " + 
+				string( rpc.serverProcCnt * 4 ) + ";" + nl;
+				
+		// Add some code to the server's constructor that will
+		// fill in the address of the associated procedure for
+		// the constant generated immediately above:
+		
+		?rpc.serverInitCode := rpc.serverInitCode + nl +
+			rpc.tabs3 + "mov( &" + rpc.serverClassName + "." +
+				rpc.curProc + "_marshall, " + 
+					rpc.serverVarName + ".serverProcPtrs[" + 
+						string(rpc.serverProcCnt * 4) + "]);" nl; 	
+			
+		?rpc.serverProcCnt := rpc.serverProcCnt + 1;  
+			
+			
+		// On the client, we're going to need a *_event and *_criticalSection
+		// field in the class that the code can use to synchronize the
+		// execution of a synchronous procedure. Here's the code that adds
+		// those data fields to the client class:
+			
+		?rpc.clientClass := rpc.clientClass + nl +
+			rpc.tabs5 + "var " + rpc.curProc + "_event:dword;" + nl +
+			rpc.tabs5 + "var " + rpc.curProc + "_criticalSection:dword;" + nl;
+				
+		// The following generates constants that the server can use to
+		// tell the client to execute one of the *_return functions (needed by
+		// synchronous and bisynchronous procedures):
+							
+		?rpc.clientProcConsts := rpc.clientProcConsts +
+			rpc.tabs2 + "const " + rpc.curProc + 
+				"_return_offset := " + string( rpc.clientProcCnt*4 ) + ";" + nl;
+				
+		// This fills in the address of the *_return returns in the
+		// client class' procedure pointer array. One address for each
+		// constant created immediately above.
+		
+		?rpc.clientInitCode := rpc.clientInitCode +
+			rpc.tab + "mov( &" + rpc.curProc + "_return, " + 
+				rpc.clientVarName + ".clientProcPtrs[" + 
+					string(rpc.clientProcCnt * 4) + "]);" nl; 	
+			
+				
+		?rpc.clientProcCnt := rpc.clientProcCnt + 1;  
+			
+		
+		// Add a declaration for the *_marshall procedure to the server's class:
+			
+		?rpc.serverClass := rpc.serverClass +
+			rpc.tabs5 + "procedure " + rpc.curProc + "_marshall; external;" + nl;
+			
+		
+		// Create an argument list for this procedure:
+		// _curArgs_	-- List of var declarations
+		// _curParms_	-- List of parameter declarations
+		// _curActual_	-- List of actual parameters
+		
+		?_curArgs_ := @delSpaces(rpc.curArgs,0);
+		?_curParms_ := "";
+		#if( _curArgs_ <> "" )
+		
+			?_curParms_ := "(" + _curArgs_ + ")";			
+		
+		#endif
+		
+		?_curActual_ := "";
+		#if( @elements( rpc.args ) > 1 )
+		
+			?_curActual_ := rpc.args[1];
+			#for( rpc.i := 2 to @elements( rpc.args ) - 1 )
+			
+				?_curActual_ := _curActual_ +  "," + rpc.args[rpc.i]; 
+												 
+			#endfor
+
+		#endif
+		
+		// Generate the list of calls that read the arguments from the socket:
+		
+		?_curGets_ := "";
+		#for( rpc.i := 1 to @elements( rpc.args ) - 1 )
+		
+			?_curGets_ := _curGets_ +
+				rpc.serverVarName +
+					#if( rpc.types[rpc.i] = "String" )
+					 
+						".a_getString();" + nl +
+						rpc.tabs3 + "mov( eax, " + rpc.args[rpc.i] + ");" + nl +
+							rpc.tabs3;
+						
+					#elseif( rpc.types[rpc.i] = "Blob_t" )
+					 
+						".a_getBlob_t();" + nl +
+						rpc.tabs3 + "mov( eax, " + rpc.args[rpc.i] + ");" + nl +
+							rpc.tabs3;
+						
+					#else
+					
+						".get" + rpc.types[rpc.i] + 
+							"(" + rpc.args[rpc.i] + ");" + nl + rpc.tabs3;
+						
+					#endif
+				
+										 
+		#endfor
+		?_curGets_ := 
+			@replace( _curGets_, "rpc.serverVarName", rpc.serverVarName ); 
+		
+		
+		
+		?rpc.serverExternals := 
+			rpc.serverExternals +
+			"procedure " + rpc.curProc + _curParms_ + "; external;";
+			
+		#string( rpc.temp )
+				
+		procedure rpc.serverClassName.rpc.curProc_marshall;
+		var _curArgs_;
+		begin rpc.curProc_marshall;
+		
+			_curGets_
+			rpc.curProc( _curActual_ );
+			
+			rpc.serverVarName.sendDword( rpc.curProc_return_offset );
+		
+		end rpc.curProc_marshall;
+		
+		#endstring;
+		?rpc.genericServerCode := rpc.genericServerCode +
+			@replace
+			(
+				rpc.temp,
+				[
+					[ "_curArgs_", _curArgs_ ],
+					[ "_curGets_", _curGets_ ],
+					[ "_curParms_", _curParms_ ],
+					[ "_curActual_", _curActual_ ],
+					[ "rpc.curProc", rpc.curProc ],
+					[ "rpc.serverClassName", rpc.serverClassName ],
+					[ "rpc.serverVarName", rpc.serverVarName ]
+				]
+			);
+		
+		
+		
+			 
+		
+		
+		// Create a set of statements that will send the
+		// arguments from the client to the server:
+			
+		?_curSends_ := "";
+		#for( rpc.i := 1 to @elements( rpc.args ) - 1 )
+		
+			?_curSends_ := _curSends_ + 
+				rpc.clientVarName + ".send" + rpc.types[rpc.i] +
+					"(" + rpc.args[rpc.i] + ");" + nl + rpc.tabs4;
+														
+		#endfor
+		
+		// Fix up the clientVarName in the string created above:
+		
+		?_curSends_ := 
+			@replace
+			( 
+				_curSends_, 
+				"rpc.clientVarName", 
+				rpc.clientVarName
+			); 
+		
+			
+		#string( rpc.temp )
+		procedure rpc.curProc_curParms_; external;
+		procedure rpc.curProc_return; external;
+		
+		#endstring
+		?rpc.clientExternals := rpc.clientExternals +
+			@replace
+			(
+				rpc.temp,
+				[
+					[ "_curParms_", _curParms_ ],
+					[ "rpc.curProc", rpc.curProc ]
+				]
+			) + nl + "///////////////////////////////" + nl;
+				
+		// Generate the client-side code associated with this procedure:
+			
+		#string( rpc.temp )
+		
+			// This is the function the server calls (remotely) to tell
+			// us that the synchronous procedure has completed execution.
+			
+			procedure rpc.curProc_return;
+			begin rpc.curProc_return;
+			
+				thread.setEvent( rpc.clientVarName.rpc.curProc_event );
+				
+			end rpc.curProc_return;
+			
+			// Here's the client's version of the remote procedure.
+			// It marshalls up the arguments and transmits them to
+			// the server for execution.
+			
+			procedure rpc.curProc_curParms_;
+			begin rpc.curProc;
+			
+				// Must serialize all calls to this procedure.
+				
+				thread.enterCriticalSection
+				( 
+					rpc.clientVarName.rpc.curProc_criticalSection 
+				);
+				
+				// Protect the marshalling and parameter transmission
+				// process (in case different remote procedures
+				// are being called from different threads, we don't
+				// want to intermix their arguments).
+				
+				thread.enterCriticalSection
+				( 
+					rpc.clientVarName.marshallCriticalSection 
+				);
+				
+				// Send the address/offset of this procedure to
+				// the remote procedure:
+				
+				rpc.clientVarName.sendDword( rpc.curProc_offset );
+				
+				// Send all arguments to the remote procedure:
+				
+				_curSends_
+				
+				// Release the mashall and transmit critical section:
+				
+				thread.leaveCriticalSection
+				( 
+					rpc.clientVarName.marshallCriticalSection 
+				);
+				
+				// Wait until the server completes execution of the
+				// remote procedure:
+				
+				thread.waitForEvent
+				(
+					rpc.clientVarName.rpc.curProc_event 
+				);
+				
+				// Release the lock on this particular remote procedure
+				// so someone else can call it:
+				
+				thread.leaveCriticalSection
+				(
+					rpc.clientVarName.rpc.curProc_criticalSection
+				);
+				
+			end rpc.curProc;
+			
+		#endstring
+		?rpc.genericClientCode := rpc.genericClientCode +
+			@replace
+			(
+				rpc.temp,
+				[
+					[ "_curParms_", _curParms_ ],
+					[ "_curSends_", _curSends_ ],
+					[ "rpc.curProc", rpc.curProc ],
+					[ "rpc.curArgs", rpc.curArgs ],
+					[ "rpc.clientVarName", rpc.clientVarName ],
+					[ "rpc.clientClassName", rpc.clientClassName ]
+				]
+			);
+		
+			
+		
+		
+			
+		// Add the event and critical section initialization to
+		// the client class' constructor:	
+			
+		#string( rpc.temp )
+		
+			thread.createEvent();
+			mov( eax, rpc.clientVarName.rpc.curProc_event );
+			thread.createCriticalSection();
+			mov( eax, rpc.clientVarName.rpc.curProc_criticalSection );
+			
+		#endstring
+		?rpc.clientInitCode := rpc.clientInitCode +
+			@replace
+			(
+				rpc.temp,
+				[
+					[ "rpc.curProc", rpc.curProc ],
+					[ "rpc.clientVarName", rpc.clientVarName ]
+				]
+			);
+		
+		
+		
+		// Add the event and critical section deletion to the
+		// class' destructor:
+			
+		#string( rpc.temp )
+			thread.deleteCriticalSection
+			( 
+				rpc.clientVarName.rpc.curProc_criticalSection 
+			);
+			thread.deleteEvent( rpc.clientVarName.rpc.curProc_event );
+		#endstring
+		?rpc.clientDestroyCode := rpc.clientDestroyCode +
+			@replace
+			(
+				rpc.temp,
+				[
+					[ "rpc.curProc", rpc.curProc ],
+					[ "rpc.clientVarName", rpc.clientVarName ]
+				]
+			);
+		
+						
+	#else
+	
+		#error
+		( 
+			"Expected a valid HLA identifier as procedure name: " + _procDcl_ 
+		)
+		
+	#endif
+		
+
+
+
+
+
+
+
+
+
+#keyword bisync( string _procDcl_ ):
+	_curArgID_, _curArgType_, _curArgs_, _curParms_, _curGets_, _curActual_,
+	_returnTypeName_, _returnType_, _varReturnType_, _varTimeoutType_,
+	_repeatWhile_, _curSends_;
+
+	?rpc.curProc		:string := "";
+	?rpc.curArgs		:string := "";
+	?_curArgID_			:string := "";
+	?_curArgType_		:string := "";
+	?rpc.returnType		:string := "";
+	?_returnTypeName_	:string := "";
+	?rpc.args			:string[1] := [""];
+	?rpc.types			:string[1] := [""];
+	
+	#if( @matchID( _procDcl_, rpc.rem1, rpc.curProc ))
+	
+		// Check for optional parameter list:
+		
+		#if
+		( 
+				@zeroOrMoreWS( rpc.rem1, rpc.rem2 )
+			&	@oneChar( rpc.rem2, '(', rpc.rem3 )
+			&	@zeroOrMoreWS( rpc.rem3, rpc.rem4 )
+		)
+		
+			// For each argument pair of the form "id:type;" repeat
+			// the following loop:
+			
+			?rpc.rem1 := rpc.rem4;
+			?_repeatWhile_ := true;
+			#while( _repeatWhile_ )
+			
+				// Process  "id:type" here:
+				
+				#if
+				( 
+						@matchID( rpc.rem1, rpc.rem2, _curArgID_ )
+					&	@oneChar( rpc.rem2, ':', rpc.rem3 )
+					&	@matchID( rpc.rem3, rpc.rem4, _curArgType_ )
+					&	@zeroOrMoreWS( rpc.rem4, rpc.rem5 )
+				)
+				
+					?rpc.curArgs := rpc.curArgs + _curArgID_ + ':' + 
+												_curArgType_;
+						
+						
+					#if( !@isType( @text( _curArgType_ )))
+					
+						#error( "Expected a type identifier: " + _curArgType_ )
+						
+					#else
+					
+						?_curArgType_ := 
+							@uppercase( @substr( _curArgType_, 0, 1 ), 0) +
+							@lowercase
+							( 
+								@substr
+								( 
+									_curArgType_, 
+									1, 
+									@length(_curArgType_)-1
+								),
+								0
+							);
+						#if
+						(!( 
+								_curArgType_ = "Byte"
+							| 	_curArgType_ = "Boolean"
+							| 	_curArgType_ = "Char"
+							| 	_curArgType_ = "Uns8"
+							| 	_curArgType_ = "Int8"
+							
+							| 	_curArgType_ = "Word"
+							| 	_curArgType_ = "Uns16"
+							| 	_curArgType_ = "Int16"
+							
+							| 	_curArgType_ = "Dword"
+							| 	_curArgType_ = "Uns32"
+							| 	_curArgType_ = "Int32"
+							| 	_curArgType_ = "Real32"
+							
+							| 	_curArgType_ = "Qword"
+							| 	_curArgType_ = "Uns64"
+							| 	_curArgType_ = "Int64"
+							| 	_curArgType_ = "Real64"
+							
+							| 	_curArgType_ = "Tbyte"
+							| 	_curArgType_ = "Real80"
+							
+							| 	_curArgType_ = "Lword"
+							| 	_curArgType_ = "Uns128"
+							| 	_curArgType_ = "Int128"
+							| 	_curArgType_ = "Cset"
+					
+							| 	_curArgType_ = "Blob_t"
+					
+							| 	_curArgType_ = "String"
+						))
+						
+							#error( "Illegal argument type" )
+							?_curArgType_ := "Dword";
+								
+						#endif
+						
+					#endif
+					?rpc.rem1 := rpc.rem5;
+						
+				#else
+				
+					#error
+					(
+						"Syntax error in argument declaration: " +
+						rpc.rem1
+					)
+					?_curArgID_ := "illegalIdentifier";
+						
+				#endif
+				?rpc.args := [ rpc.args, _curArgID_ ];
+				?rpc.types := [ rpc.types, _curArgType_ ];
+				
+				
+				// If it ends with ';', try again:
+				
+				?_repeatWhile_ := 
+						@oneChar( rpc.rem1, ';', rpc.rem2 )
+					&	@zeroOrMoreWS( rpc.rem2, rpc.rem3 );
+					
+				#if( _repeatWhile_ )
+				
+					?rpc.curArgs 	:= rpc.curArgs + ';';
+					?rpc.rem1 		:= rpc.rem3;
+					
+				#endif 
+				
+			#endwhile
+			
+			// Match closing parenthesis:
+			
+			#if
+			(
+				!( 
+						@zeroOrMoreWS( rpc.rem1, rpc.rem2 )
+					&	@oneChar( rpc.rem2, ')', rpc.rem3 )
+					&	@zeroOrMoreWS( rpc.rem3, rpc.rem4 )
+				)
+			)
+			
+				#error
+				( 
+					"Missing closing parenthesis in " + 
+					rpc.curProc +
+					" declaration"
+				)
+			
+			#endif
+			?rpc.rem1 := rpc.rem4;
+			   
+		#endif
+		
+		
+		// Check for a return value type (":typename")
+		
+		#if 
+		( 
+				@zeroOrMoreWS( rpc.rem1, rpc.rem2 )
+			&	@oneChar( rpc.rem2, ':', rpc.rem3 )
+			&	@zeroOrMoreWS( rpc.rem3, rpc.rem4 )
+		)
+		
+			?rpc.rem1 := rpc.rem4;
+			#if( @matchID( rpc.rem1, rpc.rem2, rpc.returnType ))
+			
+				#if( !@isType( @text( rpc.returnType ) ))
+				
+					#error( "Expected a return type, found:" + rpc.returnType )
+					?rpc.returnType := "";
+					
+				#endif
+				?rpc.rem1 := rpc.rem2;
+				
+			#endif
+			
+			?rpc.returnType := @lowercase( rpc.returnType, 0 );
+			#if
+			(!( 
+					rpc.returnType = "byte"
+				| 	rpc.returnType = "boolean"
+				| 	rpc.returnType = "char"
+				| 	rpc.returnType = "uns8"
+				| 	rpc.returnType = "int8"
+				
+				| 	rpc.returnType = "word"
+				| 	rpc.returnType = "uns16"
+				| 	rpc.returnType = "int16"
+				
+				| 	rpc.returnType = "dword"
+				| 	rpc.returnType = "uns32"
+				| 	rpc.returnType = "int32"
+				| 	rpc.returnType = "real32"
+				
+				| 	rpc.returnType = "qword"
+				| 	rpc.returnType = "uns64"
+				| 	rpc.returnType = "int64"
+				| 	rpc.returnType = "real64"
+				
+				| 	rpc.returnType = "tbyte"
+				| 	rpc.returnType = "real80"
+				
+				| 	rpc.returnType = "lword"
+				| 	rpc.returnType = "uns128"
+				| 	rpc.returnType = "int128"
+				| 	rpc.returnType = "cset"
+		
+				| 	rpc.returnType = "blob_t"
+		
+				| 	rpc.returnType = "string"
+			))
+			
+				#error( "Illegal argument type" )
+				?rpc.returnType := "dword";
+					
+			#endif
+			?_returnTypeName_ :=
+				@uppercase( @substr( rpc.returnType, 0, 1 ), 0 ) +
+				@lowercase
+				( 
+					@substr( rpc.returnType, 1, @length(rpc.returnType)-1 ), 
+					0 
+				);
+		
+		#endif
+		
+		
+		
+		#if( !( @zeroOrMoreWS( rpc.rem1, rpc.rem2 ) & @EOS( rpc.rem2 ) ))
+		
+			#error( "Extra garbage at end of declaration: " + rpc.rem2 )
+			
+		#endif
+		
+		// Generate a set of constant declarations that the client can
+		// use to tell the server which procedure to call:
+		
+		?rpc.serverProcConsts := rpc.serverProcConsts +
+			rpc.tabs2 + "const " + rpc.curProc + 
+				"_offset := " + string( rpc.serverProcCnt*4 ) + ";" + nl;
+			
+		// Generate the code for the server's constructor that will initialize
+		// the addresses of the remote procedures and place those addresses
+		// in the serverProcCnt array in the class:
+			
+		?rpc.serverInitCode := rpc.serverInitCode + nl +
+			rpc.tabs3 + "mov( &" + rpc.serverClassName + "." +rpc.curProc 
+				+ "_marshall, " + rpc.serverVarName + ".serverProcPtrs[" + 
+					string(rpc.serverProcCnt * 4) + "]);" nl; 	
+			
+		?rpc.serverProcCnt := rpc.serverProcCnt + 1;  
+		
+		
+		// Generate the client class' data fields for the *_event
+		// and *_criticalSection variables. If this bisynchronous
+		// procedure has a return type associated with it, also create
+		// the *_result data field to hold the return result.
+			
+		?rpc.clientClass := rpc.clientClass +
+			rpc.tabs5 + "var " + rpc.curProc + "_event:dword;" + nl +
+			rpc.tabs5 + "var " + rpc.curProc + "_criticalSection:dword;" + nl +
+			#if( rpc.returnType <> "" )
+				rpc.tabs5 + "var " + rpc.curProc + "_result:" + 
+					rpc.returnType + ";" + nl +
+			#endif
+			nl;
+			
+		// Generate the offset to the *_return function on the client that
+		// the server will call when the remote procedure completes execution:
+		
+		?rpc.clientProcConsts := rpc.clientProcConsts +
+			rpc.tabs2 + "const " + rpc.curProc + 
+				"_return_offset := " + string( rpc.clientProcCnt*4 ) + ";" + nl;
+		
+		// Generate the client constructor code that will initialize the
+		// appropriate entry of the clientProcPtrs array in the class object
+		// with the address of the *_return procedure:
+					
+		?rpc.clientInitCode := rpc.clientInitCode +
+			rpc.tab + "mov( &" + rpc.curProc + "_return, " + 
+				rpc.clientVarName + ".clientProcPtrs[" + 
+					string(rpc.clientProcCnt * 4) + "]);" nl; 	
+			
+				
+		?rpc.clientProcCnt := rpc.clientProcCnt + 1;  
+									
+		
+		// Generate an entry in the server class for the *_marshall procedure:
+						
+		?rpc.serverClass := rpc.serverClass +
+			rpc.tabs5 + "procedure " + rpc.curProc + 
+				"_marshall; external;" + nl;
+			
+			
+		// Generate argument, paramenter, and call lists for this procedure:
+			
+		?_curArgs_ := @delSpaces(rpc.curArgs,0);
+		?_curParms_ := "";
+		#if( _curArgs_ <> "" )
+		
+			?_curParms_ := "(" + _curArgs_ + ")";			
+		
+		#endif
+		
+		?_curActual_ := "";
+		#if( @elements( rpc.args ) > 1 )
+		
+			?_curActual_ := rpc.args[1];
+			#for( rpc.i := 2 to @elements( rpc.args ) - 1 )
+			
+				?_curActual_ := _curActual_ +  "," + rpc.args[rpc.i]; 
+												 
+			#endfor
+
+		#endif
+		
+		// Generate the list of calls that read the arguments from the socket:
+		
+		?_curGets_ := "";
+		#for( rpc.i := 1 to @elements( rpc.args ) - 1 )
+		
+			?_curGets_ := _curGets_ +
+				rpc.serverVarName +
+					#if( rpc.types[rpc.i] = "String" )
+					 
+						".a_getString();" + nl +
+						rpc.tabs3 + "mov( eax, " + rpc.args[rpc.i] + ");" + nl +
+							rpc.tabs3;
+						
+					#elseif( rpc.types[rpc.i] = "Blob_t" )
+					 
+						".a_getBlob_t();" + nl +
+						rpc.tabs3 + "mov( eax, " + rpc.args[rpc.i] + ");" + nl +
+							rpc.tabs3;
+						
+					#else
+					
+						".get" + rpc.types[rpc.i] + 
+							"(" + rpc.args[rpc.i] + ");" + nl + rpc.tabs3;
+						
+					#endif
+				
+										 
+		#endfor
+		?_curGets_ := 
+			@replace( _curGets_, "rpc.serverVarName", rpc.serverVarName ); 
+		
+		?_returnType_ := "";
+		?_varReturnType_ := "";
+		?_varTimeoutType_ := "(_timeout_:dword)";
+		?_returnActual_ := "";
+		#if( rpc.returnType <> "" )
+			?_returnType_ := "( rtn:" + rpc.returnType + ")";
+			?_varReturnType_ := "( var rtn:" + rpc.returnType + ")";
+			?_varTimeoutType_ := "( var rtn:" + rpc.returnType + 	
+														";_timeout_:dword)";
+			?_returnActual_ := "rpc.serverVarName.send_returnTypeName_(rtn);";
+		#endif
+		?_returnType_ := 
+			@replace( _returnType_, "rpc.returnType", rpc.returnType );
+			 
+		?_returnActual_ :=
+			@replace( _returnActual_, "rpc.serverVarName", rpc.serverVarName );
+			
+		?_returnActual_ :=
+			@replace( _returnActual_, "_returnTypeName_", _returnTypeName_ );
+		
+			
+		?rpc.serverExternals := 
+			rpc.serverExternals +
+			"procedure " + rpc.curProc + _curParms_ + "; external;" +
+			"procedure " + rpc.curProc + "_return" + _returnType_ + ";external;";
+			 	
+		#string( rpc.temp )
+		
+		procedure rpc.serverClassName.rpc.curProc_marshall;
+		var _curArgs_;
+		begin rpc.curProc_marshall;
+		
+			_curGets_
+			
+			rpc.curProc( _curActual_ );
+			
+		end rpc.curProc_marshall;
+		
+		procedure rpc.curProc_return_returnType_;
+		begin rpc.curProc_return;
+		
+			rpc.serverVarName.sendDword( rpc.curProc_return_offset );
+			_returnActual_
+			
+		end rpc.curProc_return;
+		
+		#endstring
+		?rpc.genericServerCode := rpc.genericServerCode +
+			@replace
+			(
+				rpc.temp,
+				[
+					[ "_returnActual_", _returnActual_ ],
+					[ "_returnType_", _returnType_ ],
+					[ "_curGets_", _curGets_ ],
+					[ "_curParms_", _curParms_ ],
+					[ "_curArgs_", _curArgs_ ],
+					[ "_curActual_", _curActual_ ],
+					[ "rpc.serverVarName", rpc.serverVarName ],
+					[ "rpc.serverClassName", rpc.serverClassName ],
+					[ "rpc.curProc", rpc.curProc ]
+				]
+			);
+		
+			
+			
+		
+		?_curSends_ := "";
+		#for( rpc.i := 1 to @elements( rpc.args ) - 1 )
+		
+			?_curSends_ := _curSends_ + 
+				rpc.clientVarName + ".send" + rpc.types[rpc.i] +
+					"(" + rpc.args[rpc.i] + ");" + nl + rpc.tabs4;
+														
+		#endfor
+		
+		// Fix up the clientVarName in the string created above:
+		
+		?_curSends_ := 
+			@replace
+			( 
+				_curSends_, 
+				"rpc.clientVarName", 
+				rpc.clientVarName
+			); 
+		
+		#string( rpc.temp )
+		procedure rpc.curProc_curParms_; external;
+		procedure rpc.curProc_waitForReturn_varReturnType_; external;
+		procedure rpc.curProc_waitForReturnTimeout_varTimeoutType_; external;
+		procedure rpc.curProc_return; external;
+		
+		#endstring
+		?rpc.clientExternals := rpc.clientExternals +
+			@replace
+			(
+				rpc.temp,
+				[
+					[ "_curParms_", _curParms_ ],
+					[ "_varReturnType_", _varReturnType_ ],
+					[ "_varTimeoutType_", _varTimeoutType_ ],
+					[ "rpc.curProc", rpc.curProc ]
+				]
+			);
+				
+		#string( rpc.temp )
+		
+		procedure rpc.curProc_curParms_;
+		begin rpc.curProc;
+		
+			thread.enterCriticalSection
+			( 
+				rpc.clientVarName.rpc.curProc_criticalSection 
+			);
+			thread.enterCriticalSection
+			(
+				rpc.clientVarName.marshallCriticalSection
+			);
+			rpc.clientVarName.sendDword( rpc.curProc_offset );
+			
+			_curSends_
+			
+			thread.leaveCriticalSection
+			(
+				rpc.clientVarName.marshallCriticalSection
+			);
+			
+		end rpc.curProc;
+			
+		
+		#endstring
+		?rpc.genericClientCode := rpc.genericClientCode +
+			@replace
+			(
+				rpc.temp,
+				[
+					[ "_curParms_", _curParms_ ],
+					[ "_curSends_", _curSends_ ],
+					[ "_varReturnType_", _varReturnType_ ],
+					[ "_varTimeoutType_", _varTimeoutType_ ],
+					[ "rpc.clientVarName", rpc.clientVarName ],
+					[ "rpc.curProc", rpc.curProc ]
+				]
+			);
+		
+		
+			
+			
+		?rpc.genericClientCode := rpc.genericClientCode +
+			"procedure " + rpc.curProc + "_return;" + nl +
+				rpc.tabs2 + "begin " + rpc.curProc + "_return;" + nl +
+				#if( _returnTypeName_ <> "" )
+				
+					#if( _returnTypeName_ = "String" )
+					
+					
+						rpc.tabs3 + rpc.clientVarName + ".a_getString();" + nl +
+						rpc.tabs3 + "mov( eax, " + rpc.clientVarName + "." + 
+							rpc.curProc + "_result );" + nl +
+							
+					#elseif( _returnTypeName_ = "Blob_t" )
+					
+					
+						rpc.tabs3 + rpc.clientVarName + ".a_getBlob_t();" + nl +
+						rpc.tabs3 + "mov( eax, " + rpc.clientVarName + "." + 
+							rpc.curProc + "_result );" + nl +
+							
+					#else
+					
+						rpc.tabs3 + rpc.clientVarName + ".get" + _returnTypeName_ +
+							"( " + rpc.clientVarName + "." + 
+							rpc.curProc + "_result );" + nl +
+							
+					#endif
+						
+				#endif
+				rpc.tabs3 + "thread.setEvent( " + rpc.clientVarName + "." +
+						rpc.curProc + "_event );" + nl +
+				rpc.tabs2 + "end " + rpc.curProc + "_return;" + nl nl +
+			
+			rpc.tabs2 + "procedure " + rpc.curProc + "_waitForReturn" +
+				#if( rpc.returnType <> "" )
+					"( var rtn:" + rpc.returnType + ")" +
+				#endif
+				";" + nl +
+				rpc.tabs2 + "begin " + rpc.curProc + "_waitForReturn;" + nl +
+				rpc.tabs3 + "thread.waitForEvent( " + rpc.clientVarName + "." +
+									rpc.curProc + "_event );" + nl +
+				
+				#if( rpc.returnType <> "" )
+				
+					rpc.tabs3 + "push( eax );" + nl +
+					rpc.tabs3 + "push( ebx );" + nl +
+					rpc.tabs3 + "mov( rtn,ebx );" + nl +
+					
+					#if( @size( @text( rpc.returnType )) = 1 )
+					
+						rpc.tabs3 + "mov( " + rpc.clientVarName + "." +
+							rpc.curProc + "_result, al );" + nl +
+						rpc.tabs3 + "mov( al, [ebx] );" + nl +
+					
+					#elseif( @size( @text( rpc.returnType )) = 2 )
+					
+						rpc.tabs3 + "mov( " + rpc.clientVarName + "." +
+							rpc.curProc + "_result, ax );" + nl +
+						rpc.tabs3 + "mov( ax, [ebx] );" + nl +
+					
+					#elseif( @size( @text( rpc.returnType )) = 4 )
+					
+						rpc.tabs3 + "mov( " + rpc.clientVarName + "." +
+							rpc.curProc + "_result, eax );" + nl +
+						rpc.tabs3 + "mov( eax, [ebx] );" + nl +
+					
+					#elseif( @size( @text( rpc.returnType )) = 8 )
+					
+						rpc.tabs3 + "mov( (type dword " + rpc.clientVarName + "." +
+							rpc.curProc + "_result), eax );" + nl +
+						rpc.tabs3 + "mov( eax, [ebx] );" + nl +
+						rpc.tabs3 + "mov( (type dword " + rpc.clientVarName + "." +
+							rpc.curProc + "_result[4]), eax );" + nl +
+						rpc.tabs3 + "mov( eax, [ebx+4] );" + nl +
+					
+					#elseif( @size( @text( rpc.returnType )) = 10 )
+					
+						rpc.tabs3 + "mov( (type dword " + rpc.clientVarName + "." +
+							rpc.curProc + "_result), eax );" + nl +
+						rpc.tabs3 + "mov( eax, [ebx] );" + nl +
+						rpc.tabs3 + "mov( (type dword " + rpc.clientVarName + "." +
+							rpc.curProc + "_result[4]), eax );" + nl +
+						rpc.tabs3 + "mov( eax, [ebx+4] );" + nl +
+						rpc.tabs3 + "mov( (type word " + rpc.clientVarName + "." +
+							rpc.curProc + "_result[8]), ax );" + nl +
+						rpc.tabs3 + "mov( ax, [ebx+8] );" + nl +
+					
+					#elseif( @size( @text( rpc.returnType )) = 16 )
+					
+						rpc.tabs3 + "mov( (type dword " + rpc.clientVarName + "." +
+							rpc.curProc + "_result), eax );" + nl +
+						rpc.tabs3 + "mov( eax, [ebx] );" + nl +
+						rpc.tabs3 + "mov( (type dword " + rpc.clientVarName + "." +
+							rpc.curProc + "_result[4]), eax );" + nl +
+						rpc.tabs3 + "mov( eax, [ebx+4] );" + nl +
+						rpc.tabs3 + "mov( (type dword " + rpc.clientVarName + "." +
+							rpc.curProc + "_result[8]), eax );" + nl +
+						rpc.tabs3 + "mov( eax, [ebx+8] );" + nl +
+						rpc.tabs3 + "mov( (type dword " + rpc.clientVarName + "." +
+							rpc.curProc + "_result[12]), eax );" + nl +
+						rpc.tabs3 + "mov( eax, [ebx+12] );" + nl +
+					
+					#else
+					
+						#error( "Illegal return type size (internal RPC error)" )
+						
+					#endif
+					rpc.tabs3 + "pop( ebx );" + nl +
+					rpc.tabs3 + "pop( eax );" + nl +
+				
+				#endif
+				rpc.tabs3 + "thread.leaveCriticalSection( " + rpc.clientVarName + 
+						"." + rpc.curProc + "_criticalSection );" + nl +
+			
+				rpc.tabs2 + "end " + rpc.curProc + "_waitForReturn;" + nl +
+			
+			nl +
+			
+		
+			
+			rpc.tabs2 + "procedure " + rpc.curProc + "_waitForReturnTimeout" +
+				"( " +
+				#if( rpc.returnType <> "" )
+					"var rtn:" + rpc.returnType + "; " +
+				#endif
+				"_timeout_:dword );" + nl +
+				rpc.tabs2 + "begin " + rpc.curProc + "_waitForReturnTimeout;" + nl +
+				rpc.tabs3 + "thread.waitForEventTimeout( " + 
+								rpc.clientVarName + "." +
+									rpc.curProc + "_event, _timeout_ );" + nl +
+				
+				rpc.tabs3 + "test( eax, eax );" nl +
+				rpc.tabs3 + "jnz timedOut;" nl +
+				
+				#if( rpc.returnType <> "" )
+				
+					rpc.tabs3 + "push( ebx );" + nl +
+					rpc.tabs3 + "mov( rtn,ebx );" + nl +
+					
+					#if( @size( @text( rpc.returnType )) = 1 )
+					
+						rpc.tabs3 + "mov( " + rpc.clientVarName + "." +
+							rpc.curProc + "_result, al );" + nl +
+						rpc.tabs3 + "mov( al, [ebx] );" + nl +
+					
+					#elseif( @size( @text( rpc.returnType )) = 2 )
+					
+						rpc.tabs3 + "mov( " + rpc.clientVarName + "." +
+							rpc.curProc + "_result, ax );" + nl +
+						rpc.tabs3 + "mov( ax, [ebx] );" + nl +
+					
+					#elseif( @size( @text( rpc.returnType )) = 4 )
+					
+						rpc.tabs3 + "mov( " + rpc.clientVarName + "." +
+							rpc.curProc + "_result, eax );" + nl +
+						rpc.tabs3 + "mov( eax, [ebx] );" + nl +
+					
+					#elseif( @size( @text( rpc.returnType )) = 8 )
+					
+						rpc.tabs3 + "mov( (type dword " + rpc.clientVarName + "." +
+							rpc.curProc + "_result), eax );" + nl +
+						rpc.tabs3 + "mov( eax, [ebx] );" + nl +
+						rpc.tabs3 + "mov( (type dword " + rpc.clientVarName + "." +
+							rpc.curProc + "_result[4]), eax );" + nl +
+						rpc.tabs3 + "mov( eax, [ebx+4] );" + nl +
+					
+					#elseif( @size( @text( rpc.returnType )) = 10 )
+					
+						rpc.tabs3 + "mov( (type dword " + rpc.clientVarName + "." +
+							rpc.curProc + "_result), eax );" + nl +
+						rpc.tabs3 + "mov( eax, [ebx] );" + nl +
+						rpc.tabs3 + "mov( (type dword " + rpc.clientVarName + "." +
+							rpc.curProc + "_result[4]), eax );" + nl +
+						rpc.tabs3 + "mov( eax, [ebx+4] );" + nl +
+						rpc.tabs3 + "mov( (type word " + rpc.clientVarName + "." +
+							rpc.curProc + "_result[8]), ax );" + nl +
+						rpc.tabs3 + "mov( ax, [ebx+8] );" + nl +
+					
+					#elseif( @size( @text( rpc.returnType )) = 16 )
+					
+						rpc.tabs3 + "mov( (type dword " + rpc.clientVarName + "." +
+							rpc.curProc + "_result), eax );" + nl +
+						rpc.tabs3 + "mov( eax, [ebx] );" + nl +
+						rpc.tabs3 + "mov( (type dword " + rpc.clientVarName + "." +
+							rpc.curProc + "_result[4]), eax );" + nl +
+						rpc.tabs3 + "mov( eax, [ebx+4] );" + nl +
+						rpc.tabs3 + "mov( (type dword " + rpc.clientVarName + "." +
+							rpc.curProc + "_result[8]), eax );" + nl +
+						rpc.tabs3 + "mov( eax, [ebx+8] );" + nl +
+						rpc.tabs3 + "mov( (type dword " + rpc.clientVarName + "." +
+							rpc.curProc + "_result[12]), eax );" + nl +
+						rpc.tabs3 + "mov( eax, [ebx+12] );" + nl +
+					
+					#else
+					
+						#error( "Illegal return type size (internal RPC error)" )
+						
+					#endif
+					rpc.tabs3 + "pop( ebx );" + nl +
+					rpc.tabs3 + "xor( eax, eax ); // Signal no timeout" nl +
+				
+				#endif
+				rpc.tabs3 + "timedOut:" nl +
+				rpc.tabs3 + "thread.leaveCriticalSection( " + rpc.clientVarName + 
+						"." + rpc.curProc + "_criticalSection );" + nl +
+			
+				rpc.tabs2 + "end " + rpc.curProc + "_waitForReturnTimeout;" + nl +
+			
+			nl +
+			nl;
+			
+		
+		// Emit the event and critical section initialization code for
+		// the client constructor:
+		
+		#string( rpc.temp )
+		
+			thread.createEvent();
+			mov( eax, rpc.clientVarName.rpc.curProc_event );
+			thread.createCriticalSection();
+			mov( eax, rpc.clientVarName.rpc.curProc_criticalSection );
+			
+		#endstring
+		?rpc.clientInitCode := rpc.clientInitCode +
+			@replace
+			(
+				rpc.temp,
+				[
+					[ "rpc.clientVarName", rpc.clientVarName ],
+					[ "rpc.curProc", rpc.curProc ]
+				]
+			);
+		
+		
+		// Emit the event and critical section delete code for the
+		// client destructor:
+		
+		#string( rpc.temp )
+		
+			thread.deleteCriticalSection
+			( 
+				rpc.clientVarName.rpc.curProc_criticalSection 
+			);
+			thread.deleteEvent( rpc.clientVarName.rpc.curProc_event );
+			
+		#endstring
+		?rpc.clientDestroyCode := rpc.clientDestroyCode +
+			@replace
+			(
+				rpc.temp,
+				[
+					[ "rpc.clientVarName", rpc.clientVarName ],
+					[ "rpc.curProc", rpc.curProc ]
+				]
+			);
+		
+			
+			 			
+	
+	#else
+	
+		#error
+		( 
+			"Expected a valid HLA identifier as procedure name: " + _procDcl_ 
+		)
+		
+	#endif
+		
+
+
+
+
+
+
+#keyword async( string _procDcl_ ):
+	_curArgID_, rpc.args, _curArgType_, _curArgs_, _curParms_, _curActual_, 
+	_curGets_, _curSends_, _repeatWhile_;
+
+	?rpc.curProc	:string := "";
+	?rpc.curArgs	:string := "";
+	?_curArgID_		:string := "";
+	?_curArgType_	:string := "";
+	?rpc.args		:string[1] := [""];
+	?rpc.types		:string[1] := [""];
+	#if( @matchID( _procDcl_, rpc.rem1, rpc.curProc ))
+	
+		// Check for optional parameter list:
+		
+		rpc.processParms;
+		
+		// Add a procedure offset constant declaration to the
+		// header file we're creating. This provides a symbolic
+		// constant that a client-side procedure can use
+		// to tell the server which procedure it wants to execute:
+		 
+		?rpc.serverProcConsts := rpc.serverProcConsts +
+			rpc.tabs2 + "const " + rpc.curProc + 
+				"_offset := " + string( rpc.serverProcCnt*4 ) + ";" + nl;
+				
+		// Add some code to the server's constructor that will
+		// fill in the address of the associated procedure for
+		// the constant generated immediately above:
+		
+		?rpc.serverInitCode := rpc.serverInitCode + nl +
+			rpc.tabs3 + "mov( &" + rpc.serverClassName + "." +rpc.curProc 
+				+ "_marshall, " + rpc.serverVarName + ".serverProcPtrs[" + 
+					string(rpc.serverProcCnt * 4) + "]);" nl; 	
+			
+		?rpc.serverProcCnt := rpc.serverProcCnt + 1;  
+		
+		
+		// Add a declaration for the *_marshall procedure to the server's class:
+			
+		?rpc.serverClass := rpc.serverClass +
+			rpc.tabs5 + "procedure " + rpc.curProc + 
+						"_marshall; external;" nl nl;
+			
+									
+		
+			
+			
+		// Create an argument list for this procedure:
+		// _curArgs_	-- List of var declarations
+		// _curParms_	-- List of parameter declarations
+		// _curActual_	-- List of actual parameters
+		
+		?_curArgs_ := @delSpaces(rpc.curArgs,0);
+		?_curParms_ := "";
+		#if( _curArgs_ <> "" )
+		
+			?_curParms_ := "(" + _curArgs_ + ")";			
+		
+		#endif
+		
+		?_curActual_ := "";
+		#if( @elements( rpc.args ) > 1 )
+		
+			?_curActual_ := rpc.args[1];
+			#for( rpc.i := 2 to @elements( rpc.args ) - 1 )
+			
+				?_curActual_ := _curActual_ +  "," + rpc.args[rpc.i]; 
+												 
+			#endfor
+
+		#endif
+		
+		// Generate the list of calls that read the arguments from the socket:
+		
+		?_curGets_ := "";
+		#for( rpc.i := 1 to @elements( rpc.args ) - 1 )
+		
+			?_curGets_ := _curGets_ +
+				rpc.serverVarName +
+					#if( rpc.types[rpc.i] = "String" )
+					 
+						".a_getString();" + nl +
+						rpc.tabs3 + "mov( eax, " + rpc.args[rpc.i] + ");" + nl +
+							rpc.tabs3;
+						
+					#elseif( rpc.types[rpc.i] = "Blob_t" )
+					 
+						".a_getBlob_t();" + nl +
+						rpc.tabs3 + "mov( eax, " + rpc.args[rpc.i] + ");" + nl +
+							rpc.tabs3;
+						
+					#else
+					
+						".get" + rpc.types[rpc.i] + 
+							"(" + rpc.args[rpc.i] + ");" + nl + rpc.tabs3;
+						
+					#endif
+				
+										 
+		#endfor
+		?_curGets_ := 
+			@replace( _curGets_, "rpc.serverVarName", rpc.serverVarName ); 
+		
+		
+		
+		// Emit the *_marshall and prototype for the remote function here:
+		
+		?rpc.serverExternals := rpc.serverExternals +
+			"procedure " + rpc.curProc + _curParms_ + "; external;";
+			
+		#string( rpc.temp )
+		
+		procedure rpc.serverClassName.rpc.curProc_marshall;
+		var _curArgs_;
+		begin rpc.curProc_marshall;
+		 
+			_curGets_
+		 	
+			rpc.curProc( _curActual_ );
+			
+		end rpc.curProc_marshall;
+		 
+		#endstring
+		?rpc.genericServerCode := rpc.genericServerCode +
+			@replace
+			(
+				rpc.temp,
+				[
+					[ "_curParms_", _curParms_ ],
+					[ "_curArgs_", _curArgs_ ],
+					[ "_curActual_", _curActual_ ],
+					[ "_curGets_", _curGets_ ],
+					[ "rpc.serverClassName", rpc.serverClassName ],
+					[ "rpc.curProc", rpc.curProc ]
+				]
+			);
+		
+			
+		
+		?_curSends_ := "";
+		#for( rpc.i := 1 to @elements( rpc.args ) - 1 )
+		
+			?_curSends_ := _curSends_ + 
+				rpc.clientVarName + ".send" + rpc.types[rpc.i] +
+					"(" + rpc.args[rpc.i] + ");" + nl + rpc.tabs4;
+														
+		#endfor
+		
+		// Fix up the clientVarName in the string created above:
+		
+		?_curSends_ := 
+			@replace
+			( 
+				_curSends_, 
+				"rpc.clientVarName", 
+				rpc.clientVarName
+			); 
+			
+			
+		// Emit the prototype and client proxy function for the
+		// remote procedure here: 	
+			
+		?rpc.clientExternals := rpc.clientExternals +
+			"procedure " + rpc.curProc + _curParms_ + ";external;" + nl;
+			 
+		#string( rpc.temp )
+		procedure rpc.curProc_curParms_;
+		begin rpc.curProc;
+		
+			thread.enterCriticalSection
+			(
+				rpc.clientVarName.marshallCriticalSection
+			);
+			rpc.clientVarName.sendDword( rpc.curProc_offset );
+			
+			_curSends_
+			
+			thread.leaveCriticalSection
+			(
+				rpc.clientVarName.marshallCriticalSection
+			);
+			
+		end rpc.curProc;
+
+		#endstring
+		?rpc.genericClientCode := rpc.genericClientCode +
+			@replace
+			(
+				rpc.temp,
+				[
+					[ "_curParms_", _curParms_ ],
+					[ "_curSends_", _curSends_ ],
+					[ "rpc.clientVarName", rpc.clientVarName ],
+					[ "rpc.curProc", rpc.curProc ]
+				]
+			);
+		
+		
+		
+			 
+			
+	#else
+	
+		#error
+		( 
+			"Expected a valid HLA identifier as procedure name: " + _procDcl_ 
+		)
+		
+	#endif
+		
+
+#terminator endRemoteProcedures;
+
+		?rpc.serverClass := rpc.serverClass +
+			#if( rpc.serverProcCnt > 0 )
+
+				rpc.tabs5 + "var serverProcPtrs :dword[" +
+					string( rpc.serverProcCnt ) + "];" + nl + nl +
+					
+			#else // Must have at least one entry, even if we don't use it.
+
+				rpc.tabs5 + "var serverProcPtrs :dword[1];" + nl + nl +
+					
+			#endif
+			nl + 			
+			rpc.tabs2 + "endclass;" nl nl +
+			rpc.serverProcConsts + nl +
+			rpc.clientProcConsts + nl +
+			nl;
+			
+		#string( rpc.temp )
+		procedure rpc.serverClassName_hasConnection( parm:dword );
+		begin rpc.serverClassName_hasConnection;
+		
+			// Wait for the server to connect as a client to the client object:
+
+			forever
+			
+				try
+				
+					mov
+					( 
+						rpc.serverVarName.server.connectedAdrs.sin_addr, 
+						eax 
+					);
+					bswap( eax );
+					lea( esi, rpc.serverVarName.client );
+					(type client_t [esi]).connect
+					( 
+						eax, 
+						rpc.serverVarName.sendPort 
+					);
+				
+				  unprotected
+						break;
+						
+				  exception( ex.SocketError );
+				  
+				  	// Loop back and wait for connection
+					
+					// anyexception - raise exception
+					
+				endtry;
+				 
+			endfor;
+			rpc.serverVarName.connectedProc( parm );
+			
+		end rpc.serverClassName_hasConnection;
+		
+		procedure rpc.serverClassName.create
+		(
+			port			:word;
+			connectedProc	:procedure( parm:dword );
+			timeout			:thunk
+		);
+		var
+			thisSave	:dword;
+			
+			 
+		begin create;
+		
+			push( eax );
+			push( edi );
+			if( esi = NULL ) then
+			
+				mem.alloc( @size( rpc.serverClassName ));
+				mov( eax, esi );
+				
+			endif;
+			mov( &rpc.serverClassName._VMT_, this._pVMT_ );
+			mov( esi, thisSave );
+			mov( port, ax );
+			mov( ax, this.rcvPort );
+			add( 1, ax );
+			mov( ax, this.sendPort );
+			mov( false, this.quitServer );
+			
+			sock.socketInit();
+			sock.hostAdrs();
+			mov( eax, this.ipAdrs );
+			
+			mov( connectedProc, eax );
+			mov( eax, this.connectedProc );
+			
+			lea( esi, this.server );
+			(type server_t [esi]).create();
+			mov( thisSave, esi );
+			lea( esi, this.client );
+			(type client_t [esi]).create();
+			mov( thisSave, esi );
+			
+			
+			rpc.serverInitCode
+			
+			mov( thisSave, esi );
+			lea( edi, this.server );
+			(type server_t [edi]).start
+			(
+				this.ipAdrs,
+				this.rcvPort,
+				timeout,
+				&rpc.serverClassName_hasConnection,
+				esi
+			);
+			
+			pop( edi );
+			pop( eax );
+			
+		end create;
+		
+		method rpc.serverClassName.destroy;
+		begin destroy;
+		
+			lea( esi, rpc.serverVarName.server );
+			(type server_t [esi]).close();
+			(type server_t [esi]).destroy();
+			
+		end destroy;
+		
+		procedure rpc.serverClassName.connected( parm:dword );
+		var
+			mthdOfs	:dword;
+			
+		begin connected;
+		
+			forever
+			
+				try
+				
+					lea( esi, rpc.serverVarName.server );
+					(type server_t [esi]).setTimeout2( 2, 0 );
+					rpc.serverVarName.getDword( mthdOfs );
+					
+				  unprotected
+				  
+				  	mov( mthdOfs, eax );
+					
+					// -1 is a special offset value meaning
+					// "shut down the server."
+					
+					breakif( eax = -1 );
+					call( rpc.serverVarName.serverProcPtrs[eax] );
+					
+				  exception( ex.EndOfFile )
+				  
+				  	// Just keep looping back
+					
+				  //anyexception -- re-raise exception
+				  
+				 endtry;
+				  
+			endfor;
+			
+			// Tell the client's server to shut down, too:
+			
+			rpc.serverVarName.sendDword( -1 );
+			
+		end connected;
+		
+		#endstring
+		?rpc.genericServerCode := rpc.genericServerCode +
+			@replace
+			(
+				rpc.temp,
+				[
+					[ "rpc.serverVarName", rpc.serverVarName ],
+					[ "rpc.serverInitCode", rpc.serverInitCode ],
+					[ "rpc.serverClassName", rpc.serverClassName ]
+				]
+			);
+		
+		
+		
+		
+		?rpc.clientClass := rpc.clientClass + 
+			#if( rpc.clientProcCnt > 0 )
+				rpc.tabs5 + "var clientProcPtrs :dword[" +
+					string( rpc.clientProcCnt ) + "];" + nl + nl +
+					
+			#else // = 0
+			
+				// Must have at least one entry, even if we never use it.
+				
+				rpc.tabs5 + "var clientProcPtrs :dword[1];" + nl + nl +
+			
+			#endif
+			nl + 			
+			rpc.tabs4 + "endclass;" nl nl +
+			rpc.clientProcConsts + nl +
+			rpc.serverProcConsts + nl +
+			nl;
+			
+			
+		#string( rpc.temp )
+		method rpc.clientClassName.destroy;
+		begin destroy;
+			
+			// Before doing anything else, let's tell the server to shut
+			// down and wait for that to happen before proceeding:
+			
+			rpc.clientVarName.sendDword( -1 );
+			thread.waitForEvent( rpc.clientVarName.quitEvent );
+			thread.deleteCriticalSection
+			( 
+				rpc.clientVarName.marshallCriticalSection 
+			);
+			thread.deleteEvent( rpc.clientVarName.quitEvent );
+			
+			lea( esi, rpc.clientVarName.client );
+			(type client_t [esi]).close();
+			(type client_t [esi]).destroy();
+			
+			rpc.clientDestroyCode
+			
+		end destroy;
+		
+		
+		procedure rpc.clientClassName.create
+		(
+			ipAdrs		:dword;
+			port		:word
+		);
+		var
+			thisSave	:dword;
+			
+		begin create;
+		
+			push( eax );
+			push( edi );
+			if( esi = NULL ) then
+			
+				mem.alloc( @size( rpc.clientClassName ));
+				mov( eax, esi );
+				
+			endif;
+			mov( &rpc.clientClassName._VMT_, this._pVMT_ );
+			mov( esi, thisSave );
+			mov( ipAdrs, eax );
+			mov( eax, this.ipAdrs );
+			mov( port, ax );
+			mov( ax, this.sendPort );
+			add( 1, ax );
+			mov( ax, this.rcvPort );
+			mov( false, this.quitServer );
+			
+			thread.createCriticalSection();
+			mov
+			(
+				eax,
+				rpc.clientVarName.marshallCriticalSection
+			);
+			thread.createEvent();
+			mov( eax, rpc.clientVarName.quitEvent );
+			
+			rpc.clientInitCode
+			
+			lea( esi, this.server );
+			(type server_t [esi]).create();
+			
+			mov( thisSave, esi );
+			lea( esi, this.client );
+			(type client_t [esi]).create();
+			
+			mov( thisSave, esi );
+			mov( &rpc.clientClassName.connected, this.clientConnectedAdrs );
+			thread.createEvent();
+			mov( eax, this.clientConnectEvent );
+			mov( 0, this.clientConnectCode );
+			thread.create
+			(
+				&rpc.rpcClientThread,
+				esi,
+				rpc.rpcStackSize
+			);
+			// Wait for the client thread to do it's thing:
+			
+			
+			// Wait for the client to connect:
+
+			forever
+			
+				try
+				
+					mov( thisSave, esi );
+					lea( esi, this.client );
+					(type client_t [esi]).connect( ipAdrs, port );
+				
+				  unprotected
+						break;
+						
+				  exception( ex.SocketError );
+				  
+				  	// Loop back and wait for connection
+					
+				  anyexception
+				  
+				  	reraise( eax );
+					
+				endtry;
+				 
+			endfor;
+			mov( thisSave, esi );
+			thread.waitForEvent( this.clientConnectEvent );
+			if( this.clientConnectCode <> 0 ) then
+			
+				raise( this.clientConnectCode );
+				
+			endif;
+			pop( edi );
+			pop( eax );
+			
+		end create;
+					
+			
+		#endstring
+		?rpc.genericClientCode := rpc.genericClientCode +
+			@replace
+			(
+				rpc.temp,
+				[
+					[ "rpc.clientClassName", rpc.clientClassName ],
+					[ "rpc.clientVarName", rpc.clientVarName ],
+					[ "rpc.clientInitCode", rpc.clientInitCode ],
+					[ "rpc.rpcStackSize", rpc.rpcStackSize ],
+					[ "rpc.clientDestroyCode", rpc.clientDestroyCode ]
+				]
+			);
+		
+		
+				
+			 
+		?rpc_server_implementation :string :=
+			"#if( !@defined( " + _rpcName_ + "_includeOnce1 ) ) " + nl +
+				"?" + _rpcName_ + "_includeOnce1 := true;" + nl +  
+				rpc.serverClass + rpc.serverExternals + rpc.genericServerCode + nl +
+			"#endif";
+			
+		?rpc_server_externals :string := 
+			"#if( !@defined( " + _rpcName_ + "_includeOnce2 ) ) " + nl +
+				"?" + _rpcName_ + "_includeOnce2 := true;" + nl +  
+				rpc.serverExternals + nl +
+			"#endif";
+			
+		?rpc_client_implementation :string := 
+			"#if( !@defined( " + _rpcName_ + "_includeOnce3 ) ) " + nl +
+				"?" + _rpcName_ + "_includeOnce3 := true;" + nl +  
+				rpc.clientClass + rpc.clientExternals + rpc.genericClientCode + nl +
+			"#endif";
+			
+		?rpc_client_externals :string := 
+			"#if( !@defined( " + _rpcName_ + "_includeOnce4 ) ) " + nl +
+				"?" + _rpcName_ + "_includeOnce4 := true;" + nl +  
+				rpc.clientExternals + nl +
+			"#endif";
+			
+		
+		#if( rpc.printCode )
+		
+			#if( rpc.printServer )
+			
+				#print
+				(
+					nl 
+					"====================" nl 
+					"Server:" nl nl, 
+					rpc.serverClass + nl + rpc.serverExternals + nl nl nl + 
+						rpc.genericServerCode, 
+					nl nl nl nl nl nl 
+				)
+				
+			#endif
+			
+			#if( rpc.printClient )
+			
+				#print
+				(
+					"====================" nl 
+					"Client:" nl nl, 
+					rpc.clientClass + nl + rpc.clientExternals + nl nl nl + 
+						rpc.genericClientCode, 
+					nl nl nl nl nl nl 
+				)
+				
+			#endif
+			
+		#endif
+
+
+	?@noFrame := rpc.saveFrame;
+	?@noAlignStack := rpc.saveStack;
+	?rpc.rpcCnt := 0;
+		
+		 
+
+#endmacro
+
+
+#endif
+ 

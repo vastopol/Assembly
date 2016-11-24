@@ -1,0 +1,127 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit mathUnit;
+
+#include( "math.hhf" )
+
+/*********************************************************/
+/*                                                       */
+/* modl( left, right, dest -                             */
+/*                                                       */
+/* Computes dest := left mod right where all the         */
+/* operands are 128-bit operands.  Does a quick check    */
+/* to see if it can do a 128/32 division vs. a full      */
+/* 128/128 bit division.                                 */
+/*                                                       */
+/*********************************************************/
+
+
+procedure math.modl( left:lword; right:lword; var dest:lword );
+	@nodisplay;
+	@noalignstack;
+	@noframe;
+	
+var
+	Quotient:lword;
+	
+begin modl;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( eax );
+	
+	// First, check to see if the H.O. dword of the divisor (right)
+	// is zero.  If so, we can do a 128/32 bit division using the
+	// div instruction (which is faster).
+	
+	mov( (type dword right[4]), eax );
+	or( (type dword right[8]), eax );
+	or( (type dword right[12]), eax );
+	jnz fullDiv;
+	
+		// Okay, we can safely do a 128/32 bit division here.
+		// Note that if the divisor is zero, the system will
+		// raise the ex.DivideError exception, so we don't
+		// have to check here.
+		
+		push( ebx );
+		push( edx );
+		
+		mov( (type dword right), ebx );
+		mov( (type dword left[4]), edx );
+		or( (type dword left[8]), edx );
+		or( (type dword left[12]), edx );
+		jnz notDiv32;
+		
+			// We can do a 32/32 bit division!
+					
+			mov( (type dword left), eax );
+			div( ebx );
+			mov( dest, ebx );
+			
+			mov( edx, [ebx] );
+			mov( 0, (type dword [ebx+4]));
+			mov( 0, (type dword [ebx+8]));
+			mov( 0, (type dword [ebx+12]));
+			jmp shortDivDone;
+			
+		notDiv32:
+		
+			// We have to do a full 128/32 bit division
+			
+			push( ecx );
+			mov( (type dword left[12]), eax );
+			xor( edx, edx );
+			div( ebx );
+			
+			mov( (type dword left[8]), eax );
+			div( ebx );
+			
+			mov( (type dword left[4]), eax );
+			div( ebx );
+			
+			mov( (type dword left), eax );
+			div( ebx );
+
+			mov( dest, ecx );
+			xor( eax, eax );
+			mov( edx, [ecx] );
+			mov( eax, [ecx+4] );	// H.O. dwords are all zero.
+			mov( eax, [ecx+8] );
+			mov( eax, [ecx+12] );
+			
+			pop( ecx );
+			
+		shortDivDone:				   
+		pop( edx );
+		pop( ebx );
+		jmp allDone;
+			
+	fullDiv: 
+		// Must do a full 128/128 division.
+		// Note: divisor is not zero at this point.
+		
+		math.div128( left, right, Quotient, dest );
+	
+	allDone:
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+end modl;
+
+
+end mathUnit;

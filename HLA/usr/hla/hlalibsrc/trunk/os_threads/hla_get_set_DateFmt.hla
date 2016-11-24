@@ -1,0 +1,184 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ThreadUnit;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "../include/datetime_private.hhf" )
+
+#if( @thread )
+
+	#includeOnce( "../include/thread_private.hhf" )
+	#includeOnce( "threads.hhf" )
+	#includeOnce( "excepts.hhf" )
+
+#endif
+
+static
+	DateFormat		:date.OutputFormat := date.mmddyy;
+
+#if( @thread )
+
+	procedure _hla.get_DateFormat;
+	begin get_DateFormat;
+
+		#if( os.win32 )
+		
+			push( ecx );
+			push( edx );
+			TlsGetValue( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			pop( edx );
+			pop( ecx );
+			
+		#elseif( os.linux | os.freeBSD | os.macOS )
+		
+			pthread_getspecific( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			
+		#else
+		
+			#error( "Unknown OS!" )
+			
+		#endif
+		movzx( (type _hla.stdlib_tls_t [eax]).dt_DateFormat, eax );
+		ret(); 
+		
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end get_DateFormat;
+
+	procedure _hla.set_DateFormat( df:date.OutputFormat );
+	begin set_DateFormat;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( eax );
+		push( ecx );
+		#if( os.win32 )
+		
+			push( edx );
+			TlsGetValue( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			pop( edx );
+			
+		#elseif( os.linux | os.freeBSD | os.macOS )
+		
+			pthread_getspecific( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			
+		#else
+		
+			#error( "Unknown OS!" )
+			
+		#endif
+		mov( df, cl );
+		mov( cl, (type _hla.stdlib_tls_t [eax]).dt_DateFormat );
+		pop( ecx );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ );
+		
+	ThreadError:
+		raise( ex.ThreadError ); 
+		
+	end set_DateFormat;
+
+
+	procedure _hla.cmp_DateFormat( df:date.OutputFormat );
+	begin cmp_DateFormat;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( eax );
+		push( ecx );
+		#if( os.win32 )
+		
+			push( edx );
+			TlsGetValue( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			pop( edx );
+			
+		#elseif( os.linux | os.freeBSD | os.macOS )
+		
+			pthread_getspecific( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			
+		#else
+		
+			#error( "Unknown OS!" )
+			
+		#endif
+		mov( df, cl );
+		cmp( cl, (type _hla.stdlib_tls_t [eax]).dt_DateFormat );
+		pop( ecx );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ );
+		
+	ThreadError:
+		raise( ex.ThreadError ); 
+		
+	end cmp_DateFormat;
+	
+#else
+
+	procedure _hla.get_DateFormat;
+	begin get_DateFormat;
+
+		movzx( DateFormat, eax );
+		ret();
+		
+	end get_DateFormat;
+
+	procedure _hla.set_DateFormat( df:date.OutputFormat );
+	begin set_DateFormat;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( eax );
+		mov( df, al );
+		mov( al, DateFormat );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ );
+		
+	end set_DateFormat;
+
+
+	procedure _hla.cmp_DateFormat( df:date.OutputFormat );
+	begin cmp_DateFormat;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( eax );
+		mov( df, al );
+		cmp( al, DateFormat );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ );
+		
+	end cmp_DateFormat;
+	
+#endif
+
+end ThreadUnit;

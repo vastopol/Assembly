@@ -1,0 +1,57 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit memory;
+
+#includeonce( "os.hhf" )
+#includeonce( "../include/mem.hhf" )
+
+// mem.safeFree-
+//
+//	Frees the storage pointed at by the pointer variable passed to this
+// procedure and then stores NULL into the pointer variable.
+// Will not free the storage (nor raise an exception) if the pointer
+// variable contains NULL. Will not free the storage if the pointer
+// does not contain the address of a heap object.
+
+procedure mem.safeFree( var memptr:dword ); @noframe; @nodisplay;
+begin safeFree;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	mov( memptr, ebx );
+	assert( ebx <> NULL );
+	mov( [ebx], eax );
+	if( eax <> NULL && mem.isInHeap( eax ) ) then
+	
+		mem.free( [ebx] );
+		
+	endif;
+	mov( NULL, (type dword [ebx]));
+	pop( ebx );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+end safeFree;
+
+end memory;
+
+
+
+
+	
+

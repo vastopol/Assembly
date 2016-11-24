@@ -1,0 +1,64 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "memory.hhf" )
+
+
+
+/**********************************************/
+/*                                            */
+/* 	utoEng-                                   */
+/* 	                                          */
+/* 	Converts an unsigned number to a string   */
+/* 	containing the English equivalent of that */
+/* 	number.  E.g., 25 becomes "twenty-five".  */
+/* 	                                          */
+/* 	Inputs:                                   */
+/* 	                                          */
+/* 		u:		Number to convert.            */
+/*                                            */
+/*                                            */
+/* 	This routine allocates 128 characters for */
+/* 	the destination string (which should be   */
+/* 	sufficient for all possible values).  It  */
+/* 	returns a pointer to the allocated string */
+/* 	in the EAX register.	                  */
+/* 	                                          */
+/**********************************************/
+	
+procedure conv.a_utoEng( u:dword ); 
+	@nodisplay;
+	@noframe;
+
+begin a_utoEng;
+
+	push( ebp );
+	mov( esp, ebp );
+
+	str.talloc( 1024 );	// Should be big enough for any normal English #
+	conv.utoEng( u, eax );
+	str.a_cpy( eax );
+
+	leave();
+	ret( _parms_ );
+	
+end a_utoEng;	
+
+
+end ConvUnit;

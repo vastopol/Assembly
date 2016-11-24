@@ -1,0 +1,334 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 8/17/2006, by Randall Hyde
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+#include( "stdlibdata.hhf" )
+
+
+/*****************************************************************************/
+/*                                                                           */
+/* _unsToBuf64-                                                              */
+/*                                                                           */
+/* On entry:                                                                 */
+/* 	d contains a numeric value to convert to an unsigned decimal string.     */
+/*  width contains the number of digits to print (from L.O.->H.O.)           */
+/*    including a count for the underscore if one is to be inserted.         */
+/* 	                                                                         */
+/* 	EDI points at the end of a memory buffer large enough to hold an         */
+/* 	uns64 value (at least 20 bytes if OutputUnderscores is                   */
+/*  false, at least 26 bytes if OutputUnderscores is true).                  */
+/*                                                                           */
+/* On exit:                                                                  */
+/* 	The buffer will contain a sequence of characters that is the             */
+/* 	string representation of the uns64 value and EDI will point at the       */
+/* 	start of the string. If OutputUnderscores is true then this routine will */
+/*  insert underscores between each group of three digits.                   */
+/* 	                                                                         */
+/*****************************************************************************/
+
+
+procedure conv._unsToBuf64
+( 
+		q		:qword;
+		width	:dword; 
+	var buffer	:char in edi 
+);
+	@noframe; 
+	@nodisplay; 
+	@noalignstack;
+
+readonly(4)
+
+	noUSjt	:dword[21] :=
+			[
+				&badWidth,
+				&noUS1,
+				&noUS2,
+				&noUS3,
+				&noUS4,
+				&noUS5,
+				&noUS6,
+				&noUS7,
+				&noUS8,
+				&noUS9,
+				&noUS10,
+				&noUS11,
+				&noUS12,
+				&noUS13,
+				&noUS14,
+				&noUS15,
+				&noUS16,
+				&noUS17,
+				&noUS18,
+				&noUS19,
+				&noUS20
+			];
+
+	hasUSjt	:dword[27] :=
+			[
+				&badWidth,
+				&hasUS1,
+				&hasUS2,
+				&hasUS3,
+				&badWidth,
+				&hasUS5,
+				&hasUS6,
+				&hasUS7,
+				&badWidth,
+				&hasUS9,
+				&hasUS10,
+				&hasUS11,
+				&badWidth,
+				&hasUS13,
+				&hasUS14,
+				&hasUS15,
+				&badWidth,
+				&hasUS17,
+				&hasUS18,
+				&hasUS19,
+				&badWidth,
+				&hasUS21,
+				&hasUS22,
+				&hasUS23,
+				&badWidth,
+				&hasUS25,
+				&hasUS26
+			];
+
+	#macro HO(q);
+		(q>>32)
+	#endmacro
+	
+	#macro LO(q);
+		(q & $FFFF_FFFF)
+	#endmacro
+	
+
+	#macro subDigit( subValue, posn ):done;
+		mov( '0', cl );
+		sub( LO( subValue ), eax );
+		sbb( HO( subValue ), edx );
+		jc done;
+		add( 1, cl );
+		sub( LO( subValue ), eax );
+		sbb( HO( subValue ), edx );
+		jc done;
+		add( 1, cl );
+		sub( LO( subValue ), eax );
+		sbb( HO( subValue ), edx );
+		jc done;
+		add( 1, cl );
+		sub( LO( subValue ), eax );
+		sbb( HO( subValue ), edx );
+		jc done;
+		add( 1, cl );
+		sub( LO( subValue ), eax );
+		sbb( HO( subValue ), edx );
+		jc done;
+		add( 1, cl );
+		sub( LO( subValue ), eax );
+		sbb( HO( subValue ), edx );
+		jc done;
+		add( 1, cl );
+		sub( LO( subValue ), eax );
+		sbb( HO( subValue ), edx );
+		jc done;
+		add( 1, cl );
+		sub( LO( subValue ), eax );
+		sbb( HO( subValue ), edx );
+		jc done;
+		add( 1, cl );
+		sub( LO( subValue ), eax );
+		sbb( HO( subValue ), edx );
+		jc done;
+		add( 1, cl );
+		sub( LO( subValue ), eax );
+		sbb( HO( subValue ), edx );
+	  done:
+		add( LO( subValue ), eax );
+		adc( HO( subValue ), edx );
+		mov( cl, [edi-posn] );
+
+	#endmacro
+		
+begin _unsToBuf64;
+	
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( (type dword q), eax );
+	mov( (type dword q[4]), edx );
+	mov( width, ecx );
+	
+	// Handle output with underscores later in this file:
+	
+	_hla.test_OutputUnderscores();
+	jne DoUnderscores;
+
+		// Drop down here if we're not outputting underscores inbetween 
+		// groups of three digits in the number.
+
+		cmp( ecx, 20 );
+		ja badWidth;
+
+		jmp( noUSjt[ecx*4] );
+
+		noUS20:
+			// If there is a 20th digit, it is always '1'.
+			
+			sub( LO( 10_000_000_000_000_000_000 ), eax );
+			sbb( HO( 10_000_000_000_000_000_000 ), edx );
+			mov( '1', (type char [edi-19]) );
+
+		noUS19:
+			subDigit( 1_000_000_000_000_000_000, 18 );
+		noUS18:
+			subDigit( 100_000_000_000_000_000, 17 );
+		noUS17:
+			subDigit( 10_000_000_000_000_000, 16 );
+		noUS16:
+			subDigit( 1_000_000_000_000_000, 15 );
+		noUS15:
+			subDigit( 100_000_000_000_000, 14 );
+		noUS14:
+			subDigit( 10_000_000_000_000, 13 );
+		noUS13:
+			subDigit( 1_000_000_000_000, 12 );
+		noUS12:
+			subDigit( 100_000_000_000, 11 );
+		noUS11:
+			subDigit( 10_000_000_000, 10 );
+		noUS10:
+			subDigit( 1_000_000_000, 9 );
+		noUS9:
+			subDigit( 100_000_000, 8 );
+		noUS8:
+			subDigit( 10_000_000, 7 );
+		noUS7:
+			subDigit( 1_000_000, 6 );
+		noUS6:
+			subDigit( 100_000, 5 );
+		noUS5:
+			subDigit( 10_000, 4 );
+		noUS4:
+			subDigit( 1_000, 3 );
+		noUS3:
+			subDigit( 100, 2 );
+		noUS2:
+			subDigit( 10, 1 );
+		noUS1:
+			or( '0', al );
+			mov( al, [edi] );
+			sub( width, edi );	// Point EDI at the first char in the buffer
+			add( 1, edi );
+			pop( edx );
+			pop( ecx );
+			pop( eax );
+			pop( ebp );
+			ret( _parms_ );
+
+
+	// Drop down here if we are outputting underscores between each group
+	// of three digits.
+
+	DoUnderscores:
+
+		// Drop down here if we're not outputting underscores inbetween 
+		// groups of three digits in the number.
+
+		cmp( ecx, 26 );
+		ja badWidth;
+
+		jmp( hasUSjt[ecx*4] );
+
+
+		hasUS26:
+			// If there is a 20th digit, it is always '1'.
+			
+			sub( LO( 10_000_000_000_000_000_000 ), eax );
+			sbb( HO( 10_000_000_000_000_000_000 ), edx );
+			mov( '1', (type char [edi-25]) );
+
+		hasUS25:
+			subDigit( 1_000_000_000_000_000_000, 24 );
+			mov( '_', (type byte [edi-23]) );
+
+		hasUS23:
+			subDigit( 100_000_000_000_000_000, 22 );			
+		hasUS22:
+			subDigit( 10_000_000_000_000_000, 21 );
+		hasUS21:
+			subDigit( 1_000_000_000_000_000, 20 );
+			mov( '_', (type byte [edi-19]) );
+			
+		hasUS19:
+			subDigit( 100_000_000_000_000, 18 );
+		hasUS18:
+			subDigit( 10_000_000_000_000, 17 );
+		hasUS17:
+			subDigit( 1_000_000_000_000, 16 );
+			mov( '_', (type byte [edi-15]) );
+			
+		hasUS15:
+			subDigit( 100_000_000_000, 14 );
+		hasUS14:
+			subDigit( 10_000_000_000, 13 );
+		hasUS13:
+			subDigit( 1_000_000_000, 12 );
+			mov( '_', (type byte [edi-11]) );
+			
+		hasUS11:
+			subDigit( 100_000_000, 10 );
+		hasUS10:
+			subDigit( 10_000_000, 9 );
+		hasUS9:
+			subDigit( 1_000_000, 8 );
+			mov( '_', (type byte [edi-7]) );
+			
+		hasUS7:
+			subDigit( 100_000, 6 );
+		hasUS6:
+			subDigit( 10_000, 5 );
+		hasUS5:
+			subDigit( 1_000, 4 );
+			mov( '_', (type byte [edi-3]) );
+			
+		hasUS3:
+			subDigit( 100, 2 );
+		hasUS2:
+			subDigit( 10, 1 );
+		hasUS1:
+			or( '0', al );
+			mov( al, [edi] );
+			sub( width, edi );	// Point EDI at the first char in the buffer
+			add( 1, edi );
+			pop( edx );
+			pop( ecx );
+			pop( eax );
+			pop( ebp );
+			ret( _parms_ );
+
+			
+badWidth:
+	raise( ex.WidthTooBig );		  	
+
+end _unsToBuf64;
+
+end ConvUnit;

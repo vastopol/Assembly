@@ -1,0 +1,180 @@
+unit wFilledFrame_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+
+readonly
+	align( 4 );		
+	vmt( wFilledFrame_t );
+
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wFilledFrame objects here:
+
+
+					
+procedure wFilledFrame_t.create_wFilledFrame
+(
+	wrName		:string;
+	parent		:dword;
+	x			:dword; 
+	y			:dword;
+	width		:dword;
+	height		:dword;
+	lineColor	:dword;
+	fillColor	:dword;
+	bkgColor	:dword 
+);;
+	
+_begin( wFilledFrame_t, create_wFilledFrame );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	assert( ESI <> NULL ); // This is an abstract base class
+		
+	// We're going to create a surface object here.
+	
+	(type wSurface_t [esi]).create_wSurface
+	(
+		wrName,
+		0,								// ex style
+		w.WS_CHILD | w.WS_VISIBLE,		// style
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height,
+		bkgColor,
+		false
+	);
+	mov( cl, this.wBase_private.onHeap );
+		
+	howl.setType( wFilledFrame_c );
+	mov( &wFilledFrame_t._VMT_, this._pVMT_ );
+
+	mov( lineColor, eax );
+	mov( eax, this.wFilledFrame_private.lineColor );
+	w.CreatePen( w.PS_SOLID, 0, eax );
+	mov( eax, this.wFilledFrame_private._linePen );
+	w.CreateSolidBrush( this.wFilledFrame_private.lineColor );
+	mov( eax, this.wFilledFrame_private._lineBrush );
+	
+	mov( fillColor, eax );
+	mov( eax, this.wFilledFrame_private.fillColor );
+	w.CreateSolidBrush( eax );
+	mov( eax, this.wFilledFrame_private._fillBrush );
+		
+	pop( edx );
+	pop( ecx );			   
+	pop( eax );
+	
+_end( wFilledFrame_t, create_wFilledFrame );
+
+
+
+method wFilledFrame_t.destroy;;
+_begin( wFilledFrame_t, destroy );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.DeleteObject( this.wFilledFrame_private._linePen );
+	w.DeleteObject( this.wFilledFrame_private._lineBrush );
+	w.DeleteObject( this.wFilledFrame_private._fillBrush );
+	
+	// Delete the wSurface_t object stuff:
+	
+	super.destroy();
+		
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wFilledFrame_t, destroy );
+
+
+
+// Accessor/mutator functions:
+
+
+method wFilledFrame_t.get_fillColor; @noframe;;
+_begin( wFilledFrame_t, get_fillColor );
+
+	mov( this.wFilledFrame_private.fillColor, eax );
+	ret();
+	 
+_end( wFilledFrame_t, get_fillColor );
+
+
+method wFilledFrame_t.get_lineColor; @noframe;;
+_begin( wFilledFrame_t, get_lineColor );
+
+	mov( this.wFilledFrame_private.lineColor, eax );
+	ret();
+	 
+_end( wFilledFrame_t, get_lineColor );
+
+
+
+method wFilledFrame_t.set_fillColor( fillColor:dword );;
+_begin( wFilledFrame_t, set_fillColor );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.DeleteObject( this.wFilledFrame_private._fillBrush );
+	mov( fillColor, eax );
+	mov( eax, this.wFilledFrame_private.fillColor );
+	w.CreateSolidBrush( eax );
+	mov( eax, this.wFilledFrame_private._fillBrush );
+	w.InvalidateRect( this.handle, NULL, false ); 
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wFilledFrame_t, set_fillColor );
+
+
+
+method wFilledFrame_t.set_lineColor( lineColor:dword );;
+_begin( wFilledFrame_t, set_lineColor );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.DeleteObject( this.wFilledFrame_private._linePen );
+	mov( lineColor, eax );
+	mov( eax, this.wFilledFrame_private.lineColor );
+	w.CreatePen( w.PS_SOLID, 0, eax );
+	mov( eax, this.wFilledFrame_private._linePen );
+	w.CreateSolidBrush( lineColor );
+	mov( eax, this.wFilledFrame_private._lineBrush ); 
+	w.InvalidateRect( this.handle, NULL, false ); 
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wFilledFrame_t, set_lineColor );
+
+
+
+
+end	wFilledFrame_u;

@@ -1,0 +1,106 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+
+// blob.catcSize-                                               
+//                                                         
+// Concatenates the character "c" to the end of the blob.
+
+
+procedure blob.catcSize( dest:blob.blob; c:char; width:int32; fill:char ); 
+	@noframe; @nodisplay;
+var
+	absWidth	:dword;
+	eaxSave		:dword;
+	ebxSave		:dword;
+
+
+begin catcSize;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( eax, eaxSave );
+	mov( ebx, ebxSave );
+	
+	// Create a string on the stack that can hold the character plus the
+	// specified width:
+	
+	mov( width, eax );
+	test( eax, eax );
+	jnz notZero;
+	
+		mov( 1, eax );		// Must be at least one byte in length.
+		
+	notZero:
+	jns notNeg;				// Widths can be negative, so take ABS value.
+	
+		neg( eax );
+	
+	notNeg:
+	mov( eax, absWidth );
+	str.talloc( eax );
+	mov( eax, ebx );
+	str.setstr( fill, absWidth, eax );
+	cmp( width, 0 );
+	jl charAtEnd;
+	
+		// If width is positive or zero, put the character at the
+		// beginning of the string:
+		
+		mov( c, al );
+		mov( al, [ebx] );
+		jmp copyToBlob;
+		
+		
+	// If width is negative, put the character at the end of the
+	// string:
+	
+	charAtEnd:
+	
+		add( absWidth, ebx );
+		mov( c, al );
+		mov( al, [ebx-1] );
+		sub( absWidth, ebx );
+		
+	// Okay, copy the string we've just created to the blob:
+	
+	copyToBlob:
+		blob._catbuf( dest, [ebx], absWidth );
+		
+	
+	mov( eaxSave, eax );
+	mov( ebxSave, ebx );
+	leave();
+	ret( _parms_ );
+
+end catcSize;
+
+
+
+end blobUnit;
+
+
+
+
+	
+

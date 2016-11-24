@@ -1,0 +1,86 @@
+program charInStringTest;
+
+	// returns 0 on successful run
+	// returns 1 and displays error otherwise
+
+	#include("stdlib.hhf")
+
+	static
+		testStr0	:string	:= "";
+		testStr1	:string := " ";
+		testStr		:string := "abcdefghijklmnopq";
+		
+		testBytes	:byte[] :=
+			[ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+				'n', 'o', 'p', 'q', #0 ];
+
+
+begin charInStringTest;
+
+	mov( &testBytes, ebx );
+	foreach str.charInString (testStr) do
+	
+		mov ( [ebx], ah );
+		if (al != ah) then
+			stderr.put ("tCharInString failed:" nl,
+						"should return	:", (type char ah), nl
+						"returned		:", (type char al), nl );
+			os.exitProcess (1);
+		endif;
+
+		inc(ebx);
+		
+	endfor;
+	if( (type char [ebx]) <> #0 ) then
+	
+		stderr.put 
+		(
+			"tCharInString failed:" nl,
+			"# of iterations doesn't match string length" nl
+		);
+		os.exitProcess (1);
+		
+	endif;
+	
+	foreach str.charInString( testStr0 ) do
+	
+		stderr.put 
+		(
+			"tCharInString failed:" nl,
+			"Should not iterate on an empty string" nl
+		);
+		os.exitProcess (1);
+		
+	endfor;
+	
+	
+	mov( 0, ecx );
+	foreach str.charInString( testStr1 ) do
+	
+		inc( ecx );
+		if( al <> ' ' ) then
+		
+			stderr.put 
+			(
+				"tCharInString failed:" nl,
+				"Should not iterate on an empty string" nl
+			);
+			os.exitProcess (1);
+			
+		endif;
+		
+	endfor;
+	if( ecx <> 1 ) then
+	
+		stderr.put 
+		(
+			"tCharInString failed:" nl,
+			"Should have iterated only once." nl
+		);
+		os.exitProcess (1);
+		
+	endif;
+	stdout.put( "tCharInString succeeded!" nl );	
+	os.exitProcess(0);
+	
+end charInStringTest;

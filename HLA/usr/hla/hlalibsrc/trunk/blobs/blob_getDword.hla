@@ -1,0 +1,109 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobClass;
+?@NoStackAlign := true;
+?@NoDisplay := true;
+?@NoFrame := true;		
+
+#includeOnce( "excepts.hhf" )
+#includeOnce( "hla.hhf" )
+#includeOnce( "blobs.hhf" )
+#includeOnce( "threads.hhf" );
+
+
+// blob.getDword-                                         
+//                                               
+// Reads two bytes from the blob. 
+// Returns Carry = 1 if EOF, carry = 0 and AX=word read if not EOF.
+
+
+
+procedure blob.getDword( b:blob.blob ); 
+begin getDword;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ebx );
+	
+	mov( b, ebx );
+	test( ebx, ebx );
+	jz AttemptToDerefNULL;
+	
+	#if( @thread )
+	
+	try
+	
+		thread.enterCriticalSection( (type blob.blobRec [ebx]).criticalSection );
+	
+	#endif
+	
+		// Check to see if reading four bytes would cause us to
+		// read beyond the end of the blob.
+		//
+		// Note: jae = jnc.  Must use jae, not ja here so that we
+		// leave carry clear if there is an EOF error (note that
+		// we complement the carry flag later on).
+		
+		mov( (type blob.blobRec [ebx]).rcursor, eax );
+		add( 3, eax );
+		cmp( eax, (type blob.blobRec [ebx]).length );
+		jae EOFerror;
+			
+			// Okay, there are at least four bytes left at the end of
+			// the blob. Update rcursor to be the original rcursor
+			// value plus four.
+			
+			add( 1, eax );		// +4
+			mov( eax, (type blob.blobRec [ebx]).rcursor );
+			
+			// Get the dword value to return.
+			
+			mov( [ebx+eax-4], eax );
+			
+			// Return carry clear to specify "not EOF" (note CMC below).
+			
+			stc();
+		
+		EOFerror:
+		cmc();
+	
+	#if( @thread )
+	
+	  anyexception
+	
+		mov( b, edx );
+		thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		reraise( eax );
+		
+	endtry;
+	pushfd();
+	mov( b, ebx );
+	thread.leaveCriticalSection( (type blob.blobRec [ebx]).criticalSection );
+	popfd();
+		
+	#endif
+	pop( ebx );
+	leave();
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+				
+end getDword;
+
+
+
+
+end blobClass;

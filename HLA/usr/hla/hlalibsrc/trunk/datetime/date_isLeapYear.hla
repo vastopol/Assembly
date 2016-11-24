@@ -1,0 +1,80 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+
+// _IsLeapYear-
+//
+//	Returns true in AL if the specified year is a leap year,
+//	false otherwise.
+//
+//	Note that this function should probably return false for
+//	years before approximately 1600 since the Gregorian calendar
+//	didn't exist much before then (the year 1586 comes to mind as
+//  the start of the Gregorian Calendar, but this is a very dim
+//	memory).
+
+procedure date._isLeapYear( Year:word ); @nodisplay; @noframe;
+begin _isLeapYear;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	push( edx );
+	pushd( false );		// Assume it's not a leap year.
+	movzx( Year, eax );
+	
+	// First, see if it's divisible by four.
+	// If it's not, it can't be a leap year.
+	
+	test( %11, al );	// Tricky way to check for divisible by 4.
+	jnz notALeapYear;
+	
+		// Okay, it's divisible by four, now see if
+		// it's also divisible by 100.  (Most years
+		// that are evenly divisible by 100 are *not*
+		// leap years.)
+		
+		mov( true, (type byte [esp]));	// Assume it is a leap year.
+		
+		cdq();
+		div( 100, edx:eax );
+		test( edx, edx );
+		jnz notALeapYear;
+		
+			// It's divisible by 100, if it's not
+			// also divisible by 400 then it is not
+			// a leap year.  If it is also divisible by
+			// 400, then it is a leap year.
+			
+			test( %11, al );	// AL=Year/100, so see if divisible by 4.
+			jz isALeapYear;
+			
+				// It's not also divisible by 400, so it's
+				// not a leap year.
+				
+				mov( false, (type byte [esp]));
+				
+			isALeapYear:
+						
+	notALeapYear:
+	pop( eax );
+	pop( edx );
+	pop( ebp );
+	ret( _parms_ );
+			
+end _isLeapYear;
+	
+end DateTime;			

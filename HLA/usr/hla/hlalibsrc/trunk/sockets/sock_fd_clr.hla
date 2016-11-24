@@ -1,0 +1,93 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit sockets;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#include( "sockets.hhf" )
+
+
+// fd_clr-
+//
+//	Remove a socket descriptor from an fd_set_t object.
+		
+procedure sock.fd_clr( fd:dword; var fdset:hla.fd_set_t );
+var
+	eaxSave		:dword;
+	ebxSave		:dword;
+	ecxSave		:dword;
+	
+begin fd_clr;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( eax, eaxSave );
+	mov( ebx, ebxSave );
+	mov( ecx, ecxSave );
+
+	// Locate all copies of fd in the set:
+	
+	mov( fdset, ebx );
+	mov( fd, eax );
+	mov( -1, ecx );
+	whileECXltCount:
+		add( 1, ecx );
+		cmp( ecx, (type hla.fd_set_t [ebx]).fd_count );
+		jae allDone;
+		cmp( eax, (type hla.fd_set_t [ebx]).fd_array[ecx*4] );
+		jne whileECXltCount;
+		
+		// If fd was in the set, then we need to remove it from
+		// the set.
+		
+		sub( 1, (type hla.fd_set_t [ebx]).fd_count );
+		
+		// Check for the (common) special case of deleting the
+		// last item in the set:
+		
+		cmp( ecx, (type hla.fd_set_t [ebx]).fd_count );
+		je allDone;
+		
+		// Because the sets are usually small, it's probably going to
+		// be faster to do a discrete move operation rather than
+		// use movsd.
+		
+		push( ecx );
+		jmp intoLoop;
+		
+		movsdLoop:
+			mov( (type hla.fd_set_t [ebx]).fd_array[ecx*4], eax );
+			mov( eax, (type hla.fd_set_t [ebx]).fd_array[ecx*4 - 4] );
+		
+		intoLoop:
+			add( 1, ecx );
+			cmp( ecx, (type hla.fd_set_t [ebx]).fd_count );
+			jbe movsdLoop;
+			
+		pop( ecx );
+		sub( 1, ecx );			// Because we'll add 1 in a moment.
+		mov( fd, eax );
+		jmp whileECXltCount;
+			
+	allDone:
+	mov( eaxSave, eax );
+	mov( ebxSave, ebx );
+	mov( ecxSave, ecx );
+	leave();
+	ret( _parms_ );
+
+end fd_clr;
+
+end sockets;

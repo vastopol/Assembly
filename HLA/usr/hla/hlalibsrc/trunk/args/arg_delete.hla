@@ -1,0 +1,113 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+
+unit argsUnit;
+
+#includeOnce( "../include/osargs.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "memory.hhf" )
+
+?@nodisplay := true;
+?@noframe := true;
+
+
+/**********************************************/
+/*                                            */
+/* delete-                                    */
+/*                                            */
+/* This routine removes a parameter from the  */
+/* argv array.  Note that this procedure does */
+/* not affect the CommandLine array.          */
+/*                                            */
+/**********************************************/
+
+
+procedure arg.delete( index:uns32 );
+var
+	argc	:dword;
+	 
+begin delete;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	push( eax );
+	push( ebx );
+	
+	_hla.get_NeedsCmdLn();
+	cmp( al, false );
+	je hasCmdLn;
+	
+		arg.cmdLn();
+		
+	hasCmdLn:
+		
+	_hla.get_argc();
+	mov( eax, argc );
+	mov( index, ebx );
+	cmp( ebx, eax );
+	jae ValueOutOfRange;		
+	
+	// Free the storage associated with the
+	// entry we're deleting:
+
+	_hla.get_argv( ebx );
+	str.free( eax );
+
+	inc( ebx );
+	cmp( ebx, argc );
+	jnb noMoreArgs;
+	whileMoreArgs:
+	
+		_hla.get_argv( ebx );
+		sub( 1, ebx );
+		_hla.set_argv( eax, ebx );
+		add( 2, ebx );
+		cmp( ebx, argc );
+		jb whileMoreArgs;
+		
+		
+	noMoreArgs:
+	sub( 1, ebx );
+	_hla.set_argv( NULL, ebx );
+	
+	_hla.get_argc();
+	sub( 1, eax );
+	_hla.set_argc( eax );
+	test( eax, eax );;
+	jnz hasMoreArgs;
+
+		// If we delete all the entries, set
+		// "NeedsCmdLn" to true because any
+		// future call to a command line argument
+		// function will have to regenerate the
+		// command line.
+
+		_hla.set_NeedsCmdLn( true );
+
+	hasMoreArgs:
+	pop( ebx );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+
+ValueOutOfRange:		
+	raise( ex.ValueOutOfRange );
+	
+end delete;
+
+
+end argsUnit;

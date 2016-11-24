@@ -1,0 +1,28 @@
+unit stdlib_data;
+#include( "stdlibdata.hhf" )
+
+
+// The following objects are accessible from application programs as well
+// as the HLA stdlib code.
+
+namespace stdlib;
+
+  readonly(16)
+
+	// HexDigits-
+	//	An index in the range $00..$0F into this table returns the
+	//	corresponding hexadecimal character.
+
+	hexDigits	:char[16] := 
+		[ 
+			'0', '1', '2', '3', '4', '5', '6', '7',	
+			'8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
+		];
+		
+	
+
+end stdlib;
+
+end stdlib_data;
+
+													

@@ -1,0 +1,126 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" );
+#include( "excepts.hhf" );
+
+	
+	// date.subMonths-
+	//
+	//	This function subtracts the specified number of months from
+	//	the date passed by reference.
+	
+	procedure date.subMonths
+	( 
+			months	:uns32;
+		var	theDate	:date.daterec
+		
+	); 	
+		@nodisplay; 
+		@noframe;
+	
+	begin subMonths;
+	
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( ebx );
+		push( edx );
+
+		mov( theDate, ebx );
+		mov( months, eax );
+		cmp( eax, 12 );
+		jb noMod;
+		
+			// If we're subtracting more than 12 months,
+			// then compute the remainder of the months divided
+			// by 12, and subtract the appropriate # of years
+			
+			xor( edx, edx );
+			div( 12, edx:eax );
+			cmp( eax, $1_0000 );	// Years are 16-bit values
+			jae invalidDate;
+			sub( ax, (type date.daterec [ebx]).year );
+			jc invalidDate;
+			cmp( (type date.daterec [ebx]).year, date.minYear );
+			jb invalidDate;
+			
+			// Put the remainder (months) into EAX:
+			
+			mov( edx, eax );
+			
+		noMod:
+		sub( al, (type date.daterec [ebx]).month );
+		cmp( (type date.daterec [ebx]).month, 0 );
+		jg inYear;
+		
+			add( 12, (type date.daterec [ebx]).month );
+			sub( 1, (type date.daterec [ebx]).year );
+			cmp( (type date.daterec [ebx]).year, date.minYear );
+			jb invalidDate;
+			
+		inYear:
+		
+		// We might have wound up with an invalid date
+		// by simply chopping off a month. For example,
+		// subtracting one month from 5/31/2007 yields
+		// 4/31/2007 which is an invalid date. We need
+		// to check for that condition here and truncate
+		// the date to the last day of the new month
+		// should we generate an invalid date. We also
+		// need to return the difference, in days, between
+		// the truncated date and the "actual" date in
+		// the EAX register (whose value is on the
+		// top of the stack).
+		
+		pushd( 0 );		// Assume there are zero overflow days.
+		mov( (type date.daterec [ebx]).year, ax );
+		movzx( (type date.daterec [ebx]).month, edx );
+		cmp( edx, 2 );
+		mov( date.DaysInMonth[edx*4], edx );
+		jne notLeapYear;
+		
+			test( %11, ax );
+			jnz notLeapYear;
+			
+			date.isLeapYear( ax );
+			add( eax, edx );	// Adjust for Feb 29
+		
+		notLeapYear:
+		mov( (type date.daterec [ebx]).day, al );
+		cmp( al, dl );
+		jbe noOverflow;
+		
+			// Okay, the day is greater than the number of days in
+			// the month, truncate it down to the required value
+			// and return the difference in EAX.
+			
+			mov( dl, (type date.daterec [ebx]).day );
+			sub( dl, al );
+			mov( al, [esp] );	// EAX's value is on TOS.
+		
+		noOverflow:
+		pop( eax );	// Retrieve the overflow days.			
+		pop( edx );
+		pop( ebx );
+		pop( ebp );
+		ret( _parms_ );
+		
+	invalidDate:
+		raise( ex.InvalidDate );
+				
+	end subMonths;
+	
+end DateTime;			

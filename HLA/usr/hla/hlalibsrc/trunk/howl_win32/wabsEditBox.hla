@@ -1,0 +1,771 @@
+unit wabsEditBox_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+
+readonly		
+	align( 4 );
+	vmt( wabsEditBox_t );
+
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wabsEditBox objects here:
+
+
+
+procedure wabsEditBox_t.create_wabsEditBox
+(
+	webName		:string;
+	initialTxt	:string;
+	parent		:dword; 									
+	x			:dword; 
+	y			:dword; 
+	width		:dword; 
+	height		:dword;
+	style		:dword;
+	onChange	:widgetProc  
+);;
+	
+_begin( wabsEditBox_t, create_wabsEditBox );
+
+	push( eax );
+
+	// wabsEditBox_t is an abstract class and ESI must contain the address
+	// of a derived object when this constructor is called.
+	
+	assert( esi <> NULL );
+	
+	
+	// Generic initialization for all objects:
+	
+	(type wVisual_t [esi]).create_wVisual
+	(
+		webName,
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height
+	);
+	
+	mov( style, eax );
+	mov( eax, this.wVisual_private.style );
+	
+	mov( onChange, eax );
+	mov( eax, this.wabsEditBox_private.onChange );
+	xor( eax, eax );
+	mov( eax, this.wabsEditBox_private.onErrSpace );			
+	mov( eax, this.wabsEditBox_private.onHScroll );				
+	mov( eax, this.wabsEditBox_private.onMaxText );			
+	mov( eax, this.wabsEditBox_private.onUpdate );			
+	mov( eax, this.wabsEditBox_private.onSetFocus );			
+	mov( eax, this.wabsEditBox_private.onKillFocus );
+	
+	mov( RGB( 0, 0, 0 ), eax );
+	mov( eax, this.wabsEditBox_private.textColor );
+		
+	// Create the actual editBox window:
+	
+	w.CreateWindowEx
+	(
+		0,
+		"edit",								// Edit box class name
+		initialTxt,							// Initial text
+		style,
+		x,
+		y,
+		width,
+		height,
+		parent,
+		this.wBase_private.objectID,
+		howl.howlInstance,
+		NULL
+	);
+	mov( eax, this.handle );
+	w.SetWindowLong( eax, w.GWL_USERDATA, esi );
+	
+	// Because wabsEditBox_t is an abstract class, the following assignments
+	// are for naught; however, best to initialize these fields with something
+	// just to be on the safe side.
+	
+	howl.setType( wabsEditBox_c );
+	mov( &wabsEditBox_t._VMT_, this._pVMT_ );
+	this.set_bkgColor( RGB( 255, 255, 255 ) );
+	
+	pop( eax );
+	
+_end( wabsEditBox_t, create_wabsEditBox );
+
+
+
+// Accessor/mutator functions:
+
+method wabsEditBox_t.get_onChange; @noframe;;
+_begin( wabsEditBox_t, get_onChange );
+
+	mov( this.wabsEditBox_private.onChange, eax );
+	ret();
+	 
+_end( wabsEditBox_t, get_onChange );
+
+
+
+method wabsEditBox_t.get_onErrSpace; @noframe;;
+_begin( wabsEditBox_t, get_onErrSpace );
+
+	mov( this.wabsEditBox_private.onErrSpace, eax );
+	ret();
+	 
+_end( wabsEditBox_t, get_onErrSpace );
+
+
+
+method wabsEditBox_t.get_onHScroll; @noframe;;
+_begin( wabsEditBox_t, get_onHScroll );
+
+	mov( this.wabsEditBox_private.onHScroll, eax );
+	ret();
+	 
+_end( wabsEditBox_t, get_onHScroll );
+
+
+
+method wabsEditBox_t.get_onMaxText; @noframe;;
+_begin( wabsEditBox_t, get_onMaxText );
+
+	mov( this.wabsEditBox_private.onMaxText, eax );
+	ret();
+	 
+_end( wabsEditBox_t, get_onMaxText );
+
+
+
+method wabsEditBox_t.get_onUpdate; @noframe;;
+_begin( wabsEditBox_t, get_onUpdate );
+
+	mov( this.wabsEditBox_private.onUpdate, eax );
+	ret();
+	 
+_end( wabsEditBox_t, get_onUpdate );
+
+
+
+method wabsEditBox_t.get_onSetFocus; @noframe;;
+_begin( wabsEditBox_t, get_onSetFocus );
+
+	mov( this.wabsEditBox_private.onSetFocus, eax );
+	ret();
+	 
+_end( wabsEditBox_t, get_onSetFocus );
+
+
+
+method wabsEditBox_t.get_onKillFocus; @noframe;;
+_begin( wabsEditBox_t, get_onKillFocus );
+
+	mov( this.wabsEditBox_private.onKillFocus, eax );
+	ret();
+	 
+_end( wabsEditBox_t, get_onKillFocus );
+
+
+
+method wabsEditBox_t.get_textColor; @noframe;;
+_begin( wabsEditBox_t, get_textColor );
+
+	mov( this.wabsEditBox_private.textColor, eax );
+	ret();
+	 
+_end( wabsEditBox_t, get_textColor );
+
+
+
+// Mutator functions:
+
+
+method wabsEditBox_t.set_onChange( onChange:widgetProc ); @noframe;;
+_begin( wabsEditBox_t, set_onChange );
+
+	push( (type dword [esp+4]) );
+	pop( this.wabsEditBox_private.onChange );
+	ret( _parms_ );
+
+_end( wabsEditBox_t,set_onChange );
+
+
+
+method wabsEditBox_t.set_onErrSpace( onErrSpace:widgetProc ); @noframe;;
+_begin( wabsEditBox_t, set_onErrSpace );
+
+	push( (type dword [esp+4]) );
+	pop( this.wabsEditBox_private.onErrSpace );
+	ret( _parms_ );
+
+_end( wabsEditBox_t,set_onErrSpace );
+
+
+
+method wabsEditBox_t.set_onHScroll( onHScroll:widgetProc ); @noframe;;
+_begin( wabsEditBox_t, set_onHScroll );
+
+	push( (type dword [esp+4]) );
+	pop( this.wabsEditBox_private.onHScroll );
+	ret( _parms_ );
+
+_end( wabsEditBox_t,set_onHScroll );
+
+
+
+method wabsEditBox_t.set_onMaxText( onMaxText:widgetProc ); @noframe;;
+_begin( wabsEditBox_t, set_onMaxText );
+
+	push( (type dword [esp+4]) );
+	pop( this.wabsEditBox_private.onMaxText );
+	ret( _parms_ );
+
+_end( wabsEditBox_t,set_onMaxText );
+
+
+
+method wabsEditBox_t.set_onUpdate( onUpdate:widgetProc ); @noframe;;
+_begin( wabsEditBox_t, set_onUpdate );
+
+	push( (type dword [esp+4]) );
+	pop( this.wabsEditBox_private.onUpdate );
+	ret( _parms_ );
+
+_end( wabsEditBox_t,set_onUpdate );
+
+
+
+method wabsEditBox_t.set_onSetFocus( onSetFocus:widgetProc ); @noframe;;
+_begin( wabsEditBox_t, set_onSetFocus );
+
+	push( (type dword [esp+4]) );
+	pop( this.wabsEditBox_private.onSetFocus );
+	ret( _parms_ );
+
+_end( wabsEditBox_t,set_onSetFocus );
+
+
+
+method wabsEditBox_t.set_onKillFocus( onKillFocus:widgetProc ); @noframe;;
+_begin( wabsEditBox_t, set_onKillFocus );
+
+	push( (type dword [esp+4]) );
+	pop( this.wabsEditBox_private.onKillFocus );
+	ret( _parms_ );
+
+_end( wabsEditBox_t,set_onKillFocus );
+
+
+
+method wabsEditBox_t.set_textColor( textColor:dword );;
+_begin( wabsEditBox_t, set_textColor );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( textColor, eax );
+	mov( eax, this.wabsEditBox_private.textColor );
+	w.InvalidateRect( this.handle, NULL, true );
+			
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wabsEditBox_t,set_textColor );
+
+
+
+method wabsEditBox_t.get_length;;
+_begin( wabsEditBox_t, get_length );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.WM_GETTEXTLENGTH, 0, 0 );	
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wabsEditBox_t,get_length );
+
+
+
+
+
+method wabsEditBox_t.get_text( txt:string );;
+_begin( wabsEditBox_t, get_text );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.WM_GETTEXTLENGTH, 0, 0 );
+	mov( txt, ecx );
+	if( eax > (type str.strRec [ecx]).maxlen ) then
+	
+		raise( ex.StringOverflow );
+		
+	endif;
+	mov( eax, (type str.strRec [ecx]).length );
+	add( 1, eax );
+	w.SendMessage( this.handle, w.WM_GETTEXT, eax, txt );
+	
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wabsEditBox_t, get_text );
+
+
+method wabsEditBox_t.a_get_text;;
+_begin( wabsEditBox_t, a_get_text );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.WM_GETTEXTLENGTH, 0, 0 );
+	mov( eax, ecx );
+	str.alloc( eax );
+	mov( ecx, (type str.strRec [eax]).length );
+	add( 1, ecx );
+	push( eax );
+	w.SendMessage( this.handle, w.WM_GETTEXT, ecx, eax );
+	pop( eax );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wabsEditBox_t, a_get_text );
+
+
+// setText-
+//
+//	Sets an editboxes text to the value of the txt string:
+
+method wabsEditBox_t.set_text( txt:string );;			
+_begin( wabsEditBox_t, set_text );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.WM_SETTEXT, 0, txt );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wabsEditBox_t, set_text );
+
+
+// getSelection-
+//
+//	Retrieves the starting and ending indices of of selected
+// text in an editBox object:
+
+method wabsEditBox_t.get_selection
+( 
+	var	startPosn	:dword; 
+	var	endPosn		:dword
+);;	
+_begin( wabsEditBox_t, get_selection );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.EM_GETSEL, NULL, NULL );
+	movzx( ax, ecx );
+	mov( startPosn, edx );
+	mov( ecx, [edx] );
+	shr( 16, eax );
+	mov( endPosn, edx );
+	mov( eax, [edx] );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wabsEditBox_t, get_selection );			
+
+
+// setSelection-
+//
+//	Sets the starting and ending indices of the selected text
+// in an editBox object:
+
+method wabsEditBox_t.set_selection
+( 
+	startPosn	:dword; 
+	endPosn		:dword
+);;
+_begin( wabsEditBox_t, set_selection );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.EM_SETSEL, startPosn, endPosn );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wabsEditBox_t, set_selection );			
+			
+
+
+method wabsEditBox_t.get_selectedText( txt:string );
+var
+	startPosn	:dword;
+	endPosn		:dword;
+	theText		:string;
+	txtBuf		:char[32800];
+	
+_begin( wabsEditBox_t, get_selectedText );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	str.init( txtBuf, @size( txtBuf ));
+	mov( eax, theText );
+	this.get_text( theText );
+	this.get_selection( startPosn, endPosn );
+	mov( endPosn, ecx );
+	sub( startPosn, ecx );
+	str.substr( theText, startPosn, ecx, txt );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wabsEditBox_t, get_selectedText );
+
+
+
+method wabsEditBox_t.a_get_selectedText;
+var
+	startPosn	:dword;
+	endPosn		:dword;
+	theText		:string;
+	txtBuf		:char[32800];
+	
+_begin( wabsEditBox_t, a_get_selectedText );
+
+	push( ecx );
+	push( edx );
+	
+	str.init( txtBuf, @size( txtBuf ));
+	mov( eax, theText );
+	this.get_text( theText );
+	this.get_selection( startPosn, endPosn );
+	mov( endPosn, ecx );
+	sub( startPosn, ecx );
+	str.a_substr( theText, startPosn, ecx );
+	
+	pop( edx );
+	pop( ecx );
+	
+_end( wabsEditBox_t, a_get_selectedText );
+
+
+
+// replace_selection-
+//
+//	Sets the starting and ending indices of the selected text
+// in an editBox object:
+
+method wabsEditBox_t.replace_selection
+( 
+	replacement	:string; 
+	canUndo		:boolean
+);;
+_begin( wabsEditBox_t, replace_selection );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	movzx( canUndo, eax );
+	w.SendMessage( this.handle, w.EM_REPLACESEL, eax, replacement );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wabsEditBox_t, replace_selection );			
+			
+
+
+
+
+
+method wabsEditBox_t.cut;;	 
+_begin( wabsEditBox_t, cut );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.WM_CUT, 0, 0 );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wabsEditBox_t, cut );			
+			
+
+method wabsEditBox_t.copy;; 
+_begin( wabsEditBox_t, copy );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.WM_COPY, 0, 0 );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wabsEditBox_t, copy );			
+			
+
+method wabsEditBox_t.paste;;
+_begin( wabsEditBox_t, paste );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.WM_PASTE, 0, 0 );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wabsEditBox_t, paste );			
+			
+
+method wabsEditBox_t.clear;;
+_begin( wabsEditBox_t, clear );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.WM_CLEAR, 0, 0 );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wabsEditBox_t, clear );			
+			
+
+method wabsEditBox_t.undo;;
+_begin( wabsEditBox_t, undo );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.EM_UNDO, 0, 0 );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wabsEditBox_t, undo );			
+			
+
+
+method wabsEditBox_t.get_canUndo;;
+_begin( wabsEditBox_t, get_canUndo );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.EM_CANUNDO, 0, 0 );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wabsEditBox_t, get_canUndo );			
+			
+
+
+method wabsEditBox_t.emptyUndoBuffer;;
+_begin( wabsEditBox_t, emptyUndoBuffer );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.EM_EMPTYUNDOBUFFER, 0, 0 );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wabsEditBox_t, emptyUndoBuffer );			
+			
+
+
+method wabsEditBox_t.get_modified;;
+_begin( wabsEditBox_t, get_modified );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.EM_GETMODIFY, 0, 0 );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wabsEditBox_t, get_modified );			
+			
+
+method wabsEditBox_t.set_modified( modified:boolean );;
+_begin( wabsEditBox_t, set_modified );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	movzx( modified, eax );
+	w.SendMessage( this.handle, w.EM_SETMODIFY, eax, 0 );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wabsEditBox_t, set_modified );			
+			
+
+
+
+method wabsEditBox_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);
+var
+	wp	:widgetProc;
+	
+_begin( wabsEditBox_t, processMessage );
+
+	if( uMsg = w.WM_CTLCOLOREDIT ) then
+			
+		// If we've got a ctlcoloredit message,
+		// set the text and background colors.
+		
+		w.SelectObject( wParam, this.wVisual_private.bkgBrush );
+		w.SetTextColor( wParam, this.wabsEditBox_private.textColor );
+		w.SetBkColor( wParam, this.wVisual_private.bkgColor );
+		mov( this.wVisual_private.bkgBrush, eax );
+				
+	else
+	
+		movzx( (type word wParam[2]), eax );
+		switch( eax )
+		
+			case( w.EN_CHANGE )
+			
+			 	mov
+				( 
+					(type wabsEditBox_t [esi]).wabsEditBox_private.onChange, 
+					edi 
+				); 
+				
+			case( w.EN_ERRSPACE )
+			
+			 	mov
+				( 
+					(type wabsEditBox_t [esi]).wabsEditBox_private.onErrSpace, 
+					edi 
+				); 
+		
+			case( w.EN_HSCROLL )
+			
+			 	mov
+				( 
+					(type wabsEditBox_t [esi]).wabsEditBox_private.onHScroll, 
+					edi 
+				); 
+		
+			case( w.EN_VSCROLL )
+			
+			 	mov
+				( 
+					(type wabsEditBox_t [esi]).wabsEditBox_private.onVScroll, 
+					edi 
+				); 
+		
+			case( w.EN_SETFOCUS )     
+			
+			 	mov
+				( 
+					(type wabsEditBox_t [esi]).wabsEditBox_private.onSetFocus, 
+					edi 
+				); 
+				
+			case( w.EN_KILLFOCUS )    
+			
+			 	mov
+				( 
+					(type wabsEditBox_t [esi]).wabsEditBox_private.onKillFocus, 
+					edi 
+				); 
+				
+			case( w.EN_MAXTEXT )    
+			
+			 	mov
+				( 
+					(type wabsEditBox_t [esi]).wabsEditBox_private.onMaxText, 
+					edi 
+				); 
+				
+			case( w.EN_UPDATE )    
+			
+			 	mov
+				( 
+					(type wabsEditBox_t [esi]).wabsEditBox_private.onUpdate, 
+					edi 
+				); 
+				
+			default
+					
+				w.DefWindowProc( hwnd, uMsg, wParam, lParam );
+				xor( edi, edi );
+				
+		endswitch; 
+		if( edi <> NULL ) then
+		 
+			(type widgetProc edi)( esi, wParam, lParam );
+			
+		endif;
+		
+	endif;
+
+_end( wabsEditBox_t, processMessage );
+
+
+
+end	wabsEditBox_u;

@@ -1,0 +1,190 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeOnce( "blobs.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "x86.hhf" )
+#includeOnce( "threads.hhf" )
+
+
+
+ 
+procedure blob.subBlob
+(
+	src			:blob.blob; 
+	startIndex	:dword; 
+	length		:dword; 
+	dest		:blob.blob 
+); @noframe;
+var
+	saveEAX		:dword;
+	saveECX		:dword;
+	saveESI		:dword;
+	saveEDI		:dword;
+	saveFlags	:dword;
+	
+begin subBlob;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_-4), esp );
+	pushfd();		// Allocates and initializes saveFlags.
+	
+	mov( edi, saveEDI );
+	mov( esi, saveESI );
+	mov( ecx, saveECX );
+	mov( eax, saveEAX );
+	cld();
+	
+	// Get the blob pointers and make sure they are non-NULL.
+	
+	mov( src, esi );
+	mov( dest, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+
+
+	#if( @thread )
+	try
+	
+		thread.enterCriticalSection( (type blob.blobRec [esi]).criticalSection );
+		cmp( esi, edi );
+		je noEnter;
+		
+			thread.enterCriticalSection( (type blob.blobRec [edi]).criticalSection );
+			
+		noEnter:
+		
+	#endif
+		
+		// Make sure the destination can hold the result.
+		
+		mov( length, eax );
+		cmp( eax, (type blob.blobRec [edi]).maxlen );
+		jna noBlobOverflow;
+		
+			raise( ex.BlobOverflow );
+			
+		noBlobOverflow:
+				
+		
+		// Make sure the starting index is within the limits of
+		// the source blob.
+		
+		mov( (type blob.blobRec [esi]).length, ecx );
+		cmp( ecx, startIndex );
+		jnb noValueOutOfRange;
+		
+			raise( ex.ValueOutOfRange );
+		
+		noValueOutOfRange:
+			
+			
+		// Compute the number of bytes to copy.  This is either
+		// "len" if (start+len) is less than or equal to src.len, or
+		// it is len - (start+len-src.len) if (start+len) is greater
+		// than src.len.
+		 
+		mov( length, ecx );
+		mov( startIndex, eax );
+		add( ecx, eax );
+
+		cmp( eax, (type blob.blobRec [esi]).length );
+		jna fullLength;
+		
+			// We're truncating the original blob at this point.
+			
+			sub( (type blob.blobRec [esi]).length, eax );
+			sub( eax, ecx );
+			
+			// Return carry clear if the len value is not zero.
+			
+			cmp( length, 0 );
+			je fullLength;
+			
+				and( !x86.flag_carry, saveFlags );
+						
+		fullLength:
+
+		
+		// Store away the destination length and write cursor values.
+		
+		mov( ecx, (type blob.blobRec [edi]).length );
+		mov( ecx, (type blob.blobRec [edi]).wcursor );
+		
+		// Set the read cursor to zero:
+		
+		mov( 0, (type blob.blobRec [edi]).rcursor );
+		
+		// Okay, copy the bytes.
+		
+		add( startIndex, esi );
+		rep.movsb();
+	
+	#if( @thread )
+
+	  anyexception
+	  
+		mov( dest, edx );
+		thread.enterCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		cmp( edx, src );
+		je noLeave1;
+		
+			mov( src, edx );
+			thread.enterCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		
+		noLeave1:
+		reraise( eax );
+		
+	endtry;
+	mov( dest, eax );
+	thread.leaveCriticalSection( (type blob.blobRec [eax]).criticalSection );
+	cmp( eax, src );
+	je noLeave2;
+	
+		mov( src, eax );
+		thread.leaveCriticalSection( (type blob.blobRec [eax]).criticalSection );
+		
+	noLeave2:
+		
+	#endif
+
+	// Clean up and leave.
+	
+	mov( saveEDI, edi );
+	mov( saveESI, esi );
+	mov( saveECX, ecx );
+	mov( saveEAX, eax );
+	popfd();		// Retrieve carry result (and restore direction flag).
+	leave();
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end subBlob;
+
+end blobUnit;
+
+
+
+
+	
+

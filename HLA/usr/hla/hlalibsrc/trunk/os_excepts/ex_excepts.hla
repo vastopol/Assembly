@@ -1,0 +1,409 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+
+unit excepts;
+?@noframe := true;
+?@nodisplay := true;
+
+#include( "strings.hhf" )
+#include( "conv.hhf" )
+#include( "excepts.hhf" )
+#include( "arrays.hhf" )
+
+static
+	ex.AssertionStr:string;
+
+
+#if( os.win32 )
+
+	MessageBox:	procedure
+			( 
+				hWnd:dword; 
+				lpText:string; 
+				lpCaption:string; 
+				uType:uns32 
+			);	
+				@stdcall;
+				external( "__imp__MessageBoxA@16" );
+
+#elseif( os.linux )
+
+	#include( "linux.hhf" )
+
+#elseif( os.freeBSD )
+
+	#include( "bsd.hhf" )
+
+#elseif( os.macOS )
+
+	#include( "mac.hhf" )
+
+#else
+
+	#error( "Unknown OS!" )
+	
+#endif
+
+
+procedure ex.defaultExceptionHandler;
+begin ex.defaultExceptionHandler;
+
+	push( eax );
+	ex.printExceptionError( eax, ebx, ecx, edx, edi );
+	pop( eax );
+	os.exitProcess( eax );
+
+end ex.defaultExceptionHandler; 
+
+
+// exceptionMsg-
+//
+//	Converts an HLA exception code into a meaningful string
+// that the program can print.
+//
+// Note that there is no "a_exceptionMsg" version of this
+// function because the exception may have been a memory
+// management failure.
+//
+//	Hopefully the problem isn't "stack overflow" or the like.
+
+procedure ex.exceptionMsg( exceptionCode:dword; msg:string );
+	@nodisplay;
+	@noframe;
+	
+readonly
+	msgs	:array.lookupTable
+	(
+		string,
+		"",
+		"Unknown Exception ($00)"					: ex.UnknownException,
+		
+		"String Overflow" 							: ex.StringOverflow,
+		"Index into string is out of range" 		: ex.StringIndexError,
+		"String operands must not overlap"			: ex.StringOverlap,
+		"String metadata error"						: ex.StringMetaData,
+		"String alignment error"					: ex.StringAlignment,
+		"String Underflow"							: ex.StringUnderflow,
+		"Illegal string operation"					: ex.IllegalStringOperation,
+		
+		"Value out of range" 						: ex.ValueOutOfRange,
+		"Illegal character"							: ex.IllegalChar,
+		"Attempt to dereference a NULL pointer"  	: ex.AttemptToDerefNULL,
+		"Too many command line parameters"			: ex.TooManyCmdLnParms,
+		"Assertion failed"							: ex.AssertionFailed,
+		"Attempted to execute abstract method"   	: ex.ExecutedAbstract,
+		"Bad THIS pointer in class function"		: ex.BadObjPtr,
+		"Invalid memory alignment value"			: ex.InvalidAlignment,
+		"Invalid argument"							: ex.InvalidArgument,
+		"Buffer overflow"							: ex.BufferOverflow,
+		"Buffer underflow"							: ex.BufferUnderflow,
+		"Illegal size"								: ex.IllegalSize,
+		
+		"Conversion error"							: ex.ConversionError,
+		"Field width specification is too large" 	: ex.WidthTooBig,
+		"Decimal width specification is too large"	: ex.FractionTooBig,
+		
+		"Illegal file handle"						: ex.BadFileHandle,
+		"File not found"							: ex.FileNotFound,
+		"File open failure"							: ex.FileOpenFailure,
+		"File close failure"						: ex.FileCloseError,
+		"File write error"							: ex.FileWriteError,
+		"File read error"							: ex.FileReadError,
+		"File seek error"							: ex.FileSeekError,
+		"Disk full error"							: ex.DiskFullError,
+		"Access denied"								: ex.AccessDenied,
+		"End of file error"							: ex.EndOfFile,
+		
+		"Cannot create directory"					: ex.CannotCreateDir,
+		"Cannot remove directory"					: ex.CannotRemoveDir,
+		"Cannot delete file"						: ex.CannotRemoveFile,
+		"Change directory operation failed"			: ex.CDFailed,
+		"Cannot rename file"						: ex.CannotRenameFile,
+		
+		"Memory allocation failure"					: ex.MemoryAllocationFailure,
+		"Error attempting to free memory"			: ex.MemoryFreeFailure,
+		"Heap corruption"							: ex.MemoryAllocationCorruption,
+		"Attempt to FREE a NULL pointer"			: ex.AttemptToFreeNULL,
+		"Attempted to free an unallocated block" 	: ex.BlockAlreadyFree,
+		"Cannot free specified storage"				: ex.CannotFreeMemory,
+		"Pointer is not valid heap pointer"			: ex.PointerNotInHeap,
+		
+		"Array shape violation"						: ex.ArrayShapeViolation,
+		"Array bounds violation"					: ex.ArrayBounds,
+		
+		"Invalid date"								: ex.InvalidDate,
+		"Invalid date format"						: ex.InvalidDateFormat,
+		"Time overflow (value out of range)"		: ex.TimeOverflow,
+		"Invalid time"								: ex.InvalidTime,
+		"Invalid time format"						: ex.InvalidTimeFormat,
+		
+		"Socket error"								: ex.SocketError,
+		
+		"Thread error"								: ex.ThreadError,
+		
+		"Memory Access Violation"					: ex.AccessViolation,
+		"In page memory error"						: ex.InPageError,
+		"Out of memory"								: ex.NoMemory,
+		"Invalid handle"							: ex.InvalidHandle,
+		"Control-C exception"						: ex.ControlC,
+		"Stack overflow"							: ex.StackOverflow,
+		"Breakpoint encountered"					: ex.Breakpoint,
+		"Single step exception"						: ex.SingleStep,
+		"Priviledged instruction exception" 		: ex.PrivInstr,
+		"Illegal instruction exception"				: ex.IllegalInstr,
+		"BOUND instuction bounds violation"			: ex.BoundInstr,
+		"Integer overflow (INTO)"					: ex.IntoInstr,
+		"Division error"							: ex.DivideError,
+		
+		"Floating point division by zero"			: ex.fDivByZero,
+		"Inexact FP result exception"				: ex.fInexactResult,
+		"Invalid floating point operation"			: ex.fInvalidOperation,
+		"Floating point overflow"					: ex.fOverflow,
+		"Floating point underflow"					: ex.fUnderflow,
+		"FPU stack exception"						: ex.fStackCheck,			
+		"Denormalized FP value exception"			: ex.fDenormal,
+		
+		"BLOB overflow"								: ex.BlobOverflow
+	);
+	
+begin exceptionMsg;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	
+	mov( exceptionCode, eax );
+	
+	// "Assertion Failed must be handled specially:
+	
+	cmp( eax, ex.AssertionFailed );
+	jne notAssertFailed;			
+		
+		str.cpy( "Assertion Failed - ", msg );
+		str.cat( ex.AssertionStr, msg );
+		jmp allDone;
+		
+	  unknownException:
+	  	str.cpy( "Unknown (user-defined?) exception: $", msg );
+		str.cath32( msg, exceptionCode );
+		jmp allDone;
+			
+			
+	notAssertFailed:
+	#if( msgs_minValue > 0 )
+	
+		cmp( eax, msgs_minValue );
+		jb unknownException;
+		
+	#endif
+	cmp( eax, msgs_maxValue );
+	ja unknownException;
+
+	str.cpy( msgs[ eax*4 ], msg );
+	
+  allDone:
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+end exceptionMsg;
+
+
+// ex.printExceptionError-
+//
+// The following is used whenever an unhandled exception occurs.
+// The program will print an error message and abort the program.
+
+procedure ex.printExceptionError
+(
+	_exCode		:dword in eax;
+	_raiseAdrs	:dword in ebx;
+	_fileName	:string in ecx;
+	_userCode	:dword in edx;
+	_lineNum	:dword in edi
+);
+	@nodisplay;
+	@noframe;
+	
+var
+	title		:string;
+	msg			:string;
+	exCode		:dword;
+	raiseAdrs	:dword;
+	fileName	:string;
+	userCode	:dword;
+	lineNum		:uns32;
+	buffer		:char[256];
+	buffer2		:char[256];	
+	
+begin ex.printExceptionError;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	mov( eax, exCode );		// Save exception value.
+	mov( ebx, raiseAdrs );	// Save RAISE address
+	mov( ecx, fileName );	// Save filename
+	mov( edx, userCode );	// Save user code
+	mov( edi, lineNum );	// Save line number
+	
+	// Set up "buffer" so that it is the
+	// legal string data for "title"
+	
+	str.init( buffer, @size( buffer ));
+	mov( eax, title );
+	
+	// Set up "buffer2" so that it is the
+	// legal string data for "msg"
+	
+	str.init( buffer2, @size( buffer2 ));
+	mov( eax, msg );
+	
+	
+	cmp( exCode, $FFFF );
+	jbe printAsDec;
+	
+		try
+		
+			str.put
+			( 
+				title, 
+				"HLA Exception (",
+				exCode,
+				") at line ",
+				lineNum,
+				" in ",
+				fileName,
+				", edx=$",
+				edx
+			);
+			
+		  anyexception
+		
+			str.put
+			( 
+				title, 
+				"HLA Exception (",
+				exCode,
+				")"
+			);
+			
+		endtry;
+		jmp codePrintDone;
+			 	
+	printAsDec:
+	
+		try
+		
+			str.put
+			( 
+				title, 
+				"HLA Exception (",
+				(type uns32 exCode),
+				") at line ",
+				lineNum,
+				" in ",
+				fileName,
+				", edx=$",
+				edx
+			);
+			
+		  anyexception
+		
+			str.put
+			( 
+				title, 
+				"HLA Exception (",
+				(type uns32 exCode),
+				")"
+			);
+			
+		endtry;
+		
+	codePrintDone:;
+	ex.exceptionMsg( exCode, msg );
+	
+	#if( os.win32 )
+	
+		if( exCode = ex.SocketError ) then
+		
+			str.cats( msg, " (Win32 error: " );
+			str.cati32( msg, userCode );
+			str.cats( msg, ")" );
+			
+		endif; 
+		MessageBox( 0, msg, title, $40030 );
+		
+	#elseif( os.linux )
+	
+		str.cat( nl, title );
+		str.cat( nl, msg );
+		
+		pushd( 2 );
+		mov( title, ebx );
+		push( ebx );
+		push( (type str.strRec [ebx]).length );
+		call linux.write;
+		
+		pushd( 2 );
+		mov( msg, ebx );
+		push( ebx );
+		push( (type str.strRec [ebx]).length );
+		call linux.write;
+	
+	#elseif( os.freeBSD )
+	
+		str.cat( nl, title );
+		str.cat( nl, msg );
+		
+		pushd( 2 );
+		mov( title, ebx );
+		push( ebx );
+		push( (type str.strRec [ebx]).length );
+		call bsd.write;
+		
+		pushd( 2 );
+		mov( msg, ebx );
+		push( ebx );
+		push( (type str.strRec [ebx]).length );
+		call bsd.write;
+	
+	
+	#elseif( os.macOS )
+	
+		str.cat( nl, title );
+		str.cat( nl, msg );
+		
+		pushd( 2 );
+		mov( title, ebx );
+		push( ebx );
+		push( (type str.strRec [ebx]).length );
+		call mac.write;
+		
+		pushd( 2 );
+		mov( msg, ebx );
+		push( ebx );
+		push( (type str.strRec [ebx]).length );
+		call mac.write;
+	
+	
+	#endif
+	leave( );
+	ret();
+
+end ex.printExceptionError;
+
+end excepts;

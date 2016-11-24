@@ -1,0 +1,86 @@
+unit wCheckBoxLT_u;				 
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly		
+	align( 4 );
+	vmt( wCheckBoxLT_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+//
+// Handle wCheckBoxLT_t objects here:
+
+
+
+procedure wCheckBoxLT_t.create_wCheckBoxLT
+(
+	wcbltName	:string;
+	caption		:string;
+	parent		:dword; 									
+	x			:dword; 
+	y			:dword; 
+	width		:dword; 
+	height		:dword;
+	onClick		:widgetProc  
+);;
+	
+_begin( wCheckBoxLT_t, create_wCheckBoxLT );
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wCheckBoxLT_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	wCheckable_t.create_wCheckable
+	(
+		wcbltName,
+		caption,
+		w.WS_CHILD | w.WS_VISIBLE | w.BS_CHECKBOX | 
+			w.BS_LEFTTEXT | w.BS_NOTIFY | w.WS_TABSTOP | w.WS_GROUP,  
+		parent, 								
+		x,	   
+		y,	   
+		width,  
+		height, 
+		onClick  
+	);
+	mov( cl, this.wBase_private.onHeap );
+	
+	// Initialize the type string field:
+		
+	howl.setType( wCheckBoxLT_c );
+	
+	// Initialize the VMT pointer:
+	
+	mov( &wCheckBoxLT_t._VMT_, this._pVMT_ );
+			   
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wCheckBoxLT_t, create_wCheckBoxLT );
+
+
+
+end	wCheckBoxLT_u;

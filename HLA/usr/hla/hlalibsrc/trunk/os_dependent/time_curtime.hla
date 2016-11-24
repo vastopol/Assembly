@@ -1,0 +1,1009 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "os.hhf" )
+
+const
+	Jan_1_1970	:dword := $25_3d8c;	// Julian day # for Jan 1, 1970.
+
+ 
+
+#if( os.win32 )
+
+	#include( "w.hhf" );
+	
+	// utcDateTime-
+	//
+	// Return the current UTC Date and Time in the reference parameters.
+	// Value returned is atomically generated (as opposed to what may
+	// happen if you get the system date and system time in two separate
+	// calls).
+	
+	procedure time.utcDateTime
+	( 
+		var DMY	:@global:date.daterec; 
+		var HMS	:time.timerec 
+	);
+		@nodisplay;
+		@noframe;
+	var
+		utcTime: w.SYSTEMTIME;
+		 
+	begin utcDateTime;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ecx );
+		push( edx );
+		
+		w.GetSystemTime( utcTime );
+		
+		mov( HMS, edx );
+		
+		mov( utcTime.wHour, ax );
+		mov( ax, (type time.timerec [edx]).hours );
+		
+		mov( utcTime.wMinute, ax );
+		mov( al, (type time.timerec [edx]).mins );
+		
+		mov( utcTime.wSecond, ax );
+		mov( al, (type time.timerec [edx]).secs );
+		
+		mov( DMY, edx );
+		mov( utcTime.wDay, ax );
+		mov( al, (type date.daterec [edx]).day );
+		
+		mov( utcTime.wMonth, ax );
+		mov( al, (type date.daterec [edx]).month );
+		
+		mov( utcTime.wYear, ax );
+		mov( ax, (type date.daterec [edx]).year );
+
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end utcDateTime;
+	
+	
+	// utcTime-
+	//
+	//	Reads just the UTC system time (no date).
+	
+	procedure time.utcTime( var HMS:time.timerec ); 
+		@nodisplay; 
+		@noalignstack;
+		@noframe;
+	var
+		utcTimeVal: w.SYSTEMTIME;
+		
+	begin utcTime;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ecx );
+		push( edx );
+		
+		w.GetSystemTime( utcTimeVal );
+		mov( HMS, edx );
+		
+		mov( utcTimeVal.wHour, ax );
+		mov( ax, (type time.timerec [edx]).hours );
+		
+		mov( utcTimeVal.wMinute, ax );
+		mov( al, (type time.timerec [edx]).mins );
+		
+		mov( utcTimeVal.wSecond, ax );
+		mov( al, (type time.timerec [edx]).secs );
+		
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end utcTime;
+	
+	
+	// localDateTime
+	//
+	//	Returns the current local date and time (obtained with
+	// a single (atomic) system call) in the reference parameters.
+	//
+	//	Returns the local time/date based on the value of the
+	// timeZone variable. Under Windows, if timeZone contains
+	// zero (the default), then this function calls the
+	// Windows' local time function to do the duty; if timeZone
+	// is not zero, then this function adds in the time zone
+	// offset (specified in hours in timeZone) to compute the
+	// local time.
+	
+	procedure time.localDateTime( var DMY:@global:date.daterec; var HMS:time.timerec );
+		@nodisplay;
+		@noframe;
+	var
+		LocalTime: w.SYSTEMTIME;
+		timeZone	:int32;
+		 
+	begin localDateTime;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		
+		// Under Windows, let the system do the local time
+		// conversion, but only if the timeZone variable
+		// contains zero (the default value).
+		
+		time.getTimeZone();
+		mov( eax, timeZone );
+		if( eax = 0 ) then
+		
+			w.GetLocalTime( LocalTime );
+			mov( HMS, edx );
+			mov( LocalTime.wHour, ax );
+			mov( ax, (type time.timerec [edx]).hours );
+			
+			mov( LocalTime.wMinute, ax );
+			mov( al, (type time.timerec [edx]).mins );
+			
+			mov( LocalTime.wSecond, ax );
+			mov( al, (type time.timerec [edx]).secs );
+			
+			mov( DMY, edx );
+			mov( LocalTime.wDay, ax );
+			mov( al, (type date.daterec [edx]).day );
+			
+			mov( LocalTime.wMonth, ax );
+			mov( al, (type date.daterec [edx]).month );
+			
+			mov( LocalTime.wYear, ax );
+			mov( ax, (type date.daterec [edx]).year );
+		
+			
+		else
+		
+			// If the timeZone value is not zero,
+			// then get the UTC time and add the
+			// timeZone offset (in hours) to the
+			// value:
+			
+			w.GetSystemTime( LocalTime );
+			mov( HMS, edx );
+			mov( LocalTime.wHour, ax );
+			mov( ax, (type time.timerec [edx]).hours );
+			
+			mov( LocalTime.wMinute, ax );
+			mov( al, (type time.timerec [edx]).mins );
+			
+			mov( LocalTime.wSecond, ax );
+			mov( al, (type time.timerec [edx]).secs );
+			
+			mov( DMY, edx );
+			mov( LocalTime.wDay, ax );
+			mov( al, (type date.daterec [edx]).day );
+			
+			mov( LocalTime.wMonth, ax );
+			mov( al, (type date.daterec [edx]).month );
+			
+			mov( LocalTime.wYear, ax );
+			mov( ax, (type date.daterec [edx]).year );
+			
+			time.toUnixTime( [edx], HMS );
+			mov( eax, ebx );
+			mov( edx, ecx );
+			intmul( 3600, timeZone, eax );
+			cdq();
+			add( ebx, eax );
+			adc( ecx, edx );
+			time.fromUnixTime( edx:eax, val HMS, val DMY );
+			
+		
+		endif;
+
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end localDateTime;
+
+
+	// curTime (also "localTime", see datetime.hhf).
+	//
+	//	Returns the local time.
+	
+	procedure time.curTime( var HMS:time.timerec ); 
+		@nodisplay; 
+		@noalignstack;
+		@noframe;
+	var
+		hlaDate		:date.daterec;
+		
+	begin curTime;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		time.localDateTime( hlaDate, val HMS );
+		 
+		leave();
+		ret( _parms_ );
+						
+	end curTime;
+	
+	
+	
+	
+#elseif( os.linux )
+
+	#include( "linux.hhf" );
+	
+	// utcDateTime
+	//
+	//	Return UTC date and time in one function call.
+	
+	procedure time.utcDateTime
+	( 
+		var DMY		:date.daterec; 
+		var HMS		:time.timerec 
+	);
+		@nodisplay;
+		@noframe;
+		
+	var
+		theTime	:linux.timeval;
+		
+	begin utcDateTime;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		
+		linux.gettimeofday( theTime, NULL );
+		
+		mov( HMS, ebx );
+
+		mov( theTime.tv_sec, eax );
+		mov( 60, ecx );
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).secs );
+
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).mins );
+
+
+		xor( edx, edx );
+		div( 24, edx:eax );		
+		mov( dx, (type time.timerec [ebx]).hours );
+		
+		// Compute (approx) the number of days since then
+		// (This is in UTC time, don't forget):
+		
+		mov( theTime.tv_sec, eax );
+		xor( edx, edx );
+		div( 86400, edx:eax );	// 86400 secs/day.
+		
+		// Convert days since 1/1/1970 to a Julian Day number:
+		
+		add( Jan_1_1970, eax );
+		
+		// Convert the Julian day number to today's date:
+		
+		mov( DMY, ebx );
+		date.fromJulian( eax, [ebx] );
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end utcDateTime;
+
+
+	// utcTime-
+	//
+	//	Returns the current UTC time.
+	
+	procedure time.utcTime( var HMS:time.timerec ); @nodisplay; @noframe;
+	var
+		theTime	:linux.timeval;
+		
+	begin utcTime;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		
+		linux.gettimeofday( theTime, NULL );
+		
+		mov( HMS, ebx );
+
+		mov( theTime.tv_sec, eax );
+		mov( 60, ecx );
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).secs );
+
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).mins );
+
+
+		xor( edx, edx );
+		div( 24, edx:eax );		
+		mov( dx, (type time.timerec [ebx]).hours );
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end utcTime;
+	
+	
+	
+	// time.localDateTime-
+	//
+	//	Returns the current local date and time in one operation.
+	// Computes the local time based on the value of the date/time package
+	// timeZone value.
+	
+	
+	procedure time.localDateTime( var DMY:date.daterec; var HMS:time.timerec );
+		@nodisplay;
+		@noframe;
+	var
+		theTime		:linux.timeval;
+		timeZone	:int32;
+		
+	begin localDateTime;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		
+		time.getTimeZone();
+		mov( eax, timeZone );
+		
+		linux.gettimeofday( theTime, NULL );
+		
+		mov( HMS, ebx );
+
+		intmul( 3600, timeZone, ecx );	// Convert timeZone from hours->secs
+		mov( theTime.tv_sec, eax );
+		add( ecx, eax );
+		mov( eax, theTime.tv_sec );
+		
+		mov( 60, ecx );
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).secs );
+
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).mins );
+
+
+		xor( edx, edx );
+		div( 24, edx:eax );		
+		mov( dx, (type time.timerec [ebx]).hours );
+		
+		// Compute (approx) the number of days since the current time.
+		
+		mov( theTime.tv_sec, eax );
+		
+		xor( edx, edx );
+		div( 86400, edx:eax );	// 86400 secs/day.
+		
+		// Convert days since 1/1/1970 to a Julian Day number:
+		
+		add( Jan_1_1970, eax );
+		
+		// Convert the Julian day number to today's date:
+		
+		date.fromJulian( eax, val DMY );
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end localDateTime;	
+	
+	
+	// time.curTime-
+	//
+	//	Returns the current local time based on the date/time package's
+	// timeZone variable. 
+	
+	procedure time.curTime( var HMS:time.timerec ); @nodisplay; @noframe;
+	var
+		theTime		:linux.timeval;
+		timeZone	:int32;
+		
+	begin curTime;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		
+		time.getTimeZone();
+		mov( eax, timeZone );
+		
+		linux.gettimeofday( theTime, NULL );
+		
+		mov( HMS, ebx );
+		
+		intmul( 3600, timeZone, ecx );	// Convert timeZone from hours->secs
+		mov( theTime.tv_sec, eax );
+		add( ecx, eax );
+		
+		mov( 60, ecx );
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).secs );
+
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).mins );
+
+
+		xor( edx, edx );
+		div( 24, edx:eax );		
+		mov( dx, (type time.timerec [ebx]).hours );
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end curTime;
+	
+#elseif( os.freeBSD )
+
+	#include( "bsd.hhf" );
+	
+	// utcDateTime
+	//
+	//	Return UTC date and time in one function call.
+	
+	procedure time.utcDateTime( var DMY:date.daterec; var HMS:time.timerec );
+		@nodisplay;
+		@noframe;
+		
+	var
+		theTime	:bsd.timeval;
+		
+	begin utcDateTime;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		
+		bsd.gettimeofday( theTime, NULL );
+		
+		mov( HMS, ebx );
+
+		mov( theTime.tv_sec, eax );
+		mov( 60, ecx );
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).secs );
+
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).mins );
+
+
+		xor( edx, edx );
+		div( 24, edx:eax );		
+		mov( dx, (type time.timerec [ebx]).hours );
+		
+		// Compute (approx) the number of days since then
+		// (This is in UTC time, don't forget):
+		
+		mov( theTime.tv_sec, eax );
+		xor( edx, edx );
+		div( 86400, edx:eax );	// 86400 secs/day.
+		
+		// Convert days since 1/1/1970 to a Julian Day number:
+		
+		add( Jan_1_1970, eax );
+		
+		// Convert the Julian day number to today's date:
+		
+		date.fromJulian( eax, val DMY );
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end utcDateTime;
+
+
+	// utcTime-
+	//
+	//	Returns the current UTC time.
+	
+	procedure time.utcTime( var HMS:time.timerec ); @nodisplay; @noframe;
+	var
+		theTime	:bsd.timeval;
+		
+	begin utcTime;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		
+		bsd.gettimeofday( theTime, NULL );
+		
+		mov( HMS, ebx );
+
+		mov( theTime.tv_sec, eax );
+		mov( 60, ecx );
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).secs );
+
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).mins );
+
+
+		xor( edx, edx );
+		div( 24, edx:eax );		
+		mov( dx, (type time.timerec [ebx]).hours );
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end utcTime;
+	
+	
+	
+	// time.localDateTime-
+	//
+	//	Returns the current local date and time in one operation.
+	// Computes the local time based on the value of the date/time package
+	// timeZone value.
+	
+	
+	procedure time.localDateTime( var DMY:date.daterec; var HMS:time.timerec );
+		@nodisplay;
+		@noframe;
+	var
+		theTime		:bsd.timeval;
+		timeZone	:int32;
+		
+	begin localDateTime;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		
+		time.getTimeZone();
+		mov( eax, timeZone );
+		
+		bsd.gettimeofday( theTime, NULL );
+		
+		mov( HMS, ebx );
+
+		intmul( 3600, timeZone, ecx );	// Convert timeZone from hours->secs
+		mov( theTime.tv_sec, eax );
+		add( ecx, eax );
+		mov( eax, theTime.tv_sec );
+		
+		mov( 60, ecx );
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).secs );
+
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).mins );
+
+
+		xor( edx, edx );
+		div( 24, edx:eax );		
+		mov( dx, (type time.timerec [ebx]).hours );
+		
+		// Compute (approx) the number of days since the current time.
+		
+		mov( theTime.tv_sec, eax );
+		
+		xor( edx, edx );
+		div( 86400, edx:eax );	// 86400 secs/day.
+		
+		// Convert days since 1/1/1970 to a Julian Day number:
+		
+		add( Jan_1_1970, eax );
+		
+		// Convert the Julian day number to today's date:
+		
+		date.fromJulian( eax, val DMY );
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end localDateTime;	
+	
+	
+	// time.curTime-
+	//
+	//	Returns the current local time based on the date/time package's
+	// timeZone variable. 
+	
+	procedure time.curTime( var HMS:time.timerec ); @nodisplay; @noframe;
+	var
+		theTime		:bsd.timeval;
+		timeZone	:int32;
+		
+	begin curTime;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		
+		time.getTimeZone();
+		mov( eax, timeZone );
+		
+		bsd.gettimeofday( theTime, NULL );
+		
+		mov( HMS, ebx );
+		
+		intmul( 3600, timeZone, ecx );	// Convert timeZone from hours->secs
+		mov( theTime.tv_sec, eax );
+		add( ecx, eax );
+		
+		mov( 60, ecx );
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).secs );
+
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).mins );
+
+
+		xor( edx, edx );
+		div( 24, edx:eax );		
+		mov( dx, (type time.timerec [ebx]).hours );
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end curTime;
+	
+#elseif( os.macOS )
+
+	#include( "mac.hhf" )
+	
+	// utcDateTime
+	//
+	//	Return UTC date and time in one function call.
+	
+	procedure time.utcDateTime( var DMY:date.daterec; var HMS:time.timerec );
+		@nodisplay;
+		@noframe;
+		
+	var
+		theTime	:mac.timeval;
+		
+	begin utcDateTime;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		
+		mac.gettimeofday( theTime, NULL );
+		
+		mov( HMS, ebx );
+
+		mov( theTime.tv_sec, eax );
+		mov( 60, ecx );
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).secs );
+
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).mins );
+
+
+		xor( edx, edx );
+		div( 24, edx:eax );		
+		mov( dx, (type time.timerec [ebx]).hours );
+		
+		// Compute (approx) the number of days since then
+		// (This is in UTC time, don't forget):
+		
+		mov( theTime.tv_sec, eax );
+		xor( edx, edx );
+		div( 86400, edx:eax );	// 86400 secs/day.
+		
+		// Convert days since 1/1/1970 to a Julian Day number:
+		
+		add( Jan_1_1970, eax );
+		
+		// Convert the Julian day number to today's date:
+		
+		date.fromJulian( eax, val DMY );
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end utcDateTime;
+
+
+	// utcTime-
+	//
+	//	Returns the current UTC time.
+	
+	procedure time.utcTime( var HMS:time.timerec ); @nodisplay; @noframe;
+	var
+		theTime	:mac.timeval;
+		
+	begin utcTime;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		
+		mac.gettimeofday( theTime, NULL );
+		
+		mov( HMS, ebx );
+
+		mov( theTime.tv_sec, eax );
+		mov( 60, ecx );
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).secs );
+
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).mins );
+
+
+		xor( edx, edx );
+		div( 24, edx:eax );		
+		mov( dx, (type time.timerec [ebx]).hours );
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end utcTime;
+	
+	
+	
+	// time.localDateTime-
+	//
+	//	Returns the current local date and time in one operation.
+	// Computes the local time based on the value of the date/time package
+	// timeZone value.
+	
+	
+	procedure time.localDateTime( var DMY:date.daterec; var HMS:time.timerec );
+		@nodisplay;
+		@noframe;
+	var
+		theTime		:mac.timeval;
+		timeZone	:int32;
+		
+	begin localDateTime;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		
+		time.getTimeZone();
+		mov( eax, timeZone );
+		
+		mac.gettimeofday( theTime, NULL );
+		
+		mov( HMS, ebx );
+
+		intmul( 3600, timeZone, ecx );	// Convert timeZone from hours->secs
+		mov( theTime.tv_sec, eax );
+		add( ecx, eax );
+		mov( eax, theTime.tv_sec );
+		
+		mov( 60, ecx );
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).secs );
+
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).mins );
+
+
+		xor( edx, edx );
+		div( 24, edx:eax );		
+		mov( dx, (type time.timerec [ebx]).hours );
+		
+		// Compute (approx) the number of days since the current time.
+		
+		mov( theTime.tv_sec, eax );
+		
+		xor( edx, edx );
+		div( 86400, edx:eax );	// 86400 secs/day.
+		
+		// Convert days since 1/1/1970 to a Julian Day number:
+		
+		add( Jan_1_1970, eax );
+		
+		// Convert the Julian day number to today's date:
+		
+		date.fromJulian( eax, val DMY );
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end localDateTime;	
+	
+	
+	// time.curTime-
+	//
+	//	Returns the current local time based on the date/time package's
+	// timeZone variable. 
+	
+	procedure time.curTime( var HMS:time.timerec ); @nodisplay; @noframe;
+	var
+		theTime		:mac.timeval;
+		timeZone	:int32;
+		
+	begin curTime;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		
+		time.getTimeZone();
+		mov( eax, timeZone );
+		
+		mac.gettimeofday( theTime, NULL );
+		
+		mov( HMS, ebx );
+		
+		intmul( 3600, timeZone, ecx );	// Convert timeZone from hours->secs
+		mov( theTime.tv_sec, eax );
+		add( ecx, eax );
+		
+		mov( 60, ecx );
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).secs );
+
+		xor( edx, edx );
+		div( ecx );
+		mov( dl, (type time.timerec [ebx]).mins );
+
+
+		xor( edx, edx );
+		div( 24, edx:eax );		
+		mov( dx, (type time.timerec [ebx]).hours );
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end curTime;
+	
+
+#endif
+end DateTime;			

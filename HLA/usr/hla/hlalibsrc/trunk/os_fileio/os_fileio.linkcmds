@@ -1,0 +1,14 @@
+fileio_opennew.o
+fileio_close.o
+fileio_eof.o
+fileio_position.o
+fileio_newln.o
+fileio_gets.o
+fileio_write.o
+fileio_seek.o
+fileio_eoln.o
+fileio_open.o
+fileio_flush.o
+fileio_truncate.o
+fileio_read.o
+fileio_readln.o

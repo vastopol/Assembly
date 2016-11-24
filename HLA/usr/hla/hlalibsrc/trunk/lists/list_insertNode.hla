@@ -1,0 +1,78 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit lists;
+#include( "lists.hhf" )
+#include( "excepts.hhf" )
+
+
+
+const
+	nodeEDI: text := "(type node_t [edi])";
+	nodeEAX: text := "(type node_t [eax])";
+	
+
+
+// insertNode
+//
+//	This function insert node "n" before the
+//	"before" node in the list.  If "before" turns
+//	out to be the first node in the list, this
+//	method calls insert_first to do the work.  If
+//	"before" is not the first node in the list, then
+//	this function backs up one node and calls "append_node"
+//	to do the work.
+//
+//	Since this is a method, EDI is already wiped
+//	out upon entry.  So this code will not bother 
+//  to preserve it.  This function does return with
+//	ESI still pointing at the list object.
+
+
+procedure list_t.insertNode( var n:node_t; var before:node_t );	
+	@nodisplay;
+	@noframe;
+	
+begin insertNode;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	mov( before, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+	cmp( (type node_t [edi]).Prev, NULL );
+	je insertFirst;
+	
+		mov( (type node_t [edi]).Prev, edi );
+		this.appendNode( n, (type node_t [edi]));
+		jmp allDone;
+		
+	insertFirst:
+	
+		this.insertFirst( n );
+		
+	allDone:
+	pop( ebp );
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end insertNode;
+
+
+
+end lists;

@@ -1,0 +1,166 @@
+unit spread_unit;
+
+
+// synopsis
+//	Given a string s, this function "spreads" the string out
+//	to length "toWidth" by injecting extra spaces into the
+//	string whereever spaces currently exist. This is done to 
+//	create a "fully justified" line of text.
+//	The function does not modify s if its length is greater
+//	than toWidth characters. If the length of s is less than
+//	75% of toWidth, then it just pads the string with spaces
+//	(on the end). Raises an ex.StringOverflow exception if the
+//	string's maxlen value is less than toWidth.
+
+//	Version History:
+//	Revision:	4
+//	Author:		Sevag Krikorian
+//	Date:		Oct. 13, 2007
+//	Note:		finished revision, now returns clc/stc
+//
+//	Revision:	3
+//	Author:		Sevag Krikorian
+//	Date:		Oct. 11, 2007
+//	Note:		changed to library format
+//				removed PadSpaces procedure- now uses zstr.cpySize
+//
+//	Revision:	2
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 06, 2007
+//	Note:		removed some unnecessary instructions
+//
+//	Revision:	1
+//	Author:		Sevag Krikorian
+//	Date:		Aug 16, 2007
+//	Note:		1st release
+//
+
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "zstrings.hhf" )
+	#includeOnce( "excepts.hhf" )
+
+
+	procedure str._spread (src:string; dst:string; width:dword);
+		@nodisplay; @noframe; @noalignstack;
+
+		// this is a utility procedure for spread functions 
+		// not meant to be called outside of library
+		// caller is responsible for preserving registers edx, edi, ecx and ebx
+		// all error checking must be assured prior to calling _spread
+
+		// return	EAX = copied string
+		
+
+	begin _spread;
+		push( ebp );
+		mov( esp, ebp );
+		push( esi );
+		
+		xor( ecx, ecx );
+		mov( src, ebx );
+		sub( 1, ebx );
+		countSpaces:
+			add( 1, ebx );
+			mov( [ebx], al );
+			test( al, al );
+			jz doneCount;
+			cmp( al, ' ' );
+			jne countSpaces;
+			add( 1, ecx );
+			jmp countSpaces;
+			
+		doneCount:
+			// if there are no spaces, we can't spread anything
+			// so just pad with spaces
+			test( ecx, ecx );
+			jne getEachSpace;
+			
+			mov( width, ecx );
+			mov( dst, edi );
+			mov( ecx, ( type str.strRec[edi]).length );
+			zstr.cpySize( (type zstring src), ecx, ' ', edi );
+			mov( edi, eax );
+			jmp done;
+		
+
+		// ecx = # of spaces in src
+		//  length of s - toWidth = total number of spaces to add
+		
+		getEachSpace:
+		mov( src, ebx );
+		mov( (type str.strRec[ebx]).length, edx );
+		mov( width, eax );
+		sub( edx, eax );
+		
+		
+		// number of spaces to peg on to each space =
+		// n_sp in eax/ total spaces in string
+		xor( edx, edx );
+		div( ecx );
+		mov( eax, esi );
+		// esi = number of spaces to expand each space in string
+		// edx has the remainder - peg these one at a time along with esi
+		
+		// scan through the source, copying to dest
+		// each time a space is encountered, add
+		// each_sp times spaces to dest up to n_sp
+
+		mov( dst, edi );
+		push( edi ); // save string ptr
+		mov(' ', ah );
+		
+		// ebx = src, edi = dst, esi = n to expand each space, edx = remainder 
+		sub( 1, ebx );
+		moveSrc:
+			add( 1, ebx );
+			mov( [ebx], al );
+			test( al, al );
+			jz doneMove;
+			cmp( al, ah );
+			jne next;
+			mov( esi, ecx );
+			mov( ah, [edi] );
+			add( 1, edi ); // don't count current space
+			
+			// add in 1 from the remainder, if any
+			test( edx, edx );
+			jz _addSpaces;
+			mov( ah, [edi] );
+			add( 1, edi );
+			sub( 1, edx );
+				
+			_addSpaces:
+				// if there is zero in ecx, we are just
+				// adding remainders
+				test( ecx, ecx );
+				jz moveSrc;
+				
+			// add in one space for each value of ecx
+			_spaceLoop:
+				mov( ah, [edi] );
+				add( 1, edi );
+				sub( 1, ecx );
+				jz moveSrc;
+				jmp _spaceLoop;
+				
+			next:
+				mov( al, [edi] );
+				add( 1, edi );
+				jmp moveSrc;
+			
+			
+		doneMove:
+		mov( #0, (type byte[edi]) );
+		pop( eax );
+		push( width );
+		pop( (type str.strRec[eax]).length );
+
+		done:
+			pop( esi );
+			pop( ebp );
+			ret(_parms_);
+		
+	end _spread;
+	
+
+end spread_unit;

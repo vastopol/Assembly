@@ -1,0 +1,114 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+
+#include( "stdio.hhf" );
+
+/****************************************************/
+/*                                                  */
+/* eq,                                              */
+/* ne,                                              */
+/* lt,                                              */
+/* gt,                                              */
+/* le,                                              */
+/* gt- These routines perform string comparisons.   */
+/*     They compare the src1 string against the     */
+/* 	src2 string and return true or false (1 or 0)   */
+/* 	in the carry flag depending upon the result     */
+/* 	of the comparison.                              */
+/* 	                                                */
+/****************************************************/
+
+
+procedure str.gt( src1:string; src2:string ); @noframe;
+begin gt;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	pushfd();
+	push( esi );
+	push( edi );
+	push( ecx );
+	cld();
+	xor( eax, eax );
+	
+	// Get the string pointers and make sure they are non-NULL.
+	
+	mov( src1, esi );
+	mov( src2, edi );
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+	// For a "gt" comparison, we must compare the
+	// strings through the last character of the
+	// shorter of the two strings.  If the strings
+	// are equal to the end of the shorter string,
+	// then the comparison is based on the length
+	// of the strings.
+	
+	mov( (type str.strRec [esi]).length, ecx );
+	cmp( ecx, (type str.strRec [edi]).length );
+	jbe alreadySmallest;
+	
+		mov( (type str.strRec [edi]).length, ecx );
+		
+	alreadySmallest:
+	
+	repe.cmpsb(); 
+	jne SetResult;
+	
+		// The strings are equal through the length of the shorter string,
+		// so compare their lengths.
+		
+		mov( src1, esi );
+		mov( src2, edi );
+		mov( (type str.strRec [esi]).length, ecx );
+		cmp( ecx, (type str.strRec [edi]).length );
+		
+	SetResult:
+	seta( al );
+	
+		
+	pop( ecx );
+	pop( edi );
+	pop( esi );
+	popfd();
+	cmp( al, 1 );		// Set carry flag for return.
+	cmc();
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+		
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+		
+end gt;
+
+end stringUnit;
+
+
+
+
+	
+

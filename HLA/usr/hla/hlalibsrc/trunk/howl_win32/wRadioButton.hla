@@ -1,0 +1,105 @@
+unit wRadioButton_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( wRadioButton_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+//
+// Handle wRadioButton_t objects here:
+
+
+
+procedure wRadioButton_t.create_wRadioButton
+(
+	wrbName	:string;
+	caption	:string;
+	style	:dword; 									
+	parent	:dword;
+	x		:dword; 
+	y		:dword; 
+	width	:dword; 
+	height	:dword;
+	onClick	:widgetProc  
+);;
+	
+_begin( wRadioButton_t, create_wRadioButton );	
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wRadioButton_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	
+	mov( style, eax );
+	mov( eax, ecx );
+	and( $f, ecx );
+	if( ecx <> w.BS_RADIOBUTTON && ecx <> w.BS_AUTORADIOBUTTON  ) then
+	
+		and( $ffff_fff0, eax );
+		or( w.BS_RADIOBUTTON | w.WS_GROUP | w.WS_TABSTOP, eax );
+		
+	endif;
+	or
+	( 
+		w.WS_CHILD | w.WS_VISIBLE | w.BS_NOTIFY,  
+		eax
+	);
+	push( eax );
+	wCheckable_t.create_wCheckable
+	(
+		wrbName,
+		caption,
+		eax,  
+		parent, 								
+		x,	   
+		y,	   
+		width,  
+		height, 
+		onClick  
+	);
+	mov( cl, this.wBase_private.onHeap );
+	pop( this.wVisual_private.style );
+	
+	// Initialize the type string field:
+		
+	howl.setType( wRadioButton_c );
+	
+	// Initialize the VMT pointer:
+	
+	mov( &wRadioButton_t._VMT_, this._pVMT_ );
+		
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+	
+	
+_end( wRadioButton_t, create_wRadioButton );
+
+
+
+end	wRadioButton_u;

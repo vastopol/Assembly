@@ -1,0 +1,156 @@
+program fgeti64_test;
+#include( "stdlib.hhf" )
+
+readonly
+	max64 :int64 := 9223372036854775807;
+	min64 :int64 := -9223372036854775808;
+	
+
+var
+	f			:pointer to virtualFile;
+	input64		:int64;
+	
+	procedure cmp64( right:int64 );
+	begin cmp64;
+	
+		cmp( edx, (type dword right[4]));
+		jne notEqual;
+		cmp( eax, (type dword right));
+	  notEqual:
+		
+	end cmp64;
+	
+begin fgeti64_test;
+
+	// Testing fileio.geti64
+	
+	try
+	
+		virtualFile.create();
+		mov( esi, f );
+	
+		f.open( "fc_geti64.data", fileio.r );
+									  
+
+		f.geti64();
+		cmp64( 0 );
+		if( @ne ) then
+		
+			raise($1011);
+		
+		endif;	
+		
+		f.geti64();
+		cmp64( 1 );
+		if( @ne ) then
+		
+			raise($1012);
+		
+		endif;	
+		
+		f.geti64();
+		cmp64( -1 );
+		if( @ne ) then
+		
+			raise($1013);
+		
+		endif;	
+
+		f.geti64();
+		cmp64( max64 );
+		if( @ne ) then
+		
+			raise($1014);
+		
+		endif;
+
+
+		f.geti64();
+		cmp64( min64 );
+		if( @ne ) then
+		
+			raise($1015);
+		
+		endif;
+
+
+		try
+		
+			f.geti64();
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise a conversion error.
+			
+		  	raise($1016 );
+			
+		  exception( ex.ConversionError )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	raise($1017 );
+			
+		endtry;
+		f.readLn();	// Clean up after ourselves.
+		
+		
+		try
+		
+			f.geti64();
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	raise($1018 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	raise($1019 );
+			
+		endtry;
+		f.readLn();
+		
+		
+		// Better be at end of file.
+		
+		if( !f.eof()) then
+		
+			raise($1010);
+			
+		endif;
+		stderr.put( "f.geti64 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"f.geti64 failed! eax=", eax, nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+			
+end fgeti64_test;
+
+													

@@ -1,0 +1,47 @@
+program test_isUpper;
+#include( "stdlib.hhf" )
+
+static
+	charset:char[256] :=
+		[
+			#for( i := 0 to 254 )
+				char(i),
+			#endfor
+			#255
+		];
+		
+	results:boolean[256] :=
+		[
+			#for( i := 0 to 254 )
+				@isupper( char(i) ),
+			#endfor
+			false
+		];
+		
+begin test_isUpper;
+
+	
+	for( mov( 0, ecx ); ecx<256; inc(ecx) )do
+	
+		chars.isUpper( charset[ecx] );
+		if( al <> results[ecx] ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"chars.isUpper failed! al=", al, " ecx=", ecx, nl
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		
+	endfor;
+	stderr.put( "chars.isUpper succeeded!" nl );
+	os.exitProcess(0);
+		
+end test_isUpper;

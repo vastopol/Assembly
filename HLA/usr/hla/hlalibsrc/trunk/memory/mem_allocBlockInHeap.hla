@@ -1,0 +1,81 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit memory;
+
+
+#include( "strings.hhf" )
+#include( "../include/mem.hhf" )
+
+// mem.allocBlockInHeap:
+//
+//	This is an iterator that returns the following
+// information for each block in the heap
+// (in-use blocks):
+//
+// EAX - size of the block.
+// EBX - base address of data for block.
+// ECX - reference count for the block.
+
+
+iterator mem.allocBlockInHeap; 
+	@nodisplay;
+	@noframe;
+	
+var
+	curBlk	:dword;
+	
+begin allocBlockInHeap;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	mov( listHead, eax );
+	mov( eax, curBlk );
+	test( eax, eax );
+	jz allDone;
+	whileCurBlkNEnull:
+	
+		mov( curBlk, eax );
+		mov( memblkEAX.refCount, ecx );
+		mov( memblkEAX.next, curBlk );
+		test( ecx, ecx );
+		jz skipYield;
+		
+			lea( ebx, [eax+@size( memblock )] );
+			mov( memblkEAX.size, eax );
+			yield();
+			
+		skipYield:
+		cmp( curBlk, NULL );
+		jne whileCurBlkNEnull;
+	
+	allDone:
+	leave();
+	add( 4, esp );		// Remove ptr to foreach body
+	ret( _parms_ );
+
+end allocBlockInHeap;
+
+
+
+
+end memory;
+
+
+
+
+	
+

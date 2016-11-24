@@ -1,0 +1,206 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+/*
+** This is the standard hardware exception handler for HLA.
+**	
+*/
+
+
+unit HWexceptUnit;
+?@noframe := true;
+?@nodisplay := true;
+#include( "os.hhf" )
+#include( "excepts.hhf" )
+
+procedure HWexcept; 			external( "HWexcept__hla_" );
+procedure HardwareException;	external( "HARDWAREEXCEPTION__HLA_" );
+procedure HardwareException2;	external( "HardwareException__hla_" );
+
+#if( os.win32 )	
+
+	//  Default Hardware Exception Handler to execute if
+	//  we get a Windows Exception.  This just passes control
+	//  back to the Windows' handler.
+	//  
+	//  HardwareException
+	//  
+	//  Stack on entry:
+	//  
+	//  esp+16:		Pointer to dispatcher context
+	//  esp+12:		Pointer to context record
+	//  esp+8:		Pointer to establisher frame
+	//  esp+4:		Pointer to Exception Record
+	//  esp+0:		Exception Dispatcher return address.
+	//  
+	//  This routine loads the above values into:
+	//  
+	//  Dispatch context:	EDI
+	//  Context record:		ECX
+	//  Establisher frame:	ESI
+	//  Exception Record:	EDX
+	//  
+	//  This routine does not return to the direct caller
+	//  if HLA's exception handler cannot handle this call.
+	//  Instead, it returns directly to the Window's Exception
+	//  dispatcher.  If this code determines that an HLA
+	//  exception handler can handle the exception, then
+	//  it transfers control to the current HLA handler.
+
+	procedure HardwareException2;	// Provide an alias. 
+	begin HardwareException2; end HardwareException2;	// just falls through
+	
+	
+	#macro chkEx( wincode, hlacode ):skipIt;
+	
+		cmp( eax, wincode );
+		jne skipIt;
+
+			mov( hlacode, eax );
+			jmp GotoHndlr;
+		
+		skipIt:
+			
+	#endmacro
+	
+	procedure HardwareException;
+	begin HardwareException;
+
+			mov( [esp+4], edx );		// Get Exception record ptr
+			mov( [esp+8], esi );		// Get Establisher frame.
+			mov( [esp+12], ecx );		// Get context record
+			mov( [esp+16], edi );		// Get dispatcher context
+			
+			mov( [edx], eax );			// Get exception code.
+			chkEx( $80000003, ex.Breakpoint );
+			chkEx( $80000004, ex.SingleStep );
+			chkEx( $c0000005, ex.AccessViolation );
+			chkEx( $c0000006, ex.InPageError );
+			chkEx( $c0000008, ex.InvalidHandle );
+			chkEx( $c000000F, ex.FileNotFound );
+			chkEx( $c0000022, ex.AccessDenied );
+			chkEx( $c0000017, ex.NoMemory );
+			chkEx( $c000001D, ex.IllegalInstr );
+			chkEx( $c000008c, ex.BoundInstr );
+			chkEx( $c000008d, ex.fDenormal );
+			chkEx( $c000008e, ex.fDivByZero );
+			chkEx( $c000008f, ex.fInexactResult );
+			chkEx( $c0000090, ex.fInvalidOperation );
+			chkEx( $c0000091, ex.fOverflow );
+			chkEx( $c0000092, ex.fStackCheck );
+			chkEx( $c0000093, ex.fUnderflow );
+			chkEx( $c0000094, ex.DivideError );
+			chkEx( $c0000095, ex.IntoInstr );
+			chkEx( $c0000096, ex.PrivInstr );
+			
+			chkEx( $c00000FD, ex.StackOverflow );
+			chkEx( $c000013a, ex.ControlC );
+			
+			//  If this exception code is not handled by HLA,
+			//  then return to the Windows dispatcher to let
+			//  it call the previous exception handler.
+
+			add( 4, esp );		// Remove return address
+			mov( 1, eax );		// Continue search return code
+			ret();			  	// Return to Windows Exception dispatcher
+
+
+
+
+		//   Okay, HLA can handle the exception.
+		//   Unwind the stack and transfer control
+		//   to the current HLA handler at this point.
+
+
+		GotoHndlr:
+
+			// mov fs:[0], ebx
+			
+			xor( ebx, ebx );
+			fseg:mov( [ebx], ebx );			
+			jmp	whlNotHLA;
+			
+
+		FindLastHLAhandler:
+			mov( [ebx], ebx );
+			
+		whlNotHLA:
+			cmp( (type dword [ebx+4]), &HWexcept );
+			jne	FindLastHLAhandler;
+
+			mov( ebx, esp );
+			
+			// pop fs:[0]
+			
+			xor( ebx, ebx );
+			fseg:pop( (type dword [ebx]) );
+			
+			add( 8, esp );		// Remove HWexcept and coroutine ptrs
+			pop( ebp );
+			ret();				// Transfer control to ExcptHndlr
+
+	end HardwareException;
+
+
+#elseif( os.linux )
+
+	#print
+	( 
+		"Linux doesn't need a HardwareException module, compilation ignored" 
+	)
+	procedure HardwareException2;	// Provide an alias. 
+	begin HardwareException2; 
+	end HardwareException2;
+	
+	procedure HardwareException;
+	begin HardwareException;
+	end HardwareException;
+
+#elseif( os.macOS )
+
+	#print
+	( 
+		"MacOSX doesn't need a HardwareException module, compilation ignored" 
+	)
+
+	procedure HardwareException2;	// Provide an alias. 
+	begin HardwareException2; 
+	end HardwareException2;
+
+	procedure HardwareException;
+	begin HardwareException;
+	end HardwareException;
+
+
+#elseif( os.freeBSD )
+
+	#print
+	( 
+		"FreeBSD doesn't need a HardwareException module, compilation ignored" 
+	)
+	procedure HardwareException2;	// Provide an alias. 
+	begin HardwareException2; 
+	end HardwareException2;
+	
+	procedure HardwareException;
+	begin HardwareException;
+	end HardwareException;
+
+
+#endif
+end HWexceptUnit;
+
+
+	
+

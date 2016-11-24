@@ -1,0 +1,133 @@
+program DateToString_test;
+#include( "stdlib.hhf" )
+#include( "dtClass.hhf" )
+
+static
+	baseDate	:date.daterec;
+	endDate		:date.daterec;
+	
+	dateStr		:string;
+	cmpStr		:string;
+	vcmpStr		:string;
+	
+	cmpStr2		:str.strvar(32);
+	vcmpStr2	:str.strvar(32);
+	
+	dc			:dateClass;
+	vdc			:virtualDateClass;	
+	
+	
+begin DateToString_test;
+
+	date.setSeparator( '/' );
+	dc.create();
+	vdc.create();
+	
+	for( mov( date.mdyy, dl); dl <= date.MONTHdyyyy; inc( dl )) do
+	
+		date.setFormat( dl );
+		dc.setFormat( dl );
+		vdc.setFormat( dl );
+		
+		date.pack( 1, 1, date.minYear, baseDate );
+		mov( baseDate, eax );
+		mov( eax, endDate );
+		mov( eax, dc.theDate );
+		mov( eax, vdc.theDate );
+		while( mov( baseDate, eax ) <= (type dword endDate) ) do
+		
+			date.a_toString( baseDate );
+			mov( eax, dateStr );
+			
+			dc.a_toString();
+			mov( eax, cmpStr );
+			str.eq( eax, dateStr );
+			jne badDate;
+			
+			vdc.a_toString();
+			mov( eax, vcmpStr );
+			str.eq( eax, dateStr );
+			jne badDate;
+			
+			dc.toString( cmpStr2 );
+			str.eq( cmpStr2, dateStr );
+			jne badDate;
+			
+			vdc.toString( vcmpStr2 );
+			str.eq( vcmpStr2, dateStr );
+			jne badDate;
+			
+			str.free( vcmpStr );
+			str.free( cmpStr );
+			str.free( dateStr );
+			date.addDays( 1, baseDate );
+			dc.addDays( 1 );
+			vdc.addDays( 1 );
+			
+		endwhile;
+		
+	endfor;
+
+	for( mov( date.mdyy, dl); dl <= date.MONTHdyyyy; inc( dl )) do
+	
+		date.setFormat( dl );
+		dc.setFormat( dl );
+		vdc.setFormat( dl );
+		date.pack( 1, 1, date.minYear, baseDate );
+		mov( baseDate, eax );
+		mov( eax, dc.theDate );
+		mov( eax, vdc.theDate );
+		date.pack( 12, 31, date.maxYear-1, endDate );
+		while( mov( baseDate, eax ) <= (type dword endDate) ) do
+		
+			date.a_toString( baseDate );
+			mov( eax, dateStr );
+			
+			dc.a_toString();
+			mov( eax, cmpStr );
+			str.eq( eax, dateStr );
+			jne badDate;
+			
+			vdc.a_toString();
+			mov( eax, vcmpStr );
+			str.eq( eax, dateStr );
+			jne badDate;
+			
+			dc.toString( cmpStr2 );
+			str.eq( cmpStr2, dateStr );
+			jne badDate;
+			
+			vdc.toString( vcmpStr2 );
+			str.eq( vcmpStr2, dateStr );
+			jne badDate;
+			
+			str.free( vcmpStr );
+			str.free( cmpStr );
+			str.free( dateStr );
+			dc.addDays( 300 );
+			vdc.addDays( 300 );
+			date.addDays( 300, baseDate );
+			
+		endwhile;
+		
+	endfor;
+
+	stderr.put( "dateClass.toString succeeded!" nl );
+	os.exitProcess(0);
+	
+badDate:
+	stderr.put( "dateClass.toString failed!" nl );
+	stderr.put( "date= " );
+	date.a_toString( baseDate );
+	stderr.put( (type string eax), nl );
+	stderr.put( "dc  = ", dc, nl );
+	stderr.put( "vdc = ", vdc, nl );
+	stderr.put( "cmpStr2 = ", cmpStr2, nl );
+	stderr.put( "vcmpStr2= ", vcmpStr2, nl );
+	stdout.put( "Press Enter to Continue: " );
+	stdin.readLn();
+	os.exitProcess(1);
+		
+end DateToString_test;
+
+													

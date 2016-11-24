@@ -1,0 +1,186 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeOnce( "strings.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "x86.hhf" )
+
+
+//  delete3,                                                  
+//                                                            
+//  This routine removes characters from a string.           
+//  The delete3 routine destructively removes characters       
+//  from a specified string variable.         
+//                                                            
+//  Inputs-                                                   
+//                                                            
+//  	dest-   Pointer to string to remove characters from.      
+//  	start-  Starting position to begin deleting characters.   
+//  	length- Number of characters to delete. 
+//
+//	Returns-
+//
+//	 	dest-	String is deleted in-place (destructively).
+//		carry-	Set if successful deletion and len chars
+//				 were deleted from the dest string. Clear if
+//				 fewer than len chars were deleted from the string.                 
+
+
+
+
+
+
+procedure str.delete3
+(
+	s:	string;
+	start:	dword;
+	len:	dword
+);  @noframe; 
+var
+	saveECX		:dword;
+	saveESI		:dword;
+	saveEDI		:dword;
+	saveFlags	:dword;
+	
+begin delete3;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_-4), esp );
+	stc();						// Assume we return success
+	pushfd();					// Allocate and initialize saveFlags
+	cld();
+	mov( edi, saveEDI );
+	mov( esi, saveESI );
+	mov( ecx, saveECX );
+	
+	// Verify that s is non-NULL.
+	
+	mov( s, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+	// If start > length( s ), raise an exception.
+	// If start = length or length = 0, then we don't
+	// have anything to do.
+	
+	cmp( len, 0 );
+	je allDone;
+	
+	mov( start, esi );
+	mov( (type str.strRec [edi]).length, ecx );
+	cmp( esi, ecx );
+	je allDone;
+	ja StringIndex;
+
+	
+		// If start+length is greater than length( s ), just
+		// delete the end of the string.
+		
+		add( len, esi );
+		cmp( esi, ecx );
+		jb rmvMiddle;
+		je rmvEnd;
+		
+			// If we're attempting to remove more characters than
+			// exist at the end of the string, return with the
+			// carry flag clear.
+			
+			and( !x86.flag_carry, saveFlags );
+			
+		// Remove all characters from start to the end of the string:
+		
+		rmvEnd:
+			mov( start, ecx );
+			mov( ecx, (type str.strRec [edi]).length );
+			add( ecx, edi );
+			mov( 0, (type byte [edi]));
+			
+			jmp allDone;
+		
+		
+		// Remove some number of characters from the middle of the string.
+		
+		rmvMiddle:
+	
+			// start+length is less than length(s), so we need to remove
+			// some characters from the middle of the string.
+			//
+			// Move the remainder of the string over the deleted portion.
+			//
+			// Before:
+			//
+			//					Delete these chars.
+			//					 |
+			//					 |	  ECX holds this length
+			//				     |	  |
+			//                 xxxxx(----)
+			//	s:   	.......ddddd+++++0
+			//				   |	|
+			//				   |	ESI points here.
+			//				   |
+			//				   EDI points here.
+			//
+			//
+			//
+			// After:
+			//
+			//	s:   	.......+++++0
+
+			
+			add( start, edi );	// Point edi at starting address;
+			
+			mov( edi, esi );	// Point esi at start+length.
+			add( len, esi );
+			
+			sub( start, ecx );	// Compute # of chars to move as
+			sub( len, ecx );	//  ECX = length( s ) - start - length.
+			inc( ecx );			// Include zero byte.
+			rep.movsb();		// Move remainder of string over deleted chars.
+			
+			// Compute the length of the new string:
+			
+			mov( s, esi );
+			sub( esi, edi );
+			dec( edi );			// Don't count zero byte.
+			mov( edi, (type str.strRec [esi]).length );
+		
+	allDone:
+	
+	mov( saveEDI, edi );
+	mov( saveESI, esi );
+	mov( saveECX, ecx );
+	popfd();
+	leave();
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+StringIndex:
+	raise( ex.StringIndexError );
+
+end delete3;
+
+end stringUnit;
+
+
+
+
+	
+

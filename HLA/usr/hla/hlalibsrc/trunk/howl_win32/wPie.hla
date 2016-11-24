@@ -1,0 +1,349 @@
+unit wPie_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+
+readonly
+	align( 4 );		
+	vmt( wPie_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wPie objects here:
+
+
+					
+procedure wPie_t.create_wPie
+(
+	wrName		:string;
+	parent		:dword;
+	x			:dword; 
+	y			:dword;
+	width		:dword;
+	height		:dword;
+	startAngle	:real64;
+	endAngle	:real64;
+	lineColor	:dword;
+	fillColor	:dword;
+	bkgColor	:dword 
+);
+var
+	junk:real80;
+	
+_begin( wPie_t, create_wPie );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wPie_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	
+	// We're going to create a wFilledFrame object here.
+	
+	(type wFilledFrame_t [esi]).create_wFilledFrame
+	(
+		wrName,
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height,
+		lineColor,
+		fillColor,
+		bkgColor
+	);
+	mov( cl, this.wBase_private.onHeap );
+	
+	// Set up the roundRect-specific fields:
+		
+	howl.setType( wPie_c );
+	mov( &wPie_t._VMT_, this._pVMT_ );
+
+	// Get the angles into 0..359 degrees, and then convert to radians:
+
+	fld( 360.0 );
+	fld( startAngle );
+	fprem1();
+	fldpi();
+	fmulp();
+	fld( 180.0 );
+	fdivp();
+	fstp( this.wPie_private.startAngle );
+	fstp( junk );
+	
+	fld( 360.0 );
+	fld( endAngle );
+	fprem1();
+	fldpi();
+	fmulp();
+	fld( 180.0 );
+	fdivp();
+	fstp( this.wPie_private.endAngle );
+	fstp( junk );
+	
+	pop( edx );
+	pop( ecx );			   
+	pop( eax );
+	
+_end( wPie_t, create_wPie );
+
+
+
+
+
+// Accessor/mutator functions:
+
+method wPie_t.get_startAngle;;
+_begin( wPie_t, get_startAngle );
+
+	// Compute from radians back to degrees:
+	
+	fld( this.wPie_private.startAngle );
+	fld( 180.0 );
+	fmulp();
+	fldpi();
+	fdivp();
+
+_end( wPie_t, get_startAngle );
+
+
+
+method wPie_t.get_endAngle;;
+_begin( wPie_t, get_endAngle );
+
+	fld( this.wPie_private.endAngle );
+	fld( 180.0 );
+	fmulp();
+	fldpi();
+	fdivp();
+
+_end( wPie_t, get_endAngle );
+
+
+method wPie_t.set_startAngle( startAngle:real64 );;
+_begin( wPie_t, set_startAngle );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	// Convert the angle to radians in the range 0..359 degrees:
+	
+	fld( 360.0 );
+	fld( startAngle );
+	fprem1();
+	fldpi();
+	fmulp();
+	fld( 180.0 );
+	fdivp();
+	fstp( this.wPie_private.startAngle );
+	
+	w.InvalidateRect( this.handle, NULL, true );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wPie_t, set_startAngle );
+
+
+method wPie_t.set_endAngle( endAngle:real64 );;
+_begin( wPie_t, set_endAngle );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	// Convert the angle to radians in the range 0..359 degrees:
+	
+	fld( 360.0 );
+	fld( endAngle );
+	fprem1();
+	fldpi();
+	fmulp();
+	fld( 180.0 );
+	fdivp();
+	fstp( this.wPie_private.endAngle );
+	
+	w.InvalidateRect( this.handle, NULL, true );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wPie_t, set_endAngle );
+
+
+
+
+
+
+
+method wPie_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);
+var
+	r			:w.RECT;
+	hdc			:dword;
+	oldBrush	:dword;
+	oldPen		:dword;
+	x			:dword;
+	y			:dword;
+	x1			:dword;
+	y1			:dword;
+	x2			:dword;
+	y2			:dword;
+	ps			:w.PAINTSTRUCT;
+
+_begin( wPie_t, processMessage );
+
+	if( uMsg = w.WM_PAINT ) then
+	
+		w.BeginPaint( this.handle, ps );
+			
+			mov( eax, hdc );
+			
+			mov( 0, r.left );
+			mov( this.wVisual_private.width, eax );
+			mov( eax, r.right );
+			
+			mov( 0, r.top );
+			mov( this.wVisual_private.height, eax );
+			mov( eax, r.bottom );
+				
+			if
+			( 
+					ps.fErase 
+				||	(type byte this.wVisual_private.bkgColor[3]) <> $FF 
+			) then
+			
+				// Fill the wPie's window with the background color:
+				
+				w.FillRect( hdc, r, this.wVisual_private.bkgBrush );
+				
+			endif;
+			
+			// Select the object's pen and fill values:
+			
+			w.SelectObject( hdc, this.wFilledFrame_private._linePen );
+			mov( eax, oldPen );
+			w.SelectObject( hdc, this.wFilledFrame_private._fillBrush );
+			mov( eax, oldBrush );
+						
+			// Compute the x1, x2, and y1, y2 values.
+			//
+			// x = this.width/2
+			// y = this.height/2
+			
+			mov( this.wVisual_private.width, eax );
+			shr( 1, eax );
+			mov( eax, x );
+					   			
+			mov( this.wVisual_private.height, eax );
+			shr( 1, eax );
+			mov( eax, y );
+			
+			
+			// x1 = x-trunc( x*sin(startAngle) )
+			// y1 = y-trunc( y*cos(startAngle) )			
+
+			fld( this.wPie_private.startAngle );
+			fsin();
+			fild( x );
+			fmulp();
+			fisttp( x1 );
+			mov( x, eax );
+			sub( x1, eax );
+			mov( eax, x1 );
+			
+			
+			fld( this.wPie_private.startAngle );
+			fcos();
+			fild( y );
+			fmulp();
+			fisttp( y1 );
+			mov( y, eax );
+			sub( y1, eax );
+			mov( eax, y1 );
+					   			
+			// x2 = x-trunc( x*sin(endAngle) )
+			// y2 = y-trunc( y*cos(endAngle) )			
+
+			fld( this.wPie_private.endAngle );
+			fsin();
+			fild( x );
+			fmulp();
+			fisttp( x2 );
+			mov( x, eax );
+			sub( x2, eax );
+			mov( eax, x2 );
+			
+			
+			fld( this.wPie_private.endAngle );
+			fcos();
+			fild( y );
+			fmulp();
+			fisttp( y2 );
+			mov( y, eax );
+			sub( y2, eax );
+			mov( eax, y2 );
+					   			
+			// Draw the wPie:
+			
+			w.Pie
+			( 
+				hdc, 
+				0,
+				0,
+				this.wVisual_private.width,
+				this.wVisual_private.height,
+				x1,
+				y1,
+				x2,
+				y2
+			);
+			
+			w.SelectObject( hdc, oldBrush );
+			w.SelectObject( hdc, oldPen );
+						
+		w.EndPaint( this.handle, ps );
+		exit processMessage;
+		
+	elseif( uMsg = w.WM_MOUSEACTIVATE ) then
+	
+		if( this.wClickable_private.onClick <> NULL ) then
+		
+			this.wClickable_private.onClick( esi, wParam, lParam );
+			mov( w.MA_NOACTIVATEANDEAT, eax );
+			exit processMessage;
+		
+		endif;
+	
+	endif;
+	super.processMessage( hwnd, uMsg, wParam, lParam );
+	
+_end( wPie_t, processMessage );
+
+
+end	wPie_u;

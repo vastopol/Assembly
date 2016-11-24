@@ -1,0 +1,63 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "conv.hhf" )
+
+
+/************************************************************/
+/*                                                          */
+/* h8ToStr-                                                 */
+/*                                                          */
+/* Converts a byte value to a string of hexadecimal digits. */
+/*                                                          */
+/* Inputs:                                                  */
+/* 	b-	                                                    */
+/* 		contains the byte to convert.                       */
+/* 		                                                    */
+/* 	size-                                                   */
+/* 		Minimum size of string to create.                   */
+/* 		                                                    */
+/* 	fill-                                                   */
+/* 		Padding character to use if the minimum string      */
+/* 		length is greater than the number of digits         */
+/* 		needed to hold the string.                          */
+/* 		                                                    */
+/* 	buffer-                                                 */
+/* 		points at an HLA string that will hold              */
+/* 		the converted result.                               */
+/*                                                          */
+/************************************************************/
+
+
+procedure conv.h8ToStr( b:byte; size:dword; fill:char; buffer:string ); 
+	@nodisplay;
+	@noframe;
+	@noalignstack;
+	
+begin h8ToStr;
+
+	// esp+16:	b
+	// esp+12:	size
+	// esp+8:	fill
+	// esp+4:	buffer
+	// esp+0:	return address
+	
+	and( $ff, (type dword [esp+16]) );	// Zero-extend b and call h32ToStr.
+	jmp conv.h32ToStr;
+
+end h8ToStr;
+
+end ConvUnit;

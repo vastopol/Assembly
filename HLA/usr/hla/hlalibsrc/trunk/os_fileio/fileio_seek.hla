@@ -1,0 +1,259 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+
+//20020108 Mark de Wever
+//use llseek if lseek returns errno.einval since this can indicate
+// a char device
+//check on lseek return of -1 seems never to happen
+
+#include( "../include/fileiounit.hhf" )
+#include( "os.hhf" )
+
+/********************************************************/
+/*                                                      */
+/* seek-                                                */
+/*                                                      */
+/* Repositions the file pointer to the specified offset */
+/*                                                      */
+/********************************************************/
+
+#if( os.linux )
+
+
+	procedure fileio.seek4
+	( 
+		Handle	:dword; 
+		HOposn	:dword; 
+		LOposn	:dword; 
+		from	:fileio.seekPosns 
+	);
+		@nodisplay;
+		@noframe;
+		
+	var
+		offset:linux.loff_t;
+		 
+	begin seek4;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( eax );
+
+		mov( linux.seek_set, eax );
+		cmp( from, fileio.curPosn );
+		jb doSeek;
+			je curPosn;
+				mov( linux.seek_end, eax );
+				jmp doSeek;
+				
+			curPosn:
+				mov( linux.seek_cur, eax );
+		
+		doSeek:
+		linux.llseek
+		( 
+            Handle, 
+			HOposn, 
+			LOposn, 
+			offset, 
+            eax
+		);
+		cmp( eax, errno.espipe );
+		je FileSeekError;
+		cmp( eax, errno.ebadf );
+		je FileSeekError;
+		cmp( eax, errno.einval );
+		je FileSeekError;
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	FileSeekError:
+		raise( ex.FileSeekError );
+		
+	end seek4;
+
+#elseif( os.freeBSD )
+
+
+	procedure fileio.seek4
+	( 
+		Handle	:dword; 
+		HOposn	:dword; 
+		LOposn	:dword; 
+		from	:fileio.seekPosns 
+	);
+		@nodisplay;
+		@noframe;
+		
+	begin seek4;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( eax );
+		push( edx );
+
+		mov( bsd.SEEK_SET, eax );
+		cmp( from, fileio.curPosn );
+		jb doSeek;
+			je curPosn;
+				mov( bsd.SEEK_END, eax );
+				jmp doSeek;
+				
+			curPosn:
+				mov( bsd.SEEK_CUR, eax );
+		
+		doSeek:
+		bsd.lseek
+		( 
+            Handle, 
+			(type qword LOposn), 
+            eax
+		);
+		jnc goodSeek;
+		
+			cmp( eax, errno.espipe );
+			je FileSeekError;
+			cmp( eax, errno.ebadf );
+			je FileSeekError;
+			cmp( eax, errno.einval );
+			je FileSeekError;
+			
+		goodSeek:
+		pop( edx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	FileSeekError:
+		raise( ex.FileSeekError );
+		
+	end seek4;
+
+#elseif( os.macOS )
+
+
+	procedure fileio.seek4
+	( 
+		Handle	:dword; 
+		HOposn	:dword; 
+		LOposn	:dword; 
+		from	:fileio.seekPosns 
+	);
+		@nodisplay;
+		@noframe;
+		
+	begin seek4;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( eax );
+		push( edx );
+
+		mov( mac.SEEK_SET, eax );
+		cmp( from, fileio.curPosn );
+		jb doSeek;
+			je curPosn;
+				mov( mac.SEEK_END, eax );
+				jmp doSeek;
+				
+			curPosn:
+				mov( mac.SEEK_CUR, eax );
+		
+		doSeek:
+		mac.lseek
+		( 
+            Handle, 
+			(type qword LOposn), 
+            eax
+		);
+		jnc goodSeek;
+		
+			cmp( eax, errno.espipe );
+			je FileSeekError;
+			cmp( eax, errno.ebadf );
+			je FileSeekError;
+			cmp( eax, errno.einval );
+			je FileSeekError;
+			
+		goodSeek:
+		pop( edx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	FileSeekError:
+		raise( ex.FileSeekError );
+		
+	end seek4;
+
+#elseif( os.win32 )
+
+	procedure fileio.seek4
+	( 
+		Handle	:dword; 
+		HOposn	:dword; 
+		LOposn	:dword; 
+		from	:fileio.seekPosns 
+	);
+		@nodisplay;
+		@noframe;
+		
+	begin seek4;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( eax );
+		push( ecx );
+		push( edx );
+		pushfd();
+		cld();
+		cmp( from, fileio.curPosn );
+		jb fileBegin;
+			je curPosn;
+				mov( win.FILE_END, ecx );
+				jmp setIt;
+				
+			curPosn:
+				mov( win.FILE_CURRENT, ecx );
+				jmp setIt;
+				
+		fileBegin:
+			mov( win.FILE_BEGIN, ecx );
+		
+		setIt:
+		SetFilePointer( ecx, HOposn, LOposn, Handle );
+		popfd();
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ );
+		
+	end seek4;
+	
+#else
+
+	#print( "Unknown OS!" )
+
+#endif
+	
+end FileIOUnit;
+

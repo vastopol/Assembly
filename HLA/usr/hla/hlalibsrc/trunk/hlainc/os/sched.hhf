@@ -1,0 +1,637 @@
+#if( ! @defined( sched_hhf ))
+?sched_hhf := true;
+
+#includeonce( "os/types.hhf" )
+#includeonce( "os/param.hhf" )
+#includeonce( "os/spinlock.hhf" )
+#includeonce( "os/wait.hhf" )
+#includeonce( "os/timer.hhf" )
+#includeonce( "os/resource.hhf" )
+#includeonce( "os/processor.hhf" )
+#includeonce( "os/signals.hhf" )
+#includeonce( "os/tqueue.hhf" )
+#includeonce( "os/semaphore.hhf" )
+
+
+namespace linux; @fast;
+
+const
+
+	// clone/sysclone flags:
+	
+	csignal 		:= $000000ff;
+	clone_vm 		:= $00000100;
+	clone_fs 		:= $00000200;
+	clone_files 	:= $00000400;
+	clone_sighand 	:= $00000800;
+	clone_pid 		:= $00001000;
+	clone_ptrace 	:= $00002000;
+	clone_vfork 	:= $00004000;
+	clone_parent 	:= $00008000;
+	clone_thread 	:= $00010000;
+	
+	clone_signal	:= clone_sighand | clone_thread;
+
+
+	// task values
+	
+	task_running		:= 0;
+	task_interruptible	:= 1;
+	task_uninterruptible:= 2;
+	task_zombie			:= 3;
+	task_stopped		:= 4;
+
+	// scheduler policies:
+	
+  	sched_other		:= 0;
+  	sched_fifo		:= 1;
+  	sched_rr		:= 2;
+  	_sched_yield	:= $10;
+  	
+  		// per process flags:
+	
+	pf_alignwarn 	:= $00000001;
+	pf_starting 	:= $00000002;
+	pf_exiting 		:= $00000004;
+	pf_forknoexec 	:= $00000040;
+	pf_superpriv 	:= $00000100;
+	pf_dumpcore 	:= $00000200;
+	pf_signaled 	:= $00000400;
+	pf_memalloc 	:= $00000800;
+	pf_usedfpu 		:= $00100000;
+	pf_atomicalloc 	:= $00400000;
+	pt_ptraced 		:= $00000001;
+	pt_tracesys 	:= $00000002;
+	pt_dtrace 		:= $00000004;
+	pt_tracesysgood := $00000008;
+	
+	// process priority constants
+	
+	prio_min		:= -20;
+	prio_max		:= 20;
+	
+	prio_process	:= 0;
+	prio_pgrp		:= 1;
+	prio_user		:= 2;
+
+
+  	
+  	// Misc constants:
+  	
+  	nr_open_default	:= 32;
+  	numGroups_c		:= 32;
+  	rlim_nlimits	:= 11;
+  	default_max_map_count	:= 65536;
+  	
+  	
+
+/*
+ * These are the constant used to fake the fixed-point load-average
+ * counting. Some notes:
+ *  - 11 bit fractions expand to 22 bits by the multiplies: this gives
+ *    a load-average precision of 10 bits integer + 11 bits fractional
+ *  - if you want to count load-averages more often, you need more
+ *    precision, or rounding will get you. With 2-second counting freq,
+ *    the EXP_n values would be 1981, 2034 and 2043 if still using only
+ *    11 bit fractions.
+ */
+
+	fshift		:= 11;
+	fixed_1		:= (1 << fshift);
+	load_freq	:= (5*hz);
+	exp_1		:= 1884;
+	exp_5		:= 2014;
+	exp_15		:= 2037;
+	
+	#macro calc_load( __load, __exp, __n );
+		returns
+		({
+			push( ebx );
+			mov( linux.fixed_1, ebx );
+			sub( __exp, ebx );
+			intmul( __n, ebx );
+			mov( __load, eax );
+			intmul( __exp, eax );
+			add( ebx, eax );
+			shr( linux.fshift, eax );
+			pop( ebx );
+		}, "eax" )
+	#endmacro
+	
+	#macro ct_to_secs(__x);
+		returns
+		({
+			push( edx );
+			mov( __x, eax );
+			cdq();
+			div( linux.hz, edx:eax );
+			pop( edx );
+		},"eax" )
+	#endmacro
+	
+	#macro ct_to_usecs(__x);
+		returns
+		({
+			push( edx );
+			mov( __x, eax );
+			cdq();
+			div( linux.hz, edx:eax );
+			intmul( 1_000_000, edx );
+			mov( edx, eax );
+			pop( edx );
+		},"eax" )
+	#endmacro
+	
+	
+type
+	sched_param_t: record
+		sched_priority	:int32;
+	endrecord;
+
+  	
+  	files_struct:record
+  		count				:atomic_t;
+  		file_lock			:rw_lock_t;
+  		max_fds				:dword;
+  		max_fdset			:dword;
+  		next_fd				:dword;
+  		fd					:dword;	// ptr to fd array;
+  		close_on_exec		:fd_set_ptr;
+  		open_fds			:fd_set_ptr;
+  		close_on_exec_unit	:fd_set;
+  		open_fds_init		:fd_set;
+  		fd_array			:dword[ bits_per_long ];
+  	endrecord;
+  		
+
+static
+	avenrun			:dword; @external;
+	nr_running		:dword;	@external;
+	nr_threads		:dword; @external;
+	last_pid		:dword; @external;
+	max_map_count	:dword;	@external;
+	
+
+#if( @defined( __kernel__ ))
+
+type
+
+  	pgprot_t: record
+  		pgprot	:dword;
+  	endrecord;
+  	
+  		
+  		
+  		
+	exception_table_entry: record
+		insn	:dword;
+		fixup	:dword;
+	endrecord;
+
+
+  	task_struct:record
+  		state			:dword;	// -1 unrunnable, 0 runable, >0 stopped.
+  		flags			:dword;	// per process flags
+  		sigpending		:int32;
+  		addr_limit		:dword;	// BFFF_FFFF for users,
+  								// FFFF_FFFF for kernel.
+  		exec_domain		:dword;	// Pointer to struct exec_domain
+  		need_resched	:dword;
+  		ptrace			:dword;
+  		lock_depth		:dword;
+  		
+  		counter			:dword;
+  		nice			:dword;
+  		policy			:dword;
+  		mm				:pointer to mm_struct;
+  		has_cpu			:dword;
+  		processor		:dword;
+  		cpus_allowed	:dword;
+  		run_list		:list_head;
+  		sleep_time		:dword;
+  		next_task		:pointer to task_struct;
+  		prev_task		:pointer to task_struct;
+  		active_mm		:pointer to mm_struct;
+  		
+  		binfmt			:dword;	//pointer to linux_binfmt
+  		exit_code		:int32;
+  		exit_signal		:int32;
+  		pdeath_signal	:int32;
+  		personality		:dword;
+  		did_exec		:dword;
+  		pid				:pid_t;
+  		pgrp			:pid_t;
+  		tty_old_pgrp	:pid_t;
+  		session			:pid_t;
+  		tgid			:pid_t;
+  		leader			:dword;
+  		
+  		p_opptr			:pointer to task_struct;
+  		p_pptr			:pointer to task_struct;
+  		p_cptr			:pointer to task_struct;
+  		p_ysptr			:pointer to task_struct;
+  		p_osptr			:pointer to task_struct;
+  		thread_group	:list_head;
+  		pidhash_next	:pointer to task_struct;
+  		pid_has_pprev	:dword;	//pointer to pointer to task_struct
+  		
+  		wait_chldexit	:wait_queue_head_t;
+  		vfork_done		:dword;	//pointer to completion
+  		rt_priority		:dword;
+  		it_real_value	:dword;
+  		it_prof_value	:dword;
+  		it_virt_value	:dword;
+  		it_real_incr	:dword;
+  		it_prof_incr	:dword;
+  		it_virt_incr	:dword;
+  		real_timer		:timer_list;
+  		times			:tms;
+  		start_time		:dword;
+  		#if( @defined( __smp__ ))
+  		
+  			per_cpu_utime	:dword[32];
+  			per_cpu_stime	:dword[32];
+  			
+  		#else
+  		
+			per_cpu_utime	:dword[1];
+			per_cpu_stime	:dword[1];
+			
+		#endif
+  		min_flt			:dword;
+  		maj_flt			:dword;
+  		nswap			:dword;
+  		cmin_flt		:dword;
+  		cmaj_flt		:dword;
+  		cnswap			:dword;
+  		swappable		:dword;
+  		
+  		uid				:dword;
+  		euid			:dword;
+  		suid			:dword;
+  		fsuid			:dword;
+  		gid				:dword;
+  		egid			:dword;
+  		sgid			:dword;
+  		fsgid			:dword;
+  		
+  		ngroups			:dword;
+  		groups			:dword[ numGroups_c ];
+  		cap_effective	:kernel_cap_t;
+  		cap_inheritable	:kernel_cap_t;
+  		cap_permitted	:kernel_cap_t;
+  		keep_capabilities	:dword;
+  		user			:dword;		// pointer to user_struct.
+  		rlim			:rlimit_t[rlim_nlimits];
+  		used_math		:word;
+  		comm			:char[16];
+  		align(4);
+  		link_count		:dword;
+  		tty				:dword;	// pointer to tty_struct
+  		locks			:dword;
+  		semundo			:dword;	//pointer to sem_undo
+  		semsleeping		:dword; //pointer to sem_queue
+
+		align(8);
+  		thread			:thread_struct;
+  		_fs				:dword;	// pointer to fs_struct
+  		files			:dword; // pointer to files_struct
+  		sigmask_lock	:spinlock_t;
+  		sig				:pointer to signal_struct;
+  		blocked			:sigset_t;
+  		pending			:sigpending_t;
+  		sas_ss_sp		:dword;
+  		sas_ss_size		:size_t;
+  		notifier		:procedure( var priv:var );
+  		notifier_data	:dword;
+  		notifier_mask	:pointer to sigset_t;
+  		
+  		tux_info		:dword;
+  		tux_exit		:procedure;
+  		
+  		parent_exec_id	:dword;
+  		self_exec_id	:dword;
+  		alloc_lock		:spinlock_t;
+  		journal_info	:dword[4]; //?????
+  	endrecord;
+  	
+  	vm_area_struct: record
+  		vm_mm			:dword;		//pointer to mm_struct
+  		vm_start		:dword;
+  		vm_end			:dword;
+  		vm_next			:pointer to vm_area_struct;
+  		vm_page_prot	:pgprot_t;
+  		vm_flags		:dword;
+  		
+  		vm_avl_height	:word;
+  		vm_avl_left		:pointer to vm_area_struct;
+  		vm_avl_right	:pointer to vm_area_struct;
+  		vm_next_share	:pointer to vm_area_struct;
+  		vm_pprev_share	:pointer to vm_area_struct;
+  		
+  		vm_pgoff		:dword;
+  		vm_file			:dword;		//pointer to file
+  		fm_raend		:dword;
+  		vm_private_data	:dword;
+  	endrecord;
+
+  	mm_context_t:record
+  		segments	:dword;
+  		cpuvalid	:dword;
+  	endrecord;
+
+
+  	mm_struct:record
+  		mmap		:pointer to vm_area_struct;
+  		mmap_avl	:pointer to vm_area_struct;
+  		mmap_cache	:pointer to vm_area_struct;
+  		pgd			:dword;	// page ptr.
+  		mm_users	:atomic_t;
+  		mm_count	:atomic_t;
+  		map_count	:dword;	// # of VMAs.
+  		mmap_sem	:rw_semaphore;
+  		page_table_lock	:spinlock_t;
+  		mmlist		:list_head;
+  		
+  		start_code	:dword;
+  		end_code	:dword;
+  		start_data	:dword;
+  		end_data	:dword;
+  		start_brk	:dword;
+  		brk			:dword;
+  		start_stack	:dword;
+  		arg_start	:dword;
+  		arg_end		:dword;
+  		env_start	:dword;
+  		env_end		:dword;
+  		rss			:dword;
+  		total_vm	:dword;
+  		locked_vm	:dword;
+  		def_flags	:dword;
+  		cpu_vm_mask	:dword;
+  		swap_address:dword;
+  		dumpable	:dword;
+  		
+  		context		:mm_context_t;
+  		
+  	endrecord;
+			
+
+
+
+static
+	tasklist_lock	:rwlock_t;		@external;
+	runqueue_lock	:spinlock_t;	@external;
+	mmlist_lock		:spinlock_t;	@external;
+	mmlist_nr		:dword;			@external;
+	jiffies			:dword;			@external;
+	itimer_ticks	:dword;			@external;
+	itimer_next		:dword;			@external;
+	xtime			:timeval;		@external;
+	prof_buffer		:dword;			@external;
+	prof_len		:dword;			@external;
+	prof_shift		:dword;			@external;
+	prof_pid		:pid_t;			@external;
+	
+	
+	
+	procedure schedule;		@external;
+	procedure sched_init; 	@external;
+	procedure init_idle;	@external;
+	procedure show_state;	@external;
+	procedure cpu_init;		@external;
+	procedure trap_init;	@external;
+	procedure update_process_times( user:dword ); @cdecl; @external;
+	
+	procedure update_one_process
+	(
+		var	p		:task_struct;
+			user	:dword;
+			system	:dword;
+			cpu		:dword
+	);
+		@cdecl;
+		@external;
+		
+	procedure schedule_task( var task: tq_struct );
+		@use eax;
+		@cdecl;
+		@returns( "eax" );
+		@external;
+		
+		
+	procedure flush_scheduled_tasks; @external;
+	procedure start_context_thread; @external;
+	procedure current_is_keventd; @external;
+	
+	procedure __wake_up
+	( 
+		var	q		:wait_queue_head_t in eax; 
+			mode	:dword in edx; 
+			nr		:dword in ecx
+	);	@external;
+		
+	#macro wake_up( __q );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				linux.__wake_up
+				( 
+					__q, 
+						linux.task_interruptible 
+					|	linux.task_uninterruptible, 
+					1 
+				);
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	
+		
+	#macro wake_up_interruptible( __q );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				linux.__wake_up
+				( 
+					__q, 
+						linux.task_interruptible, 
+					1 
+				);
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	
+	procedure __wake_up_sync
+	( 
+		var	q		:wait_queue_head_t in eax; 
+			mode	:dword in edx; 
+			nr		:dword in ecx
+	);	@external;
+		
+		
+	#macro wake_up_sync( __q );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				linux.__wake_up_sync
+				( 
+					__q, 
+						linux.task_interruptible 
+					|	linux.task_uninterruptible, 
+					1 
+				);
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	
+
+		
+		
+	#macro wake_up_sync_interruptible( __q );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				linux.__wake_up_sync
+				( 
+					__q, 
+						linux.task_interruptible, 
+					1 
+				);
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	
+
+		
+
+	procedure __sleep_on
+	( 
+		var	q		:wait_queue_head_t in eax
+	);	@external( "sleep_on" );
+		
+		
+	#macro sleep_on( __q );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				linux.__sleep_on( __q );
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	
+
+		
+
+	procedure __sleep_on_timeout
+	( 
+		var	q		:wait_queue_head_t in eax;
+			timeout	:dword in edx
+	);	@external( "sleep_on_timeout" );
+		
+		
+	#macro sleep_on_timeout( __q, __t );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				linux.__sleep_on( __q, __t );
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	
+
+		
+
+	
+
+		
+
+	procedure __interruptible_sleep_on
+	( 
+		var	q		:wait_queue_head_t in eax
+	);	@external( "interruptible_sleep_on" );
+		
+		
+	#macro interruptible_sleep_on( __q );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				linux.__interruptible_sleep_on( __q );
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	
+
+		
+
+	procedure __interruptible_sleep_on_timeout
+	( 
+		var	q		:wait_queue_head_t in eax;
+			timeout	:dword in edx
+	);	@external( "interruptible_sleep_on_timeout" );
+		
+		
+	#macro interruptible_sleep_on_timeout( __q, __t );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				linux.__interruptible_sleep_on( __q, __t );
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	
+
+		
+
+#endif //__kernel__
+	
+	
+end linux;
+#endif // sched_hhf

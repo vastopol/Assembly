@@ -1,0 +1,50 @@
+program csempty_test;
+#include( "stdlib.hhf" )
+
+static
+	cstest:cset;		
+		
+begin csempty_test;
+
+	cs.empty( cstest );
+	if( !cs.isEmpty( cstest ) ) then
+	
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"cs.empty failed!  ecx=", ecx, nl,
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endif;
+	mov( (type dword cstest[0]), eax );
+	or( (type dword cstest[ 4]), eax );
+	or( (type dword cstest[ 8]), eax );
+	or( (type dword cstest[12]), eax );
+	if( eax <> 0 ) then
+	
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"cs.empty failed!  ecx=", ecx, nl,
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endif;
+	
+	stderr.put( "cs.empty & cs.isEmpty succeeded!" nl );
+	os.exitProcess(0);
+		
+end csempty_test;
+
+													

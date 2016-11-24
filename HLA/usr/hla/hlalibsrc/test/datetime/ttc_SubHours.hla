@@ -1,0 +1,90 @@
+program subHours_test;
+#include( "stdlib.hhf" )
+
+static
+	baseTime	:time.timerec;
+	subTime		:timeClass;
+	hours		:uns16;
+	hours2		:uns32;
+	
+	curHour		:int16;
+	days		:int16;
+	
+		
+begin subHours_test;
+	
+	subTime.create();
+	mov( 0, baseTime );
+	for( mov( 0, hours ); hours < 24; inc( hours )) do
+	
+		mov( 0, days );
+		mov( hours, ax );
+		mov( ax, curHour );
+		for( mov( 0, hours2 ); hours2 < 2400; inc( hours2 )) do
+					
+			mov( baseTime, ebx );
+			mov( ebx, subTime.theTime );
+			subTime.subHours( hours2 );
+			
+			cmp( ax, days );
+			jne timeSubHoursFailed1;
+			
+			mov( subTime.theTime.hours, ax );
+			cmp( ax, curHour );
+			jne timeSubHoursFailed2;
+		
+			dec( curHour );
+			if( @s ) then
+			
+				mov( 23, curHour );
+				inc( days );
+				
+			endif;
+			
+		endfor;
+		time.addHours( 1, baseTime );
+		
+	endfor;
+			
+	stderr.put( "timeClass.subHours succeeded!" nl );
+	os.exitProcess(0);
+	
+timeSubHoursFailed4:
+	mov( 4, bl );
+	jmp timeSubHoursFailed;
+	
+timeSubHoursFailed3:
+	mov( 3, bl );
+	jmp timeSubHoursFailed;
+	
+timeSubHoursFailed2:
+	mov( 2, bl );
+	jmp timeSubHoursFailed;
+	
+timeSubHoursFailed1:
+	mov( 1, bl );
+timeSubHoursFailed:
+	stderr.put
+	( 
+		nl nl 
+		"***************************************************" 
+		nl
+		"timeClass.subHours failed! (", (type uns8 bl), ")", nl,
+		"Time= ",
+		(type uns8 baseTime.hours),
+		":",
+		(type uns8 baseTime.mins),
+		":",
+		(type uns16 baseTime.secs ),
+		"-",
+		hours2,
+		" Hours",
+		nl
+	);
+	stdout.put( "Press Enter to Continue: " );
+	stdin.readLn();
+	os.exitProcess(1);
+					
+end subHours_test;
+
+													

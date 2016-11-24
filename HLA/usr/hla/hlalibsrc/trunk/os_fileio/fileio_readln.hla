@@ -1,0 +1,186 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+
+#include( "../include/fileiounit.hhf" )
+
+
+
+/**************************************************/
+/*                                                */
+/* readLn-                                        */
+/*                                                */
+/* Reads all characters until a newline is found. */
+/* (Actually reads up to the next line feed, this */
+/* code assumes a return precedes the linefeed.)  */
+/*                                                */
+/**************************************************/
+
+#if( os.linux )
+
+	procedure fileio.readLn( Handle: dword ); @nodisplay; @noframe;
+	var
+		c:			byte;
+
+	begin readLn;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		pushfd();
+		cld();
+		UntilEoln:
+		
+			linux.read( Handle, c, 1 );
+			cmp( eax, -1 );
+			je FileReadError;
+			cmp( eax, 1 );		// EOF?
+			jne allDone;
+			
+				cmp( c, #$A );	// Line feed.
+				jne UntilEoln;
+		
+		allDone:
+		popfd();
+		pop( eax );
+		leave();
+		ret( _parms_ );
+
+	FileReadError:
+		raise( ex.FileReadError );
+				
+end readLn;
+
+#elseif( os.macOS )
+
+	procedure fileio.readLn( Handle: dword ); @nodisplay; @noframe;
+	var
+		c:			byte;
+
+	begin readLn;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		pushfd();
+		cld();
+		UntilEoln:
+		
+			mac.read( Handle, c, 1 );
+			jc FileReadError;
+			cmp( eax, 1 );		// EOF?
+			jne allDone;
+			
+				cmp( c, #$A );	// Line feed.
+				jne UntilEoln;
+		
+		allDone:
+		popfd();
+		pop( eax );
+		leave();
+		ret( _parms_ );
+
+	FileReadError:
+		raise( ex.FileReadError );
+				
+end readLn;
+
+#elseif( os.freeBSD )
+
+	procedure fileio.readLn( Handle: dword ); @nodisplay; @noframe;
+	var
+		c:			byte;
+
+	begin readLn;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		pushfd();
+		cld();
+		UntilEoln:
+		
+			bsd.read( Handle, c, 1 );
+			jc FileReadError;
+			cmp( eax, 1 );		// EOF?
+			jne allDone;
+			
+				cmp( c, #$A );	// Line feed.
+				jne UntilEoln;
+		
+		allDone:
+		popfd();
+		pop( eax );
+		leave();
+		ret( _parms_ );
+
+	FileReadError:
+		raise( ex.FileReadError );
+				
+end readLn;
+
+#elseif( os.win32 )
+
+	procedure fileio.readLn( Handle: dword ); @nodisplay; @noframe;
+	var
+		BytesRead:	dword;
+		c:			byte;
+
+	begin readLn;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ecx );
+		push( edx );
+		pushfd();
+		cld();
+		UntilEoln:
+		
+			ReadFile( 0, BytesRead, 1, c, Handle );
+			test( eax, eax );
+			jz FileReadError;
+			cmp( BytesRead, 1 );		// EOF?
+			jne allDone;
+			
+				cmp( c, #$A );	// Line feed.
+				jne UntilEoln;
+
+		allDone:
+		popfd();
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+
+	FileReadError:
+		raise( ex.FileReadError );
+				
+end readLn;
+
+#else
+
+	#print( "Unknown OS!" )
+
+#endif
+	
+end FileIOUnit;
+

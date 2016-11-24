@@ -1,0 +1,101 @@
+unit str_field_unit;
+
+//	Synopsis:
+//	A "field" in a string consists of a sequence of characters separated by
+//	characters in some "delimiter set". This function uses a 'standard'
+//	delimiter set (see str.tokenize) that is used to separate command-line
+//	parameters. It returns the nth field of a string (n specified by the
+//	field' parameter) as a string 
+//	Note that the first field is field #0.
+
+
+//	Version History:
+//
+//	Revision:	3
+//	Author:		Sevag Krikorian
+//	Date:		Oct 2, 2007
+//	Note:		changed to library format, code improvement
+//
+//	Revision:	2
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 02, 2007
+//	Note:		separated engine for code reuse, completed  all functions
+
+//	Revision:	1
+//	Author:		Sevag Krikorian
+//	Date:		July 30, 2007
+//	Note:		1st release
+//
+	
+	#includeonce ("strings.hhf")
+	#includeonce ("excepts.hhf")
+	#includeonce ("memory.hhf")
+
+
+		
+	procedure str.a_getField3( s:string; field:dword; cst:cset );
+		@noframe; @nodisplay; @noalignstack;
+
+		// allocate string on heap and return n'th 'field'
+		// use 'cst' delimiter set
+		
+		var
+			saveEBX	:dword;
+			saveECX	:dword;
+			saveEDX	:dword;
+			saveESI	:dword;
+			
+	begin a_getField3;
+		
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( esi, saveESI );
+		mov( ebx, saveEBX );
+		mov( ecx, saveECX );
+		mov( edx, saveEDX );
+		
+		str._getFieldIndex( s, field, cst );
+		jnc done;
+		
+		// ebx = start of field, esi = end of field
+		// get strlen
+		mov( esi, eax );
+		sub( ebx, eax );
+		push( eax );	// save strlen
+		add( 1, eax );	// in case we have zero length field
+		str.alloc( eax );
+		mov( eax, edx );	// save the pointer here
+		
+		sub( 1, ebx );
+		_copy_loop:
+			add( 1, ebx );
+			cmp( ebx, esi );
+			je _endcopy;
+			mov( [ebx], cl );
+			mov( cl, [edx] );
+			add( 1, edx );
+			jmp _copy_loop;
+			
+		_endcopy:
+			mov( #0, (type byte [edx]) );
+			pop( (type str.strRec[eax]).length );
+			// returns in EAX
+			stc();	// set carry for successful operation
+		done:
+		
+		mov( saveEBX, ebx );
+		mov( saveECX, ecx );
+		mov( saveEDX, edx );
+		mov( saveESI, esi );
+		
+		mov( ebp, esp );
+		pop( ebp );
+		ret( _parms_ );
+		
+	end a_getField3;
+
+
+
+end str_field_unit;

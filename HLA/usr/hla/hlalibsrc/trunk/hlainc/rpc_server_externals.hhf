@@ -1,0 +1,5 @@
+// This include file is provided for supporting remote procedure calls.
+// It should only be included in remote procedure call server modules.
+
+@text( rpc_server_externals )
+

@@ -1,0 +1,95 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit hlaUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "hla.hhf" );
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "conv.hhf" );
+
+// hla.puti128Size-                                  
+//                                                   
+// Converts i128 to a string holding it's signed decimal  
+// representation using the specified minimum field  
+// width (size) and padding character (fill) and then
+// emits this string using putstr.      
+//                                                   
+// Inputs:                                           
+// 	i128-                                              
+// 		LWord value to convert to a string.          
+// 		                                             
+// 	size-                                            
+// 		Minimum field width specification.           
+// 		                                             
+// 	fill-                                            
+// 		Padding character                            
+// 		                                             
+// 	putstr-                                            
+// 		Thunk that emits string.             
+// 		                                             
+
+
+
+
+
+procedure hla.puti128size( putstr:thunk; i128:lword; width:dword; fill:char ); 
+	@noframe;
+	
+const
+	MaxByteStrLen := 128;
+	chars: text := "(type str.strRec chrs[8])";
+
+var
+	chrs:	byte[ MaxByteStrLen + 8];
+
+begin puti128size;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( eax );
+
+	// Initialize maximum string length
+
+	mov( MaxByteStrLen, chars.maxlen );
+
+	// Convert the byte to a string of hex digits and 
+	// print the string.
+
+	push( (type dword i128[12]));
+	push( (type dword i128[8]));
+	push( (type dword i128[4]));
+	push( (type dword i128));
+	push( width );                      // The length.
+	push( (type dword fill));           // The fill char.
+	lea( eax, chars );					// create pointer to string 'chars'
+	push( eax ); 
+	call( conv.i128ToStr );
+	putstr();
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+end puti128size;
+
+end hlaUnit;
+
+
+
+
+	
+

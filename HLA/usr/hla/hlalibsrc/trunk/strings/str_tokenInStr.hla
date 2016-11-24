@@ -1,0 +1,221 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" )
+#include( "excepts.hhf" )
+#include( "memory.hhf" )
+
+
+/*************************************************************/
+/*                                                           */
+/* tokenInStr-                                               */
+/* This iterator returns a sequences of strings in EAX.      */
+/*                                                           */
+/* This routine defines a word as any sequence of characters */
+/* surrounded by the following:                              */
+/*                                                           */
+/* (1) the beginning of the src string,                      */
+/* (2) the end of the src string,                            */
+/* (3) any of the delimiters: space, tab, comma, "<", ">",   */
+/*     "|", "/", "\", or "-".                                */
+/*                                                           */
+/*                                                           */
+/* Each iteration yields a string (a word) that is allocated */
+/* on the heap. It is the caller's responsibility to free    */
+/* the storage associated with this string.                  */
+/*                                                           */
+/*************************************************************/
+
+
+
+iterator str.tokenInStr
+(
+		src		:string
+);  @noframe;
+var
+	eaxSave	:dword;
+	ebxSave	:dword;
+	esiSave	:dword;
+	
+begin tokenInStr;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	mov( esi, esiSave );
+	mov( ebx, ebxSave );
+	mov( eax, eaxSave );
+		
+	mov( src, esi );
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+	
+	// As long as we don't hit the end of the string,
+	//  extract the words from it.
+	
+	cmp( (type char [esi]), #0 );
+	je endWhl;
+	whlLoop:
+	
+		// Skip over all leading delimiter characters:
+		
+		xor( eax, eax );
+		dec( esi );
+		SkipDelims:
+		
+			// Since csets only support the 7-bit character set,
+			// strip off the H.O. bit of the current byte.  Note
+			// the implication that $80 is always a delimiter char.
+			//
+			// Repeat as long as the current character is not a
+			// zero byte and is a delimiter character.
+			
+			inc( esi );
+			mov( [esi], al );
+			cmp( al, 0 );
+			je endWhl;
+
+			and( $7f, al );
+			bt( eax, (type dword str.CmdLnDelimiters) );
+			jc SkipDelims;
+			
+		
+		// Okay, we're at the beginning of a new word.  Find the
+		// end of the word.
+		//
+		// Note the special case: if the quote is not in the
+		// delimiter set (we would skip over it in the above
+		// loop if it were), then we grab all characters up
+		// to the matching end quote.
+
+		mov( esi, ebx );
+		cmp( al, '"' );
+		jne tryApost;
+		
+			inc( esi );				// Don't include the quote in the string.
+			mov( esi, ebx );
+			dec( esi );
+			WhileNotQuote:
+			
+				inc( esi );
+				mov( [esi], al );
+				cmp( al, 0 );
+				je endQuoted;
+				cmp( al, '"' );
+				je WhileNotQuote;
+				jmp endQuoted;	
+			
+		tryApost:
+		cmp( al, '''' );
+		jne notQuoted;		
+		
+			inc( esi );				// Don't include the apost in the string.
+			mov( esi, ebx );
+			dec( esi );
+			WhileNotApost:
+			
+				inc( esi );
+				mov( [esi], al );
+				cmp( al, 0 );
+				je endQuoted;
+				cmp( al, '''' );
+				jne WhileNotApost;
+				jmp endQuoted;	
+		
+		notQuoted:
+		
+			mov( esi, ebx );		// Save ptr to start of word.
+			dec( esi );
+			repeatUntilDelim:		// Skip to the end of the word.
+			
+				inc( esi );
+				mov( [esi], al );
+				bt( eax, (type dword str.CmdLnDelimiters)); 
+				jnc repeatUntilDelim;
+			
+		endQuoted:
+		
+		
+		// Okay, we've got a word delimited by ebx and esi.
+		// Make a copy of this substring and store a pointer
+		// to the substring in the current dest location.
+		
+		mov( esi, eax );	// Compute length of substring as
+		sub( ebx, eax );	//  esi-ebx.
+		sub( src, ebx );	// Compute starting index for substring.
+		
+		// Get the word. Allocate storage for it on the heap
+		// and yield the result (in EAX) to the foreach loop.
+		
+		str.a_substr( src, ebx, eax );
+		
+		push( ebx );	// Save this, so the foreach loop
+		push( esi );	// can make use of these registers.
+		
+		mov( esiSave, esi );	// Get the values saved on entry
+		mov( ebxSave, ebx );	// or on the last iteration of the loop.
+		
+		yield();				// Yield the value in EAX.
+		
+		mov( esi, esiSave );	// Save for the next iteration.
+		mov( ebx, ebxSave );
+		
+		pop( esi );				// Restore this loop's variables.
+		pop( ebx );
+				
+		// If we stopped scanning on a quote or apostrophe, skip
+		// over that symbol here.
+		
+		mov( [esi], al );
+		cmp( al, '"' );
+		je noInc;
+		cmp( al, '''' );
+		je noInc;
+		
+			add( 1, esi );
+			
+		noInc:
+		cmp( (type char [esi]), #0 );
+		jne whlLoop;
+
+	endWhl:				
+
+	mov( esiSave, esi );
+	mov( ebxSave, ebx );
+	mov( eaxSave, eax );
+	leave();
+	add( 4, esp );		// Skip iterator body address.
+	ret( _parms_ );		// Use foreach endfor address as return address.
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end tokenInStr;
+
+
+
+
+end stringUnit;
+
+
+
+
+	
+

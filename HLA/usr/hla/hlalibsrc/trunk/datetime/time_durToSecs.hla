@@ -1,0 +1,47 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "excepts.hhf" )
+
+	
+// durationToSecs-
+//
+//	This procedure converts a duration expressed as hours, minutes
+// and seconds to an integral number of seconds. It returns the
+// result in EAX.
+
+procedure time.durationToSecs( hours:word; mins:byte; secs:byte ); 
+	@nodisplay; 
+	@noframe;
+begin durationToSecs;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( edx );
+	movzx( secs, eax );
+	movzx( mins, edx );
+	intmul( 60, edx );
+	add( edx, eax );
+	movzx( hours, edx );
+	intmul( 60*60, edx );
+	add( edx, eax );
+	pop( edx );
+	pop( ebp );
+	ret( _parms_ );
+					
+end durationToSecs;
+	
+end DateTime;			

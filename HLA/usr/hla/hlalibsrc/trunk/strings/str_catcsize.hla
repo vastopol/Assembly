@@ -1,0 +1,143 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+#include( "conv.hhf" );
+
+
+/************************************************************/
+/*                                                          */
+/* str.catc-                                                */
+/*                                                          */
+/* Concatenates the character "c" to the end of the string. */
+/*                                                          */
+/************************************************************/
+
+procedure str.catcSize( dest:string; c:char; width:int32; fill:char ); 
+	@noframe;
+begin catcSize;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	mov( dest, ebx );
+	
+	cmp( width, 0 );
+	jne notZero;
+	
+		mov( 1, width );
+		
+	notZero:
+	
+	// Bump up the length by the width parameter value and verify that
+	// this does not exceed the maximum length for the string:
+	
+	mov( width, ecx );
+	test( ecx, ecx );		// Compute absolute value of width.
+	jns dontNeg;
+	
+		neg( ecx );
+		
+	dontNeg:
+	mov( (type str.strRec [ebx]).length, eax );
+	add( ecx, eax );
+	cmp( eax, (type str.strRec[ebx]).maxlen );
+	ja StringOverflow;
+	
+	// Set the new length to the combined value and
+	// add the old length to EBX so it points at
+	// where we are to store the next character.
+	
+	mov( (type str.strRec [ebx]).length, edx );
+	mov( eax, (type str.strRec [ebx]).length );
+	add( edx, ebx );
+	
+
+	// If the width is greater than one then we need to
+	// insert padding characters before the character.
+	
+	mov( fill, al );
+	cmp( width, 1 );
+	jle noPadding;
+	
+		dec( ebx );
+		repeatUntilCX0:
+		
+			inc( ebx );
+			mov( al, [ebx] );
+			dec( ecx );
+			jnz repeatUntilCX0;
+		
+	noPadding:
+	
+	// Emit our character to the string:
+	
+	mov( c, ah );
+	mov( ah, [ebx] );
+	
+	// If the width is less than zero, then we need to
+	// insert padding characters after the character.
+	// Note that EBX is still pointing at the character
+	// we inserted and AL still contains the fill char.
+	
+	cmp( width, -1 );
+	jge noPadding2;
+	
+		dec( ecx );
+		repeatUntilCX0_2:
+		
+			inc( ebx );
+			mov( al, [ebx] );
+			dec( ecx );
+			jnz repeatUntilCX0_2;
+			
+		
+	noPadding2:
+	
+	// Emit the zero terminating byte:
+	
+	inc( ebx );
+	mov( 0, (type byte [ebx]) );
+		
+	
+	pop( edx );
+	pop( ecx );	
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+StringOverflow:
+	raise( ex.StringOverflow );
+
+end catcSize;
+
+
+
+end stringUnit;
+
+
+
+
+	
+

@@ -1,0 +1,168 @@
+program convetobuf_test;
+#include( "stdlib.hhf" )
+
+static
+	buf			:str.strvar(256);
+
+	procedure cmpbuf( buf:string; cmpto:string ); @returns( "@ne" );
+	begin cmpbuf;
+
+		push( esi );
+		push( edi );
+		push( ecx );
+
+		mov( buf, esi );
+		mov( cmpto, edi );
+		mov( (type str.strRec [edi]).length, ecx );
+		add( 1, ecx );
+		repe.cmpsb();
+
+		pop( ecx );
+		pop( edi );
+		pop( esi );
+
+	end cmpbuf;
+	
+	#macro bufTest( function, theValue, strValue, width, decpts, exceptionValue ):_s_;
+	
+// If this program fails, uncomment the following to see where the failure
+// is occuring:
+
+//		?_s_ :string := @string( function );
+//		stdout.put( "Testing " + _s_ + "( """, strValue, """ )" nl );
+		mov( buf, edi );
+		@text( "conv." + @string( function )) 
+		( 
+			theValue, 
+			width, 
+			decpts, 
+			' ', 
+			[edi] 
+		);
+		mov( 0, (type byte [edi]));
+		if( cmpbuf( buf, strValue )) then
+
+			printCmp( @string( function ), strValue );
+			raise( exceptionValue );
+
+		endif;
+
+	#endmacro
+	
+	
+	
+	procedure printCmp( function:string; strValue:string );
+	begin printCmp;
+	
+		stderr.put( function, " failed!" nl);
+		stderr.put( "Should be '", strValue, "'" nl );
+		stderr.put( "     was: '" );
+		mov( buf, edi );
+		while( (type byte [edi]) <> 0 ) do
+		
+			stderr.put( (type char [edi]) );
+			inc( edi );
+			
+		endwhile;
+		stderr.put( "'" nl );
+	
+	end printCmp;
+
+
+type
+	_r32:
+		record
+			r32		:real32;
+			width	:uns32;
+			decpts	:uns32;
+			str32	:string;
+		endrecord;
+		
+	
+		
+#include( "r.inc" )
+
+
+static
+	xVal	:dword := 32_0000;
+	
+	r32a	:_r32[ @elements( r32a_c ) ] := r32a_c;		
+	r32b	:_r32[ @elements( r32b_c ) ] := r32b_c;		
+	r32c	:_r32[ @elements( r32c_c ) ] := r32c_c;		
+	r32d	:_r32[ @elements( r32d_c ) ] := r32d_c;		
+	r32e	:_r32[ @elements( r32e_c ) ] := r32e_c;		
+	r32f	:_r32[ @elements( r32f_c ) ] := r32f_c;		
+	r12345	:_r32[ @elements( r12345_c ) ] := r12345_c;		
+	m12345	:_r32[ @elements( m12345_c ) ] := m12345_c;		
+		
+
+
+procedure doOneArray( var array:var; elements:uns32 );
+begin doOneArray;
+
+	mov( array, edx );
+	for
+	( 
+		mov( 0, ebx ); 
+		ebx < elements; 
+		inc( ebx )
+	) do
+	
+		intmul( @size( _r32 ), ebx, esi );
+		mov( (type _r32 [edx+esi]).width, eax );
+		mov( (type _r32 [edx+esi]).decpts, ecx );
+		bufTest
+		( 
+			r32ToBuf, 
+			(type _r32 [edx+esi]).r32, 
+			(type _r32 [edx+esi]).str32, 
+			eax, 
+			ecx,
+			xVal
+		);
+		inc( xVal ); 
+			  
+	endfor;
+end doOneArray;
+	
+begin convetobuf_test;
+
+
+	// Testing conv.e32ToBuf
+
+	try
+	
+		doOneArray( r32a, @elements( r32a ));
+		doOneArray( r32b, @elements( r32b ));
+		doOneArray( r32c, @elements( r32c ));
+		doOneArray( r32d, @elements( r32d ));
+		doOneArray( r32e, @elements( r32e ));
+		doOneArray( r32f, @elements( r32f ));
+		doOneArray( r12345, @elements( r12345 ));
+		doOneArray( m12345, @elements( m12345 ));
+		
+		stderr.put( "conv.e32ToBuf succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"conv.e32ToBuf failed! eax=", eax, nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+end convetobuf_test;
+
+													

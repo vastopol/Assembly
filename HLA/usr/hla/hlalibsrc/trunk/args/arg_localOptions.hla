@@ -1,0 +1,100 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+
+unit argsUnit;
+
+#include( "../include/osargs.hhf" )
+#include( "excepts.hhf" )
+
+
+/******************************************************/
+/*                                                    */
+/* LocalOptions is an iterator that yields a sequence */
+/* of pointers to "-" or "/" prefixed command line    */
+/* parameters.  Unlike GlobalOptions, this routine    */
+/* begins returning the options starting at the argv  */
+/* object at index "start".  This iterator fails upon */
+/* encountering the end of the argument list or upon  */
+/* encountering a command line option that does not   */
+/* begin with "-" or "/".                             */
+/*                                                    */
+/******************************************************/
+
+iterator arg.localOptions( start:uns32; options:cset ); 
+	@frame;
+	@nodisplay;
+	@nostackalign;
+	
+var
+	argc	:dword;
+	eaxSave	:dword;
+	ebxSave	:dword;
+	ecxSave	:dword;
+	 
+begin localOptions;
+
+	mov( ecx, ecxSave );
+	mov( ebx, ebxSave );
+	mov( eax, eaxSave );
+
+	_hla.get_NeedsCmdLn();
+	cmp( al, false );
+	je hasCmdLn;
+	
+		arg.cmdLn();
+		
+	hasCmdLn:
+
+	_hla.get_argc();
+	mov( eax, argc );
+	mov( start, ebx );
+	cmp( ebx, eax );
+	jb whileMoreArgs;
+		raise( ex.ValueOutOfRange );
+	
+	whileMoreArgs:
+	
+		mov( _hla.get_argv(ebx), ecx );
+		cmp( (type byte [ecx]), '-' );
+		jne allDone;
+	
+			movzx( (type byte [ecx+1]), eax );
+			bt( eax, (type dword options) );
+			jnc nextArg;
+			
+				push( ebx );
+				mov( ecx, eax );
+				mov( ebxSave, ebx );
+				mov( ecxSave, ecx );
+				yield();
+				mov( ebx, ebxSave );
+				mov( ecx, ecxSave );
+				pop( ebx );
+			
+		nextArg:
+		add( 1, ebx );
+		cmp( ebx, argc );
+		jb whileMoreArgs;
+		
+	allDone:
+	mov( ecxSave, ecx );
+	mov( ebxSave, ebx );
+	mov( eaxSave, eax );
+				
+	
+end localOptions;
+
+
+end argsUnit;

@@ -1,0 +1,30 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit sockets;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "sockets.hhf" )
+
+procedure baseSocketClass_t.getPort;
+begin getPort;
+
+	movzx( this.IPadrs.sin_port, eax );
+	xchg( al, ah );	
+	ret();
+	
+end getPort;
+
+
+end sockets;

@@ -1,0 +1,117 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+#include( "conv.hhf" );
+
+
+/*************************************************************/
+/*                                                           */
+/* str.catr80-                                               */
+/*                                                           */
+/* Converts the "r" parameter from real80 format to a string */
+/* (using the format options) and concatenates this to the   */
+/* end of "dest".                                            */
+/*                                                           */
+/*************************************************************/
+
+
+procedure str.catr80
+( 
+	dest:string; 
+	r:real80; 
+	width:int32; 
+	decpts:uns32
+);  @noframe;
+var
+	eaxSave: dword;
+
+begin catr80;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( eax, eaxSave );	// Save this in a known location!
+
+	/*
+	** Allocate storage for a string large enough
+	** to hold the output result.  The output result
+	** is never bigger than "width", so just use that value.
+	*/
+	
+	mov( width, eax );		// Get size we need to allocate.
+	inc( eax );				// Make room for the zero byte;
+	cmp( eax, 4096 );
+	jae ValueOutOfRange;
+
+	add( 3, eax );			// Round size so it is an even multiple
+	and( $ffff_fffc, eax );	//  of four bytes long.
+
+	cmp( eax, 40 );
+	jae min40;				// Minimum of 40 characters here.
+
+		mov( 40, eax );
+
+	min40:
+	sub( eax, esp );		// Make room for the string.
+
+	// Allocate storage for the length fields of the string.
+
+	sub( str.BytesBeforeStr,   esp );
+
+	// Initialize the maximum string length field.
+
+	mov( eax, (type str.strRec [esp + str.BytesBeforeStr]).maxlen );
+	
+	// Compute base adrs of string.
+		
+	lea( eax, [esp+str.BytesBeforeStr] );
+
+	// Convert the real80 value to a string and concatenate it to the
+	// end of dest.
+
+	pushw( 0 );
+	pushw( (type  word r[8]) );
+	pushd( (type dword r[4]) );
+	pushd( (type dword r)    );
+	pushd( width );
+	pushd( decpts );
+	pushd( (type dword ' ' ));
+	pushd( eax );			// Address of string to hold result.
+	call( conv.r80ToStr );
+
+	str.cat( (type string eax), dest );
+	
+	mov( eaxSave, eax );	// Restore original eax value.
+	leave();
+	ret( _parms_ );
+	
+ValueOutOfRange:
+		raise( ex.ValueOutOfRange );
+		
+end catr80;
+
+end stringUnit;
+
+
+
+
+	
+

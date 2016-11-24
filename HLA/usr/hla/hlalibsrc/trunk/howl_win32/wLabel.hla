@@ -1,0 +1,348 @@
+unit wLabel_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( wLabel_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wLabel objects here:
+
+
+
+procedure wLabel_t.create_wLabel
+(
+	wlName		:string;
+	caption		:string;
+	parent		:dword; 									
+	x			:dword; 
+	y			:dword;
+	width		:dword;
+	height		:dword;
+	alignment	:dword;
+	foreColor	:dword;
+	bkgColor	:dword 
+);;
+	
+_begin( wLabel_t, create_wLabel );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wLabel_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	
+	// Generic initialization for all objects:
+	
+	(type wVisual_t [esi]).create_wVisual
+	(
+		wlName,
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height
+	);
+	mov( cl, this.wBase_private.onHeap );
+	
+	w.CreateWindowEx
+	(
+		0,
+		howl.Window_t_ClassName,			// Window class name
+		"",									// Window caption
+		w.WS_CHILD | w.WS_VISIBLE,
+		x,
+		y,
+		width,
+		height,
+		parent,
+		this.wBase_private.objectID,
+		howl.howlInstance,
+		NULL
+	);
+	mov( eax, this.handle );
+	w.SetWindowLong( eax, w.GWL_USERDATA, esi );		
+	
+	howl.setType( wLabel_c );
+	mov( &wLabel_t._VMT_, this._pVMT_ );
+	str.a_cpy( caption );
+	mov( eax, this.wLabel_private.caption );
+	mov( foreColor, eax );
+	mov( eax, this.wLabel_private.foreColor );
+	this.set_bkgColor( bkgColor );
+	mov( alignment, eax );
+	mov( eax, this.wLabel_private.alignment );
+		
+	pop( edx );
+	pop( ecx );			   
+	pop( eax );
+	
+_end( wLabel_t, create_wLabel );
+
+
+
+method wLabel_t.destroy;;
+_begin( wLabel_t, destroy );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	str.free( this.wLabel_private.caption );
+	
+	// Free the storage associated with this object:
+	
+	super.destroy();	
+	pop( edx );
+	pop( ecx );			   
+	pop( eax );
+	
+_end( wLabel_t, destroy );
+
+
+
+
+
+
+
+
+
+// Accessor/mutator functions:
+
+method wLabel_t.a_get_caption;;
+_begin( wLabel_t, a_get_caption );
+
+	str.a_cpy( this.wLabel_private.caption );	
+
+_end( wLabel_t, a_get_caption );	
+
+
+method wLabel_t.get_font; @noframe;;
+_begin( wLabel_t, get_font );
+
+	mov( this.wLabel_private.font, eax );
+	ret();
+	
+_end( wLabel_t, get_font );	
+
+
+method wLabel_t.set_font( font:wFont_p );;
+_begin( wLabel_t, set_font );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( font, eax );
+	mov( eax, this.wLabel_private.font );
+	w.InvalidateRect( this.handle, NULL, true );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wLabel_t, set_font );	
+
+
+method wLabel_t.set_caption( caption:string );;
+_begin( wLabel_t, set_caption );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	str.free( this.wLabel_private.caption );
+	str.a_cpy( caption );
+	mov( eax, this.wLabel_private.caption );
+	w.InvalidateRect( this.handle, NULL, true );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wLabel_t, set_caption );	
+
+
+
+
+method wLabel_t.set_foreColor( foreColor:dword );;
+_begin( wLabel_t, set_foreColor );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( foreColor, eax );
+	mov( eax, this.wLabel_private.foreColor );
+	w.InvalidateRect( this.handle, NULL, true );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wLabel_t,set_foreColor );
+
+
+
+
+method wLabel_t.set_alignment( alignment:dword );;
+_begin( wLabel_t, set_alignment );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( alignment, eax );
+	mov( eax, this.wLabel_private.alignment );
+	w.InvalidateRect( this.handle, NULL, true );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wLabel_t,set_alignment );
+
+
+	
+
+
+method wLabel_t.get_caption; @noframe;;
+_begin( wLabel_t, get_caption );
+
+	mov( this.wLabel_private.caption, eax );
+	ret();
+	 
+_end( wLabel_t, get_caption );
+
+
+method wLabel_t.get_foreColor; @noframe;;
+_begin( wLabel_t, get_foreColor );
+
+	mov( this.wLabel_private.foreColor, eax );
+	ret();
+	 
+_end( wLabel_t, get_foreColor );
+
+
+method wLabel_t.get_alignment; @noframe;;
+_begin( wLabel_t, get_alignment );
+
+	mov( this.wLabel_private.alignment, eax );
+	ret();
+	 
+_end( wLabel_t, get_alignment );
+
+
+
+
+
+
+method wLabel_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);
+var
+	r			:w.RECT;
+	oldFont		:dword;
+	oldColor	:dword;
+	oldBkgColor	:dword;
+	hdc			:dword;
+	ps			:w.PAINTSTRUCT;
+
+_begin( wLabel_t, processMessage );
+
+	mov( uMsg, eax );
+	if( eax = w.WM_PAINT ) then
+	
+		w.BeginPaint( this.handle, ps );
+			
+			mov( eax, hdc );
+			
+			mov( 0, r.left );
+			mov( this.wVisual_private.width, eax );
+			mov( eax, r.right );
+			
+			mov( 0, r.top );
+			mov( this.wVisual_private.height, eax );
+			mov( eax, r.bottom );
+												   
+			if( this.wLabel_private.font <> NULL ) then
+			
+				mov( this.wLabel_private.font, eax );
+				mov( (type wFont_t [eax]).handle, eax );
+				w.SelectObject( hdc, eax );
+				mov( eax, oldFont );
+				
+			endif;
+			w.GetBkColor( hdc );
+			mov( eax, oldBkgColor );
+			w.GetTextColor( hdc );
+			mov( eax, oldColor );
+			
+			w.SetTextColor( hdc, this.wLabel_private.foreColor );
+			w.SetBkColor( hdc, this.wVisual_private.bkgColor );
+			
+			// Fill the wLabel's window with the background color:
+			
+			w.FillRect( hdc, r, this.wVisual_private.bkgBrush );
+			
+			// Paint the text:
+			
+			mov( this.wLabel_private.caption, eax );
+			mov( (type str.strRec [eax]).length, eax );
+			w.DrawText
+			( 
+				hdc, 
+				this.wLabel_private.caption, 
+				eax, 
+				r, 
+				this.wLabel_private.alignment 
+			);
+			
+			if( this.wLabel_private.font <> NULL ) then
+			
+				mov( oldFont, eax );
+				w.SelectObject( hdc, eax );
+				
+			endif;
+			w.SetTextColor( hdc, oldColor );
+			w.SetBkColor( hdc, oldBkgColor );
+			
+			
+		w.EndPaint( this.handle, ps );
+		
+	else
+	
+		w.DefWindowProc( hwnd, uMsg, wParam, lParam );
+		
+	endif;
+
+_end( wLabel_t, processMessage );
+
+
+end	wLabel_u;

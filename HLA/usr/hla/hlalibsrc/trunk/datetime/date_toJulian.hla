@@ -1,0 +1,134 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+
+	
+// The Julian day number is the number of days since Jan 1, 4713 BC.
+// Day 1 resets 7980 years later, this algorithm doesn't
+// handle that, so you could say that this code has a Y3K
+// problem!
+//
+//	The following calculation appeared as a letter in 
+//	CACM v11, no. 10, Oct 1968, p.657.
+//
+//	jd = ( 1461 * ( y + 4800 + ( m - 14 ) / 12 ) ) / 4 +
+//       ( 367 * ( m - 2 - 12 * ( ( m - 14 ) / 12 ) ) ) / 12 -
+//       ( 3 * ( ( y + 4900 + ( m - 14 ) / 12 ) / 100 ) ) / 4 +
+//       d - 32075
+//
+//	This is simplified to the following logic:
+//
+//	If( m = Jan or Feb ) then
+//
+//		jd = ( 1461 * ( y + 4800 - 1 ) ) / 4 +
+//  	     ( 367 * ( m + 10  ) ) / 12 -
+//  	     ( 3 * ( ( y + 4900 - 1 ) / 100 ) ) / 4 +
+//  	     d - 32075
+//
+//	else
+//
+//		jd = ( 1461 * ( y + 4800 ) ) / 4 +
+//  	     ( 367 * ( m - 2 )) / 12 -
+//  	     ( 3 * ( ( y + 4900 ) / 100 ) ) / 4 +
+//  	     d - 32075
+//
+//	Of course, if the input date predates Oct of 1582, it
+//	is suspect because the Gregorian calendar did not exist
+//	prior to that point (the earliest adoptors of the Gregorian
+//	calendar started using it in around Oct, 1582).
+
+procedure date._toJulian( dr:date.daterec ); @nodisplay; @noframe;
+var
+	j1:int32;
+	j2:int32;
+	j3:int32;
+	
+begin _toJulian;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	date.validate( dr );
+	
+	push( ebx );
+	push( ecx );
+	push( edx );
+	
+	// Store the difference in calculations between
+	// Jan and the other months in j1, j2, and j3.
+	
+	mov( 0,  j1 );
+	mov( -2, j2 );
+	mov( 0,  j3 );
+	cmp( dr.month, 2 );
+	ja notJanFeb;
+	
+		mov( -1, j1 );
+		mov( 10, j2 );
+		mov( -1, j3 );
+		
+	notJanFeb:
+	
+	// Compute ebx := ( 1461 * (y + 4800 - j1)) / 4;
+	
+	movzx( dr.year, ecx );
+	add( 4800, ecx );
+	mov( j1, ebx );
+	add( ecx, ebx );
+	intmul( 1461, ebx );
+	shr( 2, ebx );
+	
+	// Compute eax := ( 367 * ( m + j2  ) ) / 12
+	
+	movzx( dr.month, eax );
+	add( j2, eax );
+	mul( 367, eax );		// This zero extendes edx!
+	div( 12, edx:eax );
+	
+	// Sum into EBX:
+	
+	add( eax, ebx );
+	
+	// Compute eax := ( 3 * ( ( y + 4900 + j3 ) / 100 ) ) / 4
+	
+	add( 100, ecx );		// y+4900 -> ecx; 
+	mov( j3, eax );
+	add( ecx, eax );
+	cdq();					// Zero extends EAX -> EDX.
+	div( 100, edx:eax );
+	lea( eax, [eax+eax*2]);	// 3*eax
+	shr( 2, eax );			// eax/4
+	
+	// Subtract from accumulated value in EBX.
+	
+	sub( eax, ebx );
+	
+	// Add in the d-32075 component
+	
+	movzx( dr.day, eax );
+	sub( 32075, eax );
+	add( ebx, eax );
+							
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	leave();
+	ret( _parms_ );
+					
+end _toJulian;
+	
+end DateTime;			

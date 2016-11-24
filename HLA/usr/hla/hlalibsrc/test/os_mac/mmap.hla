@@ -1,0 +1,91 @@
+program mmap_test;
+#include( "stdlib.hhf" )
+#include( "mac.hhf" )
+
+static
+	fd		:dword;
+	size	:dword;
+	fPtr	:dword;
+	stat	:mac.stat_t;
+	fileBuf	:byte[ 65536 ];
+
+begin mmap_test;
+
+	mac.open2( "mmap.hla", mac.O_RDONLY );
+	if( @c ) then
+	
+		stdout.put( "Error (", (type uns32 eax), ") opening mmap.hla" nl );
+		os.exitProcess( 1 );
+		
+	endif;
+	mov( eax, fd );
+	mac.fstat( fd, stat );
+	if( @c ) then
+	
+		stdout.put( "Error (", (type uns32 eax), ") stat'ing mmap.hla" nl );
+		os.exitProcess( 1 );
+		
+	endif;
+	
+	mov( (type dword stat.st_size), ecx );
+	mov( ecx, size );
+	assert( ecx < 65536 );
+	mac.read( fd, fileBuf, ecx );
+	if( @c ) then
+	
+		stdout.put( "Error (", (type uns32 eax), ") reading mmap.hla" nl );
+		os.exitProcess( 1 );
+		
+	endif;
+	if( eax <> ecx ) then
+		
+		stdout.put
+		( 
+			"Error, read only ", 
+			(type uns32 eax), 
+			" bytes, expected",
+			(type uns32 size), " bytes", 
+			nl 
+		);
+		os.exitProcess( 1 );
+		
+	endif;
+
+	mac.mmap( 0, ecx, mac.PROT_READ, mac.MAP_FILE, fd, 0 );
+	if( @c ) then
+	
+		stdout.put( "Error (", (type uns32 eax), ") mapping mmap.hla" nl );
+		os.exitProcess( 1 );
+		
+	endif;
+	mov( eax, fPtr );
+	mov( eax, esi );
+	lea( edi, fileBuf );
+	repe.cmpsb();
+	if( @ne ) then
+		
+		stdout.put( "Error, data does not match" nl );
+		os.exitProcess( 1 );
+		
+	endif;
+	mac.munmap( fPtr, size );
+	if( @c ) then
+	
+		stdout.put( "Error (", (type uns32 eax), ") unmapping mmap.hla" nl );
+		os.exitProcess( 1 );
+		
+	endif;
+	
+	mac.close( fd );
+	if( @c ) then
+	
+		stdout.put( "Error (", (type uns32 eax), ") closing mmap.hla" nl );
+		os.exitProcess( 1 );
+		
+	endif;
+	stdout.put( "mmap succeeded!" nl );
+	os.exitProcess( 0 );
+	
+end mmap_test;
+
+													

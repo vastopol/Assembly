@@ -1,0 +1,66 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit lists;
+#include( "lists.hhf" )
+
+
+
+const
+	nodeEDI: text := "(type node_t [edi])";
+	nodeEAX: text := "(type node_t [eax])";
+	
+
+// list_t.index-
+//
+// This function returns the address of the "posn"-th node
+// in the esi register.  If there aren't at least posn nodes
+// in the list, then this function returns a pointer to the
+// last node in the list.  This function returns NULL in ESI
+// if the list is empty.
+
+method virtualList_t.index( posn:dword ); 
+	@nodisplay;
+	@noframe;
+begin index;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( edi );
+	
+	mov( posn, edi );
+	mov( this.Head, esi );
+	test( esi, esi );		// Be sure the list is not empty.
+	jz emptyList;
+	
+		test( edi, edi );
+		jz emptyList;
+		whileNotAtIndex:
+
+			cmp( (type node_t [esi]).Next, NULL );
+			jz emptyList;	
+			mov( (type node_t [esi]).Next, esi );
+			dec( edi );
+			jnz whileNotAtIndex;
+		
+	emptyList:
+	pop( edi );
+	pop( ebp );
+	ret( _parms_ );
+	
+end index;
+
+
+
+end lists;

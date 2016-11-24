@@ -1,0 +1,175 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "../include/thread_private.hhf" )
+#includeOnce( "threads.hhf" )
+#includeOnce( "excepts.hhf" )
+
+namespace conv;
+
+	static
+		OutputUnderscores	:boolean := @global:false;
+		
+end conv;
+
+#if( @thread )
+
+	procedure _hla.get_OutputUnderscores;
+	begin get_OutputUnderscores;
+
+		#if( os.win32 )
+		
+			push( ecx );
+			push( edx );
+			TlsGetValue( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			pop( edx );
+			pop( ecx );
+			
+		#elseif( os.linux | os.freeBSD | os.macOS )
+		
+			pthread_getspecific( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			
+		#else
+		
+			#error( "Unknown OS!" )
+			
+		#endif
+		movzx( (type _hla.stdlib_tls_t [eax]).conv_OutputUnderscores, eax );
+		ret(); 
+		
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end get_OutputUnderscores;
+
+	procedure _hla.set_OutputUnderscores( ou:boolean );
+	begin set_OutputUnderscores;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( eax );
+		push( ecx );
+		#if( os.win32 )
+		
+			push( edx );
+			TlsGetValue( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			pop( edx );
+			
+		#elseif( os.linux | os.freeBSD | os.macOS )
+		
+			pthread_getspecific( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			
+		#else
+		
+			#error( "Unknown OS!" )
+			
+		#endif
+		mov( ou, cl );
+		mov( cl, (type _hla.stdlib_tls_t [eax]).conv_OutputUnderscores );
+		pop( ecx );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ ); 
+		
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end set_OutputUnderscores;
+
+
+	procedure _hla.test_OutputUnderscores;
+	begin test_OutputUnderscores;
+
+		push( eax );
+		#if( os.win32 )
+		
+			push( ecx );
+			push( edx );
+			TlsGetValue( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			pop( edx );
+			pop( ecx );
+			
+		#elseif( os.linux | os.freeBSD | os.macOS )
+		
+			pthread_getspecific( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			
+		#else
+		
+			#error( "Unknown OS!" )
+			
+		#endif
+		cmp( (type _hla.stdlib_tls_t [eax]).conv_OutputUnderscores, false );
+		pop( eax );
+		ret(); 
+		
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end test_OutputUnderscores;
+	
+#else
+	
+	procedure _hla.get_OutputUnderscores;
+	begin get_OutputUnderscores;
+
+		movzx( conv.OutputUnderscores, eax );
+		ret();
+		
+	end get_OutputUnderscores;
+
+	procedure _hla.set_OutputUnderscores( ou:boolean );
+	begin set_OutputUnderscores;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( eax );
+		mov( ou, al );
+		mov( al, conv.OutputUnderscores );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ );
+		
+	end set_OutputUnderscores;
+
+
+	procedure _hla.test_OutputUnderscores;
+	begin test_OutputUnderscores;
+
+		cmp( conv.OutputUnderscores, false );
+		ret();
+		
+	end test_OutputUnderscores;
+	
+#endif
+
+
+
+end ConvUnit;

@@ -1,0 +1,177 @@
+program columnizeTest;
+
+	// returns 0 on successful run
+	// returns 1 and displays error otherwise
+
+	#include("stdlib.hhf")
+
+	// test code follows
+	static
+		st_array	:string[] :=
+			[ "one", "two", "three", "four", "five" ];
+			
+		s_0	:string	:= "";
+		s_1	:string := "one ";
+		s_2	:string := "one two ";
+		s_3	:string := "one   two   three ";
+		s_4	:string := "one   two   three four  ";
+			
+		s0	:string := "one   two   three four  five  ";
+		s1	:string := "one two thr fou fiv ";
+		s2	:string := "one   two   three four  five  ";
+		s3	:string := "one       two       three     four      five      ";
+		
+		s	:str.strvar (100);
+		
+		
+begin columnizeTest;
+
+	str.a_columnize2 (st_array, 0);
+	mov( eax, ecx );
+	if (str.ne ( (type string ecx), s_0 ) ) then
+	
+		stderr.put 
+		(
+			"Error returned by str.a_columnize2(0)" nl
+			"should be	:", '|', s_0, '|', nl
+			"returned	:", '|', (type string ecx), '|', nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+
+
+	str.a_columnize2 (st_array, 1);
+	mov( eax, ecx );
+	if (str.ne ( (type string ecx), s_1 ) ) then
+	
+		stderr.put 
+		(
+			"Error returned by str.a_columnize2(1)" nl
+			"should be	:", '|', s_1, '|', nl
+			"returned	:", '|', (type string ecx), '|', nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+
+
+	str.a_columnize2 (st_array, 2);
+	mov( eax, ecx );
+	if (str.ne ( (type string ecx), s_2 ) ) then
+	
+		stderr.put 
+		(
+			"Error returned by str.a_columnize2(2)" nl
+			"should be	:", '|', s_2, '|', nl
+			"returned	:", '|', (type string ecx), '|', nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+
+
+	str.a_columnize2 (st_array, 3);
+	mov( eax, ecx );
+	if (str.ne ( (type string ecx), s_3 ) ) then
+	
+		stderr.put 
+		(
+			"Error returned by str.a_columnize2(3)" nl
+			"should be	:", '|', s_3, '|', nl
+			"returned	:", '|', (type string ecx), '|', nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+
+
+	str.a_columnize2 (st_array, 4);
+	mov( eax, ecx );
+	if (str.ne ( (type string ecx), s_4 ) ) then
+	
+		stderr.put 
+		(
+			"Error returned by str.a_columnize2(4)" nl
+			"should be	:", '|', s_4, '|', nl
+			"returned	:", '|', (type string ecx), '|', nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+
+	str.a_columnize2 (st_array, 5);
+	mov( eax, ecx );
+	if (str.ne ( (type string ecx), s0 ) ) then
+	
+		stderr.put 
+		(
+			"Error returned by str.a_columnize2(5)" nl
+			"should be	:", '|', s0, '|', nl
+			"returned	:", '|', (type string ecx), '|', nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+
+	
+	str.a_columnize3 (st_array, 5, 4);
+	mov( eax, ecx );
+	if (str.ne ( (type string ecx), s1 ) ) then
+	
+		stderr.put 
+		(
+			"Error returned by str.a_columnize2" nl
+			"should be	:", '|', s1, '|', nl
+			"returned	:", '|', (type string ecx), '|', nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+	
+	str.columnize3 (st_array, 5, s);
+	if (str.ne ( s, s2 ) ) then
+	
+		stderr.put 
+		(
+			"Error returned by str.a_columnize2" nl
+			"should be	:", '|', s2, '|', nl
+			"returned	:", '|', s, '|', nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+
+	str.columnize4 (st_array, 5, 10, s);
+	if (str.ne ( s, s3 ) ) then
+	
+		stderr.put 
+		(
+			"Error returned by str.columnize4" nl
+			"should be	:", '|', s3, '|', nl
+			"returned	:", '|', s, '|', nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+	stdout.put( "tColumnize succeeded!" nl );	
+
+end columnizeTest;

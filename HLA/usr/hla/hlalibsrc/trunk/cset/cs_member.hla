@@ -1,0 +1,61 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit charSets;
+
+#include( "cset.hhf" );
+
+
+
+/*******************************************************/
+/*                                                     */
+/* member-                                             */
+/*                                                     */
+/* Returns true in EAX if "c" is a member of "theSet". */
+/*                                                     */
+/*******************************************************/
+
+procedure cs.member( c:char; theSet:cset ); @nodisplay; @noframe;
+const
+	_c		:text := "(type char [esp+20])";
+	_theSet	:text := "(type dword [esp+4])";
+	
+begin member;
+	
+	// Stack at this point:
+	//
+	//	esp+20	c:char
+	//	esp+4	theSet:cset
+	//	esp		return address
+	
+	movzx( _c, eax );
+	bt( eax, _theSet );
+	setc( al );
+	movzx( al, eax );
+	ret( _parms_ );
+	
+end member;
+
+
+
+
+
+
+end charSets;
+
+
+
+
+	
+

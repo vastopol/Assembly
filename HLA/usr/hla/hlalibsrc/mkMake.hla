@@ -1,0 +1,1941 @@
+// mkMake-
+//	Creates a make file for a specific HLA stdlib directory.
+//
+// Assertions:					   
+//										 
+//	The standard HLA environment variables "hlainc" and "hlalib" have been
+// defined and point at the HLA include and hlalib directories on the
+// system running this program.
+//
+// Usage: mkMake {osChoice {alternate paths/options}}
+//
+
+ 
+program mkMake;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeonce( "stdlib.hhf" )
+
+const
+	maxFiles_c	:= 4096;
+	substr		:text := "str.substr";		// For stdlib v2.x andgg later	
+
+	// The following array lists the subdirectories this program
+	// will process when generating dependencies for the HLA
+	// standard library:
+	
+	stdlibDirsMain_c	:string[] :=
+		[
+			"args",
+			"arrays",
+			"bits",
+			"blobs",
+			"chars",
+			"conv",
+			"cset",
+			"data",
+			"datetime",
+			"fileclass",
+			"fileio",
+			"filesys",
+			"hla",
+			"lists",
+			"math",
+			"memory",
+			"os_console",
+			"os_coroutines",
+			"os_dependent",
+			"os_env",
+			"os_excepts",
+			"os_fileio",
+			"os_filesys",
+			"os_memmap",
+			"os_sockets",
+			"os_threads",
+			"os_timer",
+			"patterns",
+			"random",
+			"rpc",
+			"sockets",
+			"stderr",
+			"stdin",
+			"stdout",
+			"strings",
+			"tables",
+			"zstrings",
+		];
+
+	stdlibDirsWin32_c	:string[] :=
+		[
+			stdlibDirsMain_c,
+			"howl_win32",
+			"os_windows",
+		];
+
+	stdlibDirsLinux_c	:string[] :=
+		[
+			stdlibDirsMain_c,
+			"howl_linux",
+			"os_linux",
+		];
+
+	stdlibDirsFreeBSD_c	:string[] :=
+		[
+			stdlibDirsMain_c,
+			"howl_bsd",
+			"os_bsd",			
+		];
+
+	stdlibDirsMacOS_c	:string[] :=
+		[
+			stdlibDirsMain_c,
+			"howl_mac",
+			"os_mac",
+		];
+
+	#if
+	( 
+			@elements( stdlibDirsWin32_c )   <> @elements( stdlibDirsLinux_c )
+		|	@elements( stdlibDirsFreeBSD_c ) <> @elements( stdlibDirsLinux_c )
+		|	@elements( stdlibDirsMacOS_c )   <> @elements( stdlibDirsLinux_c )
+	)
+	
+		#error( "# elements of stdlibDirsXXX_c is incorrect" )
+		
+	#endif
+	
+	stdlibDirsCnt_c := @elements( stdlibDirsWin32_c );
+
+
+
+
+
+type
+	#if( !@defined( tablePtr ))
+	
+		tablePtr :pointer to table;
+		
+	#endif
+	depList_t:
+		record
+			filename	:string;
+			depFiles	:tablePtr;
+		endrecord;
+		#if( @size( depList_t ) <> 8 )
+			#error( "mkMake assumes @size( depList_t ) = 8" )
+		#endif
+		
+
+	depClass_t:
+		class
+			var
+				incCache	:tablePtr;
+
+				// I'm too lazy to create a linked list of the following.
+				// So I'll just use an array and count the number
+				// of entries. As long as there are fewer than maxFiles_c
+				// files to be compiled in the HLA stdlib, we'll be okay.
+				
+				fileCnt		:uns32;
+				fileList	:depList_t[ maxFiles_c ];
+								
+		
+			procedure create; @external;
+		
+			procedure getDependencies
+			( 
+				filename	:string;
+				hlaincPath	:string;
+				altIncPath	:string; 
+				nameTable	:tablePtr 
+			); @external;
+			
+		endclass;
+
+	osChoice_t	:enum{ Win32_c, Linux_c, freeBSD_c, macOS_c};
+	
+
+
+ 
+
+
+static
+	align( 4 );
+	VMT( depClass_t );
+	s_depObj :depClass_t;
+
+	align(4);
+	makeName		:str.strvar( 16 );
+	hlaopt			:str.strvar( 1024 );
+	altPath			:str.strvar( 1024 );
+	altIncPath		:str.strvar( 1024 );
+	altLibPath		:str.strvar( 1024 );
+	testPath		:str.strvar( 1024 );
+	mainDir			:str.strvar( 1024 );
+	stdlibPath		:str.strvar( 1024 );
+	hlalibPathEnv	:str.strvar( 1024 );
+	hlalibPath		:str.strvar( 1024 );
+	theSafePath		:str.strvar( 1024 );
+	theSafeBase		:str.strvar( 1024 );
+	theSafeExt		:str.strvar( 256 );
+	linkPath		:str.strvar( 512 );
+	baseName		:str.strvar( 512 );
+	makeFileName	:str.strvar( 512 );
+	OBJsuffix		:str.strvar( 16 );
+	LIBsuffix		:str.strvar( 16 );
+	makeSeparator	:str.strvar( 16 );
+	nln				:str.strvar( 8 );
+	
+
+
+
+	nameUnion		:table;
+	stdlibDirs		:string[ stdlibDirsCnt_c ] := 
+						#if( os.win32 )
+							stdlibDirsWin32_c;
+						#elseif( os.linux )
+							stdlibDirsLinux_c;
+						#elseif( os.freeBSD )
+							stdlibDirsFreeBSD_c;
+						#elseif( os.macOS )
+							stdlibDirsMacOS_c;
+						#endif
+						
+	stdlibWinDirs		:string[ stdlibDirsCnt_c ] := stdlibDirsWin32_c;
+	stdlibLinuxDirs		:string[ stdlibDirsCnt_c ] := stdlibDirsLinux_c;
+	stdlibFreeBSDDirs	:string[ stdlibDirsCnt_c ] := stdlibDirsFreeBSD_c;
+	stdlibMacOSDirs		:string[ stdlibDirsCnt_c ] := stdlibDirsMacOS_c;
+						
+
+	msg:str.strvar( 256 );
+	
+	fileSeparator		:char := '\';
+	hasAltPath			:boolean := false;
+	hasAltIncPath		:boolean := false;
+	hasAltLibPath		:boolean := false;
+	osChoice			:osChoice_t := 
+							#if( os.win32 )
+								Win32_c;
+							#elseif( os.linux )
+								Linux_c;
+							#elseif( os.freeBSD )
+								freeBSD_c;
+							#elseif( os.macOS )
+								macOS_c;
+							#else
+								#error( "Unknown default OS" )
+								Win32;
+							#endif
+		
+
+
+storage
+
+	argc			:uns32;
+	dirIndex		:dword;
+	origParm		:string;
+	curParm			:string;
+	
+
+	// The following points at HLA's "include" directory (as specified by
+	// the "hlainc" environment variable) so we can expand the path for
+	// those files. 
+	 
+	hlaincPrefix	:string;
+	
+	// File handles for the makefiles and other files we create:
+	
+	makeHandle		:dword;
+	lnkScriptHandle	:dword;
+	mainMakeHandle	:dword;
+	responseHandle	:dword;
+	
+	
+	
+	
+	
+	
+	// nullProc-
+	//	Do nothing procedure used by table.destroy.
+	
+	procedure nullProc; @noframe;
+	begin nullProc;
+		ret();
+	end nullProc;
+	
+	
+	
+	
+	
+	
+	// depClass methods and procedures:
+	
+	procedure depClass_t.create;
+	begin create;
+
+		// Note: initializing the VMT isn't really
+		// necessary because everything in this
+		// class is static, but just in case things
+		// change in the future...
+		
+		push( eax );
+		if( esi = NULL ) then
+		
+			mov( malloc( @size( depClass_t )), esi );
+			
+		endif;
+		mov( &depClass_t._VMT_, this._pVMT_ );
+		
+		mov( 0, this.fileCnt );
+		
+		push( esi );
+		table.create( 256 );	// Note: wipes out ESI!						
+		mov( esi, s_depObj.incCache );
+		pop( esi );
+		pop( eax );	
+		
+	end create;
+
+	procedure depClass_t.getDependencies
+	( 
+		filename	:string;
+		hlaincPath	:string;
+		altIncPath	:string;
+		nameTable	:tablePtr 
+	);
+	var
+		fHandle		:dword;
+		incFile		:string;
+		slPath		:string;
+		lclPath		:string;
+		line		:string;
+		
+		slBuf		:char[1024];
+		lclBuf		:char[1024];
+		lineBuf		:char [1024];
+		
+		
+		// Enters "incFile" (intermediate variable from above)
+		// into the table specified by nameTable (above);
+		
+		procedure enterNode
+		( 
+			filePath	:string;
+			altPath		:string;
+			hlaincPath	:string;
+			altIncPath	:string;
+			nameTbl		:tablePtr 
+		);
+		var
+			incTbl		:tablePtr;
+			 
+		begin enterNode;
+
+			// Okay, this is a new one, so add the current 
+			// included filename to the file list's table:
+			
+			nameTbl.getNode( altPath );
+
+			// Next, check the global include file table
+			// to see if someone else has already processed
+			// this include file. If so, we can just grab
+			// all the dependent files saved for that previous
+			// include operation. This short-circuit saves a
+			// *lot* of time.
+			
+			mov( s_depObj.incCache, esi );
+			if( (type table [esi]).lookup( altPath ) <> NULL ) then
+			
+
+				// The "item" table entry contains a table whose
+				// strings should be added to the current file's
+				// dependency list:
+				
+				mov( eax, edx );
+				mov( (type tableNode [eax]).Value, ebx );
+				foreach (type table [ebx]).item() do
+				
+					mov( (type tableNode [eax]).id, eax );
+					nameTbl.getNode( (type string eax) );
+					
+				endfor;
+			
+			else
+
+
+				// Because this is a new file, let's recursively
+				// process it because any files it includes are also
+				// needed by whomever included it.
+				
+				table.create( 16 );
+				mov( esi, incTbl );
+				getDependencies
+				( 
+					filePath,
+					hlaincPath,
+					altIncPath, 
+					incTbl 
+				);
+				
+				// When we get back, we need to copy all the entries to
+				// the incList table:
+
+				mov( s_depObj.incCache, esi );			
+				(type table [esi]).getNode( altPath );
+				mov( (type tableNode [eax]).Value, edx );
+				if( edx == NULL ) then
+				
+					table.create( 16 );
+					mov( esi, (type tableNode[eax]).Value );
+					mov( esi, edx );
+					
+				endif;
+				foreach incTbl.item() do
+				
+					(type table [edx]).getNode( (type tableNode [eax]).id );
+					nameTbl.getNode( (type tableNode [eax]).id );
+					
+				endfor;
+				incTbl.destroy( &nullProc );
+				
+				
+			endif;
+
+		end enterNode;
+		
+		procedure fixPath( path:string ); 
+		begin fixPath;
+
+			push( eax );
+			push( ebx );
+			push( ecx );
+			mov( path, ebx );
+			mov( (type str.strRec [ebx]).length, ecx );
+			dec( ecx );
+			while( (type int32 ecx) > 0 ) do
+			
+				mov( [ebx+ecx], al );
+				if( al = '/' || al = '\' ) then
+				
+					mov( fileSeparator, al );
+					mov( al, (type char [ebx+ecx]));
+					
+				endif;
+				dec( ecx );
+				
+			endwhile;
+			pop( ecx );
+			pop( ebx );
+			pop( eax );
+
+		end fixPath;
+		
+		
+
+	begin getDependencies;
+
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		push( esi );
+		push( edi );
+		
+		// Allocate storage for local strings that we use:
+		
+		 
+		mov( str.init( lineBuf, 1024), line );
+		mov( str.init( slBuf, 1024), slPath );
+		mov( str.init( lclBuf, 1024), lclPath );
+				
+		// Open the file and get busy:
+		
+		try
+
+			fileio.open( filename, fileio.r );
+			mov( eax, fHandle ); 
+
+		  anyexception
+			
+			stderr.put
+			( 
+				"Could not open file '", 
+				filename,
+				"'" nl
+			);
+			raise( eax );
+			
+		endtry;
+				
+		// Read each line from the file and look for a "#include" at the
+		// beginning of the line. Note that we don't have to be *real*
+		// careful with the pattern matching because the stdlib source
+		// files have a very regular format.
+		
+		while( !fileio.eof( fHandle )) do
+
+			fileio.gets( fHandle, line );
+			
+			pat.match( line );
+
+				// Match <<#include( "incfile">>
+				// -or-
+				// <<#includeonce( "incfile">>
+				// at the beginning of a line (with possible white space)
+				// and extract the include file name. This is actually a
+				// sloppy match, but the assumption here is that the
+				// HLA stdlib files compile without error, so the sloppiness
+				// is acceptable.
+				
+				pat.zeroOrMoreWS();
+				pat.matchiStr( "#include" );
+				pat.upToChar( '(' );
+				pat.oneChar( '(' );
+
+				pat.zeroOrMoreWS();
+				pat.oneChar( '"' );
+				pat.upToChar( '"' );
+
+				
+				lea( eax, incFile );
+				pat.a_extract( [eax] );
+				
+				fixPath( (type string eax) );
+
+				// Okay, we've got the filename in the include list.
+				// See if that file is in the current directory or
+				// is in the HLA include directory:
+				
+				str.put( lclPath, hlaincPath, fileSeparator, incFile );
+				
+				if
+				( 
+						nameTable.lookup( incFile ) = NULL 
+					&&	nameTable.lookup( lclPath ) = NULL 
+				) then				
+					
+					// If the file exists in the current directory,
+					// enter the name into the table without the
+					// HLAINC prefix:
+					
+					if( filesys.exists( incFile ) ) then
+						
+						enterNode
+						( 
+							incFile, 
+							incFile,
+							hlaincPath, 
+							altIncPath, 
+							nameTable 
+						);
+						
+					// If the file exists in the HLA INCLUDE directory,
+					// then add the file to the table with the HLAINC
+					// prefix:
+					
+					elseif( filesys.exists( lclPath )) then
+						
+						str.put( slPath, altIncPath, fileSeparator, incFile );
+						enterNode
+						( 
+							lclPath,
+							slPath, 
+							hlaincPath, 
+							altIncPath, 
+							nameTable 
+						);
+						
+					// If the file doesn't exist in the current directory
+					// or in the HLA include directory, then enter it into
+					// the table unadorned:
+						
+					else
+					
+						// If we can't find it, neither can a make file
+						// that would be generated from this information:
+						
+						stderr.put
+						( 
+							"Warning: '", 
+							incFile, 
+							"' is not in a known location"
+							nl
+							"(should be at ", lclPath, ")" nl
+						);
+						
+						// Well, go ahead and put it in the table, but
+						// we can't process it recursively:
+						
+						nameTable.getNode( incFile );
+						
+					endif;
+								
+				endif; // Not already in the table 
+
+
+			  pat.if_failure;
+			  
+
+			pat.endmatch;
+			
+		endwhile; 
+		fileio.close( fHandle );
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+
+	end getDependencies;
+	
+
+
+
+	// Usage message - printed if there is an error running the program.
+	// This also quits the program.
+	
+	procedure usage;
+	begin usage;
+
+		stderr.put
+		( 
+			"Usage: mkMake {oschoice {cmds}}" nl
+			"    oschoice = win32, linux, freebsd, or macos" nl
+			"        Default value is the OS on which mkMake is run" nl
+			nl
+			"    cmds:" nl,
+			"        hlalib=<path>  (ultimate hlalib path)" nl
+			"            Default is the value of the hlalib environment var" nl
+			nl
+			"        hlainc=<path>  (ultimate hlainc path)" nl
+			"            Default is the value of the hlainc environment var" nl
+			nl
+			"        altpath=<path> (ultimate build path)" nl
+			"            Default is the path to 'hlalibsrc' directory on " nl
+			"            the destination machine" nl
+			nl
+			"        hlaopt=<cmd-ln option>"nl
+			"            This is a command-line option that will be passed" nl
+			"            along to HLA for each file compiled (e.g., '-Ag')" nl
+			"            Note: multiple hlaopt commands are legal, they are" nl
+			"            concatenated together (with spaces between them)" nl
+			nl
+			"    hlainc environment variable must point at the HLA stdlib" nl
+			"      include files on the local machine.  This is also used" nl
+			"      as the include files location on the target machine if" nl
+			"      the altIncPath command is not given." nl
+			nl
+			"    hlalib environment variable is used as the default location" nl
+			"      for the generated library if the altLibPath command is" nl
+			"      not given." nl
+			nl
+		);
+		os.exitProcess( 1 );
+
+	end usage;
+	
+	
+	
+	// setOSChoice-
+	//
+	//	Initializes the osChoice variable based on the first command-line
+	// argument.
+	
+	procedure setOSChoice;
+	begin setOSChoice;
+	
+		arg.v(1);
+		mov( eax, ebx );
+		
+		if( str.ieq( ebx, "win32" )) then
+		
+			mov( Win32_c, osChoice );
+			mov( &stdlibWinDirs, esi );
+			
+		elseif( str.ieq( ebx, "linux" )) then
+		
+			mov( Linux_c, osChoice );
+			mov( &stdlibLinuxDirs, esi );
+			
+		elseif( str.ieq( ebx, "freebsd" )) then
+		
+			mov( freeBSD_c, osChoice );
+			mov( &stdlibFreeBSDDirs, esi );
+			
+		elseif( str.ieq( ebx, "macos" )) then
+		
+			mov( macOS_c, osChoice );
+			mov( &stdlibMacOSDirs, esi );
+			
+		else
+		
+			stderr.put( "Unknown OS choice: ", (type string ebx), nl );
+			usage();
+			
+		endif;
+		mov( &stdlibDirs, edi );
+		mov( @size(stdlibDirs), ecx );
+		rep.movsb();
+		
+		 
+	end setOSChoice;
+	
+	
+	// processArgs-
+	//
+	//	Processes the hlalib=, hlainc=, and altpath= command-line
+	// arguments.
+	
+	procedure processArgs;
+	static
+		curArg	:string;
+		
+	begin processArgs;
+	
+		for( mov( 2, ecx ); ecx < argc; inc( ecx )) do
+		
+			arg.v( ecx );
+			mov( eax, curArg );
+			if( str.iprefix2( curArg, "hlalib=" )) then
+			
+				str.length( curArg );
+				sub( 7, eax );
+				str.substr( curArg, 7, eax, altLibPath );
+				mov( true, hasAltLibPath );
+			
+			elseif( str.iprefix2( curArg, "hlainc=" )) then
+			
+				str.length( curArg );
+				sub( 7, eax );
+				str.substr( curArg, 7, eax, altIncPath );
+				mov( true, hasAltIncPath );
+			
+			elseif( str.iprefix2( curArg, "altpath=" )) then
+			
+				str.length( curArg );
+				sub( 8, eax );
+				str.substr( curArg, 8, eax, altPath );
+				mov( true, hasAltPath );
+				
+			elseif( str.iprefix2( curArg, "hlaopt=")) then
+			
+				str.length( curArg );
+				sub( 7, eax );
+				str.catc( hlaopt, ' ' );
+				str.catsub4( curArg, 7, eax, hlaopt );
+				
+			elseif( str.iprefix2( curArg, "nmake")) then
+			
+				str.cpy( "nmake", makeName );
+			
+			else
+			
+				stderr.put( "Unknown command: ", curArg, nl );
+				usage();
+				
+			endif;
+			
+		endfor;
+						 
+	end processArgs;
+
+
+	// stripDriveLetter-
+	//
+	//	Looks for "X:" (X=A..Z) at the beginning of the
+	// string argument and deletes the first two characters
+	// of the string if the drive letter prefix is present.
+	
+	procedure stripDriveLetter( s:string );
+	begin stripDriveLetter;
+	
+		mov( s, ebx );
+		
+		// Note: because HLA strings always have at least four bytes
+		// of data associated with them, the following comparisons will
+		// always be legal (no segmentation fault).  This assumes, of
+		// course, that s points at a valid string object.
+		
+		if( chars.isAlpha( [ebx] )) then
+		
+			if( (type char [ebx+1]) = ':' ) then
+			
+				str.delete3( s, 0, 2 );
+				
+			endif;
+			
+		endif;
+		
+	end stripDriveLetter;
+	
+	
+	
+	procedure putMainEntries( destLibPath:string; buildPath:string );
+	var
+		suffixIndex		:dword;
+		libName			:string;
+		buildName		:string;
+		responseName	:string;
+		thePath			:string;
+		baseName		:string;
+		extension		:string;
+		buildBuf		:char[1024];
+		libBuf			:char[1024];
+		responseBuf		:char[1024];
+		
+	readonly
+		suffix			:string[2] := [ "", "_safe"];
+		
+	begin putMainEntries;
+	
+		for( mov(0, suffixIndex); suffixIndex < 2; inc( suffixIndex )) do
+			 
+			str.init( libBuf, 1024 );
+			mov( eax, libName );
+			str.init( responseBuf, 1024 );
+			mov( eax, responseName );
+			str.init( buildBuf, 1024 );
+			mov( eax, buildName );
+			
+			mov( suffixIndex, ebx );
+			str.put
+			(
+				libName,
+				destLibPath,
+				fileSeparator,
+				"hlalib",
+				suffix[ebx*4],
+				LIBsuffix
+			);
+			str.put
+			(
+				buildName,
+				buildPath,
+				fileSeparator,
+				"hlalib",
+				suffix[ebx*4],
+				LIBsuffix
+			);
+			str.put
+			(
+				responseName,
+				"hlalib",
+				suffix[ebx*4],
+				".response"
+			);
+							
+			
+			fileio.put( mainMakeHandle, libName, ": " );
+			for( mov( 0, ecx ); ecx<stdlibDirsCnt_c; inc( ecx )) do
+			
+				mov( suffixIndex, eax );
+				fileio.put
+				( 
+					mainMakeHandle,
+					stdlibDirs[ecx*4], fileSeparator,  
+					stdlibDirs[ecx*4], suffix[eax*4], LIBsuffix, 
+					' ' 
+				);
+				mov( ecx, eax );
+				and( %11, eax );
+				if( eax = %11 ) then
+				
+					fileio.put( mainMakeHandle, " \" ,nln, stdio.tab );
+					
+				endif;
+			
+			endfor;
+			if( osChoice = Win32_c ) then
+
+				fileio.put
+				( 
+					mainMakeHandle, 
+					nln, 
+					stdio.tab, 
+					"lib /out:", 
+					buildName, 
+					" @", 
+					responseName,
+					nln,
+					"#to make sure previous command is complete:",
+					nln,
+					stdio.tab, 
+					"lib /nologo"
+				);
+				mov( suffixIndex, eax );
+				fileio.put
+				( 
+					mainMakeHandle,
+					nln,
+					stdio.tab,
+					"copy ", 
+					buildName,
+					" ", 
+					libName,
+					nln,
+					nln 
+				);
+				
+				// Emit the response file (because the command line would
+				// be too long for the LIB program): 
+				
+				try
+				
+					fileio.openNew( responseName );
+					mov( eax, responseHandle );
+					
+				  anyexception
+				  
+				  	stderr.put( "Could not open '", responseName, "'" nl );
+					usage();
+					
+				endtry;
+					
+				
+				for( mov( 0, ecx ); ecx<stdlibDirsCnt_c; inc( ecx )) do
+				
+					mov( suffixIndex, eax );
+					fileio.put
+					( 
+						responseHandle,
+						' ',
+						stdlibDirs[ecx*4], suffix[eax*4], LIBsuffix,
+						nln 
+					);
+				
+				endfor;
+				fileio.close( responseHandle );
+					
+				
+			else // if Linux, freeBSD, MacOS
+
+				fileio.put
+				( 
+					mainMakeHandle,
+					nln,
+					stdio.tab,
+					"cp ", 
+					buildName, 
+					" ", 
+					libName,
+					nln,
+					nln 
+				);
+				
+			endif;
+			
+		endfor;
+		
+	end putMainEntries;
+	
+
+
+	// Process all the directories for the HLA standard library:
+	
+	procedure processDirectories( isSafe:boolean );
+	
+		// Process all the files in one of the directories in the
+		// HLA standard library:
+		 
+		procedure processOneDirectory( theDir:string; isSafe:boolean );
+		var
+			suffix		:string;
+			gasxOption	:string;
+			suffixBuf	:char[32];
+			gasxBuf		:char[32];
+			
+		begin processOneDirectory;
+		
+			str.init( gasxBuf, 32 );	// Initialized to empty string.
+			mov( eax, gasxOption );
+			str.init( suffixBuf, 32 );	// Initialized to empty string.
+			mov( eax, suffix );
+			if( isSafe ) then
+			
+				str.cpy( "_safe", suffix );
+				
+			endif;
+		
+			nameUnion.create( 256 );
+		
+			// Construct a dependencies list for all the files
+			// in the current HLA stdlib subdirectory:
+			
+			filesys.cd( stdlibPath );
+			filesys.cd( theDir );	// Switch to the directory
+			xor( ebx, ebx );
+			foreach filesys.fileWithSuffix( "", ".hla" ) do
+
+				stdout.put( stdio.tab, "File: ", (type string eax), nl ); 
+
+				// On each iteration, EAX contains a pointer to
+				// a "*.hla" file found in the current directory.
+				// Initialize a "fileList" item with that file name
+				// (and create its table) and then let getDependencies
+				// fill in the table for that file entry.
+							
+				// Store away the filename:
+				
+				mov( eax, s_depObj.fileList.filename[ebx*8] );
+					
+				// Create the hash table:
+				
+				table.create( 16 );						
+				mov( esi, s_depObj.fileList.depFiles[ebx*8] );
+				
+				s_depObj.getDependencies
+				( 
+					s_depObj.fileList.filename[ebx*8], 
+					hlaincPrefix,
+					altIncPath,
+					s_depObj.fileList.depFiles[ebx*8]  
+				);
+				inc( ebx );
+
+			endfor;
+			mov( ebx, s_depObj.fileCnt );
+			
+				
+			// Now create the make file for this particular library module:
+			
+			mov( ecx, dirIndex );	// Can't be in a register if exception occurs
+			try
+			
+				str.put( makeFileName, theDir, suffix, ".make" );
+				fileio.openNew( makeFileName );
+				mov( eax, makeHandle );
+				
+			  anyexception
+			  
+			  	mov( dirIndex, ecx );	// Who knows what ECX contains here?
+			  	stderr.put
+				( 
+					"Could not create makefile for ", 
+					theDir,
+					suffix,
+					nl 
+				);
+				os.exitProcess( 1 );
+				
+			endtry;
+			
+			// Create the linker script:
+			
+			try
+			
+				str.put( linkPath, theDir, suffix, ".linkcmds" );
+				fileio.openNew( linkPath );
+				mov( eax, lnkScriptHandle );
+				
+			  anyexception
+			  
+			  	mov( dirIndex, ecx );	// Who knows what ECX contains here?
+			  	stderr.put
+				( 
+					"Could not create linker command file for ", 
+					theDir,
+					" ( ",
+					theDir,
+					suffix,
+					".linkcmds)"				
+					nl
+				);
+				os.exitProcess( 1 );
+				
+			endtry;
+			
+			
+			// Update the main makefile dependency list with the library module
+			// name:
+
+			fileio.put
+			( 
+				mainMakeHandle,
+				theDir,
+				fileSeparator, 
+				theDir,
+				suffix, 
+				LIBsuffix, 
+				": \" 
+				,nln 
+			);		
+				
+			
+			// Emit the library dependency, e.g.,
+			//
+			//	bits.lib: bitcnt.obj \
+			//		coalesce.obj \
+			//		distribute.obj \
+			//		merge.obj \
+			//		nibbles.obj \
+			//		reverse.obj \
+			//
+			//		lib @bits.linkcmds
+			//
+			// Also emit the data for the linker script and the
+			// dependencies for the main make file.
+		
+			if( osChoice = Win32_c ) then
+			
+				fileio.put
+				( 
+					lnkScriptHandle, 
+					"/out:",
+					altPath, 
+					fileSeparator,
+					theDir,
+					suffix, 
+					LIBsuffix, 
+					nln 
+				);
+			
+			endif;
+			fileio.put
+			( 
+				makeHandle,
+				altPath, 
+				fileSeparator, 
+				theDir,
+				suffix, 
+				LIBsuffix, 
+				": \" ,nln 
+			);
+			
+			for( mov( 0, ebx ); ebx < s_depObj.fileCnt; inc( ebx )) do
+			
+				mov( dirIndex, ecx );
+				str.length( s_depObj.fileList.filename[ebx*8] );
+				if( eax > 4 ) then
+				
+					sub( 4, eax );
+					
+				endif;
+				substr( s_depObj.fileList.filename[ebx*8], 0, eax, baseName ); 
+				fileio.put
+				( 
+					makeHandle, 
+					stdio.tab, 
+					baseName,
+					suffix,
+					OBJsuffix,
+					" \" ,nln
+				);
+				
+				fileio.put
+				(
+					mainMakeHandle,
+					stdio.tab,
+					altPath, 
+					fileSeparator,
+					theDir, 
+					fileSeparator,
+					baseName,
+					".hla \" ,nln
+				);
+				mov( s_depObj.fileList.depFiles[ebx*8], edx );
+				foreach (type table [edx]).item() do
+
+					// Only emit the header file entry if
+					// we haven't already emitted this file.
+					
+					push( eax );
+					nameUnion.getNode( (type tableNode [eax]).id );
+					cmp( (type tableNode [eax]).Value, 0 );
+					mov( 1, (type tableNode [eax]).Value );
+					pop( eax );
+					if( @z ) then
+					
+						mov( dirIndex, ecx );
+						mov( (type tableNode [eax]).id, eax );
+						if( (type char [eax]) = '.' ) then
+
+
+							fileio.put
+							(
+								mainMakeHandle,
+								stdio.tab,
+								altPath, 
+								fileSeparator,
+								theDir,
+								fileSeparator,
+								(type string eax),
+								" \" ,nln
+							);
+						
+						else
+						
+							fileio.put
+							(
+								mainMakeHandle,
+								stdio.tab,
+								(type string eax),
+								" \" ,nln
+							);
+							
+						endif;
+						
+					endif;
+						
+				endfor;  
+				fileio.put
+				( 
+					lnkScriptHandle,
+					baseName,
+					suffix, 
+					OBJsuffix, 
+					nln 
+				);
+					
+				
+				
+			endfor;
+			fileio.close( lnkScriptHandle );
+			
+			if( osChoice = Win32_c ) then
+			
+				// Output the action to build the module's library file:
+				
+				fileio.put
+				( 
+					makeHandle, 
+					nln, 
+					stdio.tab, 
+					"lib @", 
+					theDir,
+					suffix, 
+					".linkcmds" ,nln ,nln 
+				);
+				
+				
+				// Output the action for the main make file:
+
+	 			fileio.put
+	 			( 
+	 				mainMakeHandle, 
+	 				nln, 
+	 				stdio.tab, 
+	 				"cd ",
+	 				theDir, "  ", 
+	 				nln,
+	 				stdio.tab,
+					makeName,
+	 				" -f ",
+					theDir,
+					suffix,
+					".make", 
+					nln,
+	 				stdio.tab,
+	 				"cd ", altPath, nln,
+	 				nln 
+	 			);
+				
+			else // if linux/freeBSD/macOS
+				
+				fileio.open( linkPath, fileio.r );
+				mov( eax, lnkScriptHandle );
+					
+				// Output the action to build the module's library file:
+				
+				fileio.put
+				( 
+					makeHandle, 
+					nln,
+					stdio.tab, 
+					"ar rc ", 
+					altPath, 
+					"/hlalib",
+					suffix, 
+					LIBsuffix, 
+					" \" ,
+					nln 
+				);
+				
+				while( !fileio.eof( lnkScriptHandle )) do
+				
+					fileio.a_gets( lnkScriptHandle );
+					fileio.put
+					( 
+						makeHandle, 
+						stdio.tab, 
+						stdio.tab, 
+						(type string eax), 
+						" \" ,nln 
+					);
+					
+				endwhile;
+				fileio.put
+				( 
+					makeHandle, 
+					nln,
+					stdio.tab, 
+					"ar s ", 
+					altPath, 
+					"/hlalib",
+					suffix, 
+					LIBsuffix,
+					nln, 
+					nln 
+				);
+				fileio.close( lnkScriptHandle );
+				
+				// Output the action for the main make file:
+				
+				fileio.put
+				( 
+					mainMakeHandle, 
+					nln, 
+					stdio.tab, 
+					"cd ",
+					theDir, 
+					" && make -f ", 
+					theDir,
+					suffix, 
+					".make", 
+					nln,
+					nln 
+				);
+				
+			endif;
+			
+			// Now create the make commands to build each of the
+			// dependent object code files:
+			//
+			//	Each of these takes the following form:
+			//
+			//   target: dependencies
+			//		cmd to build target
+			//
+			// E.g.,
+			//
+			//	bitcnt.obj: bitcnt.hla \
+			//		c:\hla\include\bits.hhf \
+			//
+			//		hla -p:temp -c bits.hla
+			
+			
+			for( mov( 0, ebx ); ebx < s_depObj.fileCnt; inc( ebx )) do
+
+				str.length( s_depObj.fileList.filename[ebx*8] );
+				if( eax > 4 ) then
+				
+					sub( 4, eax );
+					
+				endif;
+				substr( s_depObj.fileList.filename[ebx*8], 0, eax, baseName ); 
+				fileio.put
+				( 
+					makeHandle, 
+					baseName,
+					suffix,
+					OBJsuffix,
+					": ",
+					baseName,
+					".hla \" ,nln 
+				);
+
+				mov( s_depObj.fileList.depFiles[ebx*8], esi );
+				foreach (type table [esi]).item() do
+				
+					fileio.put
+					( 
+						makeHandle, 
+						stdio.tab, 
+						(type tableNode [eax]).id,
+						" \" ,nln
+					);
+					
+				endfor;
+				if( osChoice = Win32_c ) then
+				
+					if( isSafe ) then
+					
+						fileio.put
+						(
+							makeHandle,
+							nln,
+							stdio.tab,
+							"hla -thread "
+							"-c -p:temp -b:",
+							baseName,
+							"_safe ",
+							hlaopt, " ",
+							baseName,
+							nln
+						);
+						
+					else
+					
+						fileio.put
+						(
+							makeHandle,
+							nln,
+							stdio.tab,
+							stdio.tab,
+							"hla -c -p:temp ",
+							hlaopt, " ",
+							baseName,
+							nln
+						);
+						
+					endif;
+					fileio.newln( makeHandle );
+					
+				elseif( osChoice = Linux_c || osChoice = freeBSD_c ) then
+				
+					if( isSafe ) then
+					
+						fileio.put
+						(
+							makeHandle,
+							nln,
+							stdio.tab,
+							"hla -thread "
+							"-c -p:temp -b:",
+							baseName,
+							"_safe ",
+							hlaopt, 
+							" ",
+							baseName,
+							nln,
+							nln
+						);
+					
+					else
+					 
+						fileio.put
+						(
+							makeHandle,
+							nln,
+							stdio.tab,
+							"hla -c -p:temp ",
+							hlaopt, " ",
+							baseName,
+							nln,
+							nln
+						);
+						
+					endif;
+
+				elseif( osChoice = macOS_c ) then
+				
+					str.cpy( "", gasxOption );
+					if( str.eq( theDir, "os_mac" )) then
+					
+						str.cpy( " -gasx -source ", gasxOption );
+						
+					endif;
+					if( isSafe ) then
+						
+						fileio.put
+						(
+							makeHandle,
+							nln,
+							stdio.tab,
+							"cp ",
+							baseName,
+							".hla ",
+							baseName,
+							"_safe.hla",
+							nln,
+							stdio.tab,
+							"hla -thread -AL -c -p:temp ",
+							gasxOption,
+							hlaopt, " ",
+							baseName,
+							"_safe",
+							nln,
+							stdio.tab,
+							"rm ",
+							baseName,
+							"_safe.hla",
+							nln
+						);
+									
+					else
+						
+						fileio.put
+						(
+							makeHandle,
+							nln,
+							stdio.tab,
+							"hla -AL -c -p:temp ",
+							gasxOption,
+							hlaopt, " ",
+							baseName,
+							nln
+						);
+						
+					endif;
+
+				endif;
+				fileio.newln( makeHandle );	
+
+			endfor;
+			
+			// Output a "clean" command at the end of the make file:
+			
+			fileio.put
+			( 
+				makeHandle, 
+				nln ,nln, 
+				"clean:" ,nln,
+				stdio.tab, "delete temp" ,nln,
+				stdio.tab, "delete .inc" ,nln,
+				stdio.tab, "delete .o" ,nln,
+				stdio.tab, "delete .obj" ,nln,
+				stdio.tab, "delete .link" ,nln,
+				stdio.tab, "delete .exe" ,nln,
+				stdio.tab, "delete .asm" ,nln,
+				stdio.tab, "delete .pdb" ,nln,
+				stdio.tab, "delete .ilk" ,nln,
+				stdio.tab, "delete .a" ,nln,
+				stdio.tab, "delete .lib" ,nln
+				,nln 
+			);
+				
+				
+			fileio.close( makeHandle );
+			filesys.cd( mainDir );
+			
+		
+			////////////////////////////////////////////////////////////////////// 
+
+			// Clean up after getDependencies:
+
+			for( mov( 0, ebx ); ebx < s_depObj.fileCnt; inc( ebx )) do
+
+				mov( s_depObj.fileList.depFiles[ebx*8], edx );
+				(type table [edx]).destroy( &nullProc );
+				
+			endfor;
+			nameUnion.destroy( &nullProc );
+		
+		end processOneDirectory;
+		
+		
+		
+	begin processDirectories;
+
+		// Okay, process all the HLA stdlib source directories in the following
+		// loop.
+		
+		for( mov( 0, ecx ); ecx<stdlibDirsCnt_c; inc( ecx )) do
+		
+			stdout.put
+			( 
+				"Processing directory: ", 
+				stdlibPath,
+				fileSeparator, 
+				stdlibDirs[ecx*4], 
+				nl 
+			);
+			processOneDirectory( stdlibDirs[ecx*4], false );
+			processOneDirectory( stdlibDirs[ecx*4], true );
+			
+		endfor;
+
+	end processDirectories;
+	
+	
+
+begin mkMake;
+
+	// Initialize and grab the command-line parameters (if any):
+	
+	arg.c();
+	mov( eax, argc );
+	str.cpy( "make", makeName );
+
+	str.cpy( nl, nln );
+	mov( false, hasAltPath );
+	mov( false, hasAltIncPath );
+	mov( false, hasAltLibPath );
+	if( argc >= 2 ) then
+	
+		setOSChoice();
+		
+	endif;
+	if( argc > 2 ) then 
+	
+		processArgs();
+				
+	endif;
+	
+	if( osChoice = Win32_c ) then
+	
+		str.cpy( ".obj", OBJsuffix );
+		str.cpy( ".lib", LIBsuffix );
+		mov( '\', fileSeparator );
+		str.cpy( #$d #$a, nln );
+		str.cpy( nln, makeSeparator );
+		
+	else
+	
+		str.cpy( ".o", OBJsuffix );
+		str.cpy( ".a", LIBsuffix );
+		str.cpy( "; ", makeSeparator );
+		mov( '/', fileSeparator );
+		str.cpy( "" #$a, nln );
+		
+	endif;
+	
+	 
+
+	// Initialize the singleton getDependencies object:
+	
+	s_depObj.create();
+	
+	// Grab all the environment variables, etc:
+	
+	env.a_get( "hlainc" );
+	if( eax = NULL ) then
+	
+		stderr.put
+		( 
+			"mkMake requires a defined 'hlainc' environment variable" nl 
+		);
+		usage();
+		
+	endif;
+	mov( eax, hlaincPrefix );
+	
+	if( !hasAltIncPath ) then
+	
+		str.cpy( hlaincPrefix, altIncPath );
+		
+	endif;
+	
+
+	env.get( "hlalib", hlalibPathEnv );
+	if( !eax ) then
+	
+		stderr.put
+		( 
+			"mkMake requires a defined 'hlalib' environment variable" nl 
+		);
+		usage();
+		
+	endif;
+	
+	// If there was no "hlalib=xxxxx" command-line parameter, then use
+	// the value from the environment variable as the alternate path.
+		
+	if( !hasAltLibPath ) then
+	
+		str.cpy( hlalibPathEnv, altLibPath );
+		
+	endif;
+	
+
+	
+
+	// This program must be run from the hlalibsrc directory and it assumes that
+	// the "trunk" directory is a peer of the mkMake program. It also assumes
+	// that the "test" directory is a peer of "trunk" and "mkMake".
+	
+	
+	filesys.gwd( mainDir );
+	stripDriveLetter( mainDir );
+	str.put( stdlibPath, mainDir, fileSeparator, "trunk" );
+	filesys.cd( stdlibPath );
+	if( !hasAltPath ) then
+	
+		str.put( altPath, mainDir, fileSeparator, "trunk" );
+		str.put( testPath, mainDir, fileSeparator, "test" );
+		
+	else
+	
+		str.put( testPath, altPath, fileSeparator, "test" );
+		str.catc( altPath, fileSeparator );
+		str.cat( "trunk", altPath );
+		
+	endif;
+	
+	// Strip any leading Windows "X:" prefixes at this point.
+	// We assume we're running this program on the same drive
+	// that contains the source code, the include files, and
+	// the library code.
+	
+	stripDriveLetter( altPath );
+	stripDriveLetter( altIncPath );
+	stripDriveLetter( altLibPath );
+
+	// Fix up the pathnames based on the destination OS:
+	
+	if( osChoice = Win32_c ) then
+	
+		filesys.toWin32Path1( altPath );
+		filesys.toWin32Path1( stdlibPath );
+		filesys.toWin32Path1( altIncPath );
+		filesys.toWin32Path1( altLibPath );
+		
+	else
+	
+		filesys.toUnixPath1( altPath );
+		filesys.toUnixPath1( stdlibPath );
+		filesys.toUnixPath1( altIncPath );
+		filesys.toUnixPath1( altLibPath );
+		
+	endif;
+		
+	// Okay, create the main (library level) makefile that is going to build
+	// everything and produce the hlalib.xxx library file:
+	
+	try
+	
+		fileio.openNew( "Makefile" );
+		mov( eax, mainMakeHandle );
+		
+	  anyexception
+	  
+	  	stderr.put( "Could not open 'Makefile'" nl );
+		usage();
+		
+	endtry;
+	
+	fileio.put
+	(
+		mainMakeHandle,
+		"# Makefile to build the HLA Standard Library," ,nln,
+		"# automatically generated by the mkMake program." ,nln,
+		"# DO NOT EDIT THIS FILE BY HAND!" ,nln,
+		"#" ,nln,
+		nln,
+		"all: ", 
+		altLibPath,
+		fileSeparator, 
+		"hlalib", 
+		LIBsuffix, 
+		' ',
+		altLibPath,
+		fileSeparator,
+		"hlalib_safe", 
+		LIBsuffix, 
+		nln, 
+		nln
+	);
+	
+	putMainEntries( altLibPath, altPath );			 
+	processDirectories( false );
+
+	
+	if( osChoice = Win32_c ) then
+	
+		fileio.put
+		( 
+			mainMakeHandle, 
+			nln,
+			nln,
+			"clean: " ,nln,
+			stdio.tab, "delete temp" ,nln,
+			stdio.tab, "delete .inc" ,nln,
+			stdio.tab, "delete .o" ,nln,
+			stdio.tab, "delete .obj" ,nln,
+			stdio.tab, "delete .link" ,nln,
+			stdio.tab, "delete .exe" ,nln,
+			stdio.tab, "delete .lib" ,nln,
+			stdio.tab, "delete .pdb" ,nln,
+			stdio.tab, "delete .ilk" ,nln,
+			stdio.tab, "delete .asm" ,nln,
+			stdio.tab, "delete .a" ,nln
+		);
+		for( mov( 0, edx ); edx<stdlibDirsCnt_c; inc( edx )) do
+		
+			fileio.put
+			( 
+				mainMakeHandle, 
+				stdio.tab, "cd ", altPath, fileSeparator, stdlibDirs[edx*4], "  ",
+					makeSeparator,
+				stdio.tab, makeName, " -f ", 
+					stdlibDirs[edx*4], ".make clean",
+				nln 
+			);
+		
+		endfor;
+		if( osChoice = Win32_c ) then
+		
+			fileio.put( mainMakeHandle,  stdio.tab, "cd ", altPath, nln );
+			
+		endif;
+		
+		
+		fileio.put
+		( 
+			mainMakeHandle, 
+			nln,
+			nln, 
+			"cleanall:" ,nln,
+			stdio.tab, "delete temp" ,nln,
+			stdio.tab, "delete .inc" ,nln,
+			stdio.tab, "delete .o" ,nln,
+			stdio.tab, "delete .obj" ,nln,
+			stdio.tab, "delete .link" ,nln,
+			stdio.tab, "delete .exe" ,nln,
+			stdio.tab, "delete .lib" ,nln,
+			stdio.tab, "delete .pdb" ,nln,
+			stdio.tab, "delete .ilk" ,nln,
+			stdio.tab, "delete .asm" ,nln
+		);
+		for( mov( 0, edx ); edx<stdlibDirsCnt_c; inc( edx )) do
+		
+			fileio.put
+			( 
+				mainMakeHandle, 
+				stdio.tab, "cd ", altPath, fileSeparator, stdlibDirs[edx*4], "  ", nln,
+				stdio.tab, makeName, " -f ", stdlibDirs[edx*4], ".make clean",nln,
+				stdio.tab, "delete .linkcmds",nln,
+				stdio.tab, "delete .make",nln,
+				stdio.tab, "cd ", testPath, fileSeparator, stdlibDirs[edx*4],nln,
+				stdio.tab, makeName, " clean" ,nln,
+				nln 
+			);
+		
+		endfor;
+		if( osChoice = Win32_c ) then
+		
+			fileio.put( mainMakeHandle,  stdio.tab, "cd ", altPath, nln );
+
+			
+		endif;
+
+		fileio.put
+		( 
+			mainMakeHandle, 
+			nln ,nln, 
+			"test:" ,nln
+		);
+		for( mov( 0, edx ); edx<stdlibDirsCnt_c; inc( edx )) do
+		
+			fileio.put
+			( 
+				mainMakeHandle, 
+				stdio.tab, "cd ", testPath, fileSeparator, 
+					stdlibDirs[edx*4], makeSeparator,
+				stdio.tab, makeName, 
+				nln 
+			);
+		
+			fileio.put
+			( 
+				mainMakeHandle, 
+				stdio.tab, "cd ", testPath, fileSeparator, 
+					stdlibDirs[edx*4], makeSeparator,
+				stdio.tab, makeName, " thread", 
+				nln 
+			);
+		
+		endfor;
+		fileio.put( mainMakeHandle, stdio.tab, "cd ", altPath, nln );
+		
+	
+	else
+	
+		fileio.put
+		( 
+			mainMakeHandle, 
+			nln ,nln,
+			"clean:" ,nln,
+
+			stdio.tab, "delete temp" ,nln,
+			stdio.tab, "delete .inc" ,nln,
+			stdio.tab, "delete .o" ,nln,
+			stdio.tab, "delete .obj" ,nln,
+			stdio.tab, "delete .link" ,nln,
+			stdio.tab, "delete .exe" ,nln,
+			stdio.tab, "delete .lib" ,nln,
+			stdio.tab, "delete .pdb" ,nln,
+			stdio.tab, "delete .ilk" ,nln,
+			stdio.tab, "delete .a" ,nln,
+			stdio.tab, "delete .asm" ,nln
+		);
+		for( mov( 0, edx ); edx<stdlibDirsCnt_c; inc( edx )) do
+		
+			fileio.put
+			( 
+				mainMakeHandle, 
+				stdio.tab, "cd ", altPath, fileSeparator, stdlibDirs[edx*4], " \" ,nln,
+				stdio.tab, stdio.tab, 
+				"&& make -f ", stdlibDirs[edx*4], ".make clean" ,nln,
+				stdio.tab,  
+				"cd ", testPath, fileSeparator, 
+					stdlibDirs[edx*4], " \" ,nln,
+				stdio.tab, stdio.tab, 
+				"&& make clean",
+				nln 
+			);
+		
+		endfor;
+		fileio.put
+		( 
+			mainMakeHandle, 
+			nln ,nln, 
+			"cleanall:" ,nln,
+			stdio.tab, "delete temp" ,nln,
+			stdio.tab, "delete .inc" ,nln,
+			stdio.tab, "delete .o" ,nln,
+			stdio.tab, "delete .obj" ,nln,
+			stdio.tab, "delete .link" ,nln,
+			stdio.tab, "delete .exe" ,nln,
+			stdio.tab, "delete .lib" ,nln,
+			stdio.tab, "delete .pdb" ,nln,
+			stdio.tab, "delete .ilk" ,nln,
+			stdio.tab, "delete .asm" ,nln
+		);
+		for( mov( 0, edx ); edx<stdlibDirsCnt_c; inc( edx )) do
+		
+			fileio.put
+			( 
+				mainMakeHandle, 
+				stdio.tab, "cd ", altPath, fileSeparator, stdlibDirs[edx*4], " \" ,nln,
+				stdio.tab, stdio.tab, 
+				"&& make -f ", stdlibDirs[edx*4], ".make clean \" ,nln,
+				stdio.tab, stdio.tab, 
+				"&& delete .linkcmds \" ,nln,
+				stdio.tab, stdio.tab, 
+				"&& delete .make", nln,
+				stdio.tab, 
+				"cd ", testPath, fileSeparator, 
+					stdlibDirs[edx*4], "  \" ,nln,
+				stdio.tab, stdio.tab, 
+				"&& make clean \" , nln,
+				nln 
+			);
+		
+		endfor;
+		fileio.put
+		( 
+			mainMakeHandle, 
+			nln,
+			nln, 
+			"test:" ,nln
+		);
+		for( mov( 0, edx ); edx<stdlibDirsCnt_c; inc( edx )) do
+		
+			fileio.put
+			( 
+				mainMakeHandle, 
+				stdio.tab, "cd ", testPath, fileSeparator,
+					stdlibDirs[edx*4], "  && ", 
+				stdio.tab, makeName,
+				nln 
+			);
+		
+			fileio.put
+			( 
+				mainMakeHandle, 
+				stdio.tab, "cd ", testPath, fileSeparator,
+					stdlibDirs[edx*4], "  && ", 
+				stdio.tab, makeName, " thread",
+				nln 
+			);
+		
+		endfor;
+		
+	endif;
+	fileio.close( mainMakeHandle );	
+	
+		
+
+end mkMake;

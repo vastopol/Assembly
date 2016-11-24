@@ -1,0 +1,139 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "conv.hhf" );
+
+
+/************************************************************/
+/*                                                          */
+/* str.catc-                                                */
+/*                                                          */
+/* Concatenates the character "c" to the end of the string. */
+/*                                                          */
+/************************************************************/
+
+procedure str.catcset( dest:string; c:cset ); @noframe;
+
+	// AppendChar-	adds the character in CH to the
+	//				end of the string pointed at by EBX.
+	
+	procedure AppendChar; @noframe;
+	begin AppendChar;
+	
+		mov( (type str.strRec [ebx]).length, eax );
+		inc( eax );
+		cmp( eax, (type str.strRec[ebx]).maxlen );
+		ja StringOverflow;
+					
+		mov( eax, (type str.strRec [ebx]).length );
+
+		// Add the character to the end of the string
+		// and properly zero terminate the string.
+		
+		mov( ch, [ebx+eax-1] );
+		mov( 0, (type byte [ebx+eax]));
+		ret();
+	
+	StringOverflow:
+		raise( ex.StringOverflow );
+		
+	end AppendChar;
+	
+	/*
+	** Put32CS- Outputs the 32 characters appearing
+	** in the EDX register (one bit per character).
+	** CH contains the ASCII code for the character
+	** in bit zero.
+	*/
+	
+	procedure Put32CS; @noframe;
+	begin Put32CS;
+	
+		mov( ch, cl );
+		add( 32, cl );
+		repeatUntilCHeqCL:
+		
+			shr( 1, edx );
+			jnc noChar;
+			
+				cmp( ch, ' ' );
+				jg justAppend;
+				
+					str.cats( (type string ebx ), "#$" );
+					str.catb( (type string ebx ), ch );
+					mov( ' ', ch );
+					
+				justAppend:
+					AppendChar();
+										
+				
+			noChar:
+			inc( ch );
+			
+		cmp( ch, cl );
+		jne repeatUntilCHeqCL;
+		ret();
+		
+	end Put32CS;
+	
+	
+	
+	
+begin catcset;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	
+	mov( dest, ebx );
+	mov( 0, ch );
+	mov( (type dword c), edx );
+	Put32CS();
+	
+	mov( (type dword c[4]), edx );
+	Put32CS();
+	
+	mov( (type dword c[8]), edx );
+	Put32CS();
+	
+	mov( (type dword c[12]), edx );
+	Put32CS();
+
+	pop( edx );
+	pop( ecx );	
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+end catcset;
+
+
+
+end stringUnit;
+
+
+
+
+	
+

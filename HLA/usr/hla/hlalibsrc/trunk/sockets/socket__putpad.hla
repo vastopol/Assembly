@@ -1,0 +1,81 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit socketUnit;
+		
+
+#include( "sockets.hhf" )
+#include( "excepts.hhf" )
+
+// baseSocketClass_t.sPutPad-
+//
+//	Utility routine used by xxxSize functions.
+
+procedure baseSocketClass_t.sPutPad( fill:char; size:uns32 );
+	@noframe;
+	@nodisplay;
+	@noalignstack;
+
+var
+	padding	:char[4096];
+
+begin sPutPad;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( eax );
+	push( ecx );
+	push( edi );
+	pushfd();
+	cld();
+		
+	
+	// Just to be on the safe side, let's limit the field
+	// width to 4096 characters.  If the user really needs
+	// more than this, they can print the extra characters
+	// themselves.
+	
+	mov( size, ecx );
+	cmp( ecx, 4096 );
+	ja wtb;
+		
+   // Okay, create a temporary buffer to hold the pad characters
+   // (we don't want to print them one at a time, that would
+   // be way too slow), and then fill that array with the "fill"
+   // character.
+	
+	
+	mov( fill, al );	// Fill the array with the padding character.
+	lea( edi, padding );
+	rep.stosb();
+	
+	lea( edi, padding );
+	this.write( [edi], size );
+	popfd();
+	pop( edi );
+	pop( ecx );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+		
+
+wtb:
+	raise( ex.WidthTooBig );
+
+end sPutPad;
+		
+	
+end socketUnit;
+

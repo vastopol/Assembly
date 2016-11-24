@@ -1,0 +1,233 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#includeOnce( "datetime.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "../include/datetime_private.hhf" )
+
+?@noframe := true;
+?@nodisplay := true;
+
+
+// time.toString-
+//
+//	Converts the time to a string
+// and stores it in the specified destination string.
+		
+procedure time.toString( HMS:time.timerec; dest:string );
+readonly
+	timeFmtCaseTable:dword[8] :=
+	[
+		&hhmmssAMPM,	// Note: the entries in this
+		&hhmmssAP,		// table must match the values
+		&hhmmss12,		// declared in the time.OutputFormat
+		&hhmmss24,		// enumerated data type.
+		&hhmmAMPM,
+		&hhmmAP,
+		&hhmm12,
+		&hhmm24
+	];
+	
+	ampm	:char[2] := ['a','p'];
+	
+	#macro convHours24;
+	
+		movzx( HMS.hours, eax );
+		conv._unsToBuf32Size( eax, 2, 2, '0', [ebx], 2 );
+		mov( ':', (type char [ebx+2]) );
+
+	#endmacro
+	
+	
+	#macro convHours12: AM, PM, not12;
+	
+		xor( edx, edx );			// Assume AM
+		movzx( HMS.hours, eax );
+		cmp( eax, 12 );
+		je PM;
+		jb AM;
+		
+			sub( 12, eax );
+			
+		PM:
+			add( 1, edx );			// It's a PM time.
+			
+		AM:
+		or( eax, eax );
+		jnz not12;
+		
+			mov( 12, eax );
+			
+		not12:
+		conv._unsToBuf32Size( eax, 2, 2, '0', [ebx], 2 );
+		mov( ':', (type char [ebx+2]) );
+
+	#endmacro
+	
+	#macro convMins;
+						
+		movzx( HMS.mins, eax );
+		conv._unsToBuf32Size( eax, 2, 2, '0', [ebx+3], 2 );
+		mov( ':', (type char [ebx+5]) );
+			
+	#endmacro
+	
+	#macro convSecs;
+	
+		movzx( HMS.secs, eax );
+		conv._unsToBuf32Size( eax, 2, 2, '0', [ebx+6], 2 );
+
+	#endmacro
+	
+	#macro putAMPM( offset );
+	
+		mov( ampm[edx], al );
+		mov( al, [ebx+offset] );
+		mov( 'm', (type char [ebx+offset+1]) ) 
+	
+	#endmacro
+	
+	#macro putAP( offset );
+	
+		mov( ampm[edx], al );
+		mov( al, [ebx+offset] );
+	
+	#endmacro
+	
+begin toString;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+
+	cmp( HMS.hours, 24 );
+	jae invalidTime;
+	
+	mov( dest, ebx );
+	_hla.get_TimeFormat();
+	cmp( eax, time.badTimeFormat );
+	jae invalidTimeFormat;
+	jmp( timeFmtCaseTable[eax*4] );
+	
+		hhmmssAMPM:
+			cmp( (type str.strRec [ebx]).maxlen, 10 );
+			jb stringOverflow;
+			mov( 10, (type str.strRec [ebx]).length );
+			convHours12;
+			convMins;
+			convSecs;
+			putAMPM( 8 );
+			mov( 0, (type byte [ebx+10]) );
+			jmp Done;
+						
+			
+		hhmmssAP:
+			cmp( (type str.strRec [ebx]).maxlen, 9 );
+			jb stringOverflow;
+			mov( 9, (type str.strRec [ebx]).length );
+			convHours12;
+			convMins;
+			convSecs;
+			putAP( 8 );
+			mov( 0, (type byte [ebx+9]) );
+			jmp Done;
+						
+		hhmmss12:
+			cmp( (type str.strRec [ebx]).maxlen, 8 );
+			jb stringOverflow;
+			mov( 8, (type str.strRec [ebx]).length );
+			convHours12;
+			convMins;
+			convSecs;
+			mov( 0, (type byte [ebx+8]) );
+			jmp Done;
+						
+		hhmmss24:
+			cmp( (type str.strRec [ebx]).maxlen, 8 );
+			jb stringOverflow;
+			mov( 8, (type str.strRec [ebx]).length );
+			convHours24;
+			convMins;
+			convSecs;
+			mov( 0, (type byte [ebx+8]) );
+			jmp Done;
+		
+		hhmmAMPM:
+			cmp( (type str.strRec [ebx]).maxlen, 7 );
+			jb stringOverflow;
+			mov( 7, (type str.strRec [ebx]).length );
+			convHours12;
+			convMins;
+			putAMPM( 5 );
+			mov( 0, (type byte [ebx+7]) );
+			jmp Done;
+						
+			
+		hhmmAP:
+			cmp( (type str.strRec [ebx]).maxlen, 6 );
+			jb stringOverflow;
+			mov( 6, (type str.strRec [ebx]).length );
+			convHours12;
+			convMins;
+			putAP( 5 );
+			mov( 0, (type byte [ebx+6]) );
+			jmp Done;
+						
+		hhmm12:
+			cmp( (type str.strRec [ebx]).maxlen, 5 );
+			jb stringOverflow;
+			mov( 5, (type str.strRec [ebx]).length );
+			convHours12;
+			convMins;
+			mov( 0, (type byte [ebx+5]) );
+			jmp Done;
+						
+		hhmm24:
+			cmp( (type str.strRec [ebx]).maxlen, 5 );
+			jb stringOverflow;
+			mov( 5, (type str.strRec [ebx]).length );
+			convHours24;
+			convMins;
+			mov( 0, (type byte [ebx+5]) );
+		
+	Done:
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+
+invalidTime:
+	raise( ex.InvalidTime );
+	
+invalidTimeFormat:
+	raise( ex.InvalidTimeFormat );
+	
+stringOverflow:
+	raise( ex.StringOverflow );	
+
+end toString;
+	
+	
+	
+end DateTime;			
+
+

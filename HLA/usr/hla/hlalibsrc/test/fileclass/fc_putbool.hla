@@ -1,0 +1,21 @@
+program fputbool_test;
+#include( "stdlib.hhf" )
+
+static
+	f	:file;
+	
+begin fputbool_test;
+
+	f.create();
+	f.openNew( "fc_putbool.txt" );
+
+	f.putbool( true );
+	f.newln( );
+	f.putbool( false );
+	f.newln( );
+
+	f.close( );
+
+end fputbool_test;
+
+													

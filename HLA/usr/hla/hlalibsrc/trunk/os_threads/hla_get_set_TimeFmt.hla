@@ -1,0 +1,180 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ThreadUnit;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "../include/thread_private.hhf" )
+#includeOnce( "../include/datetime_private.hhf" )
+#includeOnce( "datetime.hhf" )
+#includeOnce( "threads.hhf" )
+#includeOnce( "excepts.hhf" )
+
+static
+	TimeFormat		:time.OutputFormat := time.hhmmss24;
+
+#if( @thread )
+
+	procedure _hla.get_TimeFormat;
+	begin get_TimeFormat;
+
+		#if( os.win32 )
+		
+			push( ecx );
+			push( edx );
+			TlsGetValue( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			pop( edx );
+			pop( ecx );
+			
+		#elseif( os.linux | os.freeBSD | os.macOS )
+		
+			pthread_getspecific( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			
+		#else
+		
+			#error( "Unknown OS!" )
+			
+		#endif
+		movzx( (type _hla.stdlib_tls_t [eax]).dt_TimeFormat, eax );
+		ret(); 
+		
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end get_TimeFormat;
+
+	procedure _hla.set_TimeFormat( tf:time.OutputFormat );
+	begin set_TimeFormat;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( eax );
+		push( ecx );
+		#if( os.win32 )
+		
+			push( edx );
+			TlsGetValue( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			pop( edx );
+			
+		#elseif( os.linux | os.freeBSD | os.macOS )
+		
+			pthread_getspecific( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			
+		#else
+		
+			#error( "Unknown OS!" )
+			
+		#endif
+		mov( tf, cl );
+		mov( cl, (type _hla.stdlib_tls_t [eax]).dt_TimeFormat );
+		pop( ecx );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ ); 
+		
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end set_TimeFormat;
+
+
+	procedure _hla.cmp_TimeFormat( tf:time.OutputFormat );
+	begin cmp_TimeFormat;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( eax );
+		push( ecx );
+		#if( os.win32 )
+		
+			push( edx );
+			TlsGetValue( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			pop( edx );
+			
+		#elseif( os.linux | os.freeBSD | os.macOS )
+		
+			pthread_getspecific( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			
+		#else
+		
+			#error( "Unknown OS!" )
+			
+		#endif
+		mov( tf, cl );
+		cmp( cl, (type _hla.stdlib_tls_t [eax]).dt_TimeFormat );
+		pop( ecx );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ );
+		
+	ThreadError:
+		raise( ex.ThreadError ); 
+		
+	end cmp_TimeFormat;
+	
+#else
+
+	procedure _hla.get_TimeFormat;
+	begin get_TimeFormat;
+
+		movzx( TimeFormat, eax );
+		ret();
+		
+	end get_TimeFormat;
+
+	procedure _hla.set_TimeFormat( tf:time.OutputFormat );
+	begin set_TimeFormat;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( eax );
+		mov( tf, al );
+		mov( al, TimeFormat );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ );
+		
+	end set_TimeFormat;
+
+
+	procedure _hla.cmp_TimeFormat( tf:time.OutputFormat );
+	begin cmp_TimeFormat;
+
+		push( ebp );
+		mov( esp, ebp );			
+		push( eax );
+		mov( tf, al );
+		cmp( al, TimeFormat );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ );
+		
+	end cmp_TimeFormat;
+	
+#endif
+
+end ThreadUnit;

@@ -1,0 +1,1727 @@
+// This program tests the (case sensitive) pattern-matching character functions.
+
+
+program patCsets_test;
+#include( "stdlib.hhf" )
+	
+begin patCsets_test;
+
+	
+	//	procedure peekCset( c:char );
+
+	// Test positive check:
+	
+	pat.match( "abc" );
+	
+		pat.peekCset( {'a'} );
+		pat.oneCset( {'a'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.peekCset failed(1)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	// Test negative check:
+	
+	pat.match( "abc" );
+	
+		pat.peekCset( {'A'} );
+		pat.oneCset( {'a'} );
+		
+	  	stderr.put( "pat.peekCset failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	// Test with back-tracking
+	
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.peekCset( {'a'} );
+		pat.matchStr( "ab" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.peekCset failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.peekCset succeeded!" nl );
+
+	
+	
+	//	procedure oneCset( c:char );
+
+
+	// Test positive check:
+	
+	pat.match( "abc" );
+	
+		pat.oneCset( {'a'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.oneCset failed(1)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	// Test negative check:
+	
+	pat.match( "abc" );
+	
+		pat.oneCset( {'A'} );
+		pat.oneCset( {'a'} );
+		
+	  	stderr.put( "pat.oneCset failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	// Test with back-tracking
+	
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.oneCset( {'a'} );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.oneCset failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.oneCset succeeded!" nl );
+
+	
+	//	procedure upToCset( c:char );
+	
+
+
+	// Test positive check:
+	
+	pat.match( "abc" );
+	
+		pat.upToCset( {'c'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.upToCset failed(1)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	// Test negative check:
+	
+	pat.match( "abc" );
+	
+		pat.upToCset( {'A'} );
+		pat.upToCset( {'a'} );
+		
+	  	stderr.put( "pat.upToCset failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	// Test with back-tracking
+	
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.upToCset( {'a'} );
+		pat.upToCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.upToCset failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.upToCset succeeded!" nl );
+
+	
+	
+	//	procedure zeroOrOneCset( c:char );
+
+	// Test positive check:
+	
+	pat.match( "abc" );
+	
+		pat.zeroOrOneCset( {'a'} );
+		pat.zeroOrOneCset( {'a'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrOneCset failed(1)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	// Test negative check:
+	
+	pat.match( "abc" );
+	
+		pat.zeroOrOneCset( {'A'} );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.zeroOrOneCset failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	// Test with back-tracking
+	
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.zeroOrOneCset( {'a'} );
+		pat.zeroOrOneCset( {'a'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrOneCset failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.zeroOrOneCset succeeded!" nl );
+
+	
+	
+	//	procedure l_ZeroOrOneCset( c:char );
+
+	// Test positive check:
+	
+	pat.match( "abc" );
+	
+		pat.l_ZeroOrOneCset( {'a'} );
+		pat.l_ZeroOrOneCset( {'a'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ZeroOrOneCset failed(1)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	// Test negative check:
+
+	pat.match( "abc" );
+	
+		pat.l_ZeroOrOneCset( {'A'} );
+		pat.oneCset( {'d'} );
+		
+	  	stderr.put( "pat.l_ZeroOrOneCset failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	// Test with back-tracking
+	
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.l_ZeroOrOneCset( {'a'} );
+		pat.l_ZeroOrOneCset( {'a'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ZeroOrOneCset failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.l_ZeroOrOneCset succeeded!" nl );
+
+	
+	
+	
+	
+	
+	
+	//	procedure zeroOrMoreCset( c:char );
+
+	// Test positive check:
+	
+	pat.match( "aaabc" );
+	
+		pat.zeroOrMoreCset( {'a'} );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrMoreCset failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	// Test positive check:
+	
+	pat.match( "bc" );
+	
+		pat.zeroOrMoreCset( {'a'} );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrMoreCset failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	// Test negative check:
+	
+	pat.match( "abc" );
+	
+		pat.zeroOrMoreCset( {'A'} );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.zeroOrMoreCset failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	// Test with back-tracking
+	
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.zeroOrMoreCset( {'a'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrMoreCset failed(3a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.zeroOrMoreCset( {'a'} );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrMoreCset failed(3b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.zeroOrMoreCset succeeded!" nl );
+
+	
+	
+	//	procedure l_ZeroOrMoreCset( c:char );
+
+	// Test positive check:
+	
+	pat.match( "abc" );
+	
+		pat.l_ZeroOrMoreCset( {'a'} );	// Matches one char
+		pat.l_ZeroOrMoreCset( {'a'} );	// Matches zero chars
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ZeroOrMoreCset failed(1)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	// Test negative check:
+
+	pat.match( "abc" );
+	
+		pat.l_ZeroOrMoreCset( {'A'} );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.l_ZeroOrMoreCset failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	// Test with back-tracking
+	
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.l_ZeroOrMoreCset( {'a'} );
+		pat.oneCset( {'a'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ZeroOrMoreCset failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.l_ZeroOrMoreCset succeeded!" nl );
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	//	procedure oneOrMoreCset( c:char );
+
+	// Test positive check:
+	
+	pat.match( "aaabc" );
+	
+		pat.oneOrMoreCset( {'a'} );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.oneOrMoreCset failed(1)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "abc" );
+	
+		pat.oneOrMoreCset( {'A'} );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.oneOrMoreCset failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	// Test with back-tracking
+	
+	
+	pat.match( "ababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.oneOrMoreCset( {'a'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.oneOrMoreCset failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	
+	//	procedure l_OneOrMoreCset( c:char );
+
+	// Test positive check:
+	
+	pat.match( "abc" );
+	
+		pat.l_OneOrMoreCset( {'a'} );	// Matches one char
+		pat.l_OneOrMoreCset( {'b'} );	// Matches one char
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_OneOrMoreCset failed(1)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	// Test negative check:
+
+	pat.match( "abc" );
+	
+		pat.l_OneOrMoreCset( {'A'} );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.l_OneOrMoreCset failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	// Test with back-tracking
+	
+	
+	pat.match( "ababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.l_OneOrMoreCset( {'a'} );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_OneOrMoreCset failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.l_OneOrMoreCset succeeded!" nl );
+
+	
+	
+	
+	
+	//	procedure exactlyNCset( c:char; n:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aaabc" );
+	
+		pat.exactlyNCset( {'a'}, 3 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNCset failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.exactlyNCset( {'a'}, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNCset failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "bc" );
+	
+		pat.exactlyNCset( {'a'}, 1 );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.exactlyNCset failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	pat.match( "aaaabc" );
+	
+		pat.exactlyNCset( {'a'}, 3 );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.exactlyNCset failed(2b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.exactlyNCset( {'a'}, 1 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNCset failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.exactlyNCset succeeded!" nl );
+	
+
+	
+	
+	
+	
+	//	procedure firstNCset( c:char; n:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aaaabc" );
+	
+		pat.firstNCset( {'a'}, 3 );
+		pat.oneCset( {'a'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.firstNCset failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.firstNCset( {'a'}, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.firstNCset failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "bc" );
+	
+		pat.firstNCset( {'a'}, 1 );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.firstNCset failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	pat.match( "aaaabc" );
+	
+		pat.firstNCset( {'a'}, 3 );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.firstNCset failed(2b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.firstNCset( {'a'}, 1 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.firstNCset failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.firstNCset succeeded!" nl );
+	
+
+	
+	
+	
+	
+	//	procedure norLessCset( c:char; n:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aabc" );
+	
+		pat.norLessCset( {'a'}, 3 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessCset failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.norLessCset( {'a'}, 3 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessCset failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.norLessCset( {'a'}, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessCset failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "a" );
+	
+		pat.norLessCset( {'a'}, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessCset failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "b" );
+	
+		pat.norLessCset( {'a'}, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessCset failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "aabc" );
+	
+		pat.norLessCset( {'a'}, 1 );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.norLessCset failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	pat.match( "aaaabc" );
+	
+		pat.norLessCset( {'a'}, 3 );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.norLessCset failed(2b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.norLessCset( {'a'}, 1 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessCset failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.norLessCset succeeded!" nl );
+	
+
+	
+	
+	
+	
+	//	procedure l_NorLessCset( c:char; n:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aabc" );
+	
+		pat.l_NorLessCset( {'a'}, 3 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessCset failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.l_NorLessCset( {'a'}, 3 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessCset failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.l_NorLessCset( {'a'}, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessCset failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "a" );
+	
+		pat.l_NorLessCset( {'a'}, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessCset failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "b" );
+	
+		pat.l_NorLessCset( {'a'}, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessCset failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "aabc" );
+	
+		pat.l_NorLessCset( {'a'}, 1 );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.l_NorLessCset failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	pat.match( "aaaabc" );
+	
+		pat.l_NorLessCset( {'a'}, 3 );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.l_NorLessCset failed(2b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.l_NorLessCset( {'a'}, 1 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessCset failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.l_NorLessCset succeeded!" nl );
+	
+	
+	
+	
+	
+	
+	
+	
+
+	//	procedure norMoreCset( c:char; n:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aaaabc" );
+	
+		pat.norMoreCset( {'a'}, 3 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreCset failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.norMoreCset( {'a'}, 3 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreCset failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "aaa" );
+	
+		pat.norMoreCset( {'a'}, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreCset failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaaaaaaaa" );
+	
+		pat.norMoreCset( {'a'}, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreCset failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaaaaaaab" );
+	
+		pat.norMoreCset( {'a'}, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreCset failed(1e)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "aabc" );
+	
+		pat.norMoreCset( {'a'}, 3 );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.norMoreCset failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.norMoreCset( {'a'}, 1 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreCset failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.norMoreCset succeeded!" nl );
+	
+
+	
+	
+	
+	
+	//	procedure l_NorMoreCset( c:char; n:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aaaabc" );
+	
+		pat.l_NorMoreCset( {'a'}, 3 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreCset failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.l_NorMoreCset( {'a'}, 3 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreCset failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.l_NorMoreCset( {'a'}, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreCset failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaaaaaaaa" );
+	
+		pat.l_NorMoreCset( {'a'}, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreCset failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaaaaaaab" );
+	
+		pat.l_NorMoreCset( {'a'}, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreCset failed(1e)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "aabc" );
+	
+		pat.l_NorMoreCset( {'a'}, 3 );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.l_NorMoreCset failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.l_NorMoreCset( {'a'}, 1 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreCset failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.l_NorMoreCset succeeded!" nl );
+	
+	
+	
+	
+	
+	
+	
+	
+
+	//	procedure ntoMCset( c:char; n:uns32; m:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aaaabc" );
+	
+		pat.ntoMCset( {'a'}, 3,4 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMCset failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.ntoMCset( {'a'}, 3, 4 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMCset failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "aaa" );
+	
+		pat.ntoMCset( {'a'}, 2, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMCset failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.ntoMCset( {'a'}, 3, 4 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMCset failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaab" );
+	
+		pat.ntoMCset( {'a'}, 3, 4 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMCset failed(1e)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "aabc" );
+	
+		pat.ntoMCset( {'a'}, 3, 4 );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.ntoMCset failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.ntoMCset( {'a'}, 1,2 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMCset failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.ntoMCset succeeded!" nl );
+	
+	
+	
+	
+	
+	
+	
+	
+
+	//	procedure l_NtoMCset( c:char; n:uns32; m:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aaaabc" );
+	
+		pat.l_NtoMCset( {'a'}, 3,4 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMCset failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.l_NtoMCset( {'a'}, 3, 4 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMCset failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "aaa" );
+	
+		pat.l_NtoMCset( {'a'}, 2, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMCset failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.l_NtoMCset( {'a'}, 3, 4 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMCset failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaab" );
+	
+		pat.l_NtoMCset( {'a'}, 3, 4 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMCset failed(1e)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "aabc" );
+	
+		pat.l_NtoMCset( {'a'}, 3, 4 );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.l_NtoMCset failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.l_NtoMCset( {'a'}, 1,2 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMCset failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.l_NtoMCset succeeded!" nl );
+	
+
+	
+	
+	
+	
+
+	//	procedure exactlyNtoMCset( c:char; n:uns32; m:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aaaabc" );
+	
+		pat.exactlyNtoMCset( {'a'}, 3,4 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNtoMCset failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.exactlyNtoMCset( {'a'}, 3, 4 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNtoMCset failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "aaa" );
+	
+		pat.exactlyNtoMCset( {'a'}, 2, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNtoMCset failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+
+
+	// Test negative check:
+	
+	pat.match( "aaaaabc" );
+	
+		pat.exactlyNtoMCset( {'a'}, 2, 4 );
+		
+	  	stderr.put( "pat.exactlyNtoMCset failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	pat.match( "aabc" );
+	
+		pat.exactlyNtoMCset( {'a'}, 3, 4 );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.exactlyNtoMCset failed(2b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "aaaaaaaaab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.exactlyNtoMCset( {'a'}, 2,3 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNtoMCset failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.exactlyNtoMCset succeeded!" nl );
+
+
+
+
+
+	//	procedure l_ExactlyNtoMCset( c:char; n:uns32; m:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aaaabc" );
+	
+		pat.l_ExactlyNtoMCset( {'a'}, 3,4 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ExactlyNtoMCset failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.l_ExactlyNtoMCset( {'a'}, 3, 4 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ExactlyNtoMCset failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "aaa" );
+	
+		pat.l_ExactlyNtoMCset( {'a'}, 2, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ExactlyNtoMCset failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+
+
+	// Test negative check:
+	
+	pat.match( "aaaaabc" );
+	
+		pat.l_ExactlyNtoMCset( {'a'}, 2, 4 );
+		
+	  	stderr.put( "pat.l_ExactlyNtoMCset failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	pat.match( "aabc" );
+	
+		pat.l_ExactlyNtoMCset( {'a'}, 3, 4 );
+		pat.oneCset( {'b'} );
+		
+	  	stderr.put( "pat.l_ExactlyNtoMCset failed(2b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "aaaaaaaaab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.l_ExactlyNtoMCset( {'a'}, 2,3 );
+		pat.oneCset( {'b'} );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ExactlyNtoMCset failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.l_ExactlyNtoMCset succeeded!" nl );
+
+	
+	stderr.put( "tCsets test suite succeeded!" nl );
+
+end patCsets_test;
+
+													

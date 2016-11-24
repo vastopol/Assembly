@@ -1,0 +1,639 @@
+program sputu_test; 
+#includeOnce( "stdlib.hhf" )
+#includeOnce( "sockets.hhf" )
+#includeOnce( "sleep.hhf" )
+
+static
+	quit		:dword := 0;
+	hostIPadrs	:dword;
+	s			:vServer_t;
+	timeout		:thunk;
+	calls		:dword := 0;
+	
+	ipAdrsStr	:str.strvar(256);
+	cmdLine		:str.strvar(256);
+	exmsg		:str.strvar(256);
+	
+	i			:int32;
+	
+	
+	procedure connected( parm:dword );
+		@nodisplay;
+		@nostackalign;
+		@noframe;
+	var
+		handle		:dword;
+		bufIndex	:dword;
+		object		:pointer to vServer_t;
+		ipAdrs		:hla.sockaddr;
+		
+		buffer		:char[64];
+		
+	begin connected;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		pushad();
+		pushfd();
+		
+		mov( eax, handle );
+		mov( esi, object );
+		
+		/*****************************************************************/
+		
+	
+		conv.setUnderscores( true );
+		object.putu128Size( 10_000_000_000_000_000_000, 0, '.' );
+		object.newln();
+		
+		
+
+		conv.setUnderscores( true );
+
+		object.putu8( 0 );
+		object.newln();
+		object.putu8( 10 );
+		object.newln();
+		object.putu8( 200 );
+		object.newln();
+		object.putu8( $7f );
+		object.newln();
+		object.putu8( $80 );
+		object.newln();
+		object.putu8( $FF );
+		object.newln();
+		object.newln();
+
+		for( mov( -20, i); i<=20; inc(i)) do
+
+			object.putu8Size( 0, i, '.' );
+			object.newln();
+			object.putu8Size( 1, i, '.' );
+			object.newln();
+			object.putu8Size( 10, i, '.' );
+			object.newln();
+			object.putu8Size( 100, i, '.' );
+			object.newln();
+			object.newln();
+
+		endfor;
+		object.newln();
+
+		object.putu16( 0 );
+		object.newln();
+		object.putu16( $7fff );
+		object.newln();
+		object.putu16( $8000 );
+		object.newln();
+		object.putu16( $FFFF );
+		object.newln();
+		object.newln();
+		
+		for( mov( -20, i); i<=20; inc(i)) do
+
+			object.putu16Size( 0, i, '.' );
+			object.newln();
+			object.putu16Size( 1, i, '.' );
+			object.newln();
+			object.putu16Size( 10, i, '.' );
+			object.newln();
+			object.putu16Size( 100, i, '.' );
+			object.newln();
+			object.putu16Size( 1000, i, '.' );
+			object.newln();
+			object.putu16Size( 10000, i, '.' );
+			object.newln();
+			object.newln();
+
+		endfor;
+		object.newln();
+
+
+		object.putu32( 0 );
+		object.newln();
+		object.putu32( $7fff_ffff );
+		object.newln();
+		object.putu32( $8000_0000 );
+		object.newln();
+		object.putu32( $FFFF_FFFF );
+		object.newln();
+		object.newln();
+		
+		for( mov( -20, i); i<=20; inc(i)) do
+
+			object.putu32Size( 0, i, '.' );
+			object.newln();
+			object.putu32Size( 1, i, '.' );
+			object.newln();
+			object.putu32Size( 10, i, '.' );
+			object.newln();
+			object.putu32Size( 100, i, '.' );
+			object.newln();
+			object.putu32Size( 1_000, i, '.' );
+			object.newln();
+			object.putu32Size( 10_000, i, '.' );
+			object.newln();
+			object.putu32Size( 100_000, i, '.' );
+			object.newln();
+			object.putu32Size( 1_000_000, i, '.' );
+			object.newln();
+			object.putu32Size( 10_000_000, i, '.' );
+			object.newln();
+			object.putu32Size( 100_000_000, i, '.' );
+			object.newln();
+			object.putu32Size( 1_000_000_000, i, '.' );
+			object.newln();
+			object.newln();
+
+		endfor;
+		object.newln();
+
+
+		object.putu64( 0 );
+		object.newln();
+		object.putu64( $7fff_ffff_ffff_ffff );
+		object.newln();
+		object.putu64( $8000_0000_0000_0000 );
+		object.newln();
+		object.putu64( $FFFF_FFFF_FFFF_FFFF );
+		object.newln();
+		object.newln();
+
+		for( mov( -28, i); i<=28; inc(i)) do
+
+			object.putu64Size( 0, i, '.' );
+			object.newln();
+			object.putu64Size( 1, i, '.' );
+			object.newln();
+			object.putu64Size( 10, i, '.' );
+			object.newln();
+			object.putu64Size( 100, i, '.' );
+			object.newln();
+			object.putu64Size( 1_000, i, '.' );
+			object.newln();
+			object.putu64Size( 10_000, i, '.' );
+			object.newln();
+			object.putu64Size( 100_000, i, '.' );
+			object.newln();
+			object.putu64Size( 1_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 10_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 100_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 1_000_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 10_000_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 100_000_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 1_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 10_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 100_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 1_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 10_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 100_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 1_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.newln();
+
+		endfor;
+		object.newln();
+
+		object.putu128( 0 );
+		object.newln();
+		object.putu128( $7fff_ffff_ffff_ffff_ffff_ffff_ffff_ffff );
+		object.newln();
+		object.putu128( $8000_0000_0000_0000_0000_0000_0000_0000 );
+		object.newln();
+		object.putu128( $FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF );
+		object.newln();
+		object.newln();
+
+
+		for( mov( -44, i); i<=44; inc(i)) do
+
+			object.putu128Size( 0, i, '.' );
+			object.newln();
+			object.putu128Size( 1, i, '.' );
+			object.newln();
+			object.putu128Size( 10, i, '.' );
+			object.newln();
+			object.putu128Size( 100, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.newln();
+
+		endfor;
+		object.newln();
+
+
+
+		conv.setUnderscores( false );
+
+		object.putu8( 0 );
+		object.newln();
+		object.putu8( $7f );
+		object.newln();
+		object.putu8( $80 );
+		object.newln();
+		object.putu8( $FF );
+		object.newln();
+		object.newln();
+
+		for( mov( -20, i); i<=20; inc(i)) do
+
+			object.putu8Size( 0, i, '.' );
+			object.newln();
+			object.putu8Size( 1, i, '.' );
+			object.newln();
+			object.putu8Size( 10, i, '.' );
+			object.newln();
+			object.putu8Size( 100, i, '.' );
+			object.newln();
+			object.newln();
+
+		endfor;
+		object.newln();
+
+		object.putu16( 0 );
+		object.newln();
+		object.putu16( $7fff );
+		object.newln();
+		object.putu16( $8000 );
+		object.newln();
+		object.putu16( $FFFF );
+		object.newln();
+		object.newln();
+		
+		for( mov( -20, i); i<=20; inc(i)) do
+
+			object.putu16Size( 0, i, '.' );
+			object.newln();
+			object.putu16Size( 1, i, '.' );
+			object.newln();
+			object.putu16Size( 10, i, '.' );
+			object.newln();
+			object.putu16Size( 100, i, '.' );
+			object.newln();
+			object.putu16Size( 1000, i, '.' );
+			object.newln();
+			object.putu16Size( 10000, i, '.' );
+			object.newln();
+			object.newln();
+
+		endfor;
+		object.newln();
+
+
+		object.putu32( 0 );
+		object.newln();
+		object.putu32( $7fff_ffff );
+		object.newln();
+		object.putu32( $8000_0000 );
+		object.newln();
+		object.putu32( $FFFF_FFFF );
+		object.newln();
+		object.newln();
+
+		
+		for( mov( -20, i); i<=20; inc(i)) do
+
+			object.putu32Size( 0, i, '.' );
+			object.newln();
+			object.putu32Size( 1, i, '.' );
+			object.newln();
+			object.putu32Size( 10, i, '.' );
+			object.newln();
+			object.putu32Size( 100, i, '.' );
+			object.newln();
+			object.putu32Size( 1_000, i, '.' );
+			object.newln();
+			object.putu32Size( 10_000, i, '.' );
+			object.newln();
+			object.putu32Size( 100_000, i, '.' );
+			object.newln();
+			object.putu32Size( 1_000_000, i, '.' );
+			object.newln();
+			object.putu32Size( 10_000_000, i, '.' );
+			object.newln();
+			object.putu32Size( 100_000_000, i, '.' );
+			object.newln();
+			object.putu32Size( 1_000_000_000, i, '.' );
+			object.newln();
+			object.newln();
+
+		endfor;
+		object.newln();
+
+
+		object.putu64( 0 );
+		object.newln();
+		object.putu64( $7fff_ffff_ffff_ffff );
+		object.newln();
+		object.putu64( $8000_0000_0000_0000 );
+		object.newln();
+		object.putu64( $FFFF_FFFF_FFFF_FFFF );
+		object.newln();
+		object.newln();
+
+		for( mov( -24, i); i<=24; inc(i)) do
+
+			object.putu64Size( 0, i, '.' );
+			object.newln();
+			object.putu64Size( 1, i, '.' );
+			object.newln();
+			object.putu64Size( 10, i, '.' );
+			object.newln();
+			object.putu64Size( 100, i, '.' );
+			object.newln();
+			object.putu64Size( 1_000, i, '.' );
+			object.newln();
+			object.putu64Size( 10_000, i, '.' );
+			object.newln();
+			object.putu64Size( 100_000, i, '.' );
+			object.newln();
+			object.putu64Size( 1_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 10_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 100_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 1_000_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 10_000_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 100_000_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 1_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 10_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 100_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 1_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 10_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 100_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu64Size( 1_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.newln();
+
+		endfor;
+		object.newln();
+
+		object.putu128( 0 );
+		object.newln();
+		object.putu128( $7fff_ffff_ffff_ffff_ffff_ffff_ffff_ffff );
+		object.newln();
+		object.putu128( $8000_0000_0000_0000_0000_0000_0000_0000 );
+		object.newln();
+		object.putu128( $FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF );
+		object.newln();
+
+		for( mov( -44, i); i<=44; inc(i)) do
+
+			object.putu128Size( 0, i, '.' );
+			object.newln();
+			object.putu128Size( 1, i, '.' );
+			object.newln();
+			object.putu128Size( 10, i, '.' );
+			object.newln();
+			object.putu128Size( 100, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 1_000_000_000_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 10_000_000_000_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.putu128Size( 100_000_000_000_000_000_000_000_000_000_000_000_000, i, '.' );
+			object.newln();
+			object.newln();
+
+		endfor;
+		object.newln();
+
+				
+		/*****************************************************************/
+		
+		object.close();
+		mov( 1, quit );
+		popfd();
+		popad();
+		leave();
+		ret( _parms_ );
+		
+	end connected;
+	
+begin sputu_test; 
+
+	thunk timeout :=
+		#{
+			// On entry to thunk, EAX contains the address of the timeout
+			// variable. Set this as desired for the timeout (1 second,
+			// in this case).
+			
+			mov( 1, (type hla.timeval [eax]).tv_sec );
+			stderr.put( "server", nl );
+			
+			// On the second call to this thunk, start the client application:
+			
+			cmp( calls, 1 );
+			jne dontRunApp;
+			
+				str.put
+				(
+					cmdLine,
+					"wclient.exe socket_putu.txt ",
+					ipAdrsStr,
+					" 988e"
+				);
+				stdout.put( "cmd=", cmdLine, "'" nl );
+				os.bkgnd( cmdLine );
+			
+			dontRunApp:
+			inc( calls );
+			mov( quit, eax );
+				
+		}#;
+	
+	try
+	
+		s.create();
+		
+		sock.hostAdrs(); 
+		mov( eax, hostIPadrs );
+		sock.ipToStr( eax, ipAdrsStr );
+		
+		s.start
+		( 
+			hostIPadrs, 
+			$988e, 
+			timeout,
+			&connected,
+			0
+		);
+		
+	  anyexception
+	  
+	  	ex.exceptionMsg( eax, exmsg );
+	  	stdout.put( "Server Exception: ", exmsg, nl );
+		fileio.close( s.handle );
+		s.destroy();
+		
+	endtry;
+	while( !filesys.exists( "wclient.done" )) do
+	
+		os.sleep( 1 );
+		
+	endwhile;
+	os.sleep( 1 );
+	filesys.delete( "wclient.done" );
+	 
+end sputu_test; 

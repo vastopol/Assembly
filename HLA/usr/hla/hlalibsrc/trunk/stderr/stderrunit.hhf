@@ -1,0 +1,299 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+#if( ! @defined( stderrUnit_hhf ))
+?stderrUnit_hhf := true;
+?@nodisplay := true;
+?@nostackalign := true;
+
+	#include( "hla.hhf" )
+	#include( "stdio.hhf" )
+	#include( "stderr.hhf" )
+	#include( "fileio.hhf" )
+	#include( "strings.hhf" )
+	#include( "conv.hhf" )
+	#include( "memory.hhf" )
+	#include( "excepts.hhf" )
+	#include( "os.hhf" )
+
+	#if( os.linux )
+
+		#macro ChkStdErr;
+		
+			// Expand to nothing for Linux
+			// because we always know the stderr handle.
+			
+		#endmacro
+			
+
+	
+	#elseif( os.win32 )
+		
+		#macro ChkStdErr;
+			
+			if( HasStdErrHandle = false ) then
+			
+				pushad();
+				pushfd();
+				cld();
+				GetStdHandle( -12 );
+				mov( eax, StdErrHandle );
+				popfd();
+				popad();
+				
+			endif;
+			
+		#endmacro;
+		
+	#endif
+
+
+	static
+
+		align(4);
+		StdErrHandle: dword;		@external( "STDERRUNIT_STDERRHANDLE" );
+		HasStdErrHandle: boolean;	@external( "STDERRUNIT_HASSTDERRHANDLE" );
+
+		#if( os.win32 )
+			
+			/*
+			** Links to the Win32 API:
+			*/
+
+			WriteFile:procedure
+			(
+					overlapped:		dword;
+				var	bytesWritten:	dword;
+					len:			dword;
+				var buffer:			byte;
+					Handle:			dword
+			); 
+				@external( "__imp__WriteFile@20" );
+
+
+			GetStdHandle:procedure
+			( 
+				WhichHandle:int32 
+			); 
+				@external( "__imp__GetStdHandle@4" );
+
+
+		#endif
+
+
+
+	procedure GetStdErrHandle; returns( "eax" );  
+		@external( "STDERR_GETSTDERRHANDLE" );
+
+
+	procedure putc( c:char );	 							
+		@external( "STDERR_PUTC" );
+
+	procedure putcSize( c:char; width:int32; fill:char );	
+		@external( "STDERR_PUTCSIZE" );
+
+	procedure puts( s:string  ); 
+		@external( "STDERR_PUTS" );
+
+	procedure putsSize( s:string; width:int32; fill:char ); 
+		@external( "STDERR_PUTSSIZE" );
+
+	procedure newln; 
+		@external( "STDERR_NEWLN" );
+
+	procedure putb( h:byte    );		
+		@external( "STDERR_PUTB" );
+
+	procedure putw( w:word 	  ); 		
+		@external( "STDERR_PUTW" );
+
+	procedure putd( dw:dword ); 		
+		@external( "STDERR_PUTD" );
+
+	procedure putq( qw:qword ); 		
+		@external( "STDERR_PUTQ" );
+
+	procedure puttb( tb:tbyte ); 		
+		@external( "STDERR_PUTTB" );
+
+	procedure putl( l:lword ); 		
+		@external( "STDERR_PUTL" );
+
+	procedure putbSize( b:byte; size:dword; fill:char );		
+		@external( "STDERR_PUTBSIZE" );
+
+	procedure putwSize( w:word; size:dword; fill:char ); 		
+		@external( "STDERR_PUTWSIZE" );
+
+	procedure putdSize( dw:dword; size:dword; fill:char ); 		
+		@external( "STDERR_PUTDSIZE" );
+
+	procedure putqSize( qw:qword; size:dword; fill:char ); 		
+		@external( "STDERR_PUTQSIZE" );
+
+	procedure putlSize( l:lword; size:dword; fill:char ); 		
+		@external( "STDERR_PUTLSIZE" );
+
+
+
+	procedure puti8Size ( b:byte;  width:int32;	fill:char ); 
+		@external( "STDERR_PUTI8SIZE" );
+
+	procedure puti16Size( w:word;  width:int32;	fill:char ); 
+		@external( "STDERR_PUTI16SIZE" );
+
+	procedure puti32Size( d:dword; width:int32;	fill:char ); 
+		@external( "STDERR_PUTI32SIZE" );
+
+	procedure puti64Size( q:qword; width:int32; fill:char ); 
+		@external( "STDERR_PUTI64SIZE" );
+
+	procedure puti128Size( l:lword; width:int32; fill:char ); 
+		@external( "STDERR_PUTI128SIZE" );
+
+	procedure puti8 ( b:byte  ); 		
+		@external( "STDERR_PUTI8" );
+
+	procedure puti16( w:word  ); 		
+		@external( "STDERR_PUTI16" );
+
+	procedure puti32( d:dword ); 		
+		@external( "STDERR_PUTI32" );
+
+	procedure puti64( q:qword ); 		
+		@external( "STDERR_PUTI64" );
+
+	procedure puti128( l:lword ); 		
+		@external( "STDERR_PUTI128" );
+
+
+
+	procedure putu8Size ( b:byte;  width:int32;	fill:char ); 
+		@external( "STDERR_PUTU8SIZE" );
+
+	procedure putu16Size( w:word;  width:int32;	fill:char ); 
+		@external( "STDERR_PUTU16SIZE" );
+
+	procedure putu32Size( d:dword; width:int32;	fill:char ); 
+		@external( "STDERR_PUTU32SIZE" );
+
+	procedure putu64Size( q:qword; width:int32;	fill:char ); 
+		@external( "STDERR_PUTU64SIZE" );
+
+	procedure putu128Size( l:lword; width:int32;	fill:char ); 
+		@external( "STDERR_PUTU128SIZE" );
+
+
+
+	procedure putu8 ( b:byte  ); 
+		@external( "STDERR_PUTU8" );
+
+	procedure putu16( w:word  ); 
+		@external( "STDERR_PUTU16" );
+
+	procedure putu32( d:dword ); 
+		@external( "STDERR_PUTU32" );
+
+	procedure putu64( q:qword ); 
+		@external( "STDERR_PUTU64" );
+
+	procedure putu128( l:lword ); 
+		@external( "STDERR_PUTU128" );
+
+
+
+	procedure putr80pad
+	( 
+		r:real80; 
+		width:uns32; 
+		decpts:uns32; 
+		pad:char 
+	); 
+		@external( "STDERR_PUTR80PAD" );
+
+
+	procedure pute80pad
+	( 
+		r:real80; 
+		width:uns32; 
+		pad:char 
+	); 
+		@external( "STDERR_PUTE80PAD" );
+
+
+	procedure putr64pad
+	( 
+		r:real64; 
+		width:uns32; 
+		decpts:uns32; 
+		pad:char 
+	); 
+		@external( "STDERR_PUTR64PAD" );
+
+
+	procedure putr32pad
+	( 
+		r:real32; 
+		width:uns32; 
+		decpts:uns32; 
+		pad:char 
+	); 
+		@external( "STDERR_PUTR32PAD" );
+
+	procedure pute64pad
+	( 
+		r:real64; 
+		width:uns32; 
+		pad:char 
+	); 
+		@external( "STDERR_PUTE64PAD" );
+
+
+	procedure pute32pad
+	( 
+		r:real32; 
+		width:uns32; 
+		pad:char 
+	); 
+		@external( "STDERR_PUTE32PAD" );
+
+
+
+	procedure putr80( r:real80; width:uns32; decpts:uns32 ); 
+		@external( "STDERR_PUTR80" );
+
+	procedure putr64( r:real64; width:uns32; decpts:uns32 ); 
+		@external( "STDERR_PUTR64" );
+
+	procedure putr32( r:real32; width:uns32; decpts:uns32 ); 
+		@external( "STDERR_PUTR32" );
+
+
+	procedure pute80( r:real80; width:uns32 ); 
+		@external( "STDERR_PUTE80" );
+
+	procedure pute64( r:real64; width:uns32 ); 
+		@external( "STDERR_PUTE64" );
+
+	procedure pute32( r:real32; width:uns32 ); 
+		@external( "STDERR_PUTE32" );
+
+	procedure putbool( b:boolean ); 	
+		@external( "STDERR_PUTBOOL" );
+
+	procedure putcset( cs:cset   ); 	
+		@external( "STDERR_PUTCSET_" );
+
+
+#endif

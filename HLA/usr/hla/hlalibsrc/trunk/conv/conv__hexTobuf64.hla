@@ -1,0 +1,280 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 8/17/2006, by Randall Hyde
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "stdlibdata.hhf" )
+#includeOnce( "excepts.hhf" )
+
+/****************************************************************************/
+/*                                                                          */
+/* _hexToBuf64-                                                             */
+/*                                                                          */
+/* On entry:                                                                */
+/* 	q contains a numeric value to convert to a hexadecimal string.          */
+/*  width contains the number of digits to print (from L.O.->H.O.) but does */
+/*    not include a count for the underscore if one is to be inserted.      */
+/* 	                                                                        */
+/* 	EDI points at  a memory buffer large enough to hold a                   */
+/* 	64-bit hexadecimal value (at least 16 if OutputUnderscores is false,    */
+/*  at least 19 bytes if OutputUnderscores is true).                        */
+/*                                                                          */
+/* On exit:                                                                 */
+/* 	The buffer will contain a string that is the                            */
+/* 	hexadecimal representation of the value and EDI will point at the       */
+/* 	start of the string. If outputUnderscores is true this routine will     */
+/* 	emit an underscore between groups of four hexadecimal digits.           */
+/*                                                                          */
+/****************************************************************************/
+
+
+procedure conv._hexToBuf64
+( 
+		q		:qword;
+		width	:dword; 
+	var buffer	:char in edi 
+);
+	@noframe; 
+	@nodisplay; 
+	@noalignstack;
+
+var
+	esiSave	:dword;				// These are organized so that the MOV
+	edxSave	:dword;				//  instructions below access these
+	ecxSave	:dword;				//  variables from lowest address to
+	ebxSave	:dword;				//  highest address (better for cache).
+	eaxSave	:dword;
+
+readonly
+	htb64noUS	:dword[17] :=
+				[
+					&badWidth,
+					&noUS1,
+					&noUS2,
+					&noUS3,
+					&noUS4,
+					&noUS5,
+					&noUS6,
+					&noUS7,
+					&noUS8,
+					&noUS9,
+					&noUS10,
+					&noUS11,
+					&noUS12,
+					&noUS13,
+					&noUS14,
+					&noUS15,
+					&noUS16
+				];
+
+	htb64hasUS	:dword[20] :=
+				[
+					&badWidth,
+					&hasUS1,
+					&hasUS2,
+					&hasUS3,
+					&hasUS4,
+					&badWidth,
+					&hasUS6,
+					&hasUS7,
+					&hasUS8,
+					&hasUS9,
+					&badWidth,
+					&hasUS11,
+					&hasUS12,
+					&hasUS13,
+					&hasUS14,
+					&badWidth,
+					&hasUS16,
+					&hasUS17,
+					&hasUS18,
+					&hasUS19
+				];
+
+
+
+	#macro emitXDigit( src, digit, posn );
+		
+		mov( src, ebx );
+		shr( digit*4, ebx );
+		and( $f, ebx );						// Strip out unwanted bits.
+		mov( stdlib.hexDigits[ebx], dl );	// Convert digit to hex char.
+		mov( dl, [edi-posn] );
+		 
+	#endmacro
+
+
+begin _hexToBuf64;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( eax, eaxSave );			// Intel recommends MOVs rather
+	mov( ebx, ebxSave );			// than pushes and pops.
+	mov( ecx, ecxSave );
+	mov( edx, edxSave );
+	mov( esi, esiSave );
+	
+	mov( width, ecx );
+	mov( (type dword q), eax );		// ESI:EAX is the number to convert
+	mov( (type dword q[4]), esi );
+
+	// Handle output with underscores later in this file:
+	
+	_hla.test_OutputUnderscores();
+	jne DoUnderscores;
+
+	// Drop down here if we're not outputting underscores inbetween groups of
+	// four digits in the number.
+	//
+	// Max width is 16 character positions:
+
+	cmp( ecx, 16 );
+	ja badWidth;
+
+	// Jump to one of the following labels based on the
+	// output size of the number:
+
+	jmp( htb64noUS[ ecx*4 ] );
+
+	noUS16:
+		emitXDigit(esi,7,15);
+	noUS15:
+		emitXDigit(esi,6,14);
+	noUS14:
+		emitXDigit(esi,5,13);
+	noUS13:
+		emitXDigit(esi,4,12);
+	noUS12:
+		emitXDigit(esi,3,11);
+	noUS11:
+		emitXDigit(esi,2,10);
+	noUS10:
+		emitXDigit(esi,1,9);
+	
+	noUS9:
+		and( $f, esi );						// Strip out unwanted bits.
+		mov( stdlib.hexDigits[esi], dl );	// Convert digit to hex char.
+		mov( dl, [edi-8] );
+	
+	noUS8:
+		emitXDigit(eax,7,7);
+	noUS7:
+		emitXDigit(eax,6,6);
+	noUS6:
+		emitXDigit(eax,5,5);
+	noUS5:
+		emitXDigit(eax,4,4);
+	noUS4:
+		emitXDigit(eax,3,3);
+	noUS3:
+		emitXDigit(eax,2,2);
+	noUS2:
+		emitXDigit(eax,1,1);
+	noUS1:
+		and( $f, eax );						// Strip out unwanted bits.
+		mov( stdlib.hexDigits[eax], dl );	// Convert digit to hex char.
+		mov( dl, [edi] );
+
+		sub( ecx, edi );					// Point edi at start of buffer + 1
+	jmp htbDone;
+	
+		
+		
+// Version of the above code that emits underscores between
+// every four digits.  Yep, repeated code (ugly), but done
+// because the underscore processing is slower.
+		
+DoUnderscores:
+
+	// Drop down here if we're not outputting underscores inbetween groups of
+	// four digits in the number.
+	//
+	// Max width is 16 character positions:
+
+	cmp( ecx, 19 );
+	ja badWidth;
+
+	// Jump to one of the following labels based on the
+	// output size of the number:
+
+	jmp( htb64hasUS[ ecx*4 ] );
+
+
+	hasUS19:
+		emitXDigit(esi,7,18);
+	hasUS18:
+		emitXDigit(esi,6,17);
+	hasUS17:
+		emitXDigit(esi,5,16);
+	hasUS16:
+		emitXDigit(esi,4,15);
+
+		mov( '_', (type char [edi-14]));
+
+	hasUS14:
+		emitXDigit(esi,3,13);
+	hasUS13:
+		emitXDigit(esi,2,12);
+	hasUS12:
+		emitXDigit(esi,1,11);
+	hasUS11:
+		and( $f, esi );						// Strip out unwanted bits.
+		mov( stdlib.hexDigits[esi], dl );	// Convert digit to hex char.
+		mov( dl, [edi-10] );
+		
+		mov( '_', (type char [edi-9]));
+
+
+	hasUS9:
+		emitXDigit(eax,7,8);
+	hasUS8:
+		emitXDigit(eax,6,7);
+	hasUS7:
+		emitXDigit(eax,5,6);
+	hasUS6:
+		emitXDigit(eax,4,5);
+		
+		mov( '_', (type char [edi-4]));
+
+	hasUS4:
+		emitXDigit(eax,3,3);
+	hasUS3:
+		emitXDigit(eax,2,2);
+	hasUS2:
+		emitXDigit(eax,1,1);
+	hasUS1:
+		and( $f, eax );						// Strip out unwanted bits.
+		mov( stdlib.hexDigits[eax], dl );	// Convert digit to hex char.
+		mov( dl, [edi] );
+
+		sub( ecx, edi );					// Point edi at start of buffer + 1
+	
+htbDone:
+	add( 1, edi );			// Point back at first char in buffer.
+	mov( eaxSave, eax );
+	mov( ebxSave, ebx );
+	mov( ecxSave, ecx );
+	mov( edxSave, edx );
+	mov( esiSave, esi );
+	leave();
+	ret( _parms_ );
+
+badWidth:
+	raise( ex.WidthTooBig );
+
+end _hexToBuf64;
+
+end ConvUnit;

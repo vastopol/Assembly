@@ -1,0 +1,50 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit linuxUnit;
+#include( "linux.hhf" )
+
+procedure _pthread_setspecific( key:dword; value_ptr:dword );
+	@cdecl;
+	@external( "pthread_setspecific" );
+	
+	
+
+// linux.pthread_setspecific- Sets a pointer to a thread local storage object.
+
+procedure linux.pthread_setspecific
+( 
+	key			:linux.pthread_key_t;
+	value_ptr	:dword 
+);
+	@nodisplay; 
+	@noframe;
+	
+begin pthread_setspecific;
+
+	push( ebp );
+	mov( esp, ebp );
+	linux.pushregs;
+
+	_pthread_setspecific( key, value_ptr );
+	add( 8, esp );
+
+	linux.popregs;
+	leave();
+	ret( _parms_ );
+	
+end pthread_setspecific;
+
+
+end linuxUnit;

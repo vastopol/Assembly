@@ -1,0 +1,603 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+#include( "excepts.hhf" )
+#include( "../include/fileiounit.hhf" )
+#include( "os.hhf" )
+#include( "stdlib.hhf" )
+
+/****************************************************************/
+/*                                                              */
+/* filesIn-                                                     */
+/*                                                              */
+/* Returns all the files in the specified directory.            */
+/*                                                              */
+/****************************************************************/
+
+
+
+
+#if( os.win32 )
+
+	iterator filesys.fileIn( directory:string ); @nodisplay; @noframe;
+	var
+		eaxSave		:dword;
+		ecxSave		:dword;
+		edxSave		:dword;
+		handle		:dword;
+		pathName	:string;
+		FileData	:win.Win32FindData;
+		
+	begin fileIn;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( edx, edxSave );
+		mov( ecx, ecxSave );
+		mov( eax, eaxSave );
+		
+		str.talloc( 1024 );
+		mov( eax, pathName );
+		
+		// Quick check to make sure we don't overflow pathName:
+		
+		mov( directory, eax );
+		mov( (type str.strRec [eax]).length, ecx );
+		cmp( ecx, 1000 );
+		jae StringOverflow;
+		
+		// Okay, tack on a "\*" to the path supplied (no '\' if
+		// there is already one present):
+		
+		str.cpy( directory, pathName );
+		mov( pathName, eax );
+		test( ecx, ecx );
+		jz needSeparator;
+			mov( [eax+ecx-1], dl );
+			cmp( dl, '/' );
+			je haveSeparator;
+			cmp( dl, '\' );
+			je haveSeparator;
+
+
+		needSeparator:
+		
+				// Add "\*" suffix to pathname:
+				
+				mov( hla.asWord( "\*" ), (type word [eax+ecx]) );
+				mov( 0, (type byte [eax+ecx+2]));
+				add( 2, (type str.strRec [eax]).length );
+				jmp havePath;
+			
+		haveSeparator:
+		
+			// directory already has a "/" or "\" suffix,
+			// so just add "*":
+			
+			mov( hla.asWord( "*" ), (type word [eax+ecx]));
+			add( 1, (type str.strRec [eax]).length );
+			
+		havePath:
+			
+		 
+		// Find the first matching file (if one exists).
+		// Save the handle for use by FindNextFile.
+
+		win.FindFirstFile( pathName, FileData );
+		mov( eax, handle );
+		
+		// If we matched at least one filename, return
+		// the corresponding string and call the
+		// FindNextFile routine to match any additional
+		// filenames.
+		
+		cmp( eax, win.INVALID_HANDLE_VALUE );
+		je allDone;
+		
+				repeatUntilNoMore:
+				
+					mov( FileData.FileAttributes, eax );
+					and
+					(
+						win.FILE_ATTRIBUTE_HIDDEN | 
+							win.FILE_ATTRIBUTE_SYSTEM | 
+								win.FILE_ATTRIBUTE_DIRECTORY,
+						eax
+					);
+					jnz notAFile;
+					
+						
+						// FindFirstFile & FindNextFile return
+						// zero-terminated strings.  Convert these
+						// to HLA compatible strings and return
+						// the converted string:
+						
+						lea( eax, FileData.FileName );
+						str.a_cpyz( eax );
+
+						// Return the converted string to the FOREACH
+						// loop and then free the storage associated
+						// with the string.
+						
+						mov( ecxSave, ecx );
+						mov( edxSave, edx );
+						yield();		// Return string to FOREACH loop.
+						mov( edx, edxSave );
+						mov( ecx, ecxSave );
+					
+					notAFile:
+				
+					// Get the next filename in the list:
+					
+					win.FindNextFile( handle, FileData );
+					cmp( eax, false );
+					jne repeatUntilNoMore;
+
+			
+			
+			// When we've processed all the filenames in the list,
+			// call FindClose to free the handle and other resources.
+			
+			win.FindClose( handle );
+			
+		allDone:
+		mov( edxSave, edx );
+		mov( ecxSave, ecx );
+		mov( eaxSave, eax );
+		leave();
+		add( 4, esp );		// Remove iterator body address.
+		ret( _parms_ );
+
+	StringOverflow:
+		raise( ex.StringOverflow );
+		
+	end fileIn;
+	
+#elseif( os.linux )
+
+	iterator filesys.fileIn( directory:string ); @nodisplay; @noframe;
+	var
+		handle		:dword;
+		filename	:string;
+		filename2	:string;
+		dirStr		:string;
+		eaxSave		:dword;
+		ebxSave		:dword;
+		ecxSave		:dword;
+		edxSave		:dword;
+		ediSave		:dword;
+		esiSave		:dword;
+		s			:linux.stat64_t;
+		dBuf		:byte[4096];
+		dirBuf		:byte[1040];
+		fnameBuf	:byte[1024];
+		
+	readonly
+		curDir	:string := ".";
+			
+	begin fileIn;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( esi, esiSave );
+		mov( edi, ediSave );
+		mov( edx, edxSave );
+		mov( ecx, ecxSave );
+		mov( ebx, ebxSave );
+		mov( eax, eaxSave );
+		pushfd();
+		
+		str.init( dirBuf, 1024 );	// Must be at least 1 less than true length.
+		mov( eax, dirStr );
+		str.init( fnameBuf, 1024 );
+		mov( eax, filename );
+		
+		mov( directory, eax );
+		test( eax, eax );
+		jz emptyString;
+		cmp( (type str.strRec [eax]).length, 0 );
+		jne notEmptyString;
+		
+		emptyString:
+			mov( curDir, eax );
+			mov( eax, directory );
+			
+		notEmptyString:
+		
+		mov( dirStr, eax );
+		str.cpy( directory, eax );
+		mov( (type str.strRec [eax]).length, ecx );
+		cmp( (type byte [eax+ecx-1]), '/' );
+		je haveSlash;
+		
+			mov( '/', (type char [eax+ecx]));
+			mov( 0, (type char [eax+ecx+1]));
+			inc( (type str.strRec [eax]).length );
+			
+		haveSlash:		
+
+		linux.open( directory, linux.o_rdonly, linux.s_irwxu );
+		mov( eax, handle );
+		cmp( eax, 0 );
+		jle openFailed;
+
+			forAllEntries:
+
+				linux.getdents
+				( 
+					handle, 
+					(type linux.dirent64 dBuf), 
+					@size(dBuf) 
+				);
+				cmp( eax, 0 );
+				jle noEntries;
+				mov( eax, ecx );
+				lea( ebx, dBuf );
+				repeatUntilDirEntEmpty:
+
+					str.cpy( dirStr, filename );
+					lea( eax, (type linux.dirent64 [ebx]).d_name );
+					str.catz( eax, filename ); 
+					mov( filename, eax );
+					
+					lea( edx, s );
+					linux.stat( eax, [edx] );
+					mov( s.st_mode, eax );
+					and( linux.s_ifreg, eax );
+					jz notAFile;
+					
+						lea( eax, (type linux.dirent64 [ebx]).d_name );
+						str.a_cpyz( eax );
+						mov( eax, filename2 );
+						push( ecx );
+						push( ebx );
+						mov( esiSave, esi );
+						mov( ediSave, edi );
+						mov( edxSave, edx );
+						mov( ecxSave, ecx );
+						mov( ebxSave, ebx );
+						mov( filename2, eax );
+						yield();
+						mov( esi, esiSave );
+						mov( edi, ediSave );
+						mov( edx, edxSave );
+						mov( ecx, ecxSave );
+						mov( ebx, ebxSave );
+						pop( ebx );
+						pop( ecx );
+						 
+					notAFile:
+					movzx( (type linux.dirent64 [ebx]).d_reclen, edx );
+					sub( edx, ecx );
+					add( edx, ebx );
+					cmp( ecx, 0 );
+					jg repeatUntilDirEntEmpty;
+
+
+			jmp forAllEntries;
+
+		noEntries:
+			linux.close(handle);
+			
+		openFailed:
+		mov( esiSave, esi );
+		mov( ediSave, edi );
+		mov( edxSave, edx );
+		mov( ecxSave, ecx );
+		mov( ebxSave, ebx );
+		mov( eaxSave, eax );
+		popfd();
+		leave();
+		add( 4, esp );		// Remove ptr to iterator body.
+		ret( _parms_ );
+
+	end fileIn;
+
+#elseif( os.freeBSD )
+
+	iterator filesys.fileIn( directory:string ); @nodisplay; @noframe;
+	var
+		handle		:dword;
+		filename	:string;
+		dirStr		:string;
+		eaxSave		:dword;
+		ebxSave		:dword;
+		ecxSave		:dword;
+		edxSave		:dword;
+		ediSave		:dword;
+		esiSave		:dword;
+		s			:bsd.stat_t;
+		dBuf		:byte[4096];
+		dirBuf		:byte[1024];
+		fnameBuf	:byte[1024];
+		
+	readonly
+		curDir	:string := ".";
+			
+	begin fileIn;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( esi, esiSave );
+		mov( edi, ediSave );
+		mov( edx, edxSave );
+		mov( ecx, ecxSave );
+		mov( ebx, ebxSave );
+		mov( eax, eaxSave );
+		pushfd();
+		
+		str.init( dirBuf, 1016 );	// Must be at least 1 less than true length.
+		mov( eax, dirStr );
+		str.init( fnameBuf, 1024 );
+		mov( eax, filename );
+		
+		mov( directory, eax );
+		test( eax, eax );
+		jz emptyString;
+		cmp( (type str.strRec [eax]).length, 0 );
+		jne notEmptyString;
+		
+		emptyString:
+			mov( curDir, eax );
+			mov( eax, directory );
+			
+		notEmptyString:
+		
+		mov( dirStr, eax );
+		str.cpy( directory, eax );
+		mov( (type str.strRec [eax]).length, ecx );
+		cmp( (type byte [eax+ecx-1]), '/' );
+		je haveSlash;
+		
+			mov( '/', (type char [eax+ecx]));
+			mov( 0, (type char [eax+ecx+1]));
+			inc( (type str.strRec [eax]).length );
+			
+		haveSlash:		
+
+		bsd.open( directory, bsd.O_RDONLY, bsd.S_IRWXU );
+		jc openFailed;
+		
+			mov( eax, handle );
+			forAllEntries:
+
+				bsd.getdents
+				( 
+					handle, 
+					(type bsd.dirent dBuf), 
+					@size(dBuf) 
+				);
+				jc noEntries;
+				cmp( eax, 0 );
+				jle noEntries;
+				mov( eax, ecx );
+				lea( ebx, dBuf );
+				repeatUntilDirEntEmpty:
+
+					str.cpy( dirStr, filename );
+					lea( eax, (type bsd.dirent [ebx]).d_name );
+					str.catz( eax, filename ); 
+					mov( filename, eax );
+					
+					lea( edx, s );
+					bsd.stat( eax, [edx] );
+					jc noEntries;
+					movzx( s.st_mode, eax );
+					and( bsd.S_IFREG, eax );
+					jz notAFile;
+					
+						lea( eax, (type bsd.dirent [ebx]).d_name );
+						str.a_cpyz( eax );
+						mov( eax, filename );
+						push( ecx );
+						push( ebx );
+						mov( esiSave, esi );
+						mov( ediSave, edi );
+						mov( edxSave, edx );
+						mov( ecxSave, ecx );
+						mov( ebxSave, ebx );
+						mov( filename, eax );
+						yield();
+						mov( esi, esiSave );
+						mov( edi, ediSave );
+						mov( edx, edxSave );
+						mov( ecx, ecxSave );
+						mov( ebx, ebxSave );
+						pop( ebx );
+						pop( ecx );
+						 
+					notAFile:
+					movzx( (type bsd.dirent [ebx]).d_reclen, edx );
+					sub( edx, ecx );
+					add( edx, ebx );
+					cmp( ecx, 0 );
+					jg repeatUntilDirEntEmpty;
+
+
+			jmp forAllEntries;
+
+		  noEntries:
+		    bsd.close(handle);
+		    
+		openFailed:
+		mov( esiSave, esi );
+		mov( ediSave, edi );
+		mov( edxSave, edx );
+		mov( ecxSave, ecx );
+		mov( ebxSave, ebx );
+		mov( eaxSave, eax );
+		popfd();
+		leave();
+		add( 4, esp );		// Remove ptr to iterator body.
+		ret( _parms_ );
+
+	end fileIn;
+
+#elseif( os.macOS )
+
+	iterator filesys.fileIn( directory:string ); @nodisplay; @noframe;
+	var
+		handle		:dword;
+		filename	:string;
+		dirStr		:string;
+		eaxSave		:dword;
+		ebxSave		:dword;
+		ecxSave		:dword;
+		edxSave		:dword;
+		ediSave		:dword;
+		esiSave		:dword;
+		s			:mac.stat_t;
+		dBuf		:byte[4096];
+		dirBuf		:byte[1024];
+		fnameBuf	:byte[1024];
+		
+		
+	readonly
+		curDir	:string := ".";
+			
+	begin fileIn;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( esi, esiSave );
+		mov( edi, ediSave );
+		mov( edx, edxSave );
+		mov( ecx, ecxSave );
+		mov( ebx, ebxSave );
+		mov( eax, eaxSave );
+		pushfd();
+		
+		str.init( dirBuf, 1016 );	// Must be at least 1 less than true length.
+		mov( eax, dirStr );
+		str.init( fnameBuf, 1024 );
+		mov( eax, filename );
+		
+		mov( directory, eax );
+		test( eax, eax );
+		jz emptyString;
+		cmp( (type str.strRec [eax]).length, 0 );
+		jne notEmptyString;
+		
+		emptyString:
+			mov( curDir, eax );
+			mov( eax, directory );
+			
+		notEmptyString:
+		
+		mov( dirStr, eax );
+		str.cpy( directory, eax );
+		mov( (type str.strRec [eax]).length, ecx );
+		cmp( (type byte [eax+ecx-1]), '/' );
+		je haveSlash;
+		
+			mov( '/', (type char [eax+ecx]));
+			mov( 0, (type char [eax+ecx+1]));
+			inc( (type str.strRec [eax]).length );
+			
+		haveSlash:		
+
+		mac.open( directory, mac.O_RDONLY, mac.S_IRWXU );
+		jc openFailed;
+		
+			mov( eax, handle );
+			forAllEntries:
+
+				mac.getdents
+				( 
+					handle, 
+					(type mac.dirent dBuf), 
+					@size(dBuf) 
+				);
+				jc noEntries;
+				cmp( eax, 0 );
+				jle noEntries;
+				mov( eax, ecx );
+				lea( ebx, dBuf );
+				repeatUntilDirEntEmpty:
+
+					str.cpy( dirStr, filename );
+					lea( eax, (type mac.dirent [ebx]).d_name );
+					str.catz( eax, filename ); 
+					mov( filename, eax );
+					
+					lea( edx, s );
+					mac.stat( eax, [edx] );
+					jc noEntries;
+					movzx( s.st_mode, eax );
+					and( mac.S_IFREG, eax );
+					jz notAFile;
+					
+						lea( eax, (type mac.dirent [ebx]).d_name );
+						str.a_cpyz( eax );
+						push( ecx );
+						push( ebx );
+						mov( esiSave, esi );
+						mov( ediSave, edi );
+						mov( edxSave, edx );
+						mov( ecxSave, ecx );
+						mov( ebxSave, ebx );
+						yield();
+						mov( esi, esiSave );
+						mov( edi, ediSave );
+						mov( edx, edxSave );
+						mov( ecx, ecxSave );
+						mov( ebx, ebxSave );
+						pop( ebx );
+						pop( ecx );
+						 
+					notAFile:
+					movzx( (type mac.dirent [ebx]).d_reclen, edx );
+					sub( edx, ecx );
+					add( edx, ebx );
+					cmp( ecx, 0 );
+					jg repeatUntilDirEntEmpty;
+
+
+			jmp forAllEntries;
+
+		  noEntries:
+		    mac.close(handle);
+		    
+		openFailed:
+		mov( esiSave, esi );
+		mov( ediSave, edi );
+		mov( edxSave, edx );
+		mov( ecxSave, ecx );
+		mov( ebxSave, ebx );
+		mov( eaxSave, eax );
+		popfd();
+		leave();
+		add( 4, esp );		// Remove ptr to iterator body.
+		ret( _parms_ );
+
+	end fileIn;
+
+#else 
+
+	#print( "Unknown OS!" )
+
+#endif
+
+end FileIOUnit;
+

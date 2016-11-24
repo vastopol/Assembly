@@ -1,0 +1,514 @@
+unit wPolygon_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+
+readonly
+	align(4);		
+	vmt( wPolygon_t );
+
+
+// This code assumes that w.POINT is two dword objects.
+
+#if( @size( w.POINT ) <> 8 )			// This should be true
+
+	#error( "wPolygon code assumes w.POINT size is 8 bytes" )
+	
+#endif
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wPolygon objects here:
+
+
+					
+procedure wPolygon_t.create_wPolygon
+(
+	wrName		:string;
+	parent		:dword;
+	x			:dword; 
+	y			:dword;
+	width		:dword;
+	height		:dword;
+	lineColor	:dword;
+	fillColor	:dword;
+	bkgColor	:dword 
+);;
+	
+_begin( wPolygon_t, create_wPolygon );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wPolygon_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	
+	// We're going to create a wFilledFrame object here.
+	
+	(type wFilledFrame_t [esi]).create_wFilledFrame
+	(
+		wrName,
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height,
+		lineColor,
+		fillColor,
+		bkgColor
+	);
+	mov( cl, this.wBase_private.onHeap );
+	
+	// Set up the polygon-specific fields:
+		
+	howl.setType( wPolygon_c );
+	mov( &wPolygon_t._VMT_, this._pVMT_ );
+
+	mov( NULL, this.wPolygon_private.points );
+	mov( NULL, this.wPolygon_private.scaledPoints );
+	mov( 0, this.wPolygon_private.nPoints );
+	
+	// Fill in the background rectangle:
+	
+	w.InvalidateRect( this.handle, NULL, true );
+			
+	pop( edx );
+	pop( ecx );			   
+	pop( eax );
+	
+_end( wPolygon_t, create_wPolygon );
+
+
+
+// Destructor:
+
+method wPolygon_t.destroy;;
+_begin( wPolygon_t, destroy );
+
+	if( this.wPolygon_private.nPoints <> 0 ) then
+	
+		mem.free( this.wPolygon_private.points );
+		mov( 0, this.wPolygon_private.nPoints );
+		if( this.wPolygon_private.scaledPoints <> NULL ) then
+		
+			mem.free( this.wPolygon_private.scaledPoints );
+			
+		endif;
+		
+	endif;
+	super.destroy();
+	
+_end( wPolygon_t, destroy );
+
+
+
+
+
+
+
+// Accessor/mutator functions:
+
+
+
+method wPolygon_t.get_nPoints; @noframe;;
+_begin( wPolygon_t, get_nPoints );
+
+	mov( this.wPolygon_private.nPoints, eax );
+	ret();
+	 
+_end( wPolygon_t, get_nPoints );
+
+
+
+method wPolygon_t.get_points;;
+_begin( wPolygon_t, get_points );
+
+	mov( this.wPolygon_private.scaledPoints, eax );
+	if( eax = NULL ) then
+	
+		mov( this.wPolygon_private.points, eax );
+		
+	endif;
+	
+_end( wPolygon_t, get_points );
+
+
+method wPolygon_t.set_points( nPoints:dword; points:ptArray );;
+_begin( wPolygon_t, set_points );
+
+	push( eax );
+	push( ecx );
+	push( esi );
+	push( edi );
+	
+	// We need a snapshot of the bounding box so
+	// we can resize the polygon without losing
+	// too much precision:
+	
+	mov( this.wVisual_private.width, eax );
+	mov( eax, this.wPolygon_private.origW );
+	mov( this.wVisual_private.height, eax );
+	mov( eax, this.wPolygon_private.origH );
+	
+	// Free any pre-existing points and scaled points arrays:
+	
+	if( this.wPolygon_private.nPoints <> 0 ) then
+	
+		mem.free( this.wPolygon_private.points );
+		if( this.wPolygon_private.scaledPoints <> NULL ) then
+		
+			mem.free( this.wPolygon_private.scaledPoints );
+			
+		endif;
+		
+	endif;
+	mov( NULL, this.wPolygon_private.scaledPoints );			// Use original points array
+	mov( NULL, this.wPolygon_private.points );				// Just in case nPoints is 0.
+	mov( nPoints, ecx );
+	mov( ecx, this.wPolygon_private.nPoints );
+	
+	// Copy the data points so that our values remain static (i.e., the
+	// user can change their copy of the points without corrupting our data).
+	
+	if( ecx > 0 ) then 			
+	
+		lea( eax, [ecx*8] );				// nPoints x 8
+		mem.alloc( eax );
+		mov( eax, this.wPolygon_private.points );
+		mov( eax, edi ); 
+		mov( points, esi );
+		shl( 1, ecx );						// nPoints x 2 (# dwords)
+		rep.movsd();
+			
+	endif;
+	w.InvalidateRect( this.handle, NULL, false );
+	pop( edi );
+	pop( esi );
+	pop( ecx );
+	pop( eax );
+	
+_end( wPolygon_t, set_points );
+
+
+
+// Overridden methods so we can scale the points array if the caller
+// is resizing the bounding box:
+
+method wPolygon_t.set_width( width:dword );;
+_begin( wPolygon_t, set_width );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	// First, free up the scaledPoints array if there is any
+	// storage associated with it.
+	
+	if( this.wPolygon_private.scaledPoints <> NULL ) then
+	
+		mem.free( this.wPolygon_private.scaledPoints );
+		mov( NULL, this.wPolygon_private.scaledPoints );
+		
+	endif;
+	
+	mov( width, eax );
+	mov( eax, this.wVisual_private.width );
+	mov( this.wVisual_private.height, ecx );
+	if( eax <> this.wPolygon_private.origW || ecx <> this.wPolygon_private.origH ) then
+	
+		// If the width is different from the original width, we need to
+		// create a scaled points array from the original points.
+
+		push( ebx );
+		push( edi );
+		
+		mov( this.wPolygon_private.points, ebx );
+		mov( this.wPolygon_private.nPoints, eax );
+		shl( 3, eax );
+		mem.alloc( eax );
+		mov( eax, this.wPolygon_private.scaledPoints );
+		mov( eax, edi );
+		mov( this.wPolygon_private.nPoints, ecx );
+		test( ecx, ecx );
+		while( @nz ) do
+		
+			mov( (type w.POINT [ebx+ecx*8-8]).x, eax );
+			mul( this.wVisual_private.width );
+			div( this.wPolygon_private.origW );
+			mov( eax, (type w.POINT [edi+ecx*8-8]).x );
+			
+			mov( (type w.POINT [ebx+ecx*8-8]).y, eax );
+			mov( eax, (type w.POINT [edi+ecx*8-8]).y );
+			
+			sub( 1, ecx );
+			
+		endwhile;
+		pop( edi );
+		pop( ebx );
+		
+	endif;
+	w.InvalidateRect( this.handle, NULL, false );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wPolygon_t, set_width );
+
+
+
+method wPolygon_t.set_height( height:dword );;
+_begin( wPolygon_t, set_height );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	// First, free up the scaledPoints array if there is any
+	// storage associated with it.
+	
+	if( this.wPolygon_private.scaledPoints <> NULL ) then
+	
+		mem.free( this.wPolygon_private.scaledPoints );
+		mov( NULL, this.wPolygon_private.scaledPoints );
+		
+	endif;
+	
+	mov( height, eax );
+	mov( eax, this.wVisual_private.height );
+	mov( this.wVisual_private.width, ecx );
+	if( eax <> this.wPolygon_private.origH || ecx <> this.wPolygon_private.origW ) then
+	
+		// If the height is different from the original width, we need to
+		// create a scaled points array from the original points.
+
+		push( ebx );
+		push( edi );
+		
+		mov( this.wPolygon_private.points, ebx );
+		mov( this.wPolygon_private.nPoints, eax );
+		shl( 3, eax );
+		mem.alloc( eax );
+		mov( eax, this.wPolygon_private.scaledPoints );
+		mov( eax, edi );
+		mov( this.wPolygon_private.nPoints, ecx );
+		test( ecx, ecx );
+		while( @nz ) do
+		
+			mov( (type w.POINT [ebx+ecx*8-8]).x, eax );
+			mov( eax, (type w.POINT [edi+ecx*8-8]).x );
+			
+			mov( (type w.POINT [ebx+ecx*8-8]).y, eax );
+			mul( this.wVisual_private.height );
+			div( this.wPolygon_private.origH );
+			mov( eax, (type w.POINT [edi+ecx*8-8]).y );
+			
+			sub( 1, ecx );
+			
+		endwhile;
+		pop( edi );
+		pop( ebx );
+		
+	endif;
+	w.InvalidateRect( this.handle, NULL, false );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wPolygon_t, set_height );
+
+
+
+method wPolygon_t.resize( width:dword; height:dword );;
+_begin( wPolygon_t, resize );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	// First, free up the scaledPoints array if there is any
+	// storage associated with it.
+	
+	if( this.wPolygon_private.scaledPoints <> NULL ) then
+	
+		mem.free( this.wPolygon_private.scaledPoints );
+		mov( NULL, this.wPolygon_private.scaledPoints );
+		
+	endif;
+	
+	mov( height, eax );
+	mov( eax, this.wVisual_private.height );
+	mov( width, ecx );
+	mov( ecx, this.wVisual_private.width );
+	if( eax <> this.wPolygon_private.origH || ecx <> this.wPolygon_private.origW ) then
+	
+		// If the height is different from the original width, we need to
+		// create a scaled points array from the original points.
+
+		push( ebx );
+		push( edi );
+		
+		mov( this.wPolygon_private.points, ebx );
+		mov( this.wPolygon_private.nPoints, eax );
+		shl( 3, eax );
+		mem.alloc( eax );
+		mov( eax, this.wPolygon_private.scaledPoints );
+		mov( eax, edi );
+		mov( this.wPolygon_private.nPoints, ecx );
+		test( ecx, ecx );
+		while( @nz ) do
+		
+			mov( (type w.POINT [ebx+ecx*8-8]).x, eax );
+			mul( this.wVisual_private.width );
+			div( this.wPolygon_private.origW );
+			mov( eax, (type w.POINT [edi+ecx*8-8]).x );
+		
+			mov( (type w.POINT [ebx+ecx*8-8]).y, eax );
+			mul( this.wVisual_private.height );
+			div( this.wPolygon_private.origH );
+			mov( eax, (type w.POINT [edi+ecx*8-8]).y );
+
+			sub( 1, ecx );
+			
+		endwhile;
+		pop( edi );
+		pop( ebx );
+		
+	endif;
+	w.InvalidateRect( this.handle, NULL, false );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wPolygon_t, resize );
+
+
+
+
+
+method wPolygon_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);
+var
+	r			:w.RECT;
+	hdc			:dword;
+	oldBrush	:dword;
+	oldPen		:dword;
+	ps			:w.PAINTSTRUCT;
+
+_begin( wPolygon_t, processMessage );
+
+	if( uMsg = w.WM_PAINT ) then
+	
+		w.BeginPaint( this.handle, ps );
+			
+			mov( eax, hdc );
+			
+			mov( 0, r.left );
+			mov( this.wVisual_private.width, eax );
+			mov( eax, r.right );
+			
+			mov( 0, r.top );
+			mov( this.wVisual_private.height, eax );
+			mov( eax, r.bottom );
+				
+			// Only paint the background if the H.O. byte of the
+			// background color is not $FF:
+			
+			if
+			( 
+					ps.fErase 
+				||	(type byte this.wVisual_private.bkgColor[3]) <> $FF 
+			) then
+			
+				// Fill the wRectangle's window with the background color:
+				
+				w.FillRect( hdc, r, this.wVisual_private.bkgBrush );
+				
+			endif;
+			
+			// Make sure we have at least two points:
+			
+			if( this.wPolygon_private.nPoints >= 2 ) then
+			
+				w.SelectObject( hdc, this.wFilledFrame_private._fillBrush );
+				mov( eax, oldBrush );
+				w.SelectObject( hdc, this.wFilledFrame_private._linePen );
+				mov( eax, oldPen );
+
+				// Determine if we're drawing the scaled points
+				// array or the original points array:
+				
+				if( this.wPolygon_private.scaledPoints <> NULL ) then
+				
+					// Draw the scaled wPolygon:
+					
+					w.Polygon
+					( 
+						hdc, 
+						this.wPolygon_private.scaledPoints,
+						this.wPolygon_private.nPoints
+					);
+					
+										
+				else
+							   			
+					// Draw the original wPolygon:
+					
+					w.Polygon
+					( 
+						hdc, 
+						this.wPolygon_private.points,
+						this.wPolygon_private.nPoints
+					);
+					
+				endif;
+				w.SelectObject( hdc, oldBrush );
+				w.SelectObject( hdc, oldPen );
+				
+				
+			endif;
+						
+		w.EndPaint( this.handle, ps );
+		exit processMessage;
+		
+	elseif( uMsg = w.WM_MOUSEACTIVATE ) then
+	
+		if( this.wClickable_private.onClick <> NULL ) then
+		
+			this.wClickable_private.onClick( esi, wParam, lParam );
+			mov( w.MA_NOACTIVATEANDEAT, eax );
+			exit processMessage;
+		
+		endif;
+	
+	endif;
+	super.processMessage( hwnd, uMsg, wParam, lParam );
+	
+_end( wPolygon_t, processMessage );
+
+
+end	wPolygon_u;

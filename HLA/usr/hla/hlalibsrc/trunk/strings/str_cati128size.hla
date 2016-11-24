@@ -1,0 +1,141 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+#include( "conv.hhf" );
+
+
+
+/******************************************************************/
+/*                                                                */
+/* str.cati128size-                                               */
+/*                                                                */
+/* Appends the unsigned decimal equivalent of the "i128" parameter*/
+/* to the end of the specified string using the width and fill    */
+/* values to pad the string.                                      */
+/*                                                                */
+/******************************************************************/
+
+ 
+procedure str.cati128Size( dest:string; i128:lword; width:int32; fill:char ); 
+	@noframe;
+
+var
+	eaxSave: dword;
+	
+begin cati128Size;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( eax, eaxSave );	// Save this in a known location!
+
+	/*
+	** Allocate storage for a string large enough
+	** to hold the output result.
+	**
+	**	A 128-bit number requires about 40 digits, so
+	** allocate a minimum of 64 bytes for the string
+	** (we need to add one byte for the zero terminating
+	** byte and we need to have a multiple of four bytes).
+	** Also don't forget that we need to allocate an
+	** additional eight bytes for string data.
+	*/
+	
+	mov( width, eax );					// Get size we need to allocate.
+	test( eax, eax );
+	jns notNeg;							// Must take absolute value because
+										//  field widths can be negative!
+		neg( eax );
+		
+	notNeg:
+	
+
+	/*
+	** Just to be on the safe side, let's limit the field
+	** width to 1024 characters.  If the user really needs
+	** more than this, they can print the extra characters
+	** themselves.
+	*/
+	
+	cmp( eax, 1024 );
+	ja WidthTooBig;	
+		
+	add( 3, eax );			// Round size so it is an even multiple
+	and( $ffff_fffc, eax );	//  of four bytes long.
+	cmp( eax, 64 );
+	jae min64;				// Set size to a minimum of 64 bytes. 
+	
+		mov( 64, eax );
+		
+	min64:
+	sub( eax, esp );					// Make room for the string.
+	
+	
+
+	/*
+	** HLA strings have a couple of values immediately before
+	** the string data.  MaxStrLen is one of these values (which
+	** is currently in EAX).  The following code allocates storage
+	** for these extra bytes and then stores EAX into the
+	** MaxStrLen field of this newly created record.
+	*/
+
+	sub( str.BytesBeforeStr+4, esp );		// Allocate extra bytes.
+	
+	// Store the MaxStrLen field away.
+
+	mov( eax, [esp] );
+
+	/*
+	** Compute the base address of the string for later use.
+	** (The base address points at the character buffer.)
+	*/
+
+
+	lea( eax, [esp+8] );
+
+	pushd( (type dword i128[12] ));
+	pushd( (type dword i128[8] ));
+	pushd( (type dword i128[4] ));
+	pushd( (type dword i128 ));
+	pushd( width );
+	pushd( (type dword fill ));
+	pushd( eax );			// Address of string to hold result.
+	call( conv.i128ToStr );
+
+	str.cat( (type string eax), dest );	// Concatenate to end of user's string.
+	
+	mov( eaxSave, eax );	// Restore original eax value.
+	leave();
+	ret( _parms_ );
+
+WidthTooBig:	
+	raise( ex.WidthTooBig );
+	
+end cati128Size;
+
+end stringUnit;
+
+
+
+
+	
+

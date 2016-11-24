@@ -1,0 +1,87 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit sockets;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "sockets.hhf" )
+#includeOnce( "excepts.hhf" )
+
+method vBaseSocketClass_t.read( var buf:var; len:dword );
+var
+	bytesRead	:dword;
+	ebxSave		:dword;
+	ecxSave		:dword;
+	edxSave		:dword;
+	esiSave		:dword;
+	ediSave		:dword;
+	fdset		:hla.fd_set_t;
+	timeout		:pointer to hla.timeval;
+	
+	
+begin read;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	mov( edi, ediSave );	// We have to preserve the
+	mov( esi, esiSave );	// register because we have
+	mov( edx, edxSave );	// no idea what will happen to
+	mov( ecx, ecxSave );	// them if there is an exception.
+	mov( ebx, ebxSave );
+	mov( 0, bytesRead );
+	
+			
+	// Wait until we receive data or a timeout occurs.
+	
+	mov( this.timeout.tv_sec, eax );	// If this.timeout is zero,
+	or( this.timeout.tv_usec, eax );	// then infinite timeout.
+	jz NULLtimeout;
+	
+		lea( eax, this.timeout );
+		
+	NULLtimeout:
+	mov( eax, timeout );
+	sock.fd_zero( fdset );
+	sock.fd_set( this.handle, fdset );
+	readMore:
+		
+		sock.select( this.handle, fdset, NULL, NULL, val timeout );
+		test( eax, eax );	// Zero if timeout occurred.
+		jz EndOfFile;		// Just return # chars read.
+		
+			sock.recv( this.handle, val buf, len, 0 );
+			test( eax, eax );	// Zero if timeout occurred
+			jz EndOfFile;
+			
+			add( eax, buf );
+			add( eax, bytesRead );
+			sub( eax, len );
+			jnz readMore;
+
+	EndOfFile:
+	mov( ediSave, edi );
+	mov( esiSave, esi );
+	mov( edxSave, edx );
+	mov( ecxSave, ecx );
+	mov( ebxSave, ebx );
+	mov( bytesRead, eax );
+	leave();
+	ret( _parms_ );
+	
+end read;
+
+
+end sockets;

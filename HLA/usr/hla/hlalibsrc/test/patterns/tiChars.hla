@@ -1,0 +1,3431 @@
+// This program tests the (case insensitive) pattern-matching character functions.
+
+
+program patiChars_test;
+#include( "stdlib.hhf" )
+	
+begin patiChars_test;
+
+	
+	//	procedure peekiChar( c:char );
+
+	// Test positive check:
+	
+	pat.match( "abc" );
+	
+		pat.peekiChar( 'a' );
+		pat.oneiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.peekiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "ABC" );
+	
+		pat.peekiChar( 'a' );
+		pat.oneiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.peekiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "abc" );
+	
+		pat.peekiChar( 'A' );
+		pat.oneiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.peekiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "abc" );
+	
+		pat.peekiChar( 'b' );
+		pat.oneiChar( 'a' );
+		
+	  	stderr.put( "pat.peekiChar failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	// Test with back-tracking
+	
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.peekiChar( 'a' );
+		pat.matchStr( "ab" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.peekiChar failed(3a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.peekiChar( 'A' );
+		pat.matchStr( "ab" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.peekiChar failed(3b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.peekiChar succeeded!" nl );
+
+	
+	
+	//	procedure oneiChar( c:char );
+
+
+	// Test positive check:
+	
+	pat.match( "abc" );
+	
+		pat.oneiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.oneiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "ABC" );
+	
+		pat.oneiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.oneiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "abc" );
+	
+		pat.oneiChar( 'A' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.oneiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	// Test negative check:
+	
+	pat.match( "abc" );
+	
+		pat.oneiChar( 'b' );
+		pat.oneiChar( 'a' );
+		
+	  	stderr.put( "pat.oneiChar failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	// Test with back-tracking
+	
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.oneiChar( 'a' );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.oneiChar failed(3a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.oneiChar( 'A' );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.oneiChar failed(3b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.oneiChar succeeded!" nl );
+
+	
+	//	procedure upToiChar( c:char );
+	
+
+
+	// Test positive check:
+	
+	pat.match( "abc" );
+	
+		pat.upToiChar( 'c' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.upToiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "ABC" );
+	
+		pat.upToiChar( 'c' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.upToiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "abc" );
+	
+		pat.upToiChar( 'C' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.upToiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	// Test negative check:
+	
+	pat.match( "abc" );
+	
+		pat.upToiChar( 'b' );
+		pat.upToiChar( 'a' );
+		
+	  	stderr.put( "pat.upToiChar failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.upToiChar( 'a' );
+		pat.upToiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.upToiChar failed(3a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.upToiChar( 'A' );
+		pat.upToiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.upToiChar failed(3b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.upToiChar succeeded!" nl );
+
+	
+	
+	//	procedure zeroOrOneiChar( c:char );
+
+	// Test positive check:
+	
+	pat.match( "abc" );
+	
+		pat.zeroOrOneiChar( 'a' );
+		pat.zeroOrOneiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrOneiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "ABC" );
+	
+		pat.zeroOrOneiChar( 'a' );
+		pat.zeroOrOneiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrOneiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "abc" );
+	
+		pat.zeroOrOneiChar( 'A' );
+		pat.zeroOrOneiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrOneiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	// Test negative check:
+	
+	pat.match( "abc" );
+	
+		pat.zeroOrOneiChar( 'b' );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.zeroOrOneiChar failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	// Test with back-tracking
+	
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.zeroOrOneiChar( 'a' );
+		pat.zeroOrOneiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrOneiChar failed(3a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.zeroOrOneiChar( 'A' );
+		pat.zeroOrOneiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrOneiChar failed(3b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.zeroOrOneiChar succeeded!" nl );
+
+	
+	
+	//	procedure l_ZeroOrOneiChar( c:char );
+
+	// Test positive check:
+	
+	pat.match( "abc" );
+	
+		pat.l_ZeroOrOneiChar( 'a' );
+		pat.l_ZeroOrOneiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ZeroOrOneiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "ABC" );
+	
+		pat.l_ZeroOrOneiChar( 'a' );
+		pat.l_ZeroOrOneiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ZeroOrOneiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "abc" );
+	
+		pat.l_ZeroOrOneiChar( 'A' );
+		pat.l_ZeroOrOneiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ZeroOrOneiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	// Test negative check:
+
+	pat.match( "abc" );
+	
+		pat.l_ZeroOrOneiChar( 'b' );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.l_ZeroOrOneiChar failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	// Test with back-tracking
+	
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.l_ZeroOrOneiChar( 'a' );
+		pat.l_ZeroOrOneiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ZeroOrOneiChar failed(3a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.l_ZeroOrOneiChar( 'A' );
+		pat.oneChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ZeroOrOneiChar failed(3b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.l_ZeroOrOneiChar succeeded!" nl );
+
+	
+	
+	
+	
+	
+	
+	//	procedure zeroOrMoreiChar( c:char );
+
+	// Test positive check:
+	
+	pat.match( "aaabc" );
+	
+		pat.zeroOrMoreiChar( 'a' );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrMoreiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "bc" );
+	
+		pat.zeroOrMoreiChar( 'a' );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrMoreiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "AAABC" );
+	
+		pat.zeroOrMoreiChar( 'a' );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrMoreiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "BC" );
+	
+		pat.zeroOrMoreiChar( 'A' );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrMoreiChar failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaabc" );
+	
+		pat.zeroOrMoreiChar( 'A' );
+		pat.oneiChar( 'B' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrMoreiChar failed(1e)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "bc" );
+	
+		pat.zeroOrMoreiChar( 'A' );
+		pat.oneiChar( 'B' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrMoreiChar failed(1f)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	// Test negative check:
+	
+	pat.match( "abc" );
+	
+		pat.zeroOrMoreiChar( 'b' );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.zeroOrMoreiChar failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	// Test with back-tracking
+	
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.zeroOrMoreiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrMoreiChar failed(3a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.zeroOrMoreiChar( 'a' );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrMoreiChar failed(3b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.zeroOrMoreiChar( 'A' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrMoreiChar failed(3c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.zeroOrMoreiChar( 'A' );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.zeroOrMoreiChar failed(3d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.zeroOrMoreiChar succeeded!" nl );
+
+	
+	
+	//	procedure l_ZeroOrMoreiChar( c:char );
+
+	// Test positive check:
+	
+	pat.match( "abc" );
+	
+		pat.l_ZeroOrMoreiChar( 'a' );	// Matches one char
+		pat.l_ZeroOrMoreiChar( 'a' );	// Matches zero Char
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ZeroOrMoreiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "abc" );
+	
+		pat.l_ZeroOrMoreiChar( 'A' );	// Matches one char
+		pat.l_ZeroOrMoreiChar( 'A' );	// Matches zero Char
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ZeroOrMoreiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "ABC" );
+	
+		pat.l_ZeroOrMoreiChar( 'a' );	// Matches one char
+		pat.l_ZeroOrMoreiChar( 'a' );	// Matches zero Char
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ZeroOrMoreiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	// Test negative check:
+
+	pat.match( "abc" );
+	
+		pat.l_ZeroOrMoreiChar( 'b' );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.l_ZeroOrMoreiChar failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	// Test with back-tracking
+	
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.l_ZeroOrMoreiChar( 'a' );
+		pat.oneiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ZeroOrMoreiChar failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "ababab" );
+	
+		pat.zeroOrMoreCset( {'a','b'});
+		pat.l_ZeroOrMoreiChar( 'A' );
+		pat.oneiChar( 'A' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ZeroOrMoreiChar failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.l_ZeroOrMoreiChar succeeded!" nl );
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	//	procedure oneOrMoreiChar( c:char );
+
+	// Test positive check:
+	
+	pat.match( "aaabc" );
+	
+		pat.oneOrMoreiChar( 'a' );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.oneOrMoreiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "AAABC" );
+	
+		pat.oneOrMoreiChar( 'a' );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.oneOrMoreiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaabc" );
+	
+		pat.oneOrMoreiChar( 'A' );
+		pat.oneiChar( 'B' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.oneOrMoreiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "abc" );
+	
+		pat.oneOrMoreiChar( 'b' );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.oneOrMoreiChar failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	// Test with back-tracking
+	
+	
+	pat.match( "ababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.oneOrMoreiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.oneOrMoreiChar failed(3a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "ababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.oneOrMoreiChar( 'A' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.oneOrMoreiChar failed(3b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.oneOrMoreiChar succeeded!" nl );
+	
+	
+	//	procedure l_OneOrMoreiChar( c:char );
+
+	// Test positive check:
+	
+	pat.match( "abc" );
+	
+		pat.l_OneOrMoreiChar( 'a' );	// Matches one char
+		pat.l_OneOrMoreiChar( 'b' );	// Matches one char
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_OneOrMoreiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "ABC" );
+	
+		pat.l_OneOrMoreiChar( 'a' );	// Matches one char
+		pat.l_OneOrMoreiChar( 'b' );	// Matches one char
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_OneOrMoreiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "abc" );
+	
+		pat.l_OneOrMoreiChar( 'A' );	// Matches one char
+		pat.l_OneOrMoreiChar( 'B' );	// Matches one char
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_OneOrMoreiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	// Test negative check:
+
+	pat.match( "abc" );
+	
+		pat.l_OneOrMoreiChar( 'b' );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.l_OneOrMoreiChar failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	// Test with back-tracking
+	
+	
+	pat.match( "ababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.l_OneOrMoreiChar( 'a' );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_OneOrMoreiChar failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "ababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.l_OneOrMoreiChar( 'A' );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_OneOrMoreiChar failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.l_OneOrMoreiChar succeeded!" nl );
+
+	
+	
+	
+	
+	//	procedure exactlyNiChar( c:char; n:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aaabc" );
+	
+		pat.exactlyNiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.exactlyNiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaabc" );
+	
+		pat.exactlyNiChar( 'A', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.exactlyNiChar( 'A', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNiChar failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "AAABC" );
+	
+		pat.exactlyNiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNiChar failed(1e)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAA" );
+	
+		pat.exactlyNiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNiChar failed(1f)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "bc" );
+	
+		pat.exactlyNiChar( 'a', 1 );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.exactlyNiChar failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	pat.match( "aaaabc" );
+	
+		pat.exactlyNiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.exactlyNiChar failed(2b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.exactlyNiChar( 'a', 1 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNiChar failed(3a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.exactlyNiChar( 'A', 1 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNiChar failed(3b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.exactlyNiChar succeeded!" nl );
+	
+
+	
+	
+	
+	
+	//	procedure firstNiChar( c:char; n:uns32 );
+	
+	// Test positive check:
+	
+	pat.match( "aaaabc" );
+	
+		pat.firstNiChar( 'a', 3 );
+		pat.oneiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.firstNiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.firstNiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.firstNiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaabc" );
+	
+		pat.firstNiChar( 'a', 3 );
+		pat.oneiChar( 'A' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.firstNiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.firstNiChar( 'A', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.firstNiChar failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "AAAABC" );
+	
+		pat.firstNiChar( 'a', 3 );
+		pat.oneiChar( 'a' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.firstNiChar failed(1e)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAA" );
+	
+		pat.firstNiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.firstNiChar failed(1f)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "bc" );
+	
+		pat.firstNiChar( 'a', 1 );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.firstNiChar failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	pat.match( "aaaabc" );
+	
+		pat.firstNiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.firstNiChar failed(2b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.firstNiChar( 'a', 1 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.firstNiChar failed(3a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.firstNiChar( 'A', 1 );
+		pat.oneiChar( 'B' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.firstNiChar failed(3b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.firstNiChar succeeded!" nl );
+	
+
+	
+	
+	
+	
+	//	procedure norLessiChar( c:char; n:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aabc" );
+	
+		pat.norLessiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.norLessiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.norLessiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "a" );
+	
+		pat.norLessiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessiChar failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "b" );
+	
+		pat.norLessiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessiChar failed(1e)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "AABC" );
+	
+		pat.norLessiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessiChar failed(1f)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAABC" );
+	
+		pat.norLessiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessiChar failed(1g)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAA" );
+	
+		pat.norLessiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessiChar failed(1h)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "A" );
+	
+		pat.norLessiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessiChar failed(1i)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "B" );
+	
+		pat.norLessiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessiChar failed(1j)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aabc" );
+	
+		pat.norLessiChar( 'A', 3 );
+		pat.oneiChar( 'B' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessiChar failed(1k)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.norLessiChar( 'A', 3 );
+		pat.oneiChar( 'B' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessiChar failed(1l)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.norLessiChar( 'A', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessiChar failed(1m)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "a" );
+	
+		pat.norLessiChar( 'A', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessiChar failed(1n)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "b" );
+	
+		pat.norLessiChar( 'A', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessiChar failed(1o)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "aabc" );
+	
+		pat.norLessiChar( 'a', 1 );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.norLessiChar failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	pat.match( "aaaabc" );
+	
+		pat.norLessiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.norLessiChar failed(2b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.norLessiChar( 'a', 1 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessiChar failed(3a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.norLessiChar( 'A', 1 );
+		pat.oneiChar( 'B' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norLessiChar failed(3b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.norLessiChar succeeded!" nl );
+	
+
+	
+	
+	
+	
+	//	procedure l_NorLessiChar( c:char; n:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aabc" );
+	
+		pat.l_NorLessiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.l_NorLessiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.l_NorLessiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "a" );
+	
+		pat.l_NorLessiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessiChar failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "b" );
+	
+		pat.l_NorLessiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessiChar failed(1e)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "AABC" );
+	
+		pat.l_NorLessiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessiChar failed(1f)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAABC" );
+	
+		pat.l_NorLessiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessiChar failed(1g)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAA" );
+	
+		pat.l_NorLessiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessiChar failed(1h)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "A" );
+	
+		pat.l_NorLessiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessiChar failed(1i)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "B" );
+	
+		pat.l_NorLessiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessiChar failed(1j)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aabc" );
+	
+		pat.l_NorLessiChar( 'A', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessiChar failed(1k)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.l_NorLessiChar( 'A', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessiChar failed(1l)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.l_NorLessiChar( 'A', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessiChar failed(1m)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "a" );
+	
+		pat.l_NorLessiChar( 'A', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessiChar failed(1n)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "b" );
+	
+		pat.l_NorLessiChar( 'A', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessiChar failed(1o)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "aabc" );
+	
+		pat.l_NorLessiChar( 'a', 1 );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.l_NorLessiChar failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	pat.match( "aaaabc" );
+	
+		pat.l_NorLessiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.l_NorLessiChar failed(2b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.l_NorLessiChar( 'a', 1 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessiChar failed(3a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.l_NorLessiChar( 'A', 1 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorLessiChar failed(3b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.l_NorLessiChar succeeded!" nl );
+	
+	
+	
+	
+	
+	
+	
+	
+
+	//	procedure norMoreiChar( c:char; n:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aaaabc" );
+	
+		pat.norMoreiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.norMoreiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "aaa" );
+	
+		pat.norMoreiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaaaaaaaa" );
+	
+		pat.norMoreiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreiChar failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaaaaaaab" );
+	
+		pat.norMoreiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreiChar failed(1e)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "AAAABC" );
+	
+		pat.norMoreiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreiChar failed(1f)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAABC" );
+	
+		pat.norMoreiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreiChar failed(1g)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "AAA" );
+	
+		pat.norMoreiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreiChar failed(1h)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAAAAAAAA" );
+	
+		pat.norMoreiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreiChar failed(1i)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAAAAAAAB" );
+	
+		pat.norMoreiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreiChar failed(1j)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaabc" );
+	
+		pat.norMoreiChar( 'A', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreiChar failed(1k)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.norMoreiChar( 'A', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreiChar failed(1l)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "aaa" );
+	
+		pat.norMoreiChar( 'A', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreiChar failed(1m)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaaaaaaaa" );
+	
+		pat.norMoreiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreiChar failed(1n)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaaaaaaab" );
+	
+		pat.norMoreiChar( 'A', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreiChar failed(1o)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "aabc" );
+	
+		pat.norMoreiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.norMoreiChar failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.norMoreiChar( 'a', 1 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreiChar failed(3a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.norMoreiChar( 'A', 1 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.norMoreiChar failed(3b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.norMoreiChar succeeded!" nl );
+	
+
+	
+	
+	
+	
+	//	procedure l_NorMoreiChar( c:char; n:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aaaabc" );
+	
+		pat.l_NorMoreiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.l_NorMoreiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.l_NorMoreiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaaaaaaaa" );
+	
+		pat.l_NorMoreiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreiChar failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaaaaaaab" );
+	
+		pat.l_NorMoreiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreiChar failed(1e)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "AAAABC" );
+	
+		pat.l_NorMoreiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreiChar failed(1f)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAABC" );
+	
+		pat.l_NorMoreiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreiChar failed(1g)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAA" );
+	
+		pat.l_NorMoreiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreiChar failed(1h)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAAAAAAAA" );
+	
+		pat.l_NorMoreiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreiChar failed(1i)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAAAAAAAB" );
+	
+		pat.l_NorMoreiChar( 'a', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreiChar failed(1j)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaabc" );
+	
+		pat.l_NorMoreiChar( 'A', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreiChar failed(1k)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.l_NorMoreiChar( 'A', 3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreiChar failed(1l)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.l_NorMoreiChar( 'A', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreiChar failed(1m)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaaaaaaaa" );
+	
+		pat.l_NorMoreiChar( 'A', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreiChar failed(1n)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaaaaaaab" );
+	
+		pat.l_NorMoreiChar( 'A', 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreiChar failed(1o)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "aabc" );
+	
+		pat.l_NorMoreiChar( 'a', 3 );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.l_NorMoreiChar failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.l_NorMoreiChar( 'a', 1 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreiChar failed(3A)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.l_NorMoreiChar( 'A', 1 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NorMoreiChar failed(3b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.l_NorMoreiChar succeeded!" nl );
+	
+	
+	
+	
+	
+	
+	
+	
+
+	//	procedure ntoMiChar( c:char; n:uns32; m:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aaaabc" );
+	
+		pat.ntoMiChar( 'a', 3,4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.ntoMiChar( 'a', 3, 4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "aaa" );
+	
+		pat.ntoMiChar( 'a', 2, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.ntoMiChar( 'a', 3, 4 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMiChar failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaab" );
+	
+		pat.ntoMiChar( 'a', 3, 4 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMiChar failed(1e)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "AAAABC" );
+	
+		pat.ntoMiChar( 'a', 3,4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMiChar failed(1f)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAABC" );
+	
+		pat.ntoMiChar( 'a', 3, 4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMiChar failed(1g)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "AAA" );
+	
+		pat.ntoMiChar( 'a', 2, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMiChar failed(1h)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAA" );
+	
+		pat.ntoMiChar( 'a', 3, 4 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMiChar failed(1i)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAAB" );
+	
+		pat.ntoMiChar( 'a', 3, 4 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMiChar failed(1j)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaabc" );
+	
+		pat.ntoMiChar( 'A', 3,4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMiChar failed(1k)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.ntoMiChar( 'A', 3, 4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMiChar failed(1l)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "aaa" );
+	
+		pat.ntoMiChar( 'A', 2, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMiChar failed(1m)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.ntoMiChar( 'A', 3, 4 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMiChar failed(1n)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaab" );
+	
+		pat.ntoMiChar( 'A', 3, 4 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMiChar failed(1o)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "aabc" );
+	
+		pat.ntoMiChar( 'a', 3, 4 );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.ntoMiChar failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.ntoMiChar( 'a', 1,2 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMiChar failed(3a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.ntoMiChar( 'A', 1,2 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.ntoMiChar failed(3b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.ntoMiChar succeeded!" nl );
+	
+	
+	
+	
+	
+	
+	
+	
+
+	//	procedure l_NtoMiChar( c:char; n:uns32; m:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aaaabc" );
+	
+		pat.l_NtoMiChar( 'a', 3,4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.l_NtoMiChar( 'a', 3, 4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "aaa" );
+	
+		pat.l_NtoMiChar( 'a', 2, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.l_NtoMiChar( 'a', 3, 4 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMiChar failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaab" );
+	
+		pat.l_NtoMiChar( 'a', 3, 4 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMiChar failed(1e)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "AAAABC" );
+	
+		pat.l_NtoMiChar( 'a', 3,4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMiChar failed(1f)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAABC" );
+	
+		pat.l_NtoMiChar( 'a', 3, 4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMiChar failed(1g)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "AAA" );
+	
+		pat.l_NtoMiChar( 'a', 2, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMiChar failed(1h)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAA" );
+	
+		pat.l_NtoMiChar( 'a', 3, 4 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMiChar failed(1i)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAAB" );
+	
+		pat.l_NtoMiChar( 'a', 3, 4 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMiChar failed(1j)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaabc" );
+	
+		pat.l_NtoMiChar( 'A', 3,4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMiChar failed(1k)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.l_NtoMiChar( 'A', 3, 4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMiChar failed(1l)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "aaa" );
+	
+		pat.l_NtoMiChar( 'A', 2, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMiChar failed(1m)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaa" );
+	
+		pat.l_NtoMiChar( 'A', 3, 4 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMiChar failed(1n)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaab" );
+	
+		pat.l_NtoMiChar( 'A', 3, 4 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMiChar failed(1o)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+
+	// Test negative check:
+	
+	pat.match( "aabc" );
+	
+		pat.l_NtoMiChar( 'a', 3, 4 );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.l_NtoMiChar failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.l_NtoMiChar( 'a', 1,2 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMiChar failed(3a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "abababab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.l_NtoMiChar( 'A', 1,2 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_NtoMiChar failed(3b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.l_NtoMiChar succeeded!" nl );
+	
+
+	
+	
+	
+	
+
+	//	procedure exactlyNtoMiChar( c:char; n:uns32; m:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aaaabc" );
+	
+		pat.exactlyNtoMiChar( 'a', 3,4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNtoMiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.exactlyNtoMiChar( 'a', 3, 4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNtoMiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "aaa" );
+	
+		pat.exactlyNtoMiChar( 'a', 2, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNtoMiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "AAAABC" );
+	
+		pat.exactlyNtoMiChar( 'a', 3,4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNtoMiChar failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAABC" );
+	
+		pat.exactlyNtoMiChar( 'a', 3, 4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNtoMiChar failed(1e)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "AAA" );
+	
+		pat.exactlyNtoMiChar( 'a', 2, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNtoMiChar failed(1f)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaabc" );
+	
+		pat.exactlyNtoMiChar( 'A', 3,4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNtoMiChar failed(1g)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.exactlyNtoMiChar( 'A', 3, 4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNtoMiChar failed(1h)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "aaa" );
+	
+		pat.exactlyNtoMiChar( 'A', 2, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNtoMiChar failed(1i)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+
+
+	// Test negative check:
+	
+	pat.match( "aaaaabc" );
+	
+		pat.exactlyNtoMiChar( 'a', 2, 4 );
+		
+	  	stderr.put( "pat.exactlyNtoMiChar failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	pat.match( "aabc" );
+	
+		pat.exactlyNtoMiChar( 'a', 3, 4 );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.exactlyNtoMiChar failed(2b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "aaaaaaaaab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.exactlyNtoMiChar( 'a', 2,3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNtoMiChar failed(3a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaaaaaaab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.exactlyNtoMiChar( 'A', 2,3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.exactlyNtoMiChar failed(3b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.exactlyNtoMiChar succeeded!" nl );
+
+
+
+
+
+	//	procedure l_ExactlyNtoMiChar( c:char; n:uns32; m:uns32 );
+	
+
+	// Test positive check:
+	
+	pat.match( "aaaabc" );
+	
+		pat.l_ExactlyNtoMiChar( 'a', 3,4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ExactlyNtoMiChar failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.l_ExactlyNtoMiChar( 'a', 3, 4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ExactlyNtoMiChar failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "aaa" );
+	
+		pat.l_ExactlyNtoMiChar( 'a', 2, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ExactlyNtoMiChar failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "AAAABC" );
+	
+		pat.l_ExactlyNtoMiChar( 'a', 3,4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ExactlyNtoMiChar failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "AAABC" );
+	
+		pat.l_ExactlyNtoMiChar( 'a', 3, 4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ExactlyNtoMiChar failed(1e)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "AAA" );
+	
+		pat.l_ExactlyNtoMiChar( 'a', 2, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ExactlyNtoMiChar failed(1f)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaabc" );
+	
+		pat.l_ExactlyNtoMiChar( 'A', 3,4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ExactlyNtoMiChar failed(1g)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+	pat.match( "aaabc" );
+	
+		pat.l_ExactlyNtoMiChar( 'A', 3, 4 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ExactlyNtoMiChar failed(1h)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	pat.match( "aaa" );
+	
+		pat.l_ExactlyNtoMiChar( 'A', 2, 3 );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ExactlyNtoMiChar failed(1i)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+
+	
+
+
+	// Test negative check:
+	
+	pat.match( "aaaaabc" );
+	
+		pat.l_ExactlyNtoMiChar( 'a', 2, 4 );
+		
+	  	stderr.put( "pat.l_ExactlyNtoMiChar failed(2a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	pat.match( "aabc" );
+	
+		pat.l_ExactlyNtoMiChar( 'a', 3, 4 );
+		pat.oneiChar( 'b' );
+		
+	  	stderr.put( "pat.l_ExactlyNtoMiChar failed(2b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect
+		
+	pat.endmatch;
+	
+	
+	
+	// Test with back-tracking
+	
+	pat.match( "aaaaaaaaab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.l_ExactlyNtoMiChar( 'a', 2,3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ExactlyNtoMiChar failed(3a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaaaaaaab" );
+	
+		pat.oneOrMoreCset( {'a','b'});
+		pat.l_ExactlyNtoMiChar( 'A', 2,3 );
+		pat.oneiChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.l_ExactlyNtoMiChar failed(3b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.l_ExactlyNtoMiChar succeeded!" nl );
+
+	
+	stderr.put( "tiChars test suite succeeded!" nl );
+
+end patiChars_test;
+
+													

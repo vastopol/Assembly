@@ -1,0 +1,111 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" )
+#include( "excepts.hhf" )
+#include( "threads.hhf" )
+
+
+// blob.init-                                                     
+//                                                                
+// This function initializes a block of memory so that it         
+// is a valid HLA blob.  On entry, the b parameter contains     
+// the address of the memory block and numBytes specifies the     
+// total number of bytes in block.  numBytes should be at least   
+// 16 or this function will raise an ex.ValueOutOfRange exception.
+//                                                                
+// This function first dword-aligns the address because           
+// HLA blobs prefer to be aligned on a dword boundary.          
+// This subtracts 0-3 bytes from the overall buffer length.       
+// Next, this code initializes	the cursor, maxlen, and length fields.
+// Finally, this code returns the pointer to the first    
+// byte of the blob data in the EAX register.                   
+
+
+procedure blob.init( var b:var; numBytes:dword ); @noframe;
+begin init;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ebx );
+	
+	cmp( numBytes, blob.blobHeaderSize+20 );
+	jb ValueOutOfRange;	
+		
+	
+	mov( b, ebx );
+	
+	// DWORD align the address:
+	
+	add( 3, ebx );
+	and( $FFFF_FFFC, ebx );
+	add( blob.blobHeaderSize, ebx );
+
+	// Initialize the cursor fields to zero and the length field to zero:
+	
+	xor( eax, eax );
+	mov( eax, (type blob.blobRec [ebx]).allocPtr );
+	mov( eax, (type blob.blobRec [ebx]).rcursor );
+	mov( eax, (type blob.blobRec [ebx]).wcursor );
+	mov( eax, (type blob.blobRec [ebx]).length );
+	
+	// Compute the maximum blob length.
+	
+	mov( b, eax );			// End of buffer address, minus EBX, is
+	add( numBytes, eax );	// the number of bytes in the buffer.
+	sub( ebx, eax );
+
+	// Compute the maxlen value:
+	
+	mov( eax, (type blob.blobRec [ebx]).maxlen );
+
+	
+	
+	// Initialize the criticalSection field:
+		
+	#if( @thread )
+	
+		thread.createCriticalSection();
+		mov( eax, (type blob.blobRec [ebx]).criticalSection );
+		mov( ebx, eax );
+		
+	#else
+	
+		mov( 0, (type blob.blobRec [ebx]).criticalSection );
+	 
+	#endif
+
+	// Compute the final address in EAX and return this value.
+
+	mov( ebx, eax );
+	pop( ebx );
+	pop( ebp );
+	ret( _parms_ );
+	
+ValueOutOfRange:	
+	raise( ex.ValueOutOfRange );
+
+end init;
+
+end blobUnit;
+
+
+
+
+	
+

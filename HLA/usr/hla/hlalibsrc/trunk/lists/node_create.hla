@@ -1,0 +1,54 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit lists;
+#include( "lists.hhf" )
+#include( "excepts.hhf" )
+
+
+
+readonly
+	align( 4 );
+	VMT( node_t );
+	
+	
+/**************************************************************/
+
+procedure node_t.create; @nodisplay; @noframe;
+begin create;
+
+	// Note: this constructor cannot allocate storage
+	// because generic node objects are useless.
+	// Therefore, it is the responsibility of the
+	// derived class to allocate storage for the list
+	// object and simply call this procedure in order
+	// to initialize pertinent fields.  Note that it
+	// is also the responsibility of the derived class'
+	// constructor to initialize the VMT pointer.
+	
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+	// Initialize this node by setting the Next
+	// and Prev fields to NULL:
+	
+	mov( NULL, this.Next );
+	mov( NULL, this.Prev );
+	ret();
+		
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end create;
+end lists;

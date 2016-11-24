@@ -1,0 +1,79 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" )
+#include( "hla.hhf" )
+
+// blob.cath32Size-                                  
+//                                                   
+// Converts d to a string holding it's hexadecimal   
+// representation using the specified minimum field  
+// width (size) and padding character (fill) and then
+// concatenates this string to the end of dest.      
+//                                                   
+// Inputs:                                           
+// 	d-                                               
+// 		Dword value to convert to a string.          
+// 		                                             
+// 	size-                                            
+// 		Minimum field width specification.           
+// 		                                             
+// 	fill-                                            
+// 		Padding character                            
+// 		                                             
+// 	dest-                                            
+// 		String to concatenate result to.             
+// 		                                             
+// Outputs:                                          
+// 	dest-                                            
+// 		Holds concatenated result.                   
+
+
+procedure blob.cath32Size( dest:blob.blob; d:dword; size:dword; fill:char ); 
+	@noframe;
+begin cath32Size;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	push( eax );
+	hla.puth32size
+	( 
+		#{	// Push (pseudo) thunk object on stack: 
+			pushd( &blob._cats );
+			push( dest );	// Fake EBP value
+		}#, 
+		d,
+		size,
+		fill 
+	);
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+end cath32Size;
+
+
+
+end blobUnit;
+
+
+
+
+	
+

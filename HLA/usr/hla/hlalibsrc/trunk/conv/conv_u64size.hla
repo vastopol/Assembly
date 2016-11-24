@@ -1,0 +1,297 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+
+/********************************************************/
+/*                                                      */
+/* i64Size,	u64Size-                                    */
+/*                                                      */
+/* This routine computes the minimum number of print    */
+/* positions needed to display a value of an uns32 value*/
+/* The size, in digits, is returned in the              */
+/* EAX register.                                        */
+/*                                                      */
+/********************************************************/
+
+
+
+procedure conv.u64Size( q:qword );
+	@noframe;  
+	@nodisplay; 
+	@noalignstack;
+	
+const
+				
+	#macro LO(v);
+		(v & $FFFF_FFFF)
+	#endmacro
+	
+	#macro HO(v);
+		(v >> 32)
+	#endmacro
+	
+		
+	
+begin u64Size;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ebx );
+	push( edx );
+	
+	mov( (type dword q), ebx );		
+	mov( (type dword q[4]), edx );	
+	
+	// If the value is 32 bits or less, use _u32Size (it's faster):
+	
+	test( edx, edx );
+	jnz gt32Bits;
+	
+		conv.u32Size( ebx );
+		pop( edx );
+		pop( ebx );
+		pop( ebp );
+		ret( _parms_ );
+			
+	gt32Bits:
+		_hla.test_OutputUnderscores();
+		jne countUnderscores;
+		
+			mov( 10, eax );		// At least 10 digits at this point
+			cmp( edx, HO( 10_000_000_000 ));
+			jb allDone;
+			je _10_or_11;
+			
+			add( 1, eax );
+			cmp( edx, HO( 100_000_000_000 ));
+			jb allDone;
+			je _11_or_12;
+			
+			add( 1, eax );
+			cmp( edx, HO( 1_000_000_000_000 ));
+			jb allDone;
+			je _12_or_13;
+			
+			add( 1, eax );
+			cmp( edx, HO( 10_000_000_000_000 ));
+			jb allDone;
+			je _13_or_14;
+			
+			add( 1, eax );
+			cmp( edx, HO( 100_000_000_000_000 ));
+			jb allDone;
+			je _14_or_15;
+			
+			add( 1, eax );
+			cmp( edx, HO( 1_000_000_000_000_000 ));
+			jb allDone;
+			je _15_or_16;
+			
+			add( 1, eax );
+			cmp( edx, HO( 10_000_000_000_000_000 ));
+			jb allDone;
+			je _16_or_17;
+			 
+			add( 1, eax );
+			cmp( edx, HO( 100_000_000_000_000_000 ));
+			jb allDone;
+			je _17_or_18;
+			 
+			add( 1, eax );
+			cmp( edx, HO( 1_000_000_000_000_000_000 ));
+			jb allDone;
+			je _18_or_19;
+			 
+			add( 1, eax );
+			cmp( edx, HO( 10_000_000_000_000_000_000 ));
+			jb allDone;
+			je _19_or_20;
+
+		addOne:
+			add(1, eax );
+		allDone:
+			pop( edx );
+			pop( ebx );
+			pop( ebp );
+			ret( _parms_ );
+			
+		_19_or_20:
+			cmp( ebx, LO( 10_000_000_000_000_000_000 ));
+			jb allDone;
+			jmp addOne;
+			
+		_18_or_19:
+			cmp( ebx, LO( 1_000_000_000_000_000_000 ));
+			jb allDone;
+			jmp addOne;
+			
+		_17_or_18:
+			cmp( ebx, LO( 100_000_000_000_000_000 ));
+			jb allDone;
+			jmp addOne;
+			
+		_16_or_17:
+			cmp( ebx, LO( 10_000_000_000_000_000 ));
+			jb allDone;
+			jmp addOne;
+			
+		_15_or_16:
+			cmp( ebx, LO( 1_000_000_000_000_000 ));
+			jb allDone;
+			jmp addOne;
+			
+		_14_or_15:
+			cmp( ebx, LO( 100_000_000_000_000 ));
+			jb allDone;
+			jmp addOne;
+			
+		_13_or_14:
+			cmp( ebx, LO( 10_000_000_000_000 ));
+			jb allDone;
+			jmp addOne;
+			
+		_12_or_13:
+			cmp( ebx, LO( 1_000_000_000_000 ));
+			jb allDone;
+			jmp addOne;
+			
+		_11_or_12:
+			cmp( ebx, LO( 100_000_000_000 ));
+			jb allDone;
+			jmp addOne;
+			
+		_10_or_11:
+			cmp( ebx, LO( 10_000_000_000 ));
+			jb allDone;
+			jmp addOne;
+		
+		
+	// If OutputUnderscores is true, we need to add in the
+	// size of the extra underscores to print, too.
+	
+	countUnderscores:
+		
+			mov( 13, eax );		// At least 13 print positions at this point
+			cmp( edx, HO( 10_000_000_000 ));
+			jb _allDone;
+			je u_13_or_14;
+			
+			add( 1, eax );		// 14
+			cmp( edx, HO( 100_000_000_000 ));
+			jb _allDone;
+			je u_14_or_15;
+			
+			add( 1, eax );		// 15
+			cmp( edx, HO( 1_000_000_000_000 ));
+			jb _allDone;
+			je u_15_or_17;
+			
+			add( 2, eax );		// 17
+			cmp( edx, HO( 10_000_000_000_000 ));
+			jb _allDone;
+			je u_17_or_18;
+			
+			add( 1, eax );		// 18
+			cmp( edx, HO( 100_000_000_000_000 ));
+			jb _allDone;
+			je u_18_or_19;
+			
+			add( 1, eax );		// 19
+			cmp( edx, HO( 1_000_000_000_000_000 ));
+			jb _allDone;
+			je u_19_or_21;
+			
+			add( 2, eax );		// 21
+			cmp( edx, HO( 10_000_000_000_000_000 ));
+			jb _allDone;
+			je u_21_or_22;
+			 
+			add( 1, eax );		// 22
+			cmp( edx, HO( 100_000_000_000_000_000 ));
+			jb _allDone;
+			je u_22_or_23;
+			 
+			add( 1, eax );		// 23
+			cmp( edx, HO( 1_000_000_000_000_000_000 ));
+			jb _allDone;
+			je u_23_or_25;
+			 
+			add( 2, eax );		// 25
+			cmp( edx, HO( 10_000_000_000_000_000_000 ));
+			jb _allDone;
+		_addOne:
+			add(1, eax );		// 26
+		_allDone:
+			pop( edx );
+			pop( ebx );
+			pop( ebp );
+			ret( _parms_ );
+			
+		u_23_or_25:
+			cmp( ebx, LO( 1_000_000_000_000_000_000 ));
+			jb _allDone;
+			add( 1, eax );		// 24
+			jmp _addOne;
+			
+		u_22_or_23:
+			cmp( ebx, LO( 100_000_000_000_000_000 ));
+			jb _allDone;
+			jmp _addOne;
+			
+		u_21_or_22:
+			cmp( ebx, LO( 10_000_000_000_000_000 ));
+			jb _allDone;
+			jmp _addOne;
+			
+		u_19_or_21:
+			cmp( ebx, LO( 1_000_000_000_000_000 ));
+			jb _allDone;
+			add( 1, eax );		// 20
+			jmp _addOne;
+			
+		u_18_or_19:
+			cmp( ebx, LO( 100_000_000_000_000 ));
+			jb _allDone;
+			jmp _addOne;
+			
+		u_17_or_18:
+			cmp( ebx, LO( 10_000_000_000_000 ));
+			jb _allDone;
+			jmp _addOne;
+			
+		u_15_or_17:
+			cmp( ebx, LO( 1_000_000_000_000 ));
+			jb _allDone;
+			add( 1, eax );		// 16
+			jmp _addOne;
+			
+		u_14_or_15:
+			cmp( ebx, LO( 100_000_000_000 ));
+			jb _allDone;
+			jmp _addOne;
+			
+		u_13_or_14:
+			cmp( ebx, LO( 10_000_000_000 ));
+			jb _allDone;
+			jmp _addOne;
+		
+	
+	
+end u64Size;
+
+end ConvUnit;

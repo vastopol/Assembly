@@ -1,0 +1,2851 @@
+program strfuncs2_test;
+#include( "stdlib.hhf" )
+												 
+	
+const		
+	exStr	:= $8000;
+	
+	tknStr_c	:string := 
+					"0,0 1,1 2,2 3,3 4,4 5,5 6,6 7,7 8,8 9,9 "
+					"a b c d e f g h i j k l m n o p r s t u v";
+					
+									
+					
+	tknArray4_c	:= @tokenize( tknStr_c, 0, {' '}, {});
+	tknArray3_c	:= 
+		@tokenize
+		( 
+			tknStr_c, 
+			0, 
+			{' ', #9, ',', '<', '>', '|', '\', '/', '-'}, 
+			{'''','"'} 
+		);
+
+	tknArray4Cnt_c	:= @elements( tknArray4_c );
+	tknArray3Cnt_c	:= @elements( tknArray3_c );
+	
+	
+	caseConv_c	:string[] :=
+				[ 
+					"abcdefghijklmnopqrstuvwxyz0123ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+					string({#1..#127}-{'a'..'z', 'A'..'Z'}),
+					"a",
+					"A",
+					"aa",
+					"aA",
+					"Aa",
+					"AA",
+					"0a",
+					"0A",
+					"0aa",
+					"0aA",
+					"0Aa",
+					"0AA",
+					"a0",
+					"A0",
+					"aa0",
+					"aA0",
+					"Aa0",
+					"AA0",
+					"0a0",
+					"0A0",
+					"0aa0",
+					"0aA0",
+					"0Aa0",
+					"0AA0",
+					"",
+					"0",
+					"00"
+				];
+				
+				
+	spaces_c	:string[] :=
+				[
+					"",
+					" ",
+					"  ",
+					"   ",
+					"a",
+					" a",
+					"a ",
+					" a ",
+					"  a",
+					"a  ",
+					"  a  ",
+					" a  ",
+					"  a ",
+				];
+					 
+				
+	leading_c	:string[] :=
+				[
+					"",
+					"",
+					"",
+					"",
+					"a",
+					"a",
+					"a ",
+					"a ",
+					"a",
+					"a  ",
+					"a  ",
+					"a  ",
+					"a ",
+				];
+				
+	trailing_c	:string[] :=
+				[
+					"",
+					"",
+					"",
+					"",
+					"a",
+					" a",
+					"a",
+					" a",
+					"  a",
+					"a",
+					"  a",
+					" a",
+					"  a",
+				];
+				
+	trim_c		:string[] :=
+				[
+					"",
+					"",
+					"",
+					"",
+					"a",
+					"a",
+					"a",
+					"a",
+					"a",
+					"a",
+					"a",
+					"a",
+					"a",
+				];
+					 
+				
+
+					 
+				
+static
+	dynPtr		:dword;
+	freePtr		:dword;
+	index		:int32;
+	index2		:int32;
+	rslt		:int32;
+	length		:int32;
+	shortStr	:str.strvar(2);
+	rsltStr		:str.strvar(256);
+	rsltPtr		:string;
+	
+	tknStr		:string := tknStr_c;
+	numTokens	:uns32;
+	tknResult	:string[64];
+	tknArray3	:string[ @elements( tknArray3_c ) ] := tknArray3_c;	
+	tknArray4	:string[ @elements( tknArray4_c ) ] := tknArray4_c;
+	
+	caseConv	:string[ @elements( caseConv_c ) ] := caseConv_c;
+	upperConv	:string[ @elements( caseConv_c ) ] := 
+				[
+					#for( i := 0 to @elements( caseConv_c ) - 1 )
+					
+						@uppercase( caseConv_c[i],0 ),
+					
+					#endfor
+				];
+		
+	lowerConv	:string[ @elements( caseConv_c ) ] := 
+				[
+					#for( i := 0 to @elements( caseConv_c ) - 1 )
+					
+						@lowercase( caseConv_c[i],0 ),
+					
+					#endfor
+				];
+		
+	spaces		:string[ @elements( spaces_c ) ] := spaces_c;
+	leading		:string[ @elements( spaces_c ) ] := leading_c;
+	trailing	:string[ @elements( spaces_c ) ] := trailing_c;
+	trim		:string[ @elements( spaces_c ) ] := trim_c;
+
+
+begin strfuncs2_test;
+
+
+	try
+	
+		str.tokenize( tknStr, tknResult, @elements( tknResult ));
+		mov( eax, numTokens );
+		if( eax <> @elements( tknArray3 )) then
+		
+			raise( exStr );
+			
+		endif;
+		for( mov( 0, ecx ); ecx < numTokens; inc( ecx )) do
+		
+			mov( ecx, index );
+			if( str.ne( tknResult[ ecx*4 ], tknArray3[ ecx*4 ])) then
+			
+				raise( exStr );
+				
+			endif;
+			
+		endfor;
+		
+	  exception( exStr )
+	  
+	  	mov( index, ecx );
+		mov( @elements( tknArray3 ), eax );
+	  	stderr.put
+		(
+			"***********************************************" nl
+			" Error in str.tokenize3(1):" nl
+			" Index = ", index, nl
+			" numTokens = ", numTokens, 
+				" (should be ", (type uns32 eax), ")" nl
+			" Got      '", tknResult[ ecx*4 ], "'" nl,
+			" Expected '", tknArray3[ ecx*4 ], "'" nl 
+			nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"str.tokenize3(1) raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", index, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;	
+	
+
+
+	try
+	
+		str.tokenize( "", tknResult, @elements( tknResult ));
+		mov( eax, numTokens );
+		if( eax <> 0 ) then
+		
+			raise( exStr );
+			
+		endif;
+		
+	  exception( exStr )
+	  
+	  	mov( index, ecx );
+		mov( @elements( tknArray3 ), eax );
+	  	stderr.put
+		(
+			"***********************************************" nl
+			" Error in str.tokenize3(2):" nl
+			" Did not expect any tokens" nl 
+			nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"str.tokenize3(2) raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", index, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;	
+	
+	try
+	
+		str.tokenize3( NULL, tknResult, @elements( tknResult ));
+		stderr.put
+		( 
+			"str.tokenize3(3) failed! Expected ex.AttemptToDerefNULL exception!" nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the expected case
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"str.tokenize3(3) raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", index, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;
+		
+	try
+	
+		str.tokenize3( tknStr, NULL, 0 );
+		stderr.put
+		( 
+			"str.tokenize3(4) failed! Expected ex.AttemptToDerefNULL exception!" nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the expected case
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"str.tokenize3(4) raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", index, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;
+	stderr.put( "str.tokenize3 succeeded!" nl );
+	
+	
+			
+
+	////////
+	
+	try
+	
+		str.tokenize4( tknStr, {' '}, tknResult, @elements( tknResult ));
+		mov( eax, numTokens );
+		if( eax <> @elements( tknArray4 )) then
+		
+			raise( exStr );
+			
+		endif;
+		for( mov( 0, ecx ); ecx < numTokens; inc( ecx )) do
+		
+			mov( ecx, index );
+			if( str.ne( tknResult[ ecx*4 ], tknArray4[ ecx*4 ])) then
+			
+				raise( exStr );
+				
+			endif;
+			
+		endfor;
+		
+	  exception( exStr )
+	  
+	  	mov( index, ecx );
+		mov( @elements( tknArray4 ), eax );
+	  	stderr.put
+		(
+			"***********************************************" nl
+			" Error in str.tokenize4(1):" nl
+			" Index = ", index, nl
+			" numTokens = ", numTokens, 
+				" (should be ", (type uns32 eax), ")" nl
+			" Got      '", tknResult[ ecx*4 ], "'" nl,
+			" Expected '", tknArray4[ ecx*4 ], "'" nl 
+			nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"str.tokenize4(1) raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", index, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;	
+	
+	
+	try
+	
+		str.tokenize4( "", {' '}, tknResult, @elements( tknResult ));
+		mov( eax, numTokens );
+		if( eax <> 0) then
+		
+			raise( exStr );
+			
+		endif;
+		
+	  exception( exStr )
+	  
+	  	mov( index, ecx );
+		mov( @elements( tknArray4 ), eax );
+	  	stderr.put
+		(
+			"***********************************************" nl
+			" Error in str.tokenize4(2):" nl
+			" Did not expect any tokens" nl 
+			nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"str.tokenize4(2) raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", index, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;	
+	
+	try
+	
+		str.tokenize4( NULL, {' '}, tknResult, @elements( tknResult ));
+		stderr.put
+		( 
+			"str.tokenize4(3) failed! Expected ex.AttemptToDerefNULL exception!" nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the expected case
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"str.tokenize4(3) raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", index, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;
+		
+	try
+	
+		str.tokenize4( tknStr, {' '}, NULL, 0 );
+		stderr.put
+		( 
+			"str.tokenize4(4) failed! Expected ex.AttemptToDerefNULL exception!" nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the expected case
+		
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"str.tokenize4(4) raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", index, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;
+	stderr.put( "str.tokenize4 succeeded!" nl );
+	
+	
+	
+	
+	
+	
+	///////
+	
+	try
+	
+		mov( 0, numTokens );
+		foreach str.tokenInStr( tknStr ) do
+		
+			mov( eax, rsltPtr );
+			mov( numTokens, ecx );
+			if( str.ne( rsltPtr, tknArray3[ ecx*4 ]) ) then
+			
+				raise( exStr );
+				
+			endif;
+			str.free( rsltPtr ); 
+			inc( numTokens );
+			if( ecx > @elements( tknArray3 )) then
+			
+				raise( exStr );
+				
+			endif;
+			
+		endfor;
+		
+	  exception( exStr )
+	  
+		stderr.put
+		( 
+			"str.tokenInStr(1) failed!" nl
+			"Index = ", numTokens, nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+				
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"str.tokenInStr(1) raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", numTokens, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;
+	
+	
+	try
+	
+		mov( 0, numTokens );
+		foreach str.tokenInStr( "" ) do
+		
+			raise( exStr );
+				
+		endfor;
+		
+	  exception( exStr )
+	  
+		stderr.put
+		( 
+			"str.tokenInStr(2) failed!" nl
+			"Index = ", numTokens, nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+				
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"str.tokenInStr(2) raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", numTokens, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;
+	
+	
+	
+	try
+	
+		mov( 0, numTokens );
+		foreach str.tokenInStr( NULL ) do
+			
+			raise( exStr );
+				
+		endfor;
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is what we expect
+		
+	  exception( exStr )
+	  
+		stderr.put
+		( 
+			"str.tokenInStr(3) failed!" nl
+			"Index = ", numTokens, nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+				
+	  anyexception
+	  
+	  	stderr.put
+		( 
+			"str.tokenInStr raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", numTokens, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;
+	stderr.put( "str.tokenInStr3 succeeded!" nl );
+	  
+	  	
+	
+	///////
+	
+	try
+	
+		mov( 0, numTokens );
+		foreach str.tokenInStr2( tknStr, {' '} ) do
+		
+			mov( eax, rsltPtr );
+			mov( numTokens, ecx );
+			if( str.ne( rsltPtr, tknArray4[ ecx*4 ]) ) then
+			
+				raise( exStr );
+				
+			endif;
+			str.free( rsltPtr ); 
+			inc( numTokens );
+			if( ecx > @elements( tknArray4 )) then
+			
+				raise( exStr );
+				
+			endif;
+			
+		endfor;
+		
+	  exception( exStr )
+	  
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.tokenInStr2(1) failed!" nl
+			"Index = ", numTokens, nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+				
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.tokenInStr2(1) raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", numTokens, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;
+	
+	try
+	
+		foreach str.tokenInStr2( "", {' '} ) do
+		
+			raise( exStr );
+							
+		endfor;
+		
+	  exception( exStr )
+	  
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.tokenInStr2(2) failed!" nl
+			"Index = ", numTokens, nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+				
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.tokenInStr2(2) raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", numTokens, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;
+	
+	try
+	
+		foreach str.tokenInStr2( NULL, {' '} ) do
+		
+			raise( exStr );
+							
+		endfor;
+		raise( exStr );
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is what we expect
+		
+	  exception( exStr )
+	  
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.tokenInStr2(3) failed!" nl
+			"Index = ", numTokens, nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+				
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.tokenInStr2(3) raised an unexpected exception! eax=",
+			eax, nl 
+			"Index = ", numTokens, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;
+	stderr.put( "str.tokenInStr2 succeeded!" nl );
+	  
+
+	//////////
+	
+	str.tokenCnt( tknStr );
+	mov( eax, ecx );
+	str.tokenCnt1( tknStr );
+	mov( @elements( tknArray3_c ), edx );
+	if( eax <> tknArray3Cnt_c || ecx <> tknArray3Cnt_c ) then
+	
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.tokenCnt1(1) failed!" nl
+			"eax = ", (type uns32 eax), nl
+			"ecx = ", (type uns32 ecx), nl
+			"expected ", (type uns32 edx), nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+	
+	
+	str.tokenCnt1( "" );
+	if( eax <> 0 ) then
+	
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.tokenCnt1(2) failed!" nl
+			"eax = ", (type uns32 eax), nl
+			"ecx = ", (type uns32 ecx), nl
+			"expected ", (type uns32 edx), nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+	
+	try
+	
+		str.tokenCnt1( NULL );
+		raise( exStr );
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is what we expect
+		
+	  exception( exStr )
+	  
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.tokenCnt1(3) failed!" nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+				
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.tokenCnt1(3) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;
+		
+	stderr.put( "str.tokenCnt1 succeeded!" nl );
+	
+			
+
+	//////////
+	
+	str.tokenCnt( tknStr, {' '} );
+	mov( eax, ecx );
+	str.tokenCnt2( tknStr, {' '} );
+	mov( @elements( tknArray4_c ), edx );
+	if( eax <> edx || ecx <> edx ) then
+	
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.tokenCnt2(1) failed!" nl
+			"eax = ", (type uns32 eax), nl
+			"ecx = ", (type uns32 ecx), nl
+			"expected ", (type uns32 edx), nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+	
+	
+	str.tokenCnt2( "", {' '} );
+	if( eax <> 0 ) then
+	
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.tokenCnt2(2) failed!" nl
+			"eax = ", (type uns32 eax), nl
+			"ecx = ", (type uns32 ecx), nl
+			"expected ", (type uns32 edx), nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+	
+	try
+	
+		str.tokenCnt2( NULL, {' '} );
+		raise( exStr );
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is what we expect
+		
+	  exception( exStr )
+	  
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.tokenCnt2(3) failed!" nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+				
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.tokenCnt2(3) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	endtry;
+	stderr.put( "str.tokenCnt2 succeeded!" nl );
+	
+			
+	//////////
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < @elements( caseConv ); inc( ecx )) do
+		
+			mov( ecx, index );
+			str.cpy( caseConv[ecx*4], rsltStr );
+			str.upper( rsltStr );
+			if( str.ne( rsltStr, upperConv[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;  
+			
+			str.cpy( caseConv[ecx*4], rsltStr );
+			str.upper1( rsltStr );
+			if( str.ne( rsltStr, upperConv[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;
+			
+		endfor;
+		
+	  exception( exStr )
+	    
+		mov( index, ecx );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.upper1(1) failed!" nl
+			"index = ", (type uns32 ecx), nl
+			"result = '", rsltStr, "'" nl
+			"expected '", upperConv[ecx*4], "'" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.upper1(1) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.upper1( NULL );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.upper1(2) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.upper1(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "str.upper1 succeeded!" nl );
+			
+			
+	
+			
+	//////////
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < @elements( caseConv ); inc( ecx )) do
+		
+			mov( ecx, index );
+			str.upper( caseConv[ecx*4], rsltStr );
+			if( str.ne( rsltStr, upperConv[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;  
+			
+			str.upper2( caseConv[ecx*4], rsltStr );
+			if( str.ne( rsltStr, upperConv[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;
+			
+		endfor;
+		
+	  exception( exStr )
+	    
+		mov( index, ecx );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.upper2(1) failed!" nl
+			"index = ", (type uns32 ecx), nl
+			"result = '", rsltStr, "'" nl
+			"expected '", upperConv[ecx*4], "'" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.upper1(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.upper2( "abcd", shortStr );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.upper2(3) failed!" nl
+			"expected ex.StringOverflow" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.StringOverflow )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.upper2(3) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.upper2( NULL, rsltStr );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.upper2(4) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.upper2(4) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.upper2( rsltStr, NULL );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.upper2(5) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.upper2(5) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "str.upper2 succeeded!" nl );
+			
+			
+	
+			
+	//////////
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < @elements( caseConv ); inc( ecx )) do
+		
+			mov( ecx, index );
+			str.cpy( caseConv[ecx*4], rsltStr );
+			str.lower( rsltStr );
+			if( str.ne( rsltStr, lowerConv[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;  
+			
+			str.cpy( caseConv[ecx*4], rsltStr );
+			str.lower1( rsltStr );
+			if( str.ne( rsltStr, lowerConv[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;
+			
+		endfor;
+		
+	  exception( exStr )
+	    
+		mov( index, ecx );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.lower1(1) failed!" nl
+			"index = ", (type uns32 ecx), nl
+			"result = '", rsltStr, "'" nl
+			"expected '", lowerConv[ecx*4], "'" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.lower1(1) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.lower1( NULL );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.lower1(2) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.lower1(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "str.lower1 succeeded!" nl );
+			
+			
+	
+			
+	//////////
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < @elements( caseConv ); inc( ecx )) do
+		
+			mov( ecx, index );
+			str.lower( caseConv[ecx*4], rsltStr );
+			if( str.ne( rsltStr, lowerConv[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;  
+			
+			str.lower2( caseConv[ecx*4], rsltStr );
+			if( str.ne( rsltStr, lowerConv[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;
+			
+		endfor;
+		
+	  exception( exStr )
+	    
+		mov( index, ecx );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.lower2(1) failed!" nl
+			"index = ", (type uns32 ecx), nl
+			"result = '", rsltStr, "'" nl
+			"expected '", lowerConv[ecx*4], "'" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.lower2(1) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.lower2( NULL, rsltStr );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.lower2(2) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.lower2(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.lower2( rsltStr, NULL );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.lower2(3) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.lower2(3) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.lower2( "abcd", shortStr );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.lower2(4) failed!" nl
+			"expected ex.StringOverflow" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.StringOverflow )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.lower2(4) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "str.lower2 succeeded!" nl );
+	
+	
+	
+	//////////////////
+	
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < @elements( spaces ); inc( ecx )) do
+		
+			mov( ecx, index );
+			str.cpy( spaces[ecx*4], rsltStr );
+			str.delLeadingSpaces( rsltStr );
+			if( str.ne( rsltStr, leading[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;  
+			
+			str.cpy( spaces[ecx*4], rsltStr );
+			str.delLeadingSpaces1( rsltStr );
+			if( str.ne( rsltStr, leading[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;
+			
+		endfor;
+		
+	  exception( exStr )
+	    
+		mov( index, ecx );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.delLeadingSpaces1(1) failed!" nl
+			"index = ", (type uns32 ecx), nl
+			"result = '", rsltStr, "'" nl
+			"expected '", leading[ecx*4], "'" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.delLeadingSpaces1(1) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.delLeadingSpaces1( NULL );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.delLeadingSpaces1(2) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.delLeadingSpaces1(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "str.delLeadingSpaces1 succeeded!" nl );
+	
+	
+	
+			
+			
+	//////////////////
+	
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < @elements( spaces ); inc( ecx )) do
+		
+			mov( ecx, index );
+			str.delLeadingSpaces( spaces[ecx*4], rsltStr );
+			if( str.ne( rsltStr, leading[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;  
+			
+			str.delLeadingSpaces2( spaces[ecx*4], rsltStr );
+			if( str.ne( rsltStr, leading[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;
+			
+		endfor;
+		
+	  exception( exStr )
+	    
+		mov( index, ecx );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.delLeadingSpaces2(1) failed!" nl
+			"index = ", (type uns32 ecx), nl
+			"result = '", rsltStr, "'" nl
+			"expected '", leading[ecx*4], "'" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.delLeadingSpaces2(1) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.delLeadingSpaces2( NULL, rsltStr );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.delLeadingSpaces2(2) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.delLeadingSpaces2(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.delLeadingSpaces2( rsltStr, NULL );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.delLeadingSpace2(3) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.delLeadingSpace2(3) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.delLeadingSpaces2( "abcd", shortStr );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.delLeadingSpace2(4) failed!" nl
+			"expected ex.StringOverflow" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.StringOverflow )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.delLeadingSpace2(4) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "str.delLeadingSpace2 succeeded!" nl );
+	
+	
+	
+			
+			
+	
+	
+	
+	//////////////////
+	
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < @elements( spaces ); inc( ecx )) do
+		
+			mov( ecx, index );
+			str.a_delLeadingSpaces( spaces[ecx*4] );
+			mov( eax, rsltPtr );
+			if( str.ne( rsltPtr, leading[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;
+			str.free( rsltPtr );  
+			
+		endfor;
+		
+	  exception( exStr )
+	    
+		mov( index, ecx );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.a_delLeadingSpaces(1) failed!" nl
+			"index = ", (type uns32 ecx), nl
+			"result = '", rsltPtr, "'" nl
+			"expected '", leading[ecx*4], "'" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.a_delLeadingSpaces(1) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.a_delLeadingSpaces( NULL );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.a_delLeadingSpaces(2) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.a_delLeadingSpaces(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "str.a_delLeadingSpaces succeeded!" nl );
+	
+	
+	
+			
+	
+	
+	
+	//////////////////
+	
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < @elements( spaces ); inc( ecx )) do
+		
+			mov( ecx, index );
+			str.cpy( spaces[ecx*4], rsltStr );
+			str.delTrailingSpaces( rsltStr );
+			if( str.ne( rsltStr, trailing[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;  
+			
+			str.cpy( spaces[ecx*4], rsltStr );
+			str.delTrailingSpaces1( rsltStr );
+			if( str.ne( rsltStr, trailing[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;
+			
+		endfor;
+		
+	  exception( exStr )
+	    
+		mov( index, ecx );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.delTrailingSpaces1(1) failed!" nl
+			"index = ", (type uns32 ecx), nl
+			"result = '", rsltStr, "'" nl
+			"expected '", trailing[ecx*4], "'" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.delTrailingSpaces1(1) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.delTrailingSpaces1( NULL );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.delTrailingSpaces1(2) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.delTrailingSpaces1(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "str.delTrailingSpaces1 succeeded!" nl );
+	
+	
+	
+			
+			
+	//////////////////
+	
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < @elements( spaces ); inc( ecx )) do
+		
+			mov( ecx, index );
+			str.delTrailingSpaces( spaces[ecx*4], rsltStr );
+			if( str.ne( rsltStr, trailing[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;  
+			
+			str.delTrailingSpaces2( spaces[ecx*4], rsltStr );
+			if( str.ne( rsltStr, trailing[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;
+			
+		endfor;
+		
+	  exception( exStr )
+	    
+		mov( index, ecx );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.delTrailingSpaces2(1) failed!" nl
+			"index = ", (type uns32 ecx), nl
+			"result = '", rsltStr, "'" nl
+			"expected '", trailing[ecx*4], "'" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.delTrailingSpaces2(1) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.delTrailingSpaces2( NULL, rsltStr );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.delTrailingSpaces2(2) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.delTrailingSpaces2(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.delTrailingSpaces2( rsltStr, NULL );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.delTrailingSpaces2(3) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.delTrailingSpaces2(3) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.delTrailingSpaces2( "abcd", shortStr );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.delTrailingSpaces2(4) failed!" nl
+			"expected ex.StringOverflow" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.StringOverflow )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.delTrailingSpaces2(4) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "str.delTrailingSpaces2 succeeded!" nl );
+	
+	
+	
+			
+			
+	//////////////////
+	
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < @elements( spaces ); inc( ecx )) do
+		
+			mov( ecx, index );
+			str.a_delTrailingSpaces( spaces[ecx*4] );
+			mov( eax, rsltPtr );
+			if( str.ne( rsltPtr, trailing[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;  
+			str.free( rsltPtr );
+			
+		endfor;
+		
+	  exception( exStr )
+	    
+		mov( index, ecx );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.a_delTrailingSpaces1(1) failed!" nl
+			"index = ", (type uns32 ecx), nl
+			"result = '", rsltPtr, "'" nl
+			"expected '", trailing[ecx*4], "'" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.a_delTrailingSpaces1(1) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.a_delTrailingSpaces( NULL );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.a_delTrailingSpaces(2) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.a_delTrailingSpaces(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "str.a_delTrailingSpaces succeeded!" nl );
+	
+	
+	
+			
+			
+	
+	
+	
+			
+			
+	
+	
+	
+	//////////////////
+	
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < @elements( spaces ); inc( ecx )) do
+		
+			mov( ecx, index );
+			str.cpy( spaces[ecx*4], rsltStr );
+			str.trim( rsltStr );
+			if( str.ne( rsltStr, trim[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;  
+			
+			str.cpy( spaces[ecx*4], rsltStr );
+			str.trim1( rsltStr );
+			if( str.ne( rsltStr, trim[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;
+			
+		endfor;
+		
+	  exception( exStr )
+	    
+		mov( index, ecx );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.trim1(1) failed!" nl
+			"index = ", (type uns32 ecx), nl
+			"result = '", rsltStr, "'" nl
+			"expected '", trim[ecx*4], "'" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.trim1(1) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.trim1( NULL );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.trim1(2) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.trim1(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "str.trim1 succeeded!" nl );
+	
+	
+	
+			
+			
+	//////////////////
+	
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < @elements( spaces ); inc( ecx )) do
+		
+			mov( ecx, index );
+			str.trim( spaces[ecx*4], rsltStr );
+			if( str.ne( rsltStr, trim[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;  
+			
+			str.trim2( spaces[ecx*4], rsltStr );
+			if( str.ne( rsltStr, trim[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;
+			
+		endfor;
+		
+	  exception( exStr )
+	    
+		mov( index, ecx );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.trim2(1) failed!" nl
+			"index = ", (type uns32 ecx), nl
+			"result = '", rsltStr, "'" nl
+			"expected '", trim[ecx*4], "'" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.trim2(1) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.trim2( NULL, rsltStr );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.trim2(2) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.trim2(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.trim2( rsltStr, NULL );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.trim2(3) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.trim2(3) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.trim2( "abcd", shortStr );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.trim2(4) failed!" nl
+			"expected ex.StringOverflow" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.StringOverflow )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.trim2(4) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "str.trim2 succeeded!" nl );
+				
+	
+	
+	
+	//////////////////
+	
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < @elements( spaces ); inc( ecx )) do
+		
+			mov( ecx, index );
+			str.a_trim( spaces[ecx*4] );
+			mov( eax, rsltPtr );
+			if( str.ne( rsltPtr, trim[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;  
+			str.free( rsltPtr );
+						
+		endfor;
+		
+	  exception( exStr )
+	    
+		mov( index, ecx );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.a_trim(1) failed!" nl
+			"index = ", (type uns32 ecx), nl
+			"result = '", rsltPtr, "'" nl
+			"expected '", trim[ecx*4], "'" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.a_trim(1) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.a_trim( NULL );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.a_trim(2) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.a_trim(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "str.a_trim succeeded!" nl );
+	
+	
+	
+			
+	//////////
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < @elements( caseConv ); inc( ecx )) do
+		
+			mov( ecx, index );
+			str.cpy( caseConv[ecx*4], rsltStr );
+			str.translate
+			( 
+				rsltStr, 
+				"abcdefghijklmnopqrstuvwxyz", 
+				"ABCDEFGHIJKLMNOPQRSTUVWXYZ" 
+			);
+			if( str.ne( rsltStr, upperConv[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;  
+			
+			str.cpy( caseConv[ecx*4], rsltStr );
+			str.translate3
+			( 
+				rsltStr, 
+				"abcdefghijklmnopqrstuvwxyz", 
+				"ABCDEFGHIJKLMNOPQRSTUVWXYZ" 
+			);
+			if( str.ne( rsltStr, upperConv[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;
+			
+		endfor;
+		
+	  exception( exStr )
+	    
+		mov( index, ecx );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.translate3(1) failed!" nl
+			"index = ", (type uns32 ecx), nl
+			"result = '", rsltStr, "'" nl
+			"expected '", upperConv[ecx*4], "'" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.translate3(1) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.translate3( NULL, "a", "b" );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.translate3(2) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.translate3(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.translate3( "a", NULL, "b" );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.translate3(3) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.translate3(3) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.translate3( "a", "b", NULL );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.translate3(4) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.translate3(4) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "str.translate3 succeeded!" nl );
+			
+			
+	
+			
+	
+	
+	
+			
+	//////////
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < @elements( caseConv ); inc( ecx )) do
+		
+			mov( ecx, index );
+			str.translate
+			( 
+				caseConv[ecx*4], 
+				"abcdefghijklmnopqrstuvwxyz", 
+				"ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+				rsltStr 
+			);
+			if( str.ne( rsltStr, upperConv[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;  
+			
+			str.cpy( caseConv[ecx*4], rsltStr );
+			str.translate4
+			( 
+				caseConv[ecx*4], 
+				"abcdefghijklmnopqrstuvwxyz", 
+				"ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+				rsltStr 
+			);
+			if( str.ne( rsltStr, upperConv[ecx*4] )) then
+			
+				raise( exStr );
+			
+			endif;
+			
+		endfor;
+		
+	  exception( exStr )
+	    
+		mov( index, ecx );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.translate4(1) failed!" nl
+			"index = ", (type uns32 ecx), nl
+			"result = '", rsltStr, "'" nl
+			"expected '", upperConv[ecx*4], "'" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.translate4(1) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.translate4( NULL, "a", "b", rsltStr );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.translate4(2) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.translate4(2) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.translate4( "a", NULL, "b", rsltStr );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.translate4(3) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.translate4(3) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.translate4( "a", "b", NULL, rsltStr );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.translate4(4) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.translate4(4) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.translate4( "a", "b", "c", NULL );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.translate4(4) failed!" nl
+			"expected ex.AttemptToDerefNULL" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.translate4(4) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	  
+	
+	try
+	
+		str.translate4( "abcd", "abcd", "abcd", shortStr );
+		stderr.put
+		( 
+			"****************************************************", nl, 
+			"str.translate4(5) failed!" nl
+			"expected ex.StringOverflow" nl  
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.StringOverflow )
+	    
+		// This is the expected result
+		
+	  anyexception
+	  
+	  	stderr.put
+		(
+			"****************************************************", nl, 
+			"str.translate4(5) raised an unexpected exception! eax=",
+			eax, nl 
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "str.translate4 succeeded!" nl );
+			
+			
+			
+end strfuncs2_test;
+
+													

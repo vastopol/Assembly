@@ -1,0 +1,298 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit consoleUnit;
+
+#includeonce( "excepts.hhf" )
+#includeonce( "console.hhf" )
+#includeonce( "os.hhf" )
+#includeonce( "stdin.hhf" )
+
+#include("stdout.hhf")
+?@nodisplay := true;
+?@noalignstack := true;
+?@noframe := true;
+	
+
+#if( os.linux | os.freeBSD | os.macOS )
+
+	#print( "Need a Linux/freeBSD/MacOS version of testkey" )
+
+	procedure console.testKey;
+	begin testKey;
+		xor( eax, eax );
+		ret();
+	end testKey;
+	
+
+#elseif( os.win32 )
+
+	type
+		KEY_EVENT_RECORD:
+			record
+				bKeyDown			:boolean[4];
+				wRepeatCount		:word;
+				wVirtualKeyCode		:word;
+				wVirtualScanCode	:word;
+				AsciiChar			:char[2];
+				dwControlKeyState	:dword;
+
+			endrecord;
+
+		INPUT_RECORD:
+			record
+
+				EventType	:dword;
+				KeyEvent	:KEY_EVENT_RECORD;
+
+			endrecord;
+
+	procedure ReadConsoleInput
+	( 
+			handle			:dword;
+		var	inputBuffer		:INPUT_RECORD;
+			numEvents		:dword;
+		var numEventsFound	:dword 
+	); @stdcall; @external( "_ReadConsoleInputA@16" );
+
+	procedure PeekConsoleInput
+	( 
+			handle			:dword;
+		var	inputBuffer		:INPUT_RECORD;
+			numEvents		:dword;
+		var numEventsFound	:dword 
+	); @stdcall; @external( "_PeekConsoleInputA@16" );
+
+	// Virtual key codes of interest to us:
+
+	const
+		VK_INSERT     := $2D;
+		VK_DELETE     := $2E;
+
+		VK_LEFT       := $25;
+		VK_RIGHT      := $27;
+		VK_UP         := $26;
+		VK_DOWN       := $28;
+
+		VK_HOME       := $24;
+		VK_END        := $23;
+		VK_PGUP       := $21;
+		VK_PGDN       := $22;
+
+		
+		VK_F1         := $70;
+		VK_F2         := $71;
+		VK_F3         := $72;
+		VK_F4         := $73;
+		VK_F5         := $74;
+		VK_F6         := $75;
+		VK_F7         := $76;
+		VK_F8         := $77;
+		VK_F9         := $78;
+		VK_F10        := $79;
+		VK_F11        := $7A;
+		VK_F12        := $7B;
+
+		// Modifier key states of interest to us:
+
+		RIGHT_ALT_PRESSED  := $1;
+		LEFT_ALT_PRESSED   := $2;
+		RIGHT_CTRL_PRESSED := $4;
+		LEFT_CTRL_PRESSED  := $8;
+		SHIFT_PRESSED      := $10;
+
+
+
+	type
+		xp:
+			record
+				vk		:byte;
+				hlaCode	:byte;
+			endrecord;
+
+	const
+
+		// xlatTable maps Windows virtual key codes for various
+		// special keys to "HLA" key codes in the range $80..$FF.
+		// Note that bits five and six are provided by the shift/ctrl/alt
+		// state, as defined in the modifierXlat table.
+
+		xlatTable_c :xp[] :=
+			[
+				xp:[VK_F1,  $80],
+				xp:[VK_F2,  $81],
+				xp:[VK_F3,  $82],
+				xp:[VK_F4,  $83],
+				xp:[VK_F5,  $84],
+				xp:[VK_F6,  $85],
+				xp:[VK_F7,  $86],
+				xp:[VK_F8,  $87],
+				xp:[VK_F9,  $88],
+				xp:[VK_F10, $89],
+				xp:[VK_F11, $8a],
+				xp:[VK_F12, $8c],
+
+				xp:[VK_INSERT,	$8c],
+				xp:[VK_DELETE,	$8e],
+				xp:[VK_LEFT,	$8f],
+				xp:[VK_RIGHT,	$90],
+				xp:[VK_UP,		$91],
+				xp:[VK_DOWN,	$92],
+				xp:[VK_HOME,	$93],
+				xp:[VK_END,		$94],
+				xp:[VK_PGUP,	$95],
+				xp:[VK_PGDN,	$96]
+
+			];
+
+	readonly
+		xlatTable:xp[@elements(xlatTable_c)] := xlatTable_c;
+
+
+
+		// Modifier states (bits 5 & 6):
+		//
+		//	00 - No modification
+		//	01 - Shift key is pressed
+		//	10 - Ctrl key is pressed
+		//	11 - Alt key is pressed
+		//
+		// Priorities:
+		//
+		//	shift < ctrl < alt (alt has highest priority)
+		//
+		//	Index into table is computed as follows:
+		//
+		//	bit 0 - Left Alt key
+		//  bit 1 - Right Alt key
+		//	bit 2 - Left Ctrl key
+		//	bit 3 - Right Ctrl key
+		//  bit 4 - Shift key
+
+		modifierXlat:byte[32] :=
+			[
+				%0_00_00000,	// No modifiers
+
+				%0_11_00000,	// Left Alt by itself
+				%0_11_00000,	// Right Alt by itself
+				%0_11_00000,	// Both Alt keys
+
+				%0_10_00000,	// Left Ctrl by itself
+				%0_11_00000,	// Left Ctrl + left Alt
+				%0_11_00000,	// Left Ctrl + Right Alt
+				%0_11_00000,	// Left Ctrl + both Alts
+
+				%0_10_00000,	// Right Ctrl by itself
+				%0_11_00000,	// Right Ctrl + left Alt
+				%0_11_00000,	// Right Ctrl + Right Alt
+				%0_11_00000,	// Right Ctrl + both Alts
+
+				%0_10_00000,	// L+R Ctrl
+				%0_11_00000,	// L+R Ctrl + left Alt
+				%0_11_00000,	// L+R Ctrl + Right Alt
+				%0_11_00000,	// L+R Ctrl + both Alts
+
+				%0_01_00000,	// Shift by itself
+				%0_11_00000,	// Left Alt + Shift
+				%0_11_00000,	// Right Alt + Shift
+				%0_11_00000,	// Both Alt keys + Shift
+
+				%0_10_00000,	// Left Ctrl + Shift
+				%0_11_00000,	// Left Ctrl + left Alt + Shift
+				%0_11_00000,	// Left Ctrl + Right Alt + Shift
+				%0_11_00000,	// Left Ctrl + both Alts + Shift
+
+				%0_10_00000,	// Right Ctrl + Shift
+				%0_11_00000,	// Right Ctrl + left Alt + Shift
+				%0_11_00000,	// Right Ctrl + Right Alt + Shift
+				%0_11_00000,	// Right Ctrl + both Alts + Shift
+
+				%0_10_00000,	// L+R Ctrl + Shift
+				%0_11_00000,	// L+R Ctrl + left Alt + Shift
+				%0_11_00000,	// L+R Ctrl + Right Alt + Shift
+				%0_11_00000		// L+R Ctrl + both Alts + Shift
+			];
+
+
+
+
+
+	// testKey-
+	//	Checks to see if there is a keystroke available from the console
+	//	input device. Returns zero in AL if no key is available, returns
+	//	1 if there is a key available.
+
+	procedure console.testKey;
+	var
+		numEvents	:dword;
+		input		:INPUT_RECORD;
+		
+	begin testKey;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( ecx );
+		push( edx );
+
+		EmptyEventQueue:
+
+			PeekConsoleInput( stdin.handle(), input, 1, numEvents );
+			test( eax, eax );
+			jz EndOfFile;
+				
+			cmp( numEvents, 0 );
+			je allDone;
+			cmp( input.KeyEvent.bKeyDown[0], false );
+			je getNextEvent;
+
+				// Determine if this is a key for which readkey returns
+				// an actual code:
+
+				mov( input.KeyEvent.wVirtualKeyCode, ax );
+				cmp( ax, 0 );
+				je allDone;
+
+				// Okay, it's not a straight ASCII character, see if
+				// it's one of the special keys that we support:
+
+				mov( 0, ecx );
+				SeeIfSpecial:
+				
+					cmp( al, xlatTable.vk[ecx*2] );
+					je allDone;
+					add( 1, ecx );
+					cmp( ecx, @elements(xlatTable));
+					jb SeeIfSpecial;
+					
+			getNextEvent:
+			ReadConsoleInput( stdin.handle(), input, 1, numEvents );		
+			jmp EmptyEventQueue;
+
+		allDone:
+		mov( numEvents, eax );
+		pop( edx );
+		pop( ecx );
+		leave();
+		ret();
+			
+	EndOfFile:
+		raise( ex.EndOfFile );
+		
+	end testKey;
+
+#endif
+	
+end consoleUnit;

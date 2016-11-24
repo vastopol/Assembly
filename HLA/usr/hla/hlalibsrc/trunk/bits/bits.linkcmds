@@ -1,0 +1,12 @@
+bit_merge16.o
+bit_merge32.o
+bit_merge8.o
+bit_distribute.o
+bit_reverse16.o
+bit_nibbles8.o
+bit_reverse32.o
+bit_reverse8.o
+bit_nibbles16.o
+bit_nibbles32.o
+bit_coalesce.o
+bit_cnt.o

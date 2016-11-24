@@ -1,0 +1,158 @@
+unit str_columnize_unit;
+
+// synopsis:
+//	take an array of strings, find length of longest string,
+//	create a single string as the concatenation of each of
+//	the strings in the array, with each string padded to 
+//	"max-string-len+1" characters, with spaces added at the
+//	end of each string.
+
+//	Version History:
+//
+//	Revision:	3
+//	Author:		Sevag Krikorian
+//	Date:		Oct. 01, 2007
+//	Note:		changed to library format, code improvement
+//				now returns success/failure status in carry
+//
+//	Revision:	2
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 06, 2007
+//	Note:		removed some unnecessary instructions
+//				fixed columnize4, updated with new zstr.cpySize
+
+//	Revision:	1
+//	Author:		Sevag Krikorian
+//	Date:		Aug 21, 2007
+//	Note:		1st release
+//
+
+	#includeonce ("strings.hhf")
+	#includeonce ("excepts.hhf")
+	#includeonce ("memory.hhf")
+
+	procedure str.a_columnize2( var s:var; numStrs:dword );
+		@nodisplay; @noframe; @noalignstack;
+		
+		// s			array of strings
+		// numStrs		number of strings in array
+		//
+		// create a single string on heap that is concatenation
+		// of all strings padded with spaces to maxlen + 1
+		//
+		// returns EAX - pointer to allocated string
+		
+		var
+			saveEBX	:dword;
+			saveECX	:dword;
+			saveEDX	:dword;
+			saveESI	:dword;
+			saveEDI	:dword;
+			
+		
+	begin a_columnize2;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( ebx, saveEBX );
+		mov( ecx, saveECX );
+		mov( edx, saveEDX );
+		mov( esi, saveESI );
+		mov( edi, saveEDI );
+		
+		mov( s, ebx );
+		test( ebx, ebx );
+		jz raiseDerefNULL;
+		
+		mov( numStrs, ecx );
+		test( ecx, ecx );
+		jz returnNULL;
+		
+		// find the longest string in array
+		or( -1, edx );
+		xor( edi, edi );  // store longest string length here
+		
+		_looparray:
+			add( 1, edx );
+			cmp( edx, ecx );
+			jz _doneloop;
+			
+			// deref the string
+			mov( [ebx + edx*4], eax );
+			mov( (type str.strRec[eax]).length, eax );
+			cmp( eax, edi );
+			jbe _looparray;
+			
+			mov( eax, edi);
+			jmp _looparray;	
+			
+		_doneloop:
+		
+		// edi contains the longest string length
+		add( 1, edi );
+		mov( edi, ecx );	// ecx = width to pad
+		
+		mov( numStrs, eax );
+		mul( edi );
+		push( eax );		// save length of string to alloc
+		str.alloc( eax );
+		mov( eax, edi );	// edi = dest string
+		
+		// might as well take care of length now since we know
+		// what it will be
+		
+		pop( (type str.strRec[edi]).length );
+		push( edi );	// save a pointer to the string
+		
+		
+		// loop through the array again, but this time,
+		// concatenate the strings with padding
+		// edi = current dest position,
+		// ecx = width,
+		// ebx = current source
+		or( -1, eax );
+		mov( s, esi );	// esi = pointer to array
+		
+		_arrayloop2:
+			add( 1, eax );
+			cmp( eax, numStrs );
+			je _doneloop2;
+			
+			mov( [esi + eax*4], ebx );
+			push( eax );
+			zstr.cpySize( ebx, ecx, ' ', edi );
+			mov( eax, edi );
+			pop( eax );
+			jmp _arrayloop2;
+			
+		_doneloop2:
+		pop( eax );
+		jmp done;
+		
+		// If the number of columns was specified as zero,
+		// then return an empty string.
+			
+		returnNULL:
+			str.alloc( 1 );
+		
+		done:
+		mov( saveEBX, ebx );
+		mov( saveECX, ecx );
+		mov( saveEDX, edx );
+		mov( saveESI, esi );
+		mov( saveEDI, edi );
+		
+		mov( ebp, esp );
+		pop( ebp );
+		ret( _parms_ );
+
+		raiseDerefNULL:
+			raise( ex.AttemptToDerefNULL );
+		
+	end a_columnize2;
+
+
+
+end str_columnize_unit;

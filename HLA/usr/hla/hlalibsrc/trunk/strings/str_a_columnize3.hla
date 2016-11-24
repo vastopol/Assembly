@@ -1,0 +1,148 @@
+unit str_columnize_unit;
+
+// synopsis:
+//	take an array of strings, find length of longest string,
+//	create a single string as the concatenation of each of
+//	the strings in the array, with each string padded to 
+//	"max-string-len+1" characters, with spaces added at the
+//	end of each string.
+
+//	Version History:
+//
+//	Revision:	3
+//	Author:		Sevag Krikorian
+//	Date:		Oct. 01, 2007
+//	Note:		changed to library format, code improvement
+//				now returns success/failure status in carry
+//
+//	Revision:	2
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 06, 2007
+//	Note:		removed some unnecessary instructions
+//				fixed columnize4, updated with new zstr.cpySize
+
+//	Revision:	1
+//	Author:		Sevag Krikorian
+//	Date:		Aug 21, 2007
+//	Note:		1st release
+//
+
+	#includeonce ("strings.hhf")
+	#includeonce ("excepts.hhf")
+	#includeonce ("memory.hhf")
+
+	procedure str.a_columnize3( var s:var; numStrs:dword; tabCols:dword );
+		@nodisplay; @noframe; @noalignstack;
+
+		// s			array of strings
+		// numStrs		number of strings in array
+		// tabCols		width of padding
+		//
+		// create a single string on heap that is concatenation
+		// of all strings padded with spaces to width of 'tabCols'
+		// if string length is longer than 'tabCols' then truncate
+		// to tabCols -1
+		//
+		// returns EAX - pointer to allocated string
+
+		var
+			saveEBX	:dword;
+			saveECX	:dword;
+			saveEDX	:dword;
+			saveESI	:dword;
+			saveEDI	:dword;
+
+	begin a_columnize3;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( ebx, saveEBX );
+		mov( ecx, saveECX );
+		mov( edx, saveEDX );
+		mov( esi, saveESI );
+		mov( edi, saveEDI );
+
+
+		mov( s, ebx );
+		test( ebx, ebx );
+		jz raiseDerefNULL;
+
+		mov( numStrs, eax );
+		test( eax, eax );
+		jz returnNULL;
+
+		// if tabCols <= 1, then we can't do anything, return NULL?
+		mov( tabCols, ecx );
+		cmp( ecx, 1 );
+		jbe returnNULL;
+
+		// ecx = tabCols, eax = numStrs
+		// compute size of string we need to allocate
+		mul( ecx );
+		push( eax );
+		str.alloc( eax );
+		mov( eax, edi );
+		
+		// take care of the length here since we know what it will be
+		pop( (type str.strRec[edi]).length );
+		push( edi );	// save a pointer to the string
+
+		// loop through the array
+		// concatenate the strings with padding
+		// edi = current dest position,
+		// ecx = width (tabCols),
+		// ebx = current source
+		or( -1, eax );
+		mov( s, esi );	// esi = pointer to array
+		
+		_arrayloop:
+			add( 1, eax );
+			cmp( eax, numStrs );
+			je _doneloop;
+			
+			mov( [esi + eax*4], ebx );
+			push( eax );
+			zstr.cpySize( ebx, ecx, ' ', edi );
+			mov( eax, edi );
+			pop( eax );
+
+			// if strlen ebx was  >= tabCols in ecx, then
+			// truncate to tabCols-1
+			cmp( ecx, (type str.strRec[ebx]).length );
+			ja _arrayloop;
+			mov( ' ', (type byte [edi-1]) );
+			
+			jmp _arrayloop;
+			
+		_doneloop:
+		mov( #0, (type byte[edi]) );
+		pop( eax );
+		stc();		// set carry = success
+		jmp done;
+			
+		returnNULL:
+			xor( eax, eax );
+			clc();	// clear carry = failure
+
+		done:
+		mov( saveEBX, ebx );
+		mov( saveECX, ecx );
+		mov( saveEDX, edx );
+		mov( saveESI, esi );
+		mov( saveEDI, edi );
+		
+		mov( ebp, esp );
+		pop( ebp );
+		ret( _parms_ );
+
+		raiseDerefNULL:
+			raise( ex.AttemptToDerefNULL );
+
+	end a_columnize3;
+	
+	
+
+
+end str_columnize_unit;

@@ -1,0 +1,234 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+
+/***********************************************************/
+/*                                                         */
+/* insert3,                                                */
+/* insert4,                                                */
+/* a_insert-                                               */
+/*                                                         */
+/* Inserts a source string into a destination              */
+/* string before a specified character position            */
+/* in the destination string.                              */
+/*                                                         */
+/* insert inputs-                                          */
+/*                                                         */
+/* src:  Pointer to string to insert src into.             */
+/*			(also destination string for insert3)		   */
+/* start: Index into dest to begin insertion of src.       */
+/* ins:   String to insert into src.                       */
+/*                                                         */
+/* insert outputs-                                         */
+/*                                                         */
+/* dest:  Modified string is stored into the dest address. */
+/*			(insert4 only)								   */
+/*                                                         */
+/* Note:  insert will raise a "StringOverflow" exception   */
+/*        if the dest maxlen value is too small to hold */
+/* 	      the original dest string and the inserted src    */
+/* 	      string.                                          */
+/* 	                                                       */
+/* ainsert-                                                */
+/*                                                         */
+/* Similar to insert, except ainsert does not modify the   */
+/* dest string; instead, it allocates storage for a new    */
+/* string on the heap and builds the new string in the     */
+/* allocated storage.  This routine returns a pointer to   */
+/* the new string in the EAX register.                     */
+/*														   */
+/* If the start index is greater than the length of the	   */
+/* destination string, these routines will simply append   */
+/* the source string to the end of the dest string.        */
+/* 	                                                       */
+/***********************************************************/
+
+
+procedure str.insert3
+(
+	ins:	string;
+	start:	dword;
+	dest:	string
+);  @noframe;  
+begin insert3;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ecx );
+	push( esi );
+	push( edi );
+	pushfd();
+	
+	// Get the string pointers and make sure they are non-NULL.
+	
+	mov( dest, edi );
+	mov( ins, esi );
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+	// See if the destination string is large enough to hold the result.
+	
+	mov( (type str.strRec [edi]).length, eax );
+	add( (type str.strRec [esi]).length, eax );
+	cmp( eax, (type str.strRec[edi]).maxlen );
+	ja StringOverflow;
+	
+	
+	// Verify that the "start" value is less than the length of the
+	// dest string.
+	
+	mov( (type str.strRec [edi]).length, ecx );
+	cmp( ecx, start );
+	jae startLTlength;
+	
+		mov( ecx, start );
+		
+	startLTlength:	
+	
+	// Make room in the destination string for the source string.
+	// (do this by moving the characters in the dest string after
+	//  the start index).
+	//
+	// Before:
+	//
+	//                   length(dest) - start + 1
+	//                     |
+	//                   ======
+	//	dest:	.........yyyyy0
+	//                   |	  |
+	//                   |	  Source for 1st movsb.
+	//                   |
+	//                   start
+	//
+	//
+	// After:
+	//					 length( ins )
+	//                      |
+	//                   =======
+	//	dest:	.........#######yyyyy0
+	//                   |			 |
+	//                   start		 New Destination address =
+	//                                 dest + length(dest) + length(ins).
+	//
+
+
+
+	// Special note: must handle length(dest) = 0 and length(ins) = 0!
+	
+	
+	mov( (type str.strRec [esi]).length, eax );	// Save ins length for later.
+	
+	mov( edi, esi );	// Compute address of the zero terminating byte, this
+	add( ecx, esi );	//  will be where we start copying from.
+
+	sub( start, ecx );	// Compute length(dest) [in ecx] - start + 1.
+	inc( ecx );
+	
+	mov( esi, edi );	// Compute address of new destination.
+	add( eax, edi );
+	try
+	
+		std();
+		rep.movsb();		// Note: ecx is >= 1 at this point (zero byte).
+		cld();
+		
+	  anyexception
+	  	popfd();			// Must restore direction flag!
+		raise( eax );
+		
+	endtry;
+	
+	
+	
+	// Okay, copy the source string into the space opened up by the move above.
+	//
+	// Before:
+	//					 length( ins )
+	//                      |
+	//                   =======
+	//	dest:	#########.......yyyyy0
+	//					 |
+	//				Destination Address
+	//
+	//	ins:	sssssss0
+	//			|
+	//		Source Address
+	//
+	//
+	// After:
+	//					 length( ins )
+	//                      |
+	//                   =======
+	//	dest:	#########sssssssyyyyy0
+	//						    |
+	//						Destination Address
+	//
+	//	ins:	sssssss0
+	//				   |
+	//				Source Address
+	//
+
+	
+	mov( dest, edi );
+	add( start, edi );
+	mov( ins, esi );
+	mov( (type str.strRec [esi]).length, ecx );
+	test( ecx, ecx );
+	jz NoMove;
+	
+		rep.movsb();
+		
+	NoMove:
+	
+	// Compute the new length of the destination string.
+	
+	mov( ins, esi );
+	mov( (type str.strRec [esi]).length, eax );
+	mov( dest, esi );
+	add( eax, (type str.strRec [esi]).length );		
+	
+	popfd();
+	pop( edi );
+	pop( esi );
+	pop( ecx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+StringOverflow:
+	raise( ex.StringOverflow );
+
+end insert3;
+
+end stringUnit;
+
+
+
+
+	
+

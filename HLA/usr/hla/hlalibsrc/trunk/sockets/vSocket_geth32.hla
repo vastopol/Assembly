@@ -1,0 +1,86 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit socketUnit;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "sockets.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "hla.hhf" )
+
+
+// The following dummy procedure (no code) exists only to shut
+// up the linker because (under Windows) the default state is to
+// compile the program with all symbols being public (for debugging
+// purposes).
+ 
+procedure justToPreventDuplicate_geth32Thunk_symbol;
+begin justToPreventDuplicate_geth32Thunk_symbol;
+end justToPreventDuplicate_geth32Thunk_symbol;
+
+// baseSocketClass_t.geth32
+//
+//	Read a 32-bit hexadecimal integer from a socket.
+
+method vBaseSocketClass_t.geth32; 
+var
+	obj			:pointer to baseSocketClass_t;
+	c			:char;
+	
+	// Low-level implementation of a thunk procedure:
+	//
+	// Thunk must return a single char in AL from the socket (with carry
+	// flag clear) or return carry flag set if there was an EOF.
+	
+	procedure geth32Thunk( thunksEBPval:dword );
+	begin geth32Thunk;
+	
+		push( ebp );			// Thunks always do this.
+		mov( [esp+8], ebp );	// Retrieve EBP value passed as parameter
+		push( edi );
+
+			mov( ebp::obj, esi );
+			(type vBaseSocketClass_t [esi]).read( ebp::c, 1 );
+			cmp( eax, 1 );		// C=0 if EOF (eax=0), 1 if not EOF
+			movzx( ebp::c, eax );
+
+		pop( edi );
+		pop( ebp );				// Restore caller's EBP value
+        ret( _parms_ );			// Return, removing local EBP parm value.
+
+	end geth32Thunk;
+	
+begin geth32;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( esi, obj );
+	
+	pushd( &geth32Thunk );
+	push( ebp );
+	call hla.geth32;
+	
+	mov( obj, esi );
+	leave();
+	ret( _parms_ );
+
+end geth32;
+
+
+	
+end socketUnit;
+

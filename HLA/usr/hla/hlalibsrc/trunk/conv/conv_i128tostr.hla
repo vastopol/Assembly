@@ -1,0 +1,188 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "strings.hhf" )
+
+
+/***********************************************************/
+/*                                                         */
+/* i128ToStr-                                              */
+/*                                                         */
+/* This procedure converts a signed 128-bit (lword)        */
+/* value into a string of digits (decimal notation).       */
+/*                                                         */
+/* "l" is the value to convert.                            */
+/*                                                         */
+/* "width" is the minimum number of character positions    */
+/* to use during the conversion.  If the number requires   */
+/* more than this number of print positions, width's       */
+/* value is ignored, if the number requires fewer print    */
+/* positions, then the number is padded with the character */
+/* specified by the "fill" parameter.  If width is a       */
+/* positive value, then the number is right justified in   */
+/* the string.  If width is a negative value, then the     */
+/* number is left justified in the string.                 */
+/*                                                         */
+/* "fill" contains the padding character to use if the     */
+/* number requires fewer print positions than specified    */
+/* by the "width" parameter.                               */
+/*                                                         */
+/* "buffer" is a pointer to the string that will hold      */
+/* the converted result.  This buffer must be large        */
+/* enough to hold the converted data including any         */
+/* padding characters.                                     */
+/*                                                         */
+/***********************************************************/
+
+
+procedure conv.i128ToStr( l:lword; width:int32; fill:char; buffer:string );
+	 @nodisplay; 
+	 @noalignstack;
+	 @noframe;
+
+var
+	ediSave	:dword;
+	esiSave	:dword;
+	edxSave	:dword;
+	ecxSave	:dword;
+	eaxSave	:dword;
+
+	chars	:byte[ 64 ];	// Holds converted result w/o padding.
+	
+begin i128ToStr;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	pushfd();
+	cld();
+	mov( eax, eaxSave );
+	mov( ecx, ecxSave );
+	mov( edx, edxSave );
+	mov( esi, esiSave );
+	mov( edi, ediSave );
+
+	lea( edi, chars );		// Store converted digits here.
+	conv.i128ToBuf( l, [edi] );
+
+	
+	// Compute the length of the string we've just generated.
+	
+	lea( edx, chars );
+	neg( edx );
+	add( edi, edx );
+	
+	// Determine if the result will fit into the destination buffer.
+	
+	mov( width, ecx );
+	test( ecx, ecx );
+	jns widthNotNeg;	// Negative implies left justification.
+	
+		neg( ecx );
+		
+	widthNotNeg:
+	mov( edx, eax );
+	cmp( edx, ecx );
+	jnb ecxIsLarger;
+	
+		mov( ecx, eax );
+		
+	ecxIsLarger:
+	
+	mov( buffer, edi );		// Get ptr to destination string.
+	
+	
+	// If the destination string is too small, raise an exception.
+	
+	cmp( eax, (type str.strRec [edi]).maxlen);
+	jae strOverflow;
+	mov( eax, (type str.strRec [edi]).length );	// Save new string length.
+	
+	
+	// If the width value is positive, then the number must be
+	// right justified in the field width.  Output any necessary
+	// leading padding characters here.
+	
+	cmp( width, 0 );
+	jl dontRightJustify;
+	
+		cmp( edx, ecx );			// edx=actual chars, ecx=width
+		jnb dontRightJustify;
+		
+			mov( fill, al );		// Get the padding character.
+			push( ecx );
+			sub( edx, ecx );		// Computes # of padding chars to store.
+			rep.stosb();
+			pop( ecx );
+			
+		
+	dontRightJustify:
+	
+	
+	// Okay, now output the characters that make up the number.
+	
+	xchg( edx, ecx );
+	push( ecx );
+	lea( esi, chars );				// Pointer to our string.
+	rep.movsb();					// Copy the chars.
+	pop( ecx );
+	
+	
+	// If the width value is negative, then the converted number
+	// must be left justified in the field width.  Output any necessary
+	// trailing padding characters here.
+	
+	cmp( width, 0 );
+	jge noLeftJustify;
+	
+		xchg( ecx, edx );			// These were swapped, earlier.
+		cmp( edx, ecx );
+		jnb noLeftJustify;
+		
+			mov( fill, al );			// Get the padding character.
+			push( ecx );
+			sub( edx, ecx );		// Computes # of padding chars to store.
+			rep.stosb();
+			pop( ecx );
+			
+	noLeftJustify:
+
+	
+	// Output the trailing zero terminating byte.
+	
+		
+	mov( 0, al );
+	stosb();
+	
+	popfd();
+	mov( eaxSave, eax );
+	mov( ecxSave, ecx );
+	mov( edxSave, edx );
+	mov( esiSave, esi );
+	mov( ediSave, edi );
+	leave();
+	ret( _parms_ );
+
+strOverflow:
+	raise( ex.StringOverflow );
+
+	
+end i128ToStr;
+
+end ConvUnit;

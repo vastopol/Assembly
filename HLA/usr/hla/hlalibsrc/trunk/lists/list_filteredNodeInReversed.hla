@@ -1,0 +1,68 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit lists;
+#include( "lists.hhf" )
+
+
+
+const
+	nodeEDI: text := "(type node_t [edi])";
+	nodeEAX: text := "(type node_t [eax])";
+	
+
+// iterator filteredNodeInListReversed-
+//
+// This iterator starts at the last node of the list and works
+// backwards through the list. It calls the thunk on each node
+// in the list and if the thunk returns true in AL, it yields
+// that particular node. This iterator yields each such node
+// in the ESI register.
+
+iterator list_t.filteredNodeInListReversed( t:thunk ); 
+	@nodisplay;
+	@noframe;
+begin filteredNodeInListReversed;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( esi );
+	mov( this.Tail, esi );
+	test( esi, esi );
+	jz allDone;
+	whileItemsInList:
+	
+		t();
+		cmp( al, 0 );
+		je noYield;
+		
+			push( esi );
+			yield();
+			pop( esi );
+			
+		noYield:
+		mov( (type node_t [esi]).Prev, esi );
+		test( esi, esi );
+		jnz whileItemsInList;
+		
+	allDone:
+	pop( esi );
+	pop( ebp );
+	add( 4, esp );		// Skip pointer to foreach loop body;
+	ret( _parms_ );
+	
+end filteredNodeInListReversed;
+
+
+end lists;

@@ -1,0 +1,130 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" );
+
+	
+	// addMonths-
+	//
+	//	This function adds the specified number of Months to
+	//	the date passed by reference.
+	//  It truncates the resultant date to the last day of the
+	//	month if the month addition would produce an invalid
+	//	date. This function returns the number of days subtracted
+	//	from the resultant date in the EAX register. E.g.,
+	//	adding one month to 1/31/2007 produces 2/28/2007 and
+	//	this function returns 3 in EAX since three days were
+	//	lost in the computation (adding 1 to the month digits
+	//	of 1/31/2007 would normally produce 3/3/2007). 
+	
+	procedure date.addMonths
+	( 
+			months: uns32;
+		var	theDate:date.daterec
+		
+	); 	
+		@nodisplay; 
+		@noframe;
+	
+	begin addMonths;
+	
+		push( ebp);
+		mov( esp, ebp );
+		push( ebx );
+		push( edx );
+
+		mov( theDate, ebx );
+
+		// Begin by ensuring that the date is valid.
+		
+		pushd( [ebx] );
+		call date._validate;
+
+
+		// Get the months component and add the
+		// months parameter to it.
+		
+		movzx( (type date.daterec [ebx]).month, eax );
+		add( months, eax );		
+		
+		// Change the current month so it is in
+		// the range 0..11 rather than 1..12.
+		
+		dec( eax );	
+		
+		// Compute the number of years and months
+		// by dividing the result by 12.  The
+		// number of years will appear in EAX, the
+		// number of months will appear in EDX.
+		
+		xor( edx, edx );
+		div( 12, edx:eax );
+		add( ax, (type date.daterec [ebx]).year );
+
+		inc( dl );   // Adjust back to 1..12
+		mov( dl, (type date.daterec [ebx]).month );
+		
+		// At this point, it's quite possible that the day
+		// is invalid. For example, 1/31/xxxx plus one month
+		// would produce 2/31/xxxx (which is invalid). If
+		// the current date is beyond the end of the newly
+		// computed month, then truncate the date back to
+		// the end of the month.
+		
+		mov( date.DaysInMonth[edx*4], eax ); 
+		mov( (type date.daterec [ebx]).day, dh );
+		pushd( 0 );			// # of overflow days, assume it's zero.
+		cmp( al, dh );
+		jae noTruncateDay;
+		
+			mov( al, (type date.daterec [ebx]).day );
+			sub( dh, al );
+			neg( al );
+			mov( eax, [esp] );		// Save the # of overflow days.
+			
+			// Special case for February in leap years:
+			
+			cmp( dl, 2 );
+			jne noTruncateDay;
+			
+			test( %11, (type date.daterec [ebx]).year );
+			jnz noTruncateDay;
+			
+			date.isLeapYear( (type date.daterec [ebx]).year );
+			test( al, al );
+			jz noTruncateDay;
+			
+			// Okay, it's February in a leap year.
+			// Truncate the day to 29 rather than 28:
+			
+			mov( 29, (type date.daterec [ebx]).day );
+			dec( (type dword [esp]));	// One less overflow day.
+			
+			
+		noTruncateDay:
+		
+		// Make sure the result is valid:
+		
+		pushd( [ebx] );
+		call date._validate;
+		
+		pop( eax );		// retrieve # of overflow days.
+		pop( edx );
+		pop( ebx );
+		pop( ebp );
+		ret( _parms_ );
+				
+	end addMonths;
+	
+end DateTime;			

@@ -1,0 +1,332 @@
+unit filesys_toUnixpath_unit;
+
+// filesys.normalize( pathname:string );
+//
+//	"Normalizes" a pathname. That is, this function:
+//
+//	1.	Skips over any Win32 drive letters or UNC "//comp/folder"
+//		prefixes in the pathname. For the purposes of normalize,
+//		the pathname begins with the first character following the
+//		drive letter or UNC prefix.
+//
+//	2.	Converts all directory separator chars ('/' and '\')
+//		to the native directory separator (including any appearing
+//		in the UNC prefix).
+// 
+//	3.	Deletes all occurences of "./" from the pathname unless 
+//		the "./" appears as the first two characters of the pathname. 
+//
+//	4.	Translates all substrings of the form "---/xxxxx/../yyyy" to 
+//		"---/yyyy" and all substrings of the form "xxxxx/../yyyy" to 
+//		"yyyy" but does not delete any "../" sequences appearing at 
+//		the beginning of the pathname.
+//
+//	Returns carry clear if there was an invalid UNC prefix. Returns
+//	carry clear, otherwise. If there was an invalid UNC prefix, then
+//	this function normalizes the entire pathname string (rather than
+//	just the text after the UNC prefix).
+//
+//	This function stores the resulting normalized string in the
+//	dest parameter (which must be preallocated and large enough to
+//	hold the result).
+ 
+#includeOnce( "filesys.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "chars.hhf" )
+
+procedure filesys.normalize2( pathname:string; dest:string );
+	@nodisplay; @noframe; @noalignstack;
+
+var
+	saveEAX		:dword;
+	saveEBX		:dword;
+	saveECX		:dword;
+	saveEDX		:dword;
+	startOfPath	:dword;
+	
+	UNCstatus	:boolean;
+	
+readonly(16)
+	specialPath	:cset := {'/', '\', '.'};
+				cset {};
+				
+		
+begin normalize2;
+	
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	mov( edx, saveEDX );
+	mov( ecx, saveECX );
+	mov( ebx, saveEBX );
+	mov( eax, saveEAX );
+	
+	mov( pathname, ebx );
+	test( ebx, ebx );
+	jz radn;
+	
+	mov( dest, edx );
+	test( edx, edx );
+	jz radn;
+	
+	// startOfPath is the beginning of the pathname string
+	// (which is either the beginning of the string or
+	// the first character after a drive letter or UNC
+	// computer/folder sequence).  Initialize this with the
+	// start of the string.
+	
+	mov( edx, startOfPath );
+	mov( true, UNCstatus );
+	
+	// Check for drive letters and UNC pathnames before we get started.
+	
+	filesys.hasDriveLetter( pathname );
+	cmp( al, 0 );
+	je noDriveLetter;
+	
+		// We have a drive letter, so set the startOfPath to two characters
+		// beyond the start of the pathname passed to us.
+		
+		mov( [ebx], al );	// Get original drive letter
+		mov( al, [edx] );	// Save in destination string
+		mov( ':', (type char [edx+1]));
+		add( 2, edx );
+		add( 2, ebx );
+		mov( edx, startOfPath );
+		jmp processPathName;
+		
+	// If we didn't have a win32 Drive letter, check for a UNC name
+	
+	noDriveLetter:
+	filesys.hasUncName( pathname );
+	rcl( 1, UNCstatus );			// Save "bad UNC" status
+	test( 1, UNCstatus );			// If it was a syntactically incorrect
+	jz processPathName;			//  UNC, then just process the whole name.
+	
+		// Either we have no UNC, or we have a syntactically correct one.
+		// If EAX is zero, there is no UNC and we can just process the
+		// whole name, else we need to deal with the UNC first:
+		
+		test( eax, eax );
+		jz processPathName;
+		
+			// We have a UNC prefix at this point.
+			
+			add( ebx, eax );
+			copyUNC:
+				mov( [ebx], cl );
+				add( 1, ebx );
+				cmp( cl, '\' );
+				je convertIt;
+				cmp( cl, '/' );
+				jne noConversion;
+				
+				convertIt:
+					mov( chars.dir_sep, cl );
+					
+				noConversion:
+				mov( cl, [edx] );
+				add( 1, edx );
+				cmp( ebx, eax );
+				jb copyUNC;
+				mov( edx, startOfPath );
+	
+ 
+ 	// Note: to keep things clean, we will skip a leading '/' character,
+	// if present, so we don't have to consider it as a special case.
+	
+	processPathName:
+		mov( [ebx], al );
+		cmp( al, '/' );
+		je leadingSlash;
+		
+			cmp( al, '\' );
+			jne afterSlash;
+			
+		leadingSlash:
+			mov( chars.dir_sep, (type char [edx]) );
+			add( 1, edx );
+			add( 1, ebx );
+			mov( edx, startOfPath );
+	
+	
+	// Okay, process the pathname after any drive letters, UNC names,
+	// and taking into account any leading "./" or "../" sequences.
+	//
+	// afterSlash:
+	//	In this state, we're either at the beginning of the pathname
+	//	or we've just seen a directory separator character and we're
+	//	looking at the first character beyond it.
+	
+	afterSlash:
+
+		mov( [ebx], al );
+		cmp( al, 0 );
+		je allDone;
+		cmp( al, '.' );
+		je slashDot;
+		cmp( al, '\' );
+		je oneSlash;
+		cmp( al, '/' );
+		je oneSlash;
+		mov( al, [edx] );
+		
+	// notSlash:
+	//	In this state, we're processing the characters in the middle of
+	//	a pathname; there is no "./" or "../" possible here.
+	
+	notSlash:
+		add( 1, ebx );
+		add( 1, edx );
+		mov( [ebx], al );
+		mov( al, [edx] );
+		cmp( al, 0 ) ;
+		je allDone;
+		cmp( al, '\' );
+		je oneSlash;
+		cmp( al, '/' );
+		jne notSlash;
+		
+	// oneSlash:
+	//	In this state, we've just seen a directory separator character.
+	
+	oneSlash:
+		mov( chars.dir_sep, (type char [edx]) );
+		add( 1, ebx );
+		add( 1, edx );
+		jmp afterSlash;
+		
+	// In this state, we've just seen "/." (or we've seen "." at the beginning
+	// of the pathname), so we need to look for "/./" or "/../" (or "./" or
+	// "../" at the beginning of the pathname).
+		
+	slashDot:
+		mov( [ebx+1], al );		// Look for '.' or '/'
+		cmp( al, '.' );
+		je slashDotDot;
+		cmp( al, '/' );
+		je slashDotSlash;
+		cmp( al, '\' );
+		je slashDotSlash;
+		
+		// Okay, this portion of the path began with "/." but the following
+		// character was neither "." nor "/" so we have to assume that
+		// the '.' we just saw is just the first character of the pathname
+		// component.
+		
+		mov( '.', (type byte [edx]));
+		jmp notSlash;
+		
+	// In this state, we've just seen "/./" so we can delete the "./"
+	// component.
+	
+	slashDotSlash:
+		add( 2, ebx );		// Skip the './'.
+		jmp afterSlash;	
+		
+	// In this state, we've seen "/.." so we look for a final "/"
+	// character. If found, we need to scan backward and remove the
+	// previous path component, if one exists (and isn't "../" itself).
+	
+	slashDotDot:
+		mov( [ebx+2], al );		// Look for '/'
+		cmp( al, '/' );
+		je slashDotDotSlash;
+		cmp( al, '\' );
+		je slashDotDotSlash;
+	
+		// Okay, this portion of the path began with "/.." but the following
+		// character was neither "." nor "/" so we have to assume that
+		// the '..' we just saw are just the first 2 characters of the pathname
+		// component.
+		
+		mov( '.', (type byte [edx]));
+		mov( '.', (type byte [edx+1]));
+		add( 1, edx );
+		jmp notSlash;
+			
+	
+	// Okay, we've seen "/../" so we need to delete the previous pathname
+	// component if one exists. If a previous component does not exist, then
+	// we must advance the startOfPath pointer to protect this "../" in the
+	// pathname.
+	
+	slashDotDotSlash:
+		mov( edx, ecx );
+		sub( 1, ecx );				// Back up over preceeding '/' char.
+		cmp( ecx, startOfPath );	// See if this "../" is at the start
+		jbe mustProtect;			//  of the path sequence.
+		
+		// Scan backwards for the start of path or the previous '/' char:
+		
+		scanBack:
+			sub( 1, ecx );
+			mov( [ecx], al );
+			cmp( al, '/' );
+			je foundPrev;
+			cmp( al, '\' );
+			je foundPrev;
+			cmp( ecx, startOfPath );
+			ja scanBack;
+			
+			// If we hit the start of the path without seeing a '/' character,
+			// then we need to delete everything to the start of the path.
+		
+			mov( startOfPath, edx );
+			add( 3, ebx );
+			jmp afterSlash;
+			
+			
+		// We found the previous path separator character.
+		// Set EDX to this address (this will delete the
+		// previous path component).
+		
+		foundPrev:
+			lea( edx, [ecx+1] );	// Skip over the '/'
+			add( 3, ebx );			// Skip the "../" in the input
+			jmp afterSlash;
+			
+		// If we "run off the front of the string" then this means
+		// that there was no previous path component. In this case,
+		// we need to protect the "../" so it cannot be eaten by
+		// any following "../" components.
+		
+		mustProtect:
+			add( 3, ebx );
+			mov( '.', (type char [edx]));
+			mov( '.', (type char [edx+1]));
+			mov( chars.dir_sep, (type char [edx+2]));
+			add( 3, edx );
+			mov( edx, startOfPath );
+			jmp afterSlash;	
+
+
+	allDone:
+			
+		// Compute the length of the normalized string
+		
+		mov( dest, ebx );
+		sub( ebx, edx );
+		mov( edx, (type str.strRec [ebx]).length );
+		
+		// All done, so let's leave:
+		
+		mov( saveEDX, edx );
+		mov( saveECX, ecx );
+		mov( saveEBX, ebx );
+		mov( saveEAX, eax );
+		shr( 1, UNCstatus );	// Return parse UNC status in carry flag.
+		leave();
+		ret( _parms_ );
+		
+	
+	radn:
+		raise( ex.AttemptToDerefNULL );	
+	
+end normalize2;
+
+
+
+end filesys_toUnixpath_unit;

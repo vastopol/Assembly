@@ -1,0 +1,91 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+
+/***********************************************/
+/*                                             */
+/* strieqne-                                   */
+/*                                             */
+/* Support routine used by ieq and ine.        */
+/* Used to do a case insenstive comparison of  */
+/* two strings.                                */
+/*                                             */
+/* Inputs:                                     */
+/*                                             */
+/* ESI points at the left string operand.      */
+/* EDI points at the right string operand.     */
+/*                                             */
+/* Returns:                                    */
+/* Comparison result in the z flag.            */
+/*                                             */
+/***********************************************/
+
+procedure strieqne; @external( "STR_IEQNE" );
+
+procedure strieqne; @noframe; @align(4);
+begin strieqne;
+
+	push( ebx );
+
+	
+	// Compare the two strings until we encounter a zero byte
+	// or until the corresonding characters are different.
+	
+	cmpLoop:
+	
+		mov( [esi], al );
+		mov( [edi], ah );
+		add( 1, esi );
+		add( 1, edi );
+		cmp( al, 0 );
+		je notAlpha;
+		cmp( al, ah );
+		je cmpLoop;
+		mov( ax, bx );
+		and( $5f5f, bx );
+		cmp( bl, 'A' );
+		jb notAlpha;
+		cmp( bl, 'Z' );
+		ja notAlpha;
+		cmp( bl, bh );
+		je cmpLoop;
+
+	notAlpha:       
+
+	// At this point, we've either encountered a zero byte in the source
+	// string or we've encountered two bytes that are not the same in
+	// the two strings.  In either case, return the result of the
+	// comparison in the flags.
+	
+	pop( ebx );
+	cmp( al, ah );
+	ret();
+
+end strieqne;
+
+end stringUnit;
+
+
+
+
+	
+

@@ -1,0 +1,123 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+?@noframe := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+// upToCset2-
+// upToCset3-
+// upToCset4-
+//
+//	Skips characters up to a character in a given character set.
+// Returns true if there is at least one memory of the cset in
+// the string. Returns false if there are no members of the
+// cset in the string.  True/False is returned in the carry flag.
+// If these functions return true, they also return the index into
+// the source string where the character in the set was found.
+//
+// upToCset3-
+//	Also returns the remainder string (starting with character
+// found in the cset) in the rem parameter.	 Does not modify
+// the rem string if there is no match.
+//
+// upToCset4-
+//	Returns all the characters matched (skipped) up to but not
+// including the character matched in the character set in the
+// mat parameter. Returns the remaining characters in the
+// rem parameter. Does not modify rem or mat if there is no match.
+			
+
+procedure str.upToCset3( src:string; cst:cset; rem:string ); 
+begin upToCset3;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ecx );
+	push( esi );
+	
+	mov( src, esi );
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+	mov( (type str.strRec [esi]).length, eax );	// Fail if empty string
+	test( eax, eax );							// Clears carry flag!
+	jz allDone;
+
+		mov( -1, eax );
+		whileNotInCset:
+		
+			add( 1, eax );
+			cmp( eax, (type str.strRec [esi]).length );
+			jae allDone;	// Note: jae=jnc, so carry will be clear
+			
+			movzx( (type char [esi+eax+1]), ecx );
+			bt( ecx, cst );
+			jnc whileNotInCset;
+		
+		// If we matched the char, then return the remainder of the
+		// string in rem:
+		
+		cmp( esi, rem );	// Special case if src==rem
+		je specialCase;
+		
+			mov( (type str.strRec [esi]).length, ecx );
+			sub( 1, ecx );
+			str.substr( src, 1, ecx, rem );
+			jmp rtnTrue;	// Return true, because we matched.
+			
+		
+		// Note: if src and rem overlap, then we have to copy the
+		// data a character at a time with the direction flag clear.
+		
+		specialCase:
+			pushfd();
+			cld();
+			push( edi );
+			mov( (type str.strRec [esi]).length, ecx );
+			sub( 1, ecx );
+			mov( esi, edi );
+			mov( ecx, (type str.strRec [esi]).length );
+			add( 1, esi );
+			rep.movsb();
+			mov( 0, (type byte [edi]));
+			pop( edi );
+			popfd();
+
+	  rtnTrue:
+		stc;
+			
+	allDone:	
+	pop( esi );
+	pop( ecx );
+	pop( ebp );
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end upToCset3;
+
+end stringUnit;
+
+
+
+
+	
+

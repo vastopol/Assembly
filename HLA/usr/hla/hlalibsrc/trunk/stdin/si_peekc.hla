@@ -1,0 +1,73 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit StdInput;
+#include( "../include/stdinunit.hhf" )
+
+/***********************************************************/
+/*                                                         */
+/* peekc-                                                  */
+/*                                                         */
+/* Returns the character character from the standard input */
+/* device without actually removing that character from    */
+/* the input buffer.  Returns the character in AL/EAX (the */
+/* character is in AL, zeroes are in the upper three bytes */
+/* of EAX).                                                */
+/*                                                         */
+/* If NeedsInput is true, this function returns zero in    */
+/* the AL register; it does not force the input of a       */
+/* new line of text.                                       */
+/*                                                         */
+/***********************************************************/
+
+
+
+
+procedure stdin.peekc; 
+	@noframe;
+	@nodisplay;
+
+begin peekc;
+
+	// If the input buffer is empty, return a zero.
+	
+	push( ebx );
+	xor( eax, eax );
+	cmp( NeedsInput, false );
+	jne peekcDone; 
+	
+		// If we're at the end of the input buffer, return a zero.
+		
+		mov( InputIndex, ebx );
+		cmp( InputBuffer[ebx], 0 );
+		je peekcDone;
+		
+			// Get the character into al (and zero extend through eax).
+			
+			mov( InputBuffer[ ebx ], al );
+		
+	peekcDone:
+		pop( ebx );
+		ret();
+	
+end peekc;
+
+
+end StdInput;
+
+
+
+
+	
+

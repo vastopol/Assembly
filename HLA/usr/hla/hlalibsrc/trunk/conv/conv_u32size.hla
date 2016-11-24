@@ -1,0 +1,124 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+
+
+
+/*************************************************************/
+/*                                                           */
+/* u32Size                                                   */
+/*                                                           */
+/* This routines compute the minimum number of print         */
+/* positions needed to display an uns32 value.               */
+/* The size, in digits, is returned in the EAX register.     */
+/*                                                           */
+/* Input:                                                    */
+/* 	uValue parameter contains the uns32 value                */
+/*                                                           */
+/*************************************************************/
+
+procedure conv.u32Size( uValue:dword in eax ); @nodisplay; @noframe;
+begin u32Size;
+
+	cmp( eax, 10 );
+	jb one;
+	cmp( eax, 100 );
+	jb two;
+	cmp( eax, 1_000 );
+	jb three;
+	cmp( eax, 10_000 );
+	jb four;
+	cmp( eax, 100_000 );
+	jb five;
+	cmp( eax, 1_000_000 );
+	jb six;
+	cmp( eax, 10_000_000 );
+	jb seven;
+	cmp( eax, 100_000_000 );
+	jb eight;
+	cmp( eax, 1_000_000_000 );
+	jb nine;
+	
+		mov( 10, eax );
+		_hla.test_OutputUnderscores();
+		je AllDone;
+			
+			add( 3, eax );
+
+	AllDone:
+		ret();
+
+	one:
+		mov( 1, eax );
+		ret();
+
+	two:
+		mov( 2, eax );
+		ret();
+
+	three:
+		mov( 3, eax );
+		ret();
+
+	four:
+		mov( 4, eax );
+		_hla.test_OutputUnderscores();
+		jne Add1;
+		ret();
+
+	five:
+		mov( 5, eax );
+		_hla.test_OutputUnderscores();
+		jne Add1;
+		ret();
+
+	six:
+		mov( 6, eax );
+		_hla.test_OutputUnderscores();
+		jne Add1;
+		ret();
+
+	Add1:
+		add( 1, eax );
+		ret();
+
+	seven:
+		mov( 7, eax );
+		_hla.test_OutputUnderscores();
+		jne Add2;
+		ret();
+
+	eight:
+		mov( 8, eax );
+		_hla.test_OutputUnderscores();
+		jne Add2;
+		ret();
+
+	nine:
+		mov( 9, eax );
+		_hla.test_OutputUnderscores();
+		jne Add2;
+		ret();
+
+	Add2:
+		add( 2, eax );
+		ret();
+
+end u32Size;
+
+end ConvUnit;

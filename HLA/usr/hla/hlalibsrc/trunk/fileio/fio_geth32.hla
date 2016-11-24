@@ -1,0 +1,129 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "../include/fileiounit.hhf" )
+#include( "stdout.hhf" )
+#include( "stdlibdata.hhf" )
+
+
+
+/****************************************************/
+/*                                                  */
+/* fgetd-                                           */
+/* fgetw-                                           */
+/* fgetb-                                           */
+/*                                                  */
+/* These routines read 32, 16, or 8-bit hexadecimal */
+/* values from the specified file.                  */
+/*                                                  */
+/****************************************************/
+
+
+
+
+procedure fileio.geth32( Handle:dword in eax ); @noframe; @nodisplay;
+var
+	HandleVal	:dword;
+	Delimiters	:cset;
+	
+begin geth32;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	push( ecx );
+	mov( eax, HandleVal );
+	
+	conv.getDelimiters( Delimiters );
+	
+	xor( eax, eax );
+	xor( ecx, ecx );
+	
+	// Skip over any leading delimiters:
+	
+	repeatUntilNC:
+	
+		fileio.getc( HandleVal );
+		movzx( al, eax );
+		bt( eax, Delimiters );
+		jc repeatUntilNC;
+
+
+	// Okay, input the digits and convert to a number:
+	
+	repeatUntilC:
+	
+		// The character must be a numeric digit.
+		// The following statement converts the character in
+		// al to the range $00..$0F if it is
+		// a hexadecimal character, to $FF if it is
+		// not a legal hexadecimal character.
+		
+		movsx( stdlib.hexConvTbl[ eax ], eax );
+		cmp( eax, -1 );
+		je convErr;
+
+		cmp( ecx, $1000_0000 );
+		jae Overflow;
+		shl( 4, ecx );		// Multiply ecx by 16, this is *2.
+		
+		// Add in the current character:
+		
+		add( eax, ecx );	// Never a carry!
+			
+		// Skip any underscores in the middle of the number.
+		
+		repeatUntilALne_:
+		
+			fileio.eof( HandleVal );
+			test( eax, eax );
+			jne EncounteredEOF;
+
+			fileio.getc( HandleVal );
+			cmp( al, '_' );
+			je repeatUntilALne_;
+			
+		movzx( al, eax );
+		cmp( al, $80 );
+		jae illegalChar;
+		bt( eax, Delimiters );
+		jnc repeatUntilC;
+
+	
+	EncounteredEOF:
+		mov( ecx, eax );
+		pop( ecx );
+		leave( );
+		ret();
+	
+convErr:
+	raise( ex.ConversionError );
+
+Overflow:
+	raise( ex.ValueOutOfRange );
+	
+illegalChar:
+	raise( ex.IllegalChar );
+		
+end geth32;
+
+
+	
+end FileIOUnit;
+

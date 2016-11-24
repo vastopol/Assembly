@@ -1,0 +1,100 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+
+
+ 
+/*************************************************************/
+/*                                                           */
+/* r64ToBuf-                                                 */
+/*                                                           */
+/* Converts a REAL64 IEEE floating point number to the       */
+/* corresponding string of digits.  Note that this           */
+/* function always emits the string using scientific 		 */
+/* notation, use the r64ToBuf routine for decimal notation.	 */
+/*                                                           */
+/* On Entry:                                                 */
+/*                                                           */
+/* r64-		Real64 value to convert.                         */
+/*                                                           */
+/* width-	Field width for the number (note that this       */
+/* 			is an *exact* field width, not a minimum         */
+/* 			field width).                                    */
+/*                                                           */
+/* decimalpts-	# of digits to display after the decimal pt. */
+/*                                                           */
+/* fill-	Padding character if the number is smaller       */
+/* 			than the specified field width.                  */
+/* 			                                                 */
+/* EDI-		points at the start of a buffer to receive the   */
+/*			converted characters.                            */
+/* 			                                                 */
+/* On Exit:                                                  */
+/*                                                           */
+/* Buffer contains the newly formatted string.  If the       */
+/* formatted value does not fit in the width specified,      */
+/* r64ToBuf will store "#" characters into this string.      */
+/*                                                           */
+/* EDI points at the first byte beyond the end of the buffer.*/
+/*                                                           */
+/*-----------------------------------------------------------*/
+/*                                                           */
+/* Unlike the integer output routines, this function does    */
+/* not allow width to contain a negative value. This is      */
+/* because real output in scientific notation always fills   */
+/* the entire width -- there are no padding characters.      */
+/*                                                           */
+/*************************************************************/
+
+procedure conv.r64ToBuf
+( 
+		r64			:real64;	
+		width		:uns32; 
+		decimalpts	:uns32; 
+		fill		:char; 
+	var	buffer		:var in edi
+);  
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+
+var
+	r80: real80;
+	
+begin r64ToBuf;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+
+	fld( r64 );
+	fstp( r80 );
+	conv.r80ToBuf( r80, width, decimalpts, fill, [edi] );
+
+	leave();
+	ret( _parms_ );
+	
+end r64ToBuf;
+
+
+
+
+
+
+
+end ConvUnit;

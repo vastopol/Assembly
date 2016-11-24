@@ -1,0 +1,310 @@
+unit wMenu_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( wMenu_t );
+	vmt( wMenuItem_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+//
+// Constructor for Menu objects.
+//
+
+
+procedure wMenuItem_t.create_wMenuItem
+(
+	wmiName			:string;
+	parentHandle	:dword;
+	itemType		:dword;
+	itemString		:string;
+	itemHandler		:widgetProc 
+);;
+	
+_begin( wMenuItem_t, create_wMenuItem );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wMenuItem_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+
+	// Initialize the base object:
+	
+	(type wBase_t [esi]).create_wBase
+	(
+		wmiName
+	);
+	mov( cl, this.wBase_private.onHeap );
+	howl.setType( wMenuItem_c );	
+	mov( &wMenuItem_t._VMT_, this._pVMT_ );
+	mov( itemType, eax );
+	mov( eax, this.wMenuItem_private.itemType );
+	mov( itemString, eax );
+	mov( eax, this.wMenuItem_private.itemString );
+	mov( itemHandler, eax );
+	mov( eax, this.wMenuItem_private.itemHandler );
+	mov( NULL, this.wMenuItem_private.nextMenu );
+	mov( parentHandle, eax );
+	mov( eax, this.wBase_private.parentHandle );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wMenuItem_t, create_wMenuItem );
+
+
+
+
+// Enable a menu item:
+
+method wMenuItem_t.enable;;
+_begin( wMenuItem_t, enable );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.EnableMenuItem
+	( 
+		this.wBase_private.parentHandle, 
+		this.wBase_private.objectID, 
+		w.MF_ENABLED | w.MF_BYCOMMAND 
+	);
+
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wMenuItem_t, enable );
+
+
+// Disable and gray a menu item:
+
+method wMenuItem_t.disable;;
+_begin( wMenuItem_t, disable );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.EnableMenuItem
+	( 
+		this.wBase_private.parentHandle, 
+		this.wBase_private.objectID, 
+		w.MF_DISABLED | w.MF_GRAYED | w.MF_BYCOMMAND 
+	);
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wMenuItem_t, disable );
+
+
+
+// Set/clear the checkmark associated with a menu item:
+
+method wMenuItem_t.checked( state:boolean );;
+_begin( wMenuItem_t, checked )
+
+	if( this.wMenuItem_private.itemType = w.MF_CHECKED ) then
+	
+		push( eax );
+		push( ecx );
+		push( edx );
+		
+		mov( w.MF_UNCHECKED, eax );
+		if( state ) then
+		
+			mov( w.MF_CHECKED, eax );
+			
+		endif;
+		w.CheckMenuItem
+		(
+			this.wBase_private.parentHandle,
+			this.wBase_private.objectID,
+			eax
+		);
+	
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+	
+	endif;
+
+_end( wMenuItem_t, checked );
+
+
+
+// Accessors
+
+
+method wMenuItem_t.get_itemType; @noframe;;
+_begin( wMenuItem_t, get_itemType );
+
+	mov( this.wMenuItem_private.itemType, eax );
+	ret();
+	 
+_end( wMenuItem_t, get_itemType );
+
+
+
+
+method wMenuItem_t.get_itemString; @noframe;;
+_begin( wMenuItem_t, get_itemString );
+
+	mov( this.wMenuItem_private.itemString, eax );
+	ret();
+	 
+_end( wMenuItem_t, get_itemString );
+
+
+
+
+method wMenuItem_t.get_itemHandler; @noframe;;
+_begin( wMenuItem_t, get_itemHandler );
+
+	mov( this.wMenuItem_private.itemHandler, eax );
+	ret();
+	 
+_end( wMenuItem_t, get_itemHandler );
+
+
+
+
+// Mutator functions:
+			
+
+method wMenuItem_t.set_itemType( itemType:dword );;
+_begin( wMenuItem_t, set_itemType );
+
+	push( itemType );
+	pop( this.wMenuItem_private.itemType );
+	
+_end( wMenuItem_t, set_itemType );
+
+			
+
+method wMenuItem_t.set_itemString( itemString:string );;
+_begin( wMenuItem_t, set_itemString );
+
+	push( itemString );
+	pop( this.wMenuItem_private.itemString );
+	
+_end( wMenuItem_t, set_itemString );
+
+			
+
+method wMenuItem_t.set_itemHandler( itemHandler:widgetProc );;
+_begin( wMenuItem_t, set_itemHandler );
+
+	push( itemHandler );
+	pop( this.wMenuItem_private.itemHandler );
+	
+_end( wMenuItem_t, set_itemHandler );
+
+			
+
+
+
+
+
+procedure wMenu_t.create_wMenu
+( 
+	wmName			:string; 
+	wmText			:string; 
+	parentHandle	:dword 
+);;
+	
+_begin( wMenu_t, create_wMenu );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wMenu_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+
+	// Initialize the base object:
+	
+	(type wMenuItem_t [esi]).create_wMenuItem
+	(
+		wmName,
+		parentHandle,
+		w.MF_POPUP,
+		wmText,
+		NULL
+	);
+	mov( cl, this.wBase_private.onHeap );
+	howl.setType( wMenu_c );	
+	mov( &wMenu_t._VMT_, this._pVMT_ );
+	
+	w.CreateMenu();
+	mov( eax, this.handle );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wMenu_t, create_wMenu );
+		
+
+
+method wMenu_t.destroy;;
+_begin( wMenu_t, destroy );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	// Note: menus attached to a window are destroyed automatically,
+	// but it probably doesn't hurt to destroy the menu twice.
+	
+	w.DestroyMenu( this.handle );
+	
+	// Do the basic object destruction:
+	
+	super.destroy();
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wMenu_t, destroy );
+
+
+
+
+
+end	wMenu_u;

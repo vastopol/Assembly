@@ -1,0 +1,198 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+
+unit argsUnit;
+
+#includeOnce( "../include/osargs.hhf" )
+#includeOnce( "chars.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "memory.hhf" )
+
+?@nodisplay := true;
+
+
+	
+	
+/*******************************************************/
+/*                                                     */
+/* CmdLn-                                              */
+/*                                                     */
+/* This routine does most of the real work.            */
+/* In theory, this routine simply returns a pointer    */
+/* to the full CommandLine string.  In practice, this  */
+/* is the routine that gets the command line from the  */
+/* system, counts the number of parameters, and        */
+/* separates them into individual (argv) strings.      */
+/*                                                     */
+/* To improve efficiency, this code only does the      */
+/* above processing once (since, in theory, the        */
+/* command line parameters are static).  This code     */
+/* uses the "NeedsCmdLn" variable to determine whether */
+/* the processing is necessary.  If it is, this        */
+/* routine does a lot of work, including making a copy */
+/* of the command line into the CommandLine string     */
+/* variable.  If the command line parameters have      */
+/* already been processed, then this routine simply    */
+/* returns the CommandLine string pointer in the       */
+/* EAX register.                                       */
+/* 	                                                   */
+/*******************************************************/
+	
+	
+#if( os.linux | os.freeBSD | os.macOS )
+
+	procedure arg.cmdLn;
+		@noframe; 
+	begin cmdLn;
+
+		_hla.get_NeedsCmdLn();
+		cmp( al, false );
+		je hasCmdLn;
+			
+			BuildArgv();
+			
+		hasCmdLn:
+		_hla.get_CommandLine();
+		ret();
+			
+	end cmdLn;
+
+#elseif( os.win32 )
+		
+	procedure arg.cmdLn; @noframe; @nodisplay; 
+	begin cmdLn;
+
+		_hla.get_NeedsCmdLn();
+		cmp( al, true );
+		jne noCmdLn;
+		
+			pushad();
+			pushfd();
+			cld();
+			GetCmdLine();
+			
+			// Create a copy of the command line string:
+			
+			str.a_cpyz( eax );
+			_hla.set_CommandLine( eax );
+			_hla.set_NeedsCmdLn( false );
+			
+			// Okay, scan the command line and break it
+			// up into little pieces.
+			
+			xor( ecx, ecx );	// Count cmdln parms here.
+			xor( edx, edx );	// Scratch register.
+
+			whileNotEOS:
+				cmp( (type byte [eax]), 0 );
+				je atEOS;
+			
+				// Skip over any leading white space characters.
+				
+				dec( eax );
+				whileWS:
+					inc( eax );
+					mov( [eax], dl );
+					bt( edx, (type dword chars.WhiteSpaceCset));
+					jc whileWS;
+				
+				// If the command line parameter begins with a
+				// quotation mark, grab all characters up to the
+				// corresponding closing quote or EOS.  Else, grab
+				// all characters up to the next WhiteSpace char
+				// or EOS.
+
+				mov( eax, ebx );		// Save for later.
+				cmp( dl, '"' );
+				jne noQuoteDelimiter;
+							
+					inc( ebx );			// Skip past quote.
+					upToNextQuote:
+						inc( eax );
+						cmp( (type byte [eax]), 0 );
+						je endOfArg;
+						cmp( (type char [eax]), '"' );
+						jne upToNextQuote;
+						jmp endOfArg;
+					
+				noQuoteDelimiter:
+				
+					dec( eax );
+					whileNotWS:
+						inc( eax );
+						mov( [eax], dl );
+						cmp( dl, 0 );
+						je endOfArg;
+						bt( edx, (type dword chars.WhiteSpaceCset) );
+						jnc whileNotWS;
+
+				endOfArg:
+				
+				
+				// Turn this item into a C/C++ string and
+				// copy it.
+				
+				cmp( eax, ebx );
+				je whileNotEOS;
+				
+					// Okay, EBX points at the start of
+					// this command line parameter, EAX points
+					// one character beyond it.  Copy the data
+					// inbetween to the current argv entry.
+					
+					push( eax );
+					mov( 0, (type byte [eax]));
+					str.a_cpyz( ebx );
+					_hla.set_argv( eax, ecx );
+					inc( ecx );
+					cmp( ecx, MaxCmdLnParms );
+					jae TooManyCmdLnParms;
+
+					pop( eax );
+					mov( dl, [eax] );	// Restore ending character.
+
+					// If we stopped on a quote character, skip the
+					// quote at this point. 
+
+					cmp( dl, '"' );
+					jne whileNotEOS;
+
+						inc( eax );
+						jmp whileNotEOS;
+
+				
+			atEOS:
+			_hla.set_argc( ecx );
+			_hla.set_argv( NULL, ecx );	// Just for convenience.
+			
+			popfd();
+			popad();
+			
+		noCmdLn:
+		_hla.get_CommandLine();
+		ret();
+		
+	
+	TooManyCmdLnParms:
+		raise( ex.TooManyCmdLnParms );
+	
+	end cmdLn;
+
+#endif
+
+
+end argsUnit;

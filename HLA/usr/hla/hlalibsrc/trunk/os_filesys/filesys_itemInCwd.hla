@@ -1,0 +1,479 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+#include( "excepts.hhf" )
+#include( "../include/fileiounit.hhf" )
+#include( "os.hhf" )
+
+/****************************************************************/
+/*                                                              */
+/* itemInCwd-                                                   */
+/*                                                              */
+/* Returns all the entries in the current working directory     */
+/* EXCEPT the '.' and '..' entries.                             */
+/*                                                              */
+/****************************************************************/
+
+
+
+#if( os.win32 )
+
+	iterator filesys.itemInCwd; @nodisplay;
+	var
+		eaxSave		:dword;
+		ecxSave		:dword;
+		edxSave		:dword;
+		handle		:dword;
+		filename	:string;
+		FileData	:win.Win32FindData;
+		
+	begin itemInCwd;
+
+		mov( edx, edxSave );
+		mov( ecx, ecxSave );
+		mov( eax, eaxSave );
+		
+		 
+		// Find the first matching file (if one exists).
+		// Save the handle for use by FindNextFile.
+		
+		win.FindFirstFile( "*", FileData );
+		mov( eax, handle );
+		
+		// If we matched at least one filename, return
+		// the corresponding string and call the
+		// FindNextFile routine to match any additional
+		// filenames.
+		
+		cmp( eax, win.INVALID_HANDLE_VALUE );
+		je allDone;
+		
+			repeatUntilNoMore:
+			
+				// FindFirstFile & FindNextFile return
+				// zero-terminated strings.  Convert these
+				// to HLA compatible strings and return
+				// the converted string:
+				
+				lea( eax, FileData.FileName );
+				str.a_cpyz( eax );
+				mov( eax, filename );
+				cmp( (type byte [eax]), 0 );	// Shouldn't happen, but...
+				je invalidItem;
+				
+					// Don't return '.' and '..':
+				
+					cmp( (type byte [eax]), '.' );
+					jne yieldItem;
+					cmp( (type byte [eax+1]), 0 );
+					je invalidItem;
+					cmp( (type byte [eax+1]), '.' );
+					jne yieldItem;
+					cmp( (type byte [eax+2]), 0 );
+					je invalidItem;
+					
+
+					yieldItem:
+					
+						// Return the converted string to the FOREACH
+						// loop and then free the storage associated
+						// with the string.
+						
+						mov( ecxSave, ecx );
+						mov( edxSave, edx );
+						yield();		// Return string to FOREACH loop.
+						mov( edx, edxSave );
+						mov( ecx, ecxSave );
+						jmp wasValid;
+				
+				invalidItem:
+					str.free( filename );
+					
+				wasValid:
+				
+				// Get the next filename in the list:
+				
+				win.FindNextFile( handle, FileData );
+				cmp( al, false );
+				jne repeatUntilNoMore;
+
+			
+			// When we've processed all the filenames in the list,
+			// call FindClose to free the handle and other resources.
+			
+			win.FindClose( handle );
+			
+		allDone:
+		mov( edxSave, edx );
+		mov( ecxSave, ecx );
+		mov( eaxSave, eax );
+
+	end itemInCwd;
+	
+#elseif( os.linux )
+
+	iterator filesys.itemInCwd; @nodisplay;
+	var
+		handle		:dword;
+		filename	:string;
+		eaxSave		:dword;
+		ebxSave		:dword;
+		ecxSave		:dword;
+		edxSave		:dword;
+		ediSave		:dword;
+		esiSave		:dword;
+		stringBuf	:char[1024];
+		dBuf		:byte[4096];
+		
+		
+	begin itemInCwd;
+
+		mov( esi, esiSave );
+		mov( edi, ediSave );
+		mov( edx, edxSave );
+		mov( ecx, ecxSave );
+		mov( ebx, ebxSave );
+		mov( eax, eaxSave );
+		pushfd();
+		
+		// Initialize string that will hold the retrieved filename:
+		
+		str.init( stringBuf, 1024 );
+		mov( eax, filename );
+		
+		linux.open( ".", linux.o_rdonly, linux.s_irwxu );
+		mov( eax, handle );
+		test( eax, eax );
+		jz noDirEntries;
+
+			forAllDirEntries:
+
+				linux.getdents
+				( 
+					handle, 
+					(type linux.dirent64 dBuf), 
+					@size(dBuf) 
+				);
+				cmp( eax, 0 );
+				jle noDirEntries;
+				mov( eax, ecx );
+				lea( ebx, dBuf );
+				repeatUntilDirEntDone:
+
+					lea( eax, (type linux.dirent64 [ebx]).d_name );
+					str.a_cpyz( eax );
+					mov( eax, filename );
+											
+					mov( filename, eax );
+					cmp( (type byte [eax]), 0 );	// Shouldn't happen, but...
+					je invalidItem;
+					
+						// Don't return '.' and '..':
+					
+						cmp( (type byte [eax]), '.' );
+						jne yieldItem;
+						cmp( (type byte [eax+1]), 0 );
+						je invalidItem;
+						cmp( (type byte [eax+1]), '.' );
+						jne yieldItem;
+						cmp( (type byte [eax+2]), 0 );
+						je invalidItem;
+						
+
+
+						yieldItem:
+							push( ecx );
+							push( ebx );
+							mov( esiSave, esi );
+							mov( ediSave, edi );
+							mov( edxSave, edx );
+							mov( ecxSave, ecx );
+							mov( ebxSave, ebx );
+							mov( filename, eax );
+							yield();
+							mov( esi, esiSave );
+							mov( edi, ediSave );
+							mov( edx, edxSave );
+							mov( ecx, ecxSave );
+							mov( ebx, ebxSave );
+							pop( ebx );
+							pop( ecx );
+							jmp wasValid;
+						
+					invalidItem:
+						str.free( filename );
+						
+					wasValid:
+					movzx( (type linux.dirent64[ebx]).d_reclen, edx );
+					add( edx, ebx );
+					sub( edx, ecx );
+					cmp( ecx, 0 );
+					jg repeatUntilDirEntDone;
+					
+			jmp forAllDirEntries;
+
+		noDirEntries:
+		linux.close(handle);
+		mov( esiSave, esi );
+		mov( ediSave, edi );
+		mov( edxSave, edx );
+		mov( ecxSave, ecx );
+		mov( ebxSave, ebx );
+		mov( eaxSave, eax );
+		popfd();
+
+	end itemInCwd;
+
+
+
+
+
+#elseif( os.freeBSD )
+
+	iterator filesys.itemInCwd; @nodisplay;
+	var
+		handle		:dword;
+		filename	:string;
+		eaxSave		:dword;
+		ebxSave		:dword;
+		ecxSave		:dword;
+		edxSave		:dword;
+		ediSave		:dword;
+		esiSave		:dword;
+		stringBuf	:char[1024];
+		dBuf		:byte[4096];
+		
+		
+	begin itemInCwd;
+
+		mov( esi, esiSave );
+		mov( edi, ediSave );
+		mov( edx, edxSave );
+		mov( ecx, ecxSave );
+		mov( ebx, ebxSave );
+		mov( eax, eaxSave );
+		pushfd();
+		
+		// Initialize string that will hold the retrieved filename:
+		
+		str.init( stringBuf, 1024 );
+		mov( eax, filename );
+		
+		bsd.open( ".", bsd.O_RDONLY, bsd.S_IRWXU );
+		mov( eax, handle );
+		jc openFailed;
+
+			forAllDirEntries:
+
+				bsd.getdents
+				( 
+					handle, 
+					(type bsd.dirent dBuf), 
+					@size(dBuf) 
+				);
+				jc noDirEntries;
+				cmp( eax, 0 );
+				jle noDirEntries;
+				mov( eax, ecx );
+				lea( ebx, dBuf );
+				repeatUntilDirEntDone:
+
+					lea( eax, (type bsd.dirent [ebx]).d_name );
+					str.a_cpyz( eax );
+					mov( eax, filename );
+					cmp( (type byte [eax]), 0 );	// Shouldn't happen, but...
+					je invalidItem;
+					
+						// Don't return '.' and '..':
+					
+						cmp( (type byte [eax]), '.' );
+						jne yieldItem;
+						cmp( (type byte [eax+1]), 0 );
+						je invalidItem;
+						cmp( (type byte [eax+1]), '.' );
+						jne yieldItem;
+						cmp( (type byte [eax+2]), 0 );
+						je invalidItem;
+						
+						yieldItem:
+							push( ecx );
+							push( ebx );
+							mov( esiSave, esi );
+							mov( ediSave, edi );
+							mov( edxSave, edx );
+							mov( ecxSave, ecx );
+							mov( ebxSave, ebx );
+							mov( filename, eax );
+							yield();
+							mov( esi, esiSave );
+							mov( edi, ediSave );
+							mov( edx, edxSave );
+							mov( ecx, ecxSave );
+							mov( ebx, ebxSave );
+							pop( ebx );
+							pop( ecx );
+							jmp validItem;
+						
+					invalidItem:
+						str.free( filename );
+						
+					validItem:
+					movzx( (type bsd.dirent [ebx]).d_reclen, edx );
+					add( edx, ebx );
+					sub( edx, ecx );
+					cmp( ecx, 0 );
+					jg repeatUntilDirEntDone;
+					
+			jmp forAllDirEntries;
+
+		  noDirEntries:
+		    bsd.close(handle);
+		    
+		openFailed:
+		mov( esiSave, esi );
+		mov( ediSave, edi );
+		mov( edxSave, edx );
+		mov( ecxSave, ecx );
+		mov( ebxSave, ebx );
+		mov( eaxSave, eax );
+		popfd();
+
+	end itemInCwd;
+
+
+
+
+
+#elseif( os.macOS )
+
+	iterator filesys.itemInCwd; @nodisplay;
+	var
+		handle		:dword;
+		filename	:string;
+		eaxSave		:dword;
+		ebxSave		:dword;
+		ecxSave		:dword;
+		edxSave		:dword;
+		ediSave		:dword;
+		esiSave		:dword;
+		stringBuf	:char[1024];
+		dBuf		:byte[4096];
+		
+		
+	begin itemInCwd;
+
+		mov( esi, esiSave );
+		mov( edi, ediSave );
+		mov( edx, edxSave );
+		mov( ecx, ecxSave );
+		mov( ebx, ebxSave );
+		mov( eax, eaxSave );
+		pushfd();
+		
+		// Initialize string that will hold the retrieved filename:
+		
+		str.init( stringBuf, 1024 );
+		mov( eax, filename );
+		
+		mac.open( ".", mac.O_RDONLY, mac.S_IRWXU );
+		mov( eax, handle );
+		jc openFailed;
+
+			forAllDirEntries:
+
+				mac.getdents
+				( 
+					handle, 
+					(type mac.dirent dBuf), 
+					@size(dBuf) 
+				);
+				jc noDirEntries;
+				cmp( eax, 0 );
+				jle noDirEntries;
+				mov( eax, ecx );
+				lea( ebx, dBuf );
+				repeatUntilDirEntDone:
+
+					lea( eax, (type mac.dirent [ebx]).d_name );
+					str.a_cpyz( eax );
+					mov( eax, filename );
+					cmp( (type byte [eax]), 0 );	// Shouldn't happen, but...
+					je invalidItem;
+					
+						// Don't return '.' and '..':
+					
+						cmp( (type byte [eax]), '.' );
+						jne yieldItem;
+						cmp( (type byte [eax+1]), 0 );
+						je invalidItem;
+						cmp( (type byte [eax+1]), '.' );
+						jne yieldItem;
+						cmp( (type byte [eax+2]), 0 );
+						je invalidItem;
+						
+						yieldItem:
+							push( ecx );
+							push( ebx );
+							mov( esiSave, esi );
+							mov( ediSave, edi );
+							mov( edxSave, edx );
+							mov( ecxSave, ecx );
+							mov( ebxSave, ebx );
+							mov( filename, eax );
+							yield();
+							mov( esi, esiSave );
+							mov( edi, ediSave );
+							mov( edx, edxSave );
+							mov( ecx, ecxSave );
+							mov( ebx, ebxSave );
+							pop( ebx );
+							pop( ecx );
+							jmp validItem;
+						
+					invalidItem:
+						str.free( filename );
+						
+					validItem:
+					movzx( (type mac.dirent [ebx]).d_reclen, edx );
+					add( edx, ebx );
+					sub( edx, ecx );
+					cmp( ecx, 0 );
+					jg repeatUntilDirEntDone;
+					
+			jmp forAllDirEntries;
+
+		  noDirEntries:
+		    mac.close(handle);
+		    
+		openFailed:
+		mov( esiSave, esi );
+		mov( ediSave, edi );
+		mov( edxSave, edx );
+		mov( ecxSave, ecx );
+		mov( ebxSave, ebx );
+		mov( eaxSave, eax );
+		popfd();
+
+	end itemInCwd;
+
+#else 
+
+	#print( "Unknown OS!" )
+
+#endif
+
+end FileIOUnit;
+

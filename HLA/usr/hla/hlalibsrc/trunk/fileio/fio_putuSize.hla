@@ -1,0 +1,94 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+
+#include( "../include/fileiounit.hhf" )
+
+	
+
+// putu8Size & putu16Size-
+//
+//	These procedures simply zero extend the actual data (b or w, respectively)
+// to 32 bits (remember all parameters are multiples of dwords, but the H.O.
+// bytes may be unused) in the stack and then jump (or fall through) to the
+// putu32Size routine. Note that the stack frame built for each of these
+// routines is passed on to putu32Size without building a new stack frame.	
+
+procedure fileio.putu8Size( Handle:dword; b:byte; width:int32; fill:char ); 
+	@noframe; @nodisplay;
+begin putu8Size;
+
+	and( $ff, (type dword [esp+12]));	// Zero H.O. 3 bytes of b.
+	jmp fileio.puti32Size;
+	
+end putu8Size;
+
+
+// putu16Size falls through to putu32Size, so it must immediately precede
+// putu32Size!
+
+procedure fileio.putu16Size( Handle:dword; w:word; width:int32; fill:char ); 
+	@noframe; @nodisplay;
+begin putu16Size;
+
+	mov( 0, (type word [esp+14]));	// Zero extend w to 32 bits.
+
+	// Falls through to putu32Size below!	
+
+end putu16Size;
+
+
+procedure fileio.putu32Size( Handle:dword; d:dword; width:int32; fill:char ); 
+	@noframe; @nodisplay;
+var
+	eaxSave		:dword;
+	ecxSave		:dword;
+	edxSave		:dword;
+	ediSave		:dword;
+	numWidth	:uns32;
+	buffer		:char[4096];
+	
+begin putu32Size;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( eax, eaxSave );
+	mov( ecx, ecxSave );
+	mov( edx, edxSave );
+	mov( edi, ediSave );
+
+
+	// Compute the actual size of the number for later use:
+	
+	conv.u32Size( d );
+	mov( eax, numWidth );
+	lea( edi, buffer );
+	movzx( fill, eax );
+	conv._unsToBuf32Size( d, width, numWidth, al, [edi], @size(buffer)-1 );	
+	fileio.write( Handle, [edi], ecx );
+
+	mov( eaxSave, eax );
+	mov( ecxSave, ecx );
+	mov( edxSave, edx );
+	mov( ediSave, edi );
+	leave();
+	ret( _parms_ );
+		
+end putu32Size;
+	
+end FileIOUnit;
+

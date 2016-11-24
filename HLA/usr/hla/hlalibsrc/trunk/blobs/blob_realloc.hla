@@ -1,0 +1,165 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" )
+#include( "memory.hhf" )
+#include( "excepts.hhf" )
+#include( "threads.hhf" )
+
+// blob.realloc:
+//
+//	Reallocates storage for an existing HLA BLOB object.
+//
+// Returns a pointer to the new blob object in EAX and frees the
+// original blob if it was allocated on the heap.
+//
+//	Any original alignment information is lost.  This does an
+// unaligned reallocation (actually, minimum alignment is 16 bytes,
+// so this does an alignment to a 16-byte boundary).
+
+procedure blob.realloc( theBlob:blob.blob; size:dword ); 
+	@nodisplay;
+	@noframe;
+var
+	saveECX		:dword;
+	saveESI		:dword;
+	saveEDI		:dword;
+	saveFlags	:dword;
+
+begin realloc;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_-4), esp );
+	pushfd();	// Allocate and initialize saveFlags
+	cld();
+	
+	mov( ecx, saveECX );
+	mov( esi, saveESI );
+	mov( edi, saveEDI );
+	
+	
+
+	// Allocate a new blob that is the size specified by the
+	// "size" parameter:
+	
+	mov( size, ecx );	
+	blob.alloc( ecx );
+	mov( eax, edi );
+
+	mov( theBlob, esi );
+	#if( @thread )
+	try
+	
+		thread.enterCriticalSection
+		( 
+			(type blob.blobRec [esi]).criticalSection 
+		);
+	
+	#endif
+		
+		// Okay, compute the smaller of "size" and the size of "theBlob".
+		// This will determine how many bytes to copy from the source blob
+		// to the newly allocated blob.
+		
+		cmp( ecx, (type blob.blobRec [esi]).maxlen );
+		jb HaveMinSize;
+		
+			mov( (type blob.blobRec [esi]).maxlen, ecx ); 
+
+		HaveMinSize:
+		
+		// Save away the minimum size computed as the length of the new
+		// blob, and then copy the original blob's data to the new blob:
+		
+		mov( ecx, (type blob.blobRec [edi]).length );
+		rep.movsb();
+		
+		// Free the storage associated with the old blob, if it was
+		// allocated on the heap:
+		
+		mov( theBlob, edi );
+		mov( (type blob.blobRec [edi]).allocPtr, ecx );
+		test( ecx, ecx );
+		jz DontDealloc;			// Skip free if not allocated on the heap.
+		
+			#if( @thread )
+			
+				// Must release the critical section here because
+				// blob.free will grab it. That's okay, window of
+				// opportunity (to screw up) has closed.
+				
+				mov( theBlob, esi );
+				thread.leaveCriticalSection
+				(
+					(type blob.blobRec [esi]).criticalSection
+				);
+				
+			#endif
+		
+			blob.free( theBlob );	// Also destroys the critical section
+			jmp didFree;
+			
+			
+		// If we don't free the blob, we have to release the
+		// critical section.
+			
+		DontDealloc:
+			#if( @thread )
+			
+				mov( theBlob, esi );
+				thread.leaveCriticalSection
+				(
+					(type blob.blobRec [esi]).criticalSection
+				);
+				
+			#endif
+		
+	didFree:
+	
+	#if( @thread )
+	
+	  anyexception
+	
+		mov( theBlob, edx );
+		thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		reraise( eax );
+		
+	endtry;
+		
+	#endif
+	  
+	mov( saveECX, ecx );
+	mov( saveESI, esi );
+	mov( saveEDI, edi );
+	popfd();
+	leave();
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end realloc;
+
+end blobUnit;
+
+
+
+
+	
+

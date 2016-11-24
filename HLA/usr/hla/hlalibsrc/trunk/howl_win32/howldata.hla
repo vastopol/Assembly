@@ -1,0 +1,40 @@
+unit HOWL_data;
+#include( "howl.hhf" )
+#include( "..\include\howlUnit.hhf" )
+
+static
+	align( 4 );
+	howl.bkgBrush_g			:dword;			// Form background brush
+	howl.bkgColor_g			:dword;			// Form background color
+	howl.transparent_g		:dword;			// Form transparent color
+	
+	howl.howlInstance		:dword;			// "Instance Handle" Windows supplies.
+	howl.wc_howl			:w.WNDCLASSEX;	// Our "window class" data.
+	howl.msg_howl			:w.MSG;			// Windows messages go here.
+	
+	howl.objectID_object_t	:dword := $4000;
+	
+	// If the user creates a wDragListBox object, the following variable is set
+	// to the message number that windows returns.  Also, the boolean flag tells
+	// us that we've done this once already.
+	
+	howl.dragListBoxMsg_g	:dword;				// Value for dragListBox msg, if active.
+	howl.hasDragListBox_g	:boolean := false;
+	align( 4 );	
+	
+	// The following is a message number (that Windows provides us) that is
+	// used to determine when a threadedMsg message comes along.
+	
+	howl.threadedMsg_g		:dword;
+	howl.threadedMsgAsync_g	:dword;
+	
+	// Here is the handle for the window we create to receive the
+	// above messages.
+	
+	howl.threadedMsgHndl_g	:dword;
+
+readonly
+	howl.Window_t_ClassName			:string := "window_t_className";
+
+
+end HOWL_data;

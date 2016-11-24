@@ -1,0 +1,56 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit sockets;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "sockets.hhf" )
+
+procedure baseSocketClass_t.assign( var src:baseSocketClass_t );
+const
+	bscEBX	:text := "(type baseSocketClass_t [ebx])";
+	
+begin assign;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	
+	mov( src, ebx );
+	mov( bscEBX.handle, eax );
+	mov( eax, this.handle );
+	mov( bscEBX.timeout.tv_sec, eax );
+	mov( eax, this.timeout.tv_sec );
+	mov( bscEBX.timeout.tv_usec, eax );
+	mov( eax, this.timeout.tv_usec );
+	mov( bscEBX.mode, eax );
+	mov( eax, this.mode );
+	mov( bscEBX.IPadrs.sa_family, ax );
+	mov( ax, this.IPadrs.sa_family );
+	mov( bscEBX.IPadrs.sin_port, ax );
+	mov( ax, this.IPadrs.sin_port );
+	mov( bscEBX.IPadrs.sin_addr, eax );
+	mov( eax, this.IPadrs.sin_addr );
+				
+		
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+end assign;
+
+
+end sockets;

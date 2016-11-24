@@ -1,0 +1,56 @@
+#if( ! @defined( winmain_hhf ))
+?winmain_hhf := 1;
+
+#includeonce( "w.hhf" )
+
+type
+	// Message and dispatch table related definitions:
+		  
+	MsgProc_t:	procedure( hwnd:dword; wParam:dword; lParam:dword );
+	
+	MsgProcPtr_t:
+		record
+			
+			MessageValue	:dword;
+			MessageHndlr	:MsgProc_t;
+			
+		endrecord;
+	
+
+static
+	hInstance	:dword;	external;
+
+	wc			:w.WNDCLASSEX; external;
+	msg			:w.MSG; external;
+	hwnd		:dword; external;
+
+
+	
+	
+readonly
+
+	ClassName	:string; external;
+	AppCaption	:string; external;
+	Dispatch	:MsgProcPtr_t; external;
+
+
+	procedure initWC; external;
+	procedure appCreateWindow; external;
+	procedure appException( theException:dword in eax ); external;
+	procedure defaultCreateWindow; @returns( "eax" ); external;
+	procedure LocalProcessMsg( var lpmsg:w.MSG ); @returns( "eax" ); external;
+
+		
+#endif
+
+
+
+
+
+
+
+
+
+
+
+

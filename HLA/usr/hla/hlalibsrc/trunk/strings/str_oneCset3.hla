@@ -1,0 +1,116 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+?@noframe := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+/*************************************************************/
+/*                                                           */
+/* oneCset2-                                                 */
+/* oneCset3-                                                 */
+/* oneCset4-                                                 */
+/*                                                           */
+/* Returns true if the first character of the source string  */
+/* is a member of the cst character set.                     */
+/*                                                           */
+/* oneCset3-	returns the remainder of the string in rem,  */
+/* 			if the first char of src is a member of cst      */
+/* 			(does not modify rem otherwise)                  */
+/* 			                                                 */
+/* oneCset4-	returns remainder and matched strings in the */
+/* 			rem and mat parameter strings if the first       */
+/* 			char of src is in cst. Does not modify           */
+/* 			rem or mat otherwise.                            */
+/* 			                                                 */
+/*************************************************************/
+			
+
+procedure str.oneCset3( src:string; cst:cset; rem:string ); 
+begin oneCset3;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( esi );
+	
+	mov( src, esi );
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+	mov( (type str.strRec [esi]).length, eax );	// Fail if empty string
+	test( eax, eax );							// Clears carry flag!
+	jz allDone;
+
+		movzx( (type char [esi]), eax );
+		bt( eax, cst );
+		jnc allDone;
+		
+		// If we matched the char, then return the remainder of the
+		// string in rem:
+		
+		cmp( esi, rem );	// Special case if src==rem
+		je specialCase;
+		
+			mov( (type str.strRec [esi]).length, eax );
+			sub( 1, eax );
+			str.substr( src, 1, eax, rem );
+			jmp rtnTrue;	// Return true, because we matched.
+			
+		
+		// Note: if src and rem overlap, then we have to copy the
+		// data a character at a time with the direction flag clear.
+		
+		specialCase:
+			pushfd();
+			cld();
+			push( edi );
+			push( ecx );
+			mov( (type str.strRec [esi]).length, ecx );
+			sub( 1, ecx );
+			mov( esi, edi );
+			mov( ecx, (type str.strRec [esi]).length );
+			add( 1, esi );
+			rep.movsb();
+			mov( 0, (type byte [edi]));
+			pop( ecx );
+			pop( edi );
+			popfd();
+
+	  rtnTrue:
+		stc;
+			
+	allDone:	
+	pop( esi );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end oneCset3;
+
+end stringUnit;
+
+
+
+
+	
+

@@ -1,0 +1,42 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit LinuxUnit;
+#include( "linux.hhf" )
+
+// pread - Read data from a file w/o advancing file ptr.
+
+procedure linux.pread
+(
+		fd		:dword;
+	var	buf		:var;
+		count	:linux.size_t;
+		offset	:linux.loff_t
+);
+	@nodisplay;
+begin pread;
+
+	linux.pushregs;
+	mov( linux.sys_pread64, eax );
+	mov( fd, ebx );
+	mov( buf, ecx );
+	mov( count, edx );
+	mov( (type dword offset), esi );
+	mov( (type dword offset[4]), edi );
+	int( $80 );
+	linux.popregs;	
+	
+end pread;
+
+end LinuxUnit;

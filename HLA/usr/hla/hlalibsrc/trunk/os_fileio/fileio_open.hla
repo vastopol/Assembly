@@ -1,0 +1,276 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+
+#include( "../include/fileiounit.hhf" )
+
+
+
+
+
+/************************************************************/
+/*                                                          */
+/* open-                                                    */
+/*                                                          */
+/* Used to open an existing file for I/O.                   */
+/* FileName holds the (path) name of the file to open.      */
+/* Access contains fileio.r, fileio.w, or fileio.rw         */
+/*                                                          */
+/* This function returns a file handle in the EAX register. */
+/* It raises an exception if there was an error opening     */
+/* the file.                                                */
+/*                                                          */
+/************************************************************/
+
+
+#if( os.linux )
+
+	procedure fileio.open( FileName:string; Access:fileio.accessMode ); 
+		@nodisplay;
+		@noframe;	
+	begin open;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		mov( Access, eax );
+		cmp( eax, fileio.r );
+		jne tryW;
+			mov( linux.o_rdonly, eax );
+			jmp doOpen;
+			
+		tryW:
+		cmp( eax, fileio.w );
+		je doW;
+			cmp( eax, fileio.a );
+			jne tryRW;
+		
+		doW:
+			mov( linux.o_wronly, eax );
+			jmp doOpen;
+			
+		tryRW:
+		cmp( eax, fileio.rw );
+		jne FileOpenFailure;
+		
+			mov( linux.o_rdwr, eax );
+			
+		doOpen:
+		linux.open( FileName, eax, $1c0 );  // Ignores third parameter
+		test( eax, eax );
+		js FileOpenFailure;
+		cmp( Access, fileio.a );
+		jne noAppend;
+		
+			push( eax );
+			linux.lseek( eax, 0, linux.seek_end );
+			pop( eax );
+			
+		noAppend:
+		pop( ebp );
+		ret( _parms_ );
+		
+	FileOpenFailure:
+		raise( ex.FileOpenFailure );
+				
+	end open;
+
+#elseif( os.freeBSD )
+
+	procedure fileio.open( FileName:string; Access:fileio.accessMode ); 
+		@nodisplay;
+		@noframe;	
+	begin open;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		mov( Access, eax );
+		cmp( eax, fileio.r );
+		jne tryW;
+			mov( bsd.O_RDONLY, eax );
+			jmp doOpen;
+			
+		tryW:
+		cmp( eax, fileio.w );
+		je doW;
+			cmp( eax, fileio.a );
+			jne tryRW;
+		
+		doW:
+			mov(  bsd.O_WRONLY, eax );
+			jmp doOpen;
+			
+		tryRW:
+		cmp( eax, fileio.rw );
+		jne FileOpenFailure;
+		
+			mov( bsd.O_RDWR, eax );
+			
+		doOpen:
+		bsd.open3( FileName, eax, $1c0 );  // Ignores third parameter
+		jc FileOpenFailure;
+		cmp( Access, fileio.a );
+		jne noAppend;
+		
+			push( eax );
+			push( edx );
+			bsd.lseek( eax, 0, bsd.SEEK_END );
+			pop( edx );
+			pop( eax );
+			
+		noAppend:
+		pop( ebp );
+		ret( _parms_ );
+		
+	FileOpenFailure:
+		raise( ex.FileOpenFailure );
+				
+	end open;
+
+#elseif( os.macOS )
+
+	procedure fileio.open( FileName:string; Access:fileio.accessMode ); 
+		@nodisplay;
+		@noframe;	
+	begin open;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		mov( Access, eax );
+		cmp( eax, fileio.r );
+		jne tryW;
+			mov( mac.O_RDONLY, eax );
+			jmp doOpen;
+			
+		tryW:
+		cmp( eax, fileio.w );
+		je doW;
+			cmp( eax, fileio.a );
+			jne tryRW;
+		
+		doW:
+			mov(  mac.O_WRONLY, eax );
+			jmp doOpen;
+			
+		tryRW:
+		cmp( eax, fileio.rw );
+		jne FileOpenFailure;
+		
+			mov( mac.O_RDWR, eax );
+			
+		doOpen:
+		mac.open3( FileName, eax, $1c0 );  // Ignores third parameter
+		jc FileOpenFailure;
+		cmp( Access, fileio.a );
+		jne noAppend;
+		
+			push( eax );
+			push( edx );
+			mac.lseek( eax, 0, mac.SEEK_END );
+			pop( edx );
+			pop( eax );
+			
+		noAppend:
+		pop( ebp );
+		ret( _parms_ );
+		
+	FileOpenFailure:
+		raise( ex.FileOpenFailure );
+				
+	end open;
+
+#elseif( os.win32 )
+
+	#macro xlatAccess( hlaAccess, winAccess ):skipIt;
+	
+		cmp( ebx, hlaAccess );
+		jne skipIt;
+		
+			mov( winAccess, ebx );
+			jmp xlatDone;
+			
+		skipIt:
+		
+	#endmacro
+	
+	procedure fileio.open( FileName:string; Access:fileio.accessMode ); 
+		@nodisplay;
+		@noframe;
+		
+	begin open;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		pushfd();
+		cld();
+		
+		mov( Access, ebx );
+			
+			xlatAccess( fileio.r,  $8000_0000 );
+			xlatAccess( fileio.w,  $4000_0000 );
+			xlatAccess( fileio.rw, $C000_0000 );
+			xlatAccess( fileio.a,  $4000_0000 );
+			
+			// If none of the above, raise a file open failure exception.
+			
+			FileOpenFailure:
+				raise( ex.FileOpenFailure );
+				
+		xlatDone:
+		
+		CreateFile
+		( 
+			0, 
+			win.FILE_ATTRIBUTE_NORMAL,
+			win.OPEN_EXISTING, 
+			0, 
+			win.FILE_SHARE_READ | win.FILE_SHARE_WRITE, 
+			ebx,
+			FileName
+		);
+		cmp( eax, win.INVALID_HANDLE_VALUE );
+		je FileOpenFailure;
+		
+		cmp( Access, fileio.a );
+		jne notAppend;
+		
+			push( eax );
+			SetFilePointer( win.FILE_END, 0, 0, eax );
+			pop( eax );
+			
+		notAppend:
+		popfd();
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( ebp );
+		ret( _parms_ );
+		
+	end open;
+	
+#else
+
+	#print( "Unknown OS!" )
+	
+#endif
+	
+end FileIOUnit;
+

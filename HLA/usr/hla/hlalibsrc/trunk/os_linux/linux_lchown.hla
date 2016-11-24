@@ -1,0 +1,39 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit LinuxUnit;
+#include( "linux.hhf" )
+
+// chmod - Changes the file permissions.
+
+procedure linux.lchown
+( 
+	filename:string; 
+	user	:linux.uid_t; 
+	group	:linux.gid_t 
+);
+	@nodisplay;
+begin lchown;
+
+	linux.pushregs;
+	mov( linux.sys_lchown, eax );
+	mov( filename, ebx );
+	movzx( user, ecx );
+	movzx( group, edx );
+	int( $80 );
+	linux.popregs;	
+	
+end lchown;
+
+end LinuxUnit;

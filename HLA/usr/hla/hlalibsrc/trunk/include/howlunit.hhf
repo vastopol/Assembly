@@ -1,0 +1,111 @@
+#if( !@defined( howlunit_c ))
+?howlunit_c := true;
+
+
+namespace howl;
+
+	val
+	    trace               := @global:false;
+	    procHeader          := @global:false;
+
+
+
+	static
+	
+	    // If the user creates a wDragListBox 
+	    // object, the following variable is set
+	    // to the message number that windows 
+	    // returns.  Also, the boolean flag tells
+	    // us that we've done this once already.
+	    
+	    dragListBoxMsg_g    :dword;                 external;
+	    hasDragListBox_g    :boolean;               external;
+
+
+
+
+end howl;
+
+
+
+#macro _begin( funcName[] ):dummy;
+
+    ?_function_name_ := funcName[0];
+    #if( @global:howl.procHeader )
+     
+        procedure @text( @string( dummy ) + "_" + _function_name_ ); @noframe;
+        begin @text( @string( dummy ) + "_" + _function_name_ );
+            byte "begin: ", _function_name_;
+            #if( @elements( funcName ) > 1 )
+                byte "." + funcName[1];
+            #endif
+            byte 0;
+        end @text( @string( dummy ) + "_" + _function_name_ );
+        
+    #endif
+     
+    begin @text( funcName[ @elements( funcName ) - 1] );
+    #if( @global:howl.trace )
+        stdout.puts( "begin: " + funcName[0] );
+        #if( @elements( funcName ) > 1 )
+            stdout.puts( "." + funcName[1] );
+        #endif
+        stdout.newln();
+    #endif
+    
+#endmacro
+        
+        
+#macro _end( funcName[] );
+
+    #if( howl.trace )
+        stdout.puts( "end: " + funcName[0] );
+        #if( @elements( funcName ) > 1 )
+            stdout.puts( "." + funcName[1] );
+        #endif
+        stdout.newln();
+    #endif
+    end @text( funcName[ @elements( funcName ) - 1] ) 
+    ?_function_name_ := "???"; 
+    
+#endmacro
+?_function_name_ := "???"; 
+
+
+
+
+
+        
+///////////////////////////////////////////////////////////////////////////////
+//
+// _genName-
+//
+//  A simple macro used to generate unique names each time it is invoked.
+
+#macro _genName:uniqueName;
+
+    @string( uniqueName )
+    
+#endmacro   
+
+
+
+namespace howl;
+
+// setType-
+//
+//  This macro is used to set the this.wType field of each object.
+
+#macro setType( _theType_ );
+
+    mov( (_theType_ & $FFFF_FFFF), (type dword this.wType) );
+    mov( ((_theType_ >> 32) & $FFFF_FFFF), (type dword this.wType[4]) );
+    mov( ((_theType_ >> 64) & $FFFF_FFFF), (type dword this.wType[8]) );
+    mov( ((_theType_ >> 96) & $FFFF_FFFF), (type dword this.wType[12]) );
+    
+#endmacro
+            
+end howl;
+
+#endif
+

@@ -1,0 +1,141 @@
+program fstat_test;
+#include( "stdlib.hhf" )
+#include( "mac.hhf" )
+
+const
+	HelloWorld		:string := "Hello world...." #$a;
+	HelloWorldLen	:uns32 := @length( HelloWorld );
+	
+static
+	fd			:dword;
+	wStr		:string := HelloWorld;
+	buffer		:byte[256];
+	readStr		:str.strvar(256);
+	statbuf		:mac.stat_t;
+	
+readonly
+	filename 	:string	:= "mac_fileio_test.data";
+
+
+begin fstat_test;
+
+	mac.open3
+	( 
+		filename, 
+		mac.O_WRONLY | mac.O_CREAT, 
+		mac.S_IRWXU | mac.S_IRWXG | mac.S_IRWXO 
+	);
+	if( @c ) then
+	
+		stdout.put( "Error (", (type uns32 eax), ") opening file: ", filename, nl );
+		os.exitProcess( 1 );
+		
+	endif;
+
+	mov( eax, fd );
+	mac.write( fd, val wStr, HelloWorldLen );
+	if( @c ) then
+		
+		stdout.put( "Error(", (type uns32 eax), ") writing file: ", filename, nl );
+		os.exitProcess( 1 );
+		
+	endif;
+	
+	mac.close( fd );
+	if( @c ) then
+		
+		stdout.put( "Error(", (type uns32 eax), ") closing file: ", filename, nl );
+		os.exitProcess( 1 );
+		
+	endif;
+
+	mac.open2( filename, mac.O_RDONLY );
+	if( @c ) then
+	
+		stdout.put( "Error (", (type uns32 eax), ") opening file(2): ", filename, nl );
+		os.exitProcess( 1 );
+		
+	endif;
+
+	mov( eax, fd );
+	mac.fstat( fd, &statbuf );
+	if( @c ) then
+		
+		stdout.put( "Error(", (type uns32 eax), ") getting file stat: ", filename, nl );
+		os.exitProcess( 1 );
+		
+	endif;
+	if( (type dword statbuf.st_size) <> HelloWorldLen ) then
+			
+		stdout.put
+		( 
+			"Error, length = ", 
+			(type uns32 eax), 
+			" during fstat, expected ",
+			HelloWorldLen,
+			nl
+		);
+		os.exitProcess( 1 );
+		
+	endif;
+	mac.close( fd );
+	if( @c ) then
+		
+		stdout.put( "Error(", (type uns32 eax), ") closing file (2): ", filename, nl );
+		os.exitProcess( 1 );
+		
+	endif;
+	
+	mac.lstat( filename, &statbuf );
+	if( @c ) then
+		
+		stdout.put( "Error(", (type uns32 eax), ") getting file stat(2): ", filename, nl );
+		os.exitProcess( 1 );
+		
+	endif;
+	if( (type dword statbuf.st_size) <> HelloWorldLen ) then
+			
+		stdout.put
+		( 
+			"Error, length = ", 
+			(type uns32 eax), 
+			" during fstat, expected ",
+			HelloWorldLen,
+			nl
+		);
+		os.exitProcess( 1 );
+		
+	endif;
+
+
+
+	
+	mac.stat( filename, &statbuf );
+	if( @c ) then
+		
+		stdout.put( "Error(", (type uns32 eax), ") getting file stat(2): ", filename, nl );
+		os.exitProcess( 1 );
+		
+	endif;
+	if( (type dword statbuf.st_size) <> HelloWorldLen ) then
+			
+		stdout.put
+		( 
+			"Error, length = ", 
+			(type uns32 eax), 
+			" during fstat, expected ",
+			HelloWorldLen,
+			nl
+		);
+		os.exitProcess( 1 );
+		
+	endif;
+
+
+
+	filesys.delete( filename );
+	stdout.put( "stat test succeeded" nl );
+	
+end fstat_test;
+
+													

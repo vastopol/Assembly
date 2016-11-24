@@ -1,0 +1,68 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit BsdUnit;
+#include( "bsd.hhf" )
+
+static
+	c_errno	:int32;	@external( "errno" );
+	
+procedure _setsockopt
+( 
+		s		:dword; 
+		level	:dword;
+		optname	:dword;
+	var	optval	:var;
+		optlen	:hla.socklen_t 
+);
+	@cdecl;
+	@external( "setsockopt" );
+	
+	
+
+// bsd.setsockopt- Sets socket options.
+
+procedure bsd.setsockopt
+( 
+		s		:dword; 
+		level	:dword;
+		optname	:dword;
+	var	optval	:var;
+		optlen	:hla.socklen_t 
+);
+	@nodisplay; @noframe;
+begin setsockopt;
+
+	push( ebp );
+	mov( esp, ebp );
+	bsd.pushregs;
+	_setsockopt( s, level, optname, val optval, optlen );
+	add( 20, esp );
+	bsd.popregs;
+	cmp( eax, -1 );
+	je badRslt;
+	clc();
+	leave();
+	ret( _parms_ );
+	
+badRslt:
+	mov( c_errno, eax );
+	stc();
+	leave();
+	ret( _parms_ );
+	
+		
+end setsockopt;
+
+end BsdUnit;

@@ -1,0 +1,90 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit bsdUnit;
+#include( "bsd.hhf" )
+#include( "hla.hhf" )
+
+	
+procedure _condWait( pcond:dword; mutex:dword );
+	@cdecl;
+	@external( "pthread_cond_wait" );
+	
+procedure _condTimedWait( pcond:dword; mutex:dword; timeout:dword );
+	@cdecl;
+	@external( "pthread_cond_timedwait" );
+	
+
+// bsd.pthread_cond_wait- Waits on a pthread condition.
+
+procedure bsd.pthread_cond_wait
+( 
+	var cond	:bsd.pthread_cond_t;
+	var	mutex	:bsd.pthread_mutex_t 
+);
+	@nodisplay; @noframe;
+var
+	ebxSave	:dword;
+	ecxSave	:dword;
+	edxSave	:dword;
+	esiSave	:dword;
+	ediSave	:dword;
+	
+begin pthread_cond_wait;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	bsd.saveregs;
+
+	_condWait( (type dword cond), (type dword mutex) );
+
+	bsd.restoreregs;
+	leave();
+	ret( _parms_ );
+		
+end pthread_cond_wait;
+
+// bsd.pthread_cond_wait- Waits on a pthread condition.
+
+procedure bsd.pthread_cond_timedwait
+( 
+	var cond	:bsd.pthread_cond_t;
+	var	mutex	:bsd.pthread_mutex_t;
+	var timeout	:hla.timespec 
+);
+	@nodisplay; @noframe;
+var
+	ebxSave	:dword;
+	ecxSave	:dword;
+	edxSave	:dword;
+	esiSave	:dword;
+	ediSave	:dword;
+	
+begin pthread_cond_timedwait;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	bsd.saveregs;
+
+	_condWait( (type dword cond), (type dword mutex), (type dword timeout) );
+
+	bsd.restoreregs;
+	leave();
+	ret( _parms_ );
+		
+end pthread_cond_timedwait;
+
+end bsdUnit;

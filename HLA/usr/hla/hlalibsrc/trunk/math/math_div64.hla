@@ -1,0 +1,138 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit mathUnit;
+
+#include( "math.hhf" )
+#include( "excepts.hhf" )
+
+
+/***********************************************/
+/*                                             */
+/* div64-                                      */
+/*                                             */
+/* Unsigned, full, 64-bit division.            */
+/* Utility function used by the divq and idivq */
+/* library modules.                            */
+/*                                             */
+/***********************************************/
+
+procedure math.div64
+( 
+    	Dividend:   qword; 
+    	Divisor:    qword; 
+    var QuotAdrs:   qword; 
+    var RmndrAdrs:  qword 
+);  @nodisplay;
+	@noframe;
+
+const
+    Quotient: text := "Dividend";   // Use the Dividend as the Quotient.
+
+var
+    Remainder: dword[2];
+
+begin div64;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+    push( eax );
+    push( ecx );
+    push( edi );
+	
+	// Check for division by zero:
+	
+	cmp( (type dword Divisor), 0 );
+	jne noDivErr;
+		cmp( (type dword Divisor[4]), 0 );
+		je DivideError;	 
+			
+	noDivErr:
+    
+    mov( 0, eax );              // Set the remainder to zero.
+    mov( eax, Remainder[0*1] );
+    mov( eax, Remainder[1*4] );
+
+    mov( 64, ecx );            // Count off 64 bits in ECX.
+    repeatWhlECXnot0:
+
+        // Compute Remainder:Quotient := Remainder:Quotient SHL 1:
+
+        shl( 1, (type dword Dividend[0*4]) );	// See the section on extended
+        rcl( 1, (type dword Dividend[1*4]) );	// precision shifts to see how
+        rcl( 1, (type dword Remainder[0*4]) );	// this code shifts 128 bits to
+        rcl( 1, (type dword Remainder[1*4]) );	// the left by one bit.
+
+        // Do a 64-bit comparison to see if the remainder
+        // is greater than or equal to the divisor.
+
+        mov( Remainder[1*4], eax );
+        cmp( eax, (type dword Divisor[1*4]) );
+        ja doRemainder;
+        jb noRemainder;
+
+            mov( Remainder[0*4], eax );
+            cmp( eax, (type dword Divisor[0*4]) );
+            jb noRemainder;
+
+		doRemainder:
+		
+            // Remainder := Remainder - Divisor
+
+            mov( (type dword Divisor[0*4]), eax );
+            sub( eax, Remainder[0*4] );
+            mov( (type dword Divisor[1*4]), eax );
+            sbb( eax, Remainder[1*4] );
+
+            // Quotient := Quotient + 1;
+
+            add( 1, (type dword Quotient[0*4]) );
+            adc( 0, (type dword Quotient[1*4]) );
+
+        noRemainder:
+        dec( ecx );
+		jnz repeatWhlECXnot0;
+
+
+    // Okay, copy the quotient (left in the Dividend variable)
+    // and the remainder to their return locations.
+    
+    mov( QuotAdrs, edi );
+    mov( (type dword Quotient[0*4]), eax );
+    mov( eax, [edi] );
+    mov( (type dword Quotient[1*4]), eax );
+    mov( eax, [edi+4] );
+    
+    mov( RmndrAdrs, edi );
+    mov( Remainder[0*4], eax );
+    mov( eax, [edi] );
+    mov( Remainder[1*4], eax );
+    mov( eax, [edi+4] );
+         
+    pop( edi );
+    pop( ecx );
+    pop( eax );
+	leave();
+	ret( _parms_ );
+            
+DivideError:	 
+	raise( ex.DivideError );
+		
+end div64;
+
+
+
+end mathUnit;

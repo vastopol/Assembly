@@ -1,0 +1,94 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit patterns;
+#includeOnce( "../include/pat.hhf" )
+#includeOnce( "patterns.hhf" )
+
+	
+	
+/****************************************************************************/
+/*                                                                          */
+/* UptoCset-                                                                */
+/*                                                                          */
+/* Matches all characters until encountering a                              */
+/* character in the specified character set.                                */
+/*                                                                          */
+/* Disposition:	Eager/lazy abivalent                                        */
+/* BackTrackable:	No.                                                     */
+/*                                                                          */
+/* Entry Parameters:                                                        */
+/*                                                                          */
+/* 	ESI:	Pointer to sequence of characters to match.                     */
+/* 	EDI:	Pointer to byte beyond last char to match.                      */
+/* 	cst:	Character set to match with.                                    */
+/*                                                                          */
+/* Exit Parameters (if success):                                            */
+/*                                                                          */
+/*  EBX:	Points at the start of the sequence that was matched.			*/
+/* 	ESI:	Points at first character in cst.                               */
+/* 	EDI:	Unchanged from entry value.                                     */
+/*                                                                          */
+/* Exit Parameters (if failure):                                            */
+/* 														                    */
+/* EDI:	Unchanged from original entry value.			                    */
+/* ESI:	Unchanged from original entry value.			                    */
+/*                                                                          */
+/*                                                                          */
+/* Unless noted, assume all other registers can be modified                 */
+/* by this code.                                                            */
+/*                                                                          */
+/****************************************************************************/
+
+
+procedure pat.upToCset( cst:cset ); @nodisplay; @noframe;
+begin upToCset;
+
+	push( ebp );		// must do this ourselves since noframe
+	mov( esp, ebp );	// is specified as an option.
+	
+	// Okay, eagerly match as many characters as possible that
+	// are not in the character set.
+	
+	xor( eax, eax );
+	mov( esi, ebx );
+	dec( esi );
+	repeatUntilC:
+	
+		inc( esi );					// Move to next char in string.
+		cmp( esi, edi );
+		jae fail;
+		mov( [esi], al );			// Get the char to test.
+		bt( eax, (type dword cst));	// See if in cst.
+		jnc repeatUntilC;
+		
+	// Since this routine doesn't have to handle backtracking,
+	// a simple return indicates success.
+
+	pop( ebp );
+	ret( _parms_ );
+	
+fail:	
+	// If we get down here, we didn't match at
+	// least one character.  So transfer control
+	// to the previous routine that supported
+	// backtracking.
+	
+	mov( ebx, esi );
+	pat._fail_( pat.FailTo );
+			
+end upToCset;
+
+
+end patterns;

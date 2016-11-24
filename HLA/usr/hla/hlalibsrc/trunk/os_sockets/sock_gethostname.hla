@@ -1,0 +1,197 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit sockets;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#include( "sockets.hhf" )
+#include( "os.hhf" )
+#include( "zstrings.hhf" )
+#include( "strings.hhf" )
+#include( "excepts.hhf" )
+
+#if( os.win32 )
+
+	#include( "w.hhf" )
+
+#elseif( os.linux )
+	#include( "linux.hhf" )
+	
+	procedure _gethostname( _name:string; len:dword );
+		@cdecl;
+		@external( "gethostname" );
+		
+#elseif( os.freeBSD )
+	#include( "bsd.hhf" )
+#elseif( os.macOS )
+	#include( "mac.hhf" )
+#else
+	#error( "gethostbyaddr.hla: unsupported OS" )
+#endif
+
+
+// sock.gethostname-
+//
+//	Returns the current host name:
+
+#if( os.win32 )
+
+	procedure sock.gethostname( s:string );
+	begin gethostname;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( eax );
+		push( ecx );
+		push( edx );
+		
+		mov( s, eax );
+		w.gethostname( eax, (type str.strRec [eax]).maxlen );
+		test( eax, eax );
+		jnz WinSocketError;
+		
+		mov( s, ecx );
+		zstr.len( ecx );
+		mov( eax, (type str.strRec [ecx]).length );
+
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	#if( os.win32 )
+	WinSocketError:
+		w.WSAGetLastError();
+		mov( eax, edx );
+	#endif
+		
+	SocketError:
+		raise( ex.SocketError );
+		
+	end gethostname;
+
+
+#elseif( os.linux )
+
+	procedure sock.gethostname( s:string );
+	begin gethostname;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+			
+		push( eax );
+		push( ecx );
+		push( edx );
+		
+		mov( s, eax );
+		mov( (type str.strRec [eax]).maxlen, eax );
+		_gethostname( s, eax );
+		test( eax, eax );
+		jnz SocketError;
+		mov( s, ecx );
+		zstr.len( ecx );
+		mov( eax, (type str.strRec [ecx]).length );
+		
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	SocketError:
+		raise( ex.SocketError );
+		
+	end gethostname;
+	
+#elseif( os.freeBSD )
+
+	procedure sock.gethostname( s:string );
+	begin gethostname;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+			
+		push( eax );
+		push( ecx );
+		push( edx );
+		
+		mov( s, eax );
+		mov( (type str.strRec [eax]).maxlen, eax );
+		bsd.gethostname( val s, eax );
+		jc SocketError;
+		mov( s, ecx );
+		zstr.len( ecx );
+		mov( eax, (type str.strRec [ecx]).length );
+		
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	SocketError:
+		raise( ex.SocketError );
+		
+	end gethostname;
+	
+#elseif( os.macOS )
+
+	procedure sock.gethostname( s:string );
+	begin gethostname;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+			
+		push( eax );
+		push( ecx );
+		push( edx );
+		
+		mov( s, eax );
+		mov( (type str.strRec [eax]).maxlen, eax );
+		mac.gethostname( val s, eax );
+		jc SocketError;
+		mov( s, ecx );
+		zstr.len( ecx );
+		mov( eax, (type str.strRec [ecx]).length );
+		
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	SocketError:
+		raise( ex.SocketError );
+		
+	end gethostname;
+	
+#else
+
+	procedure sock.gethostname( s:string );
+	begin gethostname;
+
+		#error( "Unknown OS!" );
+		raise( ex.SocketError );
+		
+	end gethostname;
+	
+#endif
+
+
+end sockets;

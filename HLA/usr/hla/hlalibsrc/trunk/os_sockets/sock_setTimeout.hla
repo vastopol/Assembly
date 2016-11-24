@@ -1,0 +1,130 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit sockets;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#include( "sockets.hhf" )
+#include( "excepts.hhf" )
+#include( "os.hhf" )
+
+#if( os.win32 )
+
+	// Note: must explicitly include wsock32.lib under Windows
+
+	#include( "w.hhf" )
+
+#elseif( os.linux )
+	#include( "linux.hhf" )
+#elseif( os.freeBSD )
+	#include( "bsd.hhf" )
+#elseif( os.macOS )
+	#include( "mac.hhf" )
+#else
+	#error( "accept.hla: unsupported OS" )
+#endif
+
+
+#if( os.win32 )
+
+procedure sock.setTimeout( handle:dword; timeout:hla.timeval );
+var
+	to_ms:qword;
+	
+readonly
+	_1000	:dword := 1000;
+	
+begin setTimeout;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( eax );
+	push( edx );
+	
+	// Windows variant of setsockopt expects milliseconds to
+	// be passed as the timeout value rather than a timeval record.
+	// So we have to convert the timeval record to milliseconds:
+	
+	mov( timeout.tv_usec, eax );
+	xor( edx, edx );
+	div( _1000, edx:eax );
+	mov( eax, (type dword to_ms));
+	
+	mov( timeout.tv_sec, eax );
+	imul( _1000, eax );
+	add( eax, (type dword to_ms));
+	adc( 0, edx );
+	mov( edx, (type dword to_ms[4]));
+	
+	sock.setsockopt
+	( 
+		handle,
+		sock.SOL_SOCKET,
+		sock.SO_RCVTIMEO,
+		to_ms,
+		@size( qword )
+	);
+	
+	sock.setsockopt
+	( 
+		handle,
+		sock.SOL_SOCKET,
+		sock.SO_SNDTIMEO,
+		to_ms,
+		@size( qword )
+	);
+	
+	pop( edx );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+end setTimeout;
+
+#else
+
+procedure sock.setTimeout( handle:dword; timeout:hla.timeval );
+begin setTimeout;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	sock.setsockopt
+	( 
+		handle,
+		sock.SOL_SOCKET,
+		sock.SO_RCVTIMEO,
+		timeout,
+		@size( hla.timeval )
+	);
+	
+	sock.setsockopt
+	( 
+		handle,
+		sock.SOL_SOCKET,
+		sock.SO_SNDTIMEO,
+		timeout,
+		@size( hla.timeval )
+	);
+	
+	leave();
+	ret( _parms_ );
+	
+end setTimeout;
+
+#endif
+
+
+end sockets;

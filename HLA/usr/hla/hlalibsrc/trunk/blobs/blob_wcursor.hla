@@ -1,0 +1,92 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" );
+#include( "excepts.hhf" );
+#includeOnce( "threads.hhf" )
+
+
+
+// blob.wcursor-
+//
+//	Returns the value of the write cursor field.
+
+procedure blob.wcursor( b:blob.blob ); @noframe;
+#if( @thread )
+	var
+		wc:dword;
+#endif
+begin wcursor;
+
+	push( ebp );
+	mov( esp, ebp );
+	#if( @thread )
+		sub( _vars_, esp );
+	#endif;
+
+	mov( b, eax );
+	test( eax, eax );
+	jz AttemptToDerefNULL;
+	
+	#if( @thread )
+	
+		try
+		
+			thread.enterCriticalSection
+			( 
+				(type blob.blobRec [eax]).criticalSection 
+			);
+			push( (type blob.blobRec [eax]).wcursor );
+			pop( wc );
+			
+		  anyexception
+		
+			mov( b, edx );
+			thread.leaveCriticalSection
+			( 
+				(type blob.blobRec [edx]).criticalSection 
+			);
+			reraise( eax );
+			
+		endtry;
+		thread.leaveCriticalSection( (type blob.blobRec [eax]).criticalSection );
+		mov( wc, eax );
+	
+	#else
+	
+		mov( (type blob.blobRec [eax]).wcursor, eax );
+			
+	#endif
+
+	leave();
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end wcursor;
+
+
+
+end blobUnit;
+
+
+
+
+	
+

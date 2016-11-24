@@ -1,0 +1,153 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "blobs.hhf" )
+#includeOnce( "stdio.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "excepts.hhf" )
+#include( "threads.hhf" );
+
+procedure blob.a_gets( src:blob.blob ); 
+var
+	StartOfStr	:dword;
+	strLength	:dword;
+	s			:string;
+	
+	ebxSave		:dword;
+	ecxSave		:dword;
+	esiSave		:dword;
+	 
+begin a_gets;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	mov( ebx, ebxSave );
+	mov( ecx, ecxSave );
+	mov( esi, esiSave );
+	
+	mov( NULL, s );
+	
+	mov( src, ebx );
+	test( ebx, ebx );
+	jz AttemptToDerefNULL;
+
+	#if( @thread )
+	try
+	
+		thread.enterCriticalSection( (type blob.blobRec [ebx]).criticalSection );
+	
+	#endif
+	
+		
+		// Find the end of the line so we know how much
+		// space to allocate for the string:
+		
+		mov( (type blob.blobRec [ebx]).rcursor, ecx );
+		mov( ecx, StartOfStr );
+		cmp( ecx, (type blob.blobRec [ebx]).length );
+		jbe noEOFerror;
+			raise( ex.EndOfFile );
+		
+		noEOFerror:
+			
+		// Okay, search for the first NL sequence, or
+		// until EOF to determine the length.
+		
+		sub( 1, ecx );
+		SearchChars:
+		
+			add( 1, ecx );
+			cmp( ecx, (type blob.blobRec [ebx]).length );
+			jae FoundEOLN;
+			
+				cmp( (type byte [ebx+ecx]), stdio.lf );
+				jne SearchChars;
+				
+				// Set the new rcursor position to just beyond
+				// the linefeed we just encountered:
+				
+				lea( eax, [ecx+1] );
+				mov( eax, (type blob.blobRec [ebx]).rcursor );
+				
+				// Eliminate any carriage returns immediately prior to
+				// the linefeed from the resulting string:
+				
+				cmp( ecx, StartOfStr );
+				je FoundEOS;
+				RemoveCRs:
+					cmp( (type byte [ebx+ecx-1]), stdio.cr );
+					jne FoundEOS;
+					
+						sub( 1, ecx );
+						cmp( ecx, StartOfStr );
+						ja RemoveCRs;
+						jmp FoundEOS;
+				
+			// If we hit the end of the blob, the logic to back up
+			// across CRs is slightly different:
+					
+			FoundEOLN:
+				mov( ecx, (type blob.blobRec [ebx]).rcursor );
+				cmp( ecx, StartOfStr );
+				ja RemoveCRs;
+				
+			FoundEOS:
+			
+			// Okay, we've found the end of the line/string. 
+			// Create a string from those characters.
+			
+			mov( StartOfStr, eax );
+			lea( esi, [ebx+eax] );
+			lea( ecx, [ebx+ecx] ); 
+			str.a_bufToStr2( esi, ecx );
+			mov( eax, s );
+	
+	
+	#if( @thread )
+	
+	  anyexception
+	  
+		mov( src, edx );
+		thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+	  	reraise( eax );
+		
+	endtry;
+	mov( src, ecx );
+	thread.leaveCriticalSection( (type blob.blobRec [ecx]).criticalSection );
+		
+	#endif
+	mov( ebxSave, ebx );
+	mov( ecxSave, ecx );
+	mov( esiSave, esi );
+	mov( s, eax );
+	leave();
+	ret( _parms_ );
+
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+				
+end a_gets;
+
+	
+end blobUnit;
+

@@ -1,0 +1,140 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobClass;
+?@NoStackAlign := true;
+?@NoDisplay := true;
+?@NoFrame := true;		
+
+#includeOnce( "excepts.hhf" )
+#includeOnce( "hla.hhf" )
+#includeOnce( "blobs.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "stdio.hhf" )
+#includeOnce( "threads.hhf" )
+
+
+// blob.readAt-
+//
+//	Reads "len" bytes from a blob starting at offset "index" into the
+// blob. This function ignores the rcursor field; it does not update
+// rcursor after the read operation.  This function returns the number
+// of bytes actually read in the EAX register. This is equal to "len"
+// if "(index+len)" is less than the length of the blob. It is the
+// length of the blob minus "index" if (index+len) is greater than the
+// length of the blob and index is less than the length of the blob; it
+// is zero if index is greater than the length of the blob.
+
+procedure blob.readAt( b:blob.blob; var dest:var; index:dword; len:dword ); 
+var
+	saveEBX		:dword;
+	saveECX		:dword;
+	saveESI		:dword;
+	saveEDI		:dword;
+	saveFlags	:dword;
+	 
+begin readAt;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_-4), esp );
+	pushfd();		// Allocate and initialize saveFlags
+	cld();
+	
+	mov( ebx, saveEBX );
+	mov( ecx, saveECX );
+	mov( esi, saveESI );
+	mov( edi, saveEDI );
+
+	mov( b, ebx );
+	test( ebx, ebx );
+	jz AttemptToDerefNULL;
+	
+	mov( dest, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+
+	#if( @thread )
+	try
+	
+		thread.enterCriticalSection
+		( 
+			(type blob.blobRec [ebx]).criticalSection 
+		);
+	
+	#endif
+		
+		
+		// Compute the start of the data transfer:
+		
+		xor( eax, eax );	// Return zero if index is out of range
+		mov( index, esi );
+		cmp( esi, (type blob.blobRec [ebx]).length );
+		jae noBytesCopied;
+		
+			// Compute starting address of read operation.
+			
+			add( ebx, esi );
+			
+			// Compute the number of bytes to transfer.  This is "len" if there
+			// are more than "len" bytes left in the blob; it is "length"-"index"
+			// if there are fewer than "len" bytes left in the blob.
+			
+			mov( (type blob.blobRec [ebx]).length, ecx );	// Compute bytes left
+			sub( index, ecx );								//  in blob.
+			cmp( ecx, len );
+			jbe useRemainderOfBlob;
+			
+				mov( len, ecx );
+				
+			useRemainderOfBlob:
+			mov( ecx, eax );		// Bytes transferred is returned in EAX.
+			jecxz noBytesCopied;	 
+			
+				
+				// Okay, copy ECX characters from the blob to the
+				// destination buffer.
+				
+				rep.movsb();
+				
+				
+		noBytesCopied:
+		
+	#if( @thread )
+	
+	  anyexception
+	
+		mov( b, edx );
+		thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		reraise( eax );
+		
+	endtry;
+	thread.leaveCriticalSection( (type blob.blobRec [ebx]).criticalSection );
+		
+	#endif
+	
+	mov( saveEBX, ebx );
+	mov( saveECX, ecx );
+	mov( saveESI, esi );
+	mov( saveEDI, edi );
+	popfd();
+	leave();
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end readAt;
+
+end blobClass;

@@ -1,0 +1,239 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit lists;
+#include( "lists.hhf" )
+#include( "excepts.hhf" )
+
+
+
+const
+	nodeEBX: text := "(type node_t [ebx])";
+	nodeECX: text := "(type node_t [ecx])";
+	nodeEDX: text := "(type node_t [edx])";
+	nodeEDI: text := "(type node_t [edi])";
+	
+
+// list_t.xchgNodes-
+//
+// This function exchanges two nodes WITHIN THE SAME LIST.
+// Results may be inconsistent if this function attempts to
+// exchange nodes in different lists.
+
+procedure list_t.xchgNodes( n1:nodePtr_t; n2:nodePtr_t ); 
+	@nodisplay;
+	@noframe;
+var
+	ebxSave	:dword;
+	ecxSave	:dword;
+	edxSave	:dword;
+	ediSave	:dword;
+	
+begin xchgNodes;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( ebx, ebxSave );
+	mov( ecx, ecxSave );
+	mov( edx, edxSave );
+	mov( edi, ediSave );
+		
+	// Don't bother if there are fewer than two nodes in the list.
+	
+	cmp( this.Cnt, 2 );
+	jb noXchg;
+	
+		mov( n1, ebx );
+		mov( n2, ecx );
+		
+		test( ebx, ebx );
+		jz AttemptToDerefNULL;
+		test( ecx, ecx );
+		jz AttemptToDerefNULL;
+		
+		cmp( ebx, ecx );	// Don't bother with exchange if they
+		je noXchg;			// are the same node.
+		
+		// If n1 or n2 is the head pointer, then the other
+		// node becomes the new head pointer.
+		
+		cmp( ebx, this.Head );
+		jne seeIfn2IsHead;
+		
+			mov( ecx, this.Head );
+			jmp checkTail;
+			
+		seeIfn2IsHead:
+		cmp( ecx, this.Head );
+		jne checkTail;
+		
+			mov( ebx, this.Head );
+			
+		// If n1 or n2 is the tail pointer, then the other
+		// node becomes the new tail pointer.
+		
+		checkTail:
+		cmp( ebx, this.Tail );
+		jne seeIfn2IsTail;
+		
+			mov( ecx, this.Tail );
+			jmp doXchg;
+			
+		seeIfn2IsTail:
+		cmp( ecx, this.Tail );
+		jne doXchg;
+		
+			mov( ebx, this.Tail );
+		
+		// Okay, swap the two nodes in the list:
+		
+		doXchg:
+		mov( nodeEBX.Prev, edx );
+		cmp( edx, ecx );
+		je prevIsECX;
+		
+			mov( nodeEBX.Next, edi );
+			cmp( edi, ecx );
+			je nextIsECX;
+			
+				push( edx );
+				push( edi );
+				test( edx, edx );
+				jz ebxIsHead;
+					mov( ecx, nodeEDX.Next );
+					jmp ebxWasntHead;
+					
+				ebxIsHead:
+					mov( ecx, this.Head );
+					
+				ebxWasntHead:
+				test( edi, edi );
+				jz ebxIsTail;
+					mov( ecx, nodeEDI.Prev );
+					jmp ebxWasntTail;
+					
+				ebxIsTail:
+					mov( ecx, this.Tail );
+					
+				ebxWasntTail:				
+				mov( nodeECX.Prev, edx );
+				mov( nodeECX.Next, edi );
+				push( edx );
+				push( edi );
+				test( edx, edx );
+				jz ecxIsHead;
+					mov( ebx, nodeEDX.Next );
+					jmp ecxWasntHead;
+					
+				ecxIsHead:
+					mov( ebx, this.Head );
+					
+				ecxWasntHead:
+				test( edi, edi );
+				jz ecxIsTail;
+					mov( ebx, nodeEDI.Prev );
+					jmp ecxWasntTail;
+				
+				ecxIsTail:
+					mov( ebx, this.Tail );
+					
+				ecxWasntTail:
+				pop( nodeEBX.Next );
+				pop( nodeEBX.Prev );
+				pop( nodeECX.Next );
+				pop( nodeECX.Prev );
+				jmp noXchg;
+				
+			// If n2 is the next node after n1, then
+			// we have to handle that as a special case.
+			
+			nextIsECX:
+			
+				mov( nodeECX.Next, edx );
+				mov( edx, nodeEBX.Next );
+				mov( nodeEBX.Prev, edi );
+				mov( edi, nodeECX.Prev );
+				mov( ecx, nodeEBX.Prev );
+				mov( ebx, nodeECX.Next );
+				test( edx, edx );
+				jz ecxIsTail2;
+				
+					mov( ebx, nodeEDX.Prev );
+					jmp ecxWasntTail2;
+					
+				ecxIsTail2:
+					mov( ebx, this.Tail );
+					
+				ecxWasntTail2:
+				test( edi, edi );
+				jz ebxIsHead2;
+				
+					mov( ecx, nodeEDI.Next );
+					jmp noXchg;
+					
+				ebxIsHead2:
+					mov( ecx, this.Head );
+					jmp noXchg;
+				
+			
+		
+		// If 12 is the next node after n2, then
+		// we have to handle that as a special case.
+		
+		prevIsECX:
+			
+			mov( nodeEBX.Next, edx );
+			mov( edx, nodeECX.Next );
+			mov( nodeECX.Prev, edi );
+			mov( edi, nodeEBX.Prev );
+			mov( ecx, nodeEBX.Next );
+			mov( ebx, nodeECX.Prev );
+			test( edx, edx );
+			jz ebxIsTail3;
+			
+				mov( ecx, nodeEDX.Prev );
+				jmp ebxWasntTail3;
+				
+			ebxIsTail3:
+				mov( ecx, this.Tail );
+				
+			ebxWasntTail3:
+			test( edi, edi );
+			jz ecxIsHead3;
+			
+				mov( ebx, nodeEDI.Next );
+				jmp noXchg;
+				
+			ecxIsHead3:
+				mov( ebx, this.Head );				
+			
+		
+		
+	noXchg:
+	mov( ebxSave, ebx );
+	mov( ecxSave, ecx );
+	mov( edxSave, edx );
+	mov( ediSave, edi );
+	leave();
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end xchgNodes;
+
+
+
+end lists;

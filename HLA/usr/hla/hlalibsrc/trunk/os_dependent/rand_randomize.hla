@@ -1,0 +1,331 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit randomUnit;
+#includeOnce( "../include/random.hhf" )
+#includeOnce( "../include/thread_private.hhf" )
+#includeOnce( "os.hhf" )
+
+
+	
+
+
+// randomize the random number generator
+
+#if( os.win32 )
+
+
+	static
+		align(4);
+		RandomTime				:win.SystemTime;
+		
+	#if( @thread )
+			
+		#include( "w.hhf" )
+		static
+			align( 4 );
+			
+			randomCS			:w.CRITICAL_SECTION;
+			randomInitialized	:boolean := false;
+			
+	#endif
+
+#elseif( os.linux )
+
+	static
+		align( 4 );
+		randomCS			:linux.pthread_mutex_t;
+		randomInitialized	:boolean := false;
+		tv					:linux.timeval;
+		tz					:linux.timezone;
+		
+#elseif( os.freeBSD )
+
+	static
+		align( 4 );
+		randomCS			:bsd.pthread_mutex_t;
+		randomInitialized	:boolean := false;
+		tv					: bsd.timeval;
+		tz					: bsd.timezone;
+		
+#elseif( os.macOS )
+
+	static
+		align( 4 );
+		randomCS			:mac.pthread_mutex_t;
+		randomInitialized	:boolean := false;
+		tv					:mac.timeval;
+		tz					:mac.timezone;
+		
+#endif
+
+procedure rand.randomize; @nodisplay; @noframe;
+begin randomize;
+ 
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( esi );
+
+	#if( @thread )
+	
+		rand._enterCS();
+		
+	#endif
+	
+	// Read the time stamp counter to get a (roughly)
+	// random seed.	 Of course, the time stamp counter
+	// is ever increasing, so the following code will
+	// play with the value to scramble it, thus producing
+	// a more random value.
+
+	try
+	
+		rdtsc();
+		
+	  anyexception
+	  
+	  	// If we get here, it's probably because of
+		// an illegal instruction error (i.e., the
+		// CPU doesn't support the rdtsc instruction).
+		// Just use whatever values happen to be in
+		// EDX:EAX as our random seed.
+		
+	endtry;
+	
+	// Since RDTSC may fail, let's do one additional
+	// thing to generate a random stream of bits.
+	// Let's read the system clock and merge those
+	// bits into EDX:EAX.
+	
+	#if( os.linux )
+	
+		linux.gettimeofday( tv, tz );
+		mov( tv.tv_sec, ecx );
+		xor( tv.tv_usec, ecx );
+	
+	#elseif( os.freeBSD )
+	
+		bsd.gettimeofday( tv, tz );
+		mov( tv.tv_sec, ecx );
+		xor( tv.tv_usec, ecx );
+	
+	#elseif( os.macOS )
+	
+		mac.gettimeofday( tv, tz );
+		mov( tv.tv_sec, ecx );
+		xor( tv.tv_usec, ecx );
+	
+	#elseif( os.win32 )
+	
+		win.GetLocalTime( RandomTime );
+	
+		mov( RandomTime.Milliseconds, cx );
+		bswap( ecx );
+		mov( RandomTime.Milliseconds, cx );
+		xor( ecx, edx );
+		xor( RandomTime.Second, ax );
+		mov( RandomTime.Day, bx );
+		shl( 16, ebx );	
+		mov( RandomTime.Hour, bx );
+		add( RandomTime.Minute, bx );
+		mov( RandomTime.DayOfWeek, cx );
+		rol( cl, ebx );
+		xor( ebx, eax );
+	
+	#endif
+	
+	// The following instruction makes the result slightly
+	// more interesting (generaly, this inverts the bits
+	// which scrambles more data when using an XOR instr
+	// later).
+	
+	neg( edx );
+	
+	// Since the time stamp counter is incrementing
+	// EAX on a regular basis, let's rearrange the
+	// bytes in EAX just to keep this incrementing
+	// behavior from creating some problems.
+	
+	bswap( eax );
+	
+	// Just to improve the quality of the randomness
+	// of the rdtsc/GetLocalTime return value, interleave the
+	// bits in the H.O. and L.O. dwords (edx/eax) and
+	// then XOR the H.O. and L.O. results together:
+	
+	// Interleave the L.O. words of EAX and EDX
+	// (note the direction of the shifts):
+	
+	mov( 16, esi );
+	whileESIgt0:
+	
+		shr( 1, eax );
+		rcl( 1, ecx );
+		shl( 1, edx );
+		rcl( 1, ecx );
+		dec( esi );
+		jnz whileESIgt0;
+		
+	
+	// Interleave the H.O. words of EAX and EDX.
+	// Note here, that EDX is shifted first and
+	// EAX is shifted second, opposite of the
+	// above loop (matters because of the XOR
+	// which follows).
+	
+	shl( 16, eax );	// Reposition values so we
+	shr( 16, edx ); // can swap shift directions.
+	
+	mov( 16, esi );
+	whileESIgt0a:
+	
+		shr( 1, edx );
+		rcl( 1, ebx );
+		shl( 1, eax );
+		rcl( 1, ebx );
+		dec( esi );
+		jnz whileESIgt0a;
+		
+	
+	// XOR the two DWORD results to further scramble
+	// things.  Note that because of the way the
+	// values were shifted, we're xoring EAX with
+	// EDX bits (from the original RDTSC instr).
+	
+	xor( ecx, ebx );
+	mov( ebx, eax );	
+		
+		
+	// Save as the seed value for the Linear Congruential
+	// random number generator.
+	
+	mov( eax, lcSeed );
+		
+	// Okay, use the value we've just computed in
+	// EAX to tweak all the values in our table
+	// of seed values.
+	
+	mov( 1, ebx );
+	mov( 55, ecx );
+	repeatUntilECX0:
+
+		add( eax, add_array[ ebx*4 ] );
+		inc( ebx );
+		dec( ecx );
+		jnz repeatUntilECX0;
+
+	#if( @thread )
+	
+		rand._leaveCS();
+		
+	#endif
+	
+	pop( esi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	ret();
+
+end randomize;
+
+
+#if( @thread )
+
+
+	#if( os.win32 )
+	
+		procedure rand._enterCS;	@noframe;
+		begin _enterCS;
+		
+			// Must auto-initialize the critical section:
+			
+			push( eax );
+			push( ecx );
+			push( edx );
+			
+			cmp( randomInitialized, false );
+			jne alreadyInitialized;
+			
+				w.InitializeCriticalSection( randomCS );
+				mov( true, randomInitialized );
+				
+			alreadyInitialized:
+			w.EnterCriticalSection( randomCS );	
+			pop( edx );
+			pop( ecx );
+			pop( eax );
+			ret();
+			
+		end _enterCS;
+
+
+		procedure rand._leaveCS;	@noframe;
+		begin _leaveCS;
+		
+			push( eax );
+			push( ecx );
+			push( edx );
+		
+			w.LeaveCriticalSection( randomCS );
+			pop( edx );
+			pop( ecx );
+			pop( eax );
+			ret();
+			
+		end _leaveCS;
+		
+	#elseif( os.linux| os.freeBSD | os.macOS )
+	
+		procedure rand._enterCS;	@noframe;
+		begin _enterCS;
+		
+			// Must auto-initialize the critical section:
+			
+			cmp( randomInitialized, false );
+			jne alreadyInitialized;
+			
+				pthread_mutex_init( randomCS, NULL );
+				mov( true, randomInitialized );
+				
+			alreadyInitialized:
+			pthread_mutex_lock( randomCS );	
+			ret();
+			
+		end _enterCS;
+
+
+		procedure rand._leaveCS;	@noframe;
+		begin _leaveCS;
+		
+			pthread_mutex_unlock( randomCS );
+			ret();
+			
+		end _leaveCS;
+		
+	#else
+	
+		#error( "Unknown OS!" )
+		
+	#endif
+
+
+#endif
+
+
+
+
+end randomUnit;

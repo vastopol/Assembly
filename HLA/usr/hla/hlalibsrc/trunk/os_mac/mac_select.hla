@@ -1,0 +1,106 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit macUnit;
+#include( "mac.hhf" )
+
+procedure _select
+( 
+		n			:dword; 
+	var	readSet		:mac.fd_set_t;
+	var	writeSet	:mac.fd_set_t;
+	var	exceptSet	:mac.fd_set_t;
+	var	timeout		:mac.timeval
+);
+	@cdecl;
+	@forward;
+	
+	
+
+// mac.select- Polls a file descriptor.
+
+procedure mac.select
+( 
+		n			:dword; 
+	var	readSet		:mac.fd_set_t;
+	var	writeSet	:mac.fd_set_t;
+	var	exceptSet	:mac.fd_set_t;
+	var	timeout		:mac.timeval
+);
+	@nodisplay; @noframe;
+var
+	ebxSave	:dword;
+	ecxSave	:dword;
+	edxSave	:dword;
+	esiSave	:dword;
+	ediSave	:dword;
+	
+begin select;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mac.saveregs;
+
+	and( $FFFF_FFF0, esp );		// Align call below to 16 bytes.
+	sub( 12, esp );
+	_select
+	(
+		n,
+		val (type dword readSet),
+		val (type dword writeSet),
+		val (type dword exceptSet),
+		val (type dword timeout)
+	);
+
+	mac.restoreregs;
+	cmp( eax, -1 );
+	je badRslt;
+	clc();
+	leave();
+	ret( _parms_ );
+	
+badRslt:
+	mac.errno();
+	stc();
+	leave();
+	ret( _parms_ );
+	
+		
+end select;
+
+
+#asm
+	.section __IMPORT__, __jump_table, symbol_stubs, self_modifying_code+pure_instructions, 5
+#endasm
+procedure _select
+( 
+		n			:dword; 
+	var	readSet		:mac.fd_set_t;
+	var	writeSet	:mac.fd_set_t;
+	var	exceptSet	:mac.fd_set_t;
+	var	timeout		:mac.timeval
+);
+	@noframe;
+	@nodisplay;
+begin _select;
+#asm
+	.indirect_symbol _select
+	hlt ; hlt ; hlt;  hlt; hlt
+	.subsections_via_symbols
+#endasm
+end _select;
+
+
+end macUnit;

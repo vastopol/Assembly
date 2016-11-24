@@ -1,0 +1,94 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+
+#include( "../include/fileiounit.hhf" )
+#include( "os.hhf" )
+	
+
+/**************************************************************/
+/*                                                            */
+/* fputcsize-                                                 */
+/*                                                            */
+/* This routine writes a single character to the file         */
+/* whose file handle is passed as a parameter. The width      */
+/* parameter specifies the field width in which to print      */
+/* the character.  If this value is greater than one, then    */
+/* fputcsize prints the single character right justified in   */
+/* the field.  If this value is less than negative one, then  */
+/* fputcsize prints the single character left justified in    */
+/* the field.  If the absolute value of width is greater than */
+/* one, then fputcsize fills the remaining characters in the  */
+/* print field with the "fill" character.                     */
+/*                                                            */
+/**************************************************************/
+
+
+
+procedure fileio.putcSize( Handle:dword; c:char; width:int32; fill:char ); 
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+	
+begin putcSize;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ecx );		
+
+	// We only print pad characters if the absolute value of
+	// the specified field width is greater than one.
+	
+	mov( width, ecx );
+	cmp( ecx, 1 );
+	jle noRightJustify;
+	
+	
+		movzx( fill, eax );
+		dec( ecx );			// Character takes up one position on it's own.
+		fPutPad( Handle, al, ecx );
+			
+	noRightJustify:			
+		
+	// Okay, write the output character to the file.
+	
+	lea( eax, c );
+	fileio.write( Handle, [eax], 1 );
+
+	
+	// If width was negative, write the pad characters
+	// after the character (left justify the character).
+	
+	cmp( width, -1 );
+	jge allDone;
+	
+		mov( width, ecx );
+		add( 1, ecx );		// Char occupies one position.
+		neg( ecx );
+		fPutPad( Handle, al, ecx );
+
+	allDone:
+	pop( ecx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+
+end putcSize;
+
+	
+end FileIOUnit;
+

@@ -1,0 +1,257 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 8/17/2006, by Randall Hyde
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+#include( "stdlibdata.hhf" )
+
+/*****************************************************************************/
+/*                                                                           */
+/* _unsToBuf32-                                                              */
+/*                                                                           */
+/* On entry:                                                                 */
+/* 	EAX contains a numeric value to convert to an unsigned decimal string.   */
+/*  ECX contains the number of digits to print (from L.O.->H.O.)             */
+/*    including a count for the underscore if one is to be inserted.         */
+/* 	                                                                         */
+/* 	EDI points at the end of a memory buffer large enough to hold an         */
+/* 	uns32 value (at least 10 bytes if OutputUnderscores is                   */
+/*  false, at least 13 bytes if OutputUnderscores is true).                  */
+/*                                                                           */
+/* On exit:                                                                  */
+/* 	The buffer will contain a string that is the                             */
+/* 	string representation of the uns32 value and EDI will point at the       */
+/* 	start of the string. If OutputUnderscores is true then this routine will */
+/*  insert underscores between each group of three digits.                   */
+/*                                                                           */
+/*****************************************************************************/
+
+
+
+
+
+procedure conv._unsToBuf32
+( 
+		d		:dword in eax;
+		width	:dword in ecx; 
+	var buffer	:char in edi 
+);
+	@noframe; 
+	@nodisplay; 
+	@noalignstack;
+
+readonly(4)
+
+	noUSjt	:dword[11] :=
+			[
+				&badWidth,
+				&noUS1,
+				&noUS2,
+				&noUS3,
+				&noUS4,
+				&noUS5,
+				&noUS6,
+				&noUS7,
+				&noUS8,
+				&noUS9,
+				&noUS10
+			];
+
+	hasUSjt	:dword[14] :=
+			[
+				&badWidth,
+				&hasUS1,
+				&hasUS2,
+				&hasUS3,
+				&badWidth,
+				&hasUS5,
+				&hasUS6,
+				&hasUS7,
+				&badWidth,
+				&hasUS9,
+				&hasUS10,
+				&hasUS11,
+				&badWidth,
+				&hasUS13
+			];
+
+
+	#macro subDigit( subValue, posn ):done;
+		mov( '0', dl );
+		sub( subValue, eax );
+		jc done;
+		add( 1, dl );
+		sub( subValue, eax );
+		jc done;
+		add( 1, dl );
+		sub( subValue, eax );
+		jc done;
+		add( 1, dl );
+		sub( subValue, eax );
+		jc done;
+		add( 1, dl );
+		sub( subValue, eax );
+		jc done;
+		add( 1, dl );
+		sub( subValue, eax );
+		jc done;
+		add( 1, dl );
+		sub( subValue, eax );
+		jc done;
+		add( 1, dl );
+		sub( subValue, eax );
+		jc done;
+		add( 1, dl );
+		sub( subValue, eax );
+		jc done;
+		add( 1, dl );
+		sub( subValue, eax );
+	  done:
+		add( subValue, eax );
+		mov( dl, [edi-posn] );
+
+	#endmacro
+		
+begin _unsToBuf32;
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+
+	// Handle output with underscores later in this file:
+	
+	_hla.test_OutputUnderscores();
+	jne DoUnderscores;
+
+		// Drop down here if we're not outputting underscores inbetween 
+		// groups of three digits in the number.
+
+		cmp( ecx, 10 );
+		ja badWidth;
+
+		jmp( noUSjt[ecx*4] );
+
+		noUS10:
+			mov( '1', dl );
+			sub( 1_000_000_000, eax );
+			sub( 1_000_000_000, eax );
+			jc done10;
+			add( 1, dl );
+			sub( 1_000_000_000, eax );
+			jc done10;
+			add( 1, dl );
+			sub( 1_000_000_000, eax );
+			jc done10;
+			add( 1, dl );
+			sub( 1_000_000_000, eax );
+		done10:
+			add( 1_000_000_000, eax );
+			mov( dl, [edi-9] );
+
+		noUS9:
+			subDigit( 100_000_000, 8 );
+		noUS8:
+			subDigit( 10_000_000, 7 );
+		noUS7:
+			subDigit( 1_000_000, 6 );
+		noUS6:
+			subDigit( 100_000, 5 );
+		noUS5:
+			subDigit( 10_000, 4 );
+		noUS4:
+			subDigit( 1_000, 3 );
+		noUS3:
+			subDigit( 100, 2 );
+		noUS2:
+			subDigit( 10, 1 );
+		noUS1:
+			or( '0', al );
+			mov( al, [edi] );
+			sub( ecx, edi );	// Point EDI at the first char in the buffer
+			add( 1, edi );
+			pop( edx );
+			pop( ecx );
+			pop( eax );
+			ret();
+
+
+	// Drop down here if we are outputting underscores between each group
+	// of three digits.
+
+	DoUnderscores:
+
+		// Drop down here if we're not outputting underscores inbetween 
+		// groups of three digits in the number.
+
+		cmp( ecx, 13 );
+		ja badWidth;
+
+		jmp( hasUSjt[ecx*4] );
+
+		hasUS13:
+			mov( '1', dl );
+			sub( 1_000_000_000, eax );
+			sub( 1_000_000_000, eax );
+			jc _done10;
+			add( 1, dl );
+			sub( 1_000_000_000, eax );
+			jc _done10;
+			add( 1, dl );
+			sub( 1_000_000_000, eax );
+			jc _done10;
+			add( 1, dl );
+			sub( 1_000_000_000, eax );
+		_done10:
+			add( 1_000_000_000, eax );
+			mov( dl, [edi-12] );
+			mov( '_', (type char [edi-11]));
+
+		hasUS11:
+			subDigit( 100_000_000, 10 );
+		hasUS10:
+			subDigit( 10_000_000, 9 );
+		hasUS9:
+			subDigit( 1_000_000, 8 );
+			mov( '_', (type char [edi-7]));
+
+		hasUS7:
+			subDigit( 100_000, 6 );
+		hasUS6:
+			subDigit( 10_000, 5 );
+		hasUS5:
+			subDigit( 1_000, 4 );
+			mov( '_', (type char [edi-3]));
+
+		hasUS3:
+			subDigit( 100, 2 );
+		hasUS2:
+			subDigit( 10, 1 );
+		hasUS1:
+			or( '0', al );
+			mov( al, [edi] );
+			sub( ecx, edi );	// Point EDI at the first char in the buffer
+			add( 1, edi );
+			pop( edx );
+			pop( ecx );
+			pop( eax );
+			ret();
+			
+badWidth:
+	raise( ex.WidthTooBig );		  	
+
+end _unsToBuf32;
+
+end ConvUnit;

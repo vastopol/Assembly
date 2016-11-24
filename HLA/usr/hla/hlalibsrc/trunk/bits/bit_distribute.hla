@@ -1,0 +1,112 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+
+
+
+unit bitsUnit;
+
+#include( "bits.hhf" );
+
+/*********************************************************************/
+/*                                                                   */
+/* distribute-                                                       */
+/*                                                                   */
+/* This is the converse function to bits.coalesce. It takes a set    */
+/* of contiguous bits in source and a mask dword. For however many   */
+/* '1' bits appear in mask (say n), this function will take bits     */
+/* 0..(n-1) from source and distribute them into the destination     */
+/* value at the bit positions specified by the '1's in the mask      */
+/* dword. Note that bit positions in the dest value where there      */
+/* are zero bits in the mask are copied to the return value (EAX)    */
+/* unchanged.  E.g.,                                                 */
+/*                                                                   */
+/* source:     %0000_1111_1010_0101                                  */
+/* mask:       %0110_0110_0110_0000_0000_1000_0101_1111              */
+/* dest:       %1001_1111_0011_0110_1100_0000_1010_1110              */
+/*                                                                   */
+/* The mask dword, as it contains 13 set bits, will grab             */
+/* bits 0..12 from source and merge those bits (starting with the    */
+/* L.O. bit) with the value in dest, at the bit positions containing */
+/* ones in mask. In this example, the bits from source will be       */
+/* merged into dest using the following mapping:                     */
+/*                                                                   */
+/* dest bit #		source bit #                                     */
+/* 	0				0                                                */
+/* 	1				1                                                */
+/* 	2				2                                                */
+/* 	3				3                                                */
+/* 	4				4                                                */
+/* 	6				5                                                */
+/* 	11				6                                                */
+/* 	21				7                                                */
+/* 	22				8                                                */
+/* 	25				9                                                */
+/* 	26				10                                               */
+/* 	29				11                                               */
+/* 	30				12                                               */
+/* 	                                                                 */
+/* Note that the bit positions in dest that are do not have          */
+/* a corresponding set bit in mask retain their original             */
+/* values.  The result for this example, returned in EAX,            */
+/* would be:                                                         */
+/*                                                                   */
+/* EAX:	%1000_1111_0111_0110_1100_0000_1110_1111                     */
+/*                                                                   */
+/*********************************************************************/
+	
+	
+procedure bits.distribute( source:dword; mask:dword; dest:dword ); 
+	@nodisplay; 
+	@noframe;
+begin distribute;
+
+			push( ebx );
+			push( ecx );
+			push( edx );
+	
+			// Stack layout at this point:
+			//
+			// ESP+24:	source
+			// ESP+20:	mask
+			// ESP+16:	dest
+			// ESP+12:	return address
+			// ESP+8:	EDX value
+			// ESP+4:	ECX value
+			// ESP:		EBX value
+	
+			mov( [esp+16], eax ); // Get a copy of dest.
+			mov( [esp+20], edx ); // Get a copy of mask.
+			mov( [esp+24], ebx ); // Get original source.
+			
+			mov( 32, cl );
+			jmp DistLoop;
+			
+			align(4);
+
+CopyToEAX:	rcr( 1, ebx );
+			rcr( 1, eax );
+			jz Done;
+DistLoop:	dec( cl );
+			shr( 1, edx );
+			jc CopyToEAX;
+			ror( 1, eax );
+			jnz DistLoop;
+			
+Done:		ror( cl, eax );
+		
+			pop( edx );
+			pop( ecx );
+			pop( ebx );
+			ret( 12 );
+			
+end distribute;
+
+	
+end bitsUnit;	

@@ -1,0 +1,81 @@
+#if( !@defined( stat_hhf ))
+?stat_hhf := true;
+
+namespace linux; @fast;
+
+const
+	
+	// Protection bit values:
+	
+	usr_r 	:= %100_000_000;
+	usr_w	:= %010_000_000;
+	usr_x	:= %001_000_000;
+	
+	grp_r	:= %000_100_000;
+	grp_w	:= %000_010_000;
+	grp_x	:= %000_001_000;
+	
+	all_r	:= %000_000_100;
+	all_w	:= %000_000_010;
+	all_x	:= %000_000_001;
+	
+	
+	// More protection bits:
+	
+	s_isuid	:= %100_000_000_000;
+	s_isgid	:= %010_000_000_000;
+	s_isvtx	:= %001_000_000_000;
+	s_iread	:= usr_r;
+	s_iwrite:= usr_w;
+	s_iexec	:= usr_x;
+	s_irgrp	:= grp_r;
+	s_iwgrp	:= grp_w;
+	s_ixgrp	:= grp_x;
+	s_iroth	:= all_r;
+	s_iwoth	:= all_w;
+	s_ixoth	:= all_x;
+	
+	s_irwxu	:= usr_r | usr_w | usr_x;
+	s_irwxg	:= grp_r | grp_w | grp_x;
+	s_irwxo	:= all_r | all_w | all_x;
+	
+	
+	
+	// File types:
+	
+	s_ifmt	:= %001_111_000_000_000_000;
+	s_ifreg	:= %001_000_000_000_000_000;
+	s_ifdir	:= %000_100_000_000_000_000;
+	s_ifchr	:= %000_010_000_000_000_000;
+	s_ifblk	:= %000_110_000_000_000_000;
+	s_ififo	:= %000_001_000_000_000_000;
+	s_iflnk	:= %001_010_000_000_000_000;
+	s_ifsock:= %001_100_000_000_000_000;
+
+	
+type
+	stat_t:	record
+		st_dev		:word;
+		__pad1		:word;
+		st_ino		:dword;
+		st_mode		:word;
+		st_nlink	:word;
+		st_uid		:word;
+		st_gid		:word;
+		st_rdev		:word;
+		__pad2		:word;
+		st_size		:dword;
+		st_blksze	:dword;
+		st_blocks	:dword;
+		st_atime	:dword;
+		__unused1	:dword;
+		st_mtime	:dword;
+		__unused2	:dword;
+		st_ctime	:dword;
+		__unused3	:dword;
+		__unused4	:dword;
+		__unused5	:dword;
+	endrecord;
+	
+end linux;
+#endif

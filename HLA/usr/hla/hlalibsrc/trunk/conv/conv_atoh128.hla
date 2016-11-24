@@ -1,0 +1,157 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "stdlibdata.hhf" )
+#includeOnce( "excepts.hhf" )		
+
+
+/**************************************************************/
+/*                                                            */
+/* atoh128-                                                   */
+/*                                                            */
+/* ESI points at a sequence of characters that represent      */
+/* a hexadecimal value.  This function converts that sequence */
+/* to the numeric equivalent and returns the result in        */
+/* l.  ESI is left pointing at the first non-hex              */
+/* character.  See atou and atoi for more details on this     */
+/* routine.                                                   */
+/*                                                            */
+/**************************************************************/
+
+
+
+procedure conv.atoh128( var buffer:var in esi; var l:lword ); 
+	@nodisplay; 
+	@noframe;
+			
+var
+	ediSave	:dword;
+	edxSave	:dword;
+	ecxSave	:dword;
+	ebxSave :dword;
+	eaxSave	:dword;
+
+begin atoh128;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( eax, eaxSave );
+	mov( ebx, ebxSave );
+	mov( ecx, ecxSave );
+	mov( edx, edxSave );
+	mov( edi, ediSave );
+
+	xor( eax, eax );	// Init H.O. three bytes of EAX to zero.
+	mov( eax, edx );	// Initialize EDX:ECX with zero.
+	mov( eax, ecx );
+	
+	// Skip over any delimiter characters at the beginning
+	// of the string.
+	
+	mov( _hla.get_Delimiters(), ebx );
+	sub( 1, esi );
+	whileDelimLoop:
+	
+		NextChar;
+		cmp( eax, $80 );
+		jae IllegalChar;
+		bt( eax, [ebx] );		// Delimiters
+		jc whileDelimLoop;
+	
+	// Do the actual numeric conversion:
+
+	xor( eax, eax );	// Init H.O. three bytes of EAX to zero.
+	mov( eax, ebx );	// Initialize EDI:EDX:ECX:EBX with zero.
+	mov( eax, ecx );
+	mov( eax, edx );
+	mov( eax, edi );
+	
+	
+	// The first (non-delimiter) character *must* be a legal hex digit.
+	
+	movzx( (type byte [esi]), eax );
+	movsx( stdlib.hexConvTbl[eax], eax );
+	test( eax, eax );
+	js convError;
+	
+	
+	// For each legal character that ESI points at, repeat
+	// the following until we encounter a delimiter or
+	// illegal character.
+	
+	whileAHexDigit:
+		
+		// Okay, we've got a hex digit, so add it into EDX:ECX.
+		
+		shl( 28, eax );
+		#for( i := 0 to 3 )
+		
+			shl( 1, eax );
+			rcl( 1, ebx );
+			rcl( 1, ecx );
+			rcl( 1, edx );
+			rcl( 1, edi );
+			jc Overflow;
+
+		#endfor			
+			
+		// Move on to the next character:
+		
+		NextChar;
+		movsx( stdlib.hexConvTbl[eax], eax );	// $ff if not a hex digit
+		test( eax, eax );
+		jns whileAHexDigit;
+
+
+	// Store away the result:
+
+	mov( l, eax );
+	mov( ebx, [eax] );
+	mov( ecx, [eax+4] );
+	mov( edx, [eax+8] );
+	mov( edi, [eax+12] );
+
+	// Verify that we've ended with a delimiter char:
+	
+	mov( _hla.get_Delimiters(), ebx );
+	movzx( (type byte [esi]), eax );
+	bt( eax, [ebx] );		// Delimiters
+	jnc convError;
+
+	mov( eaxSave, eax );
+	mov( ebxSave, ebx );
+	mov( ecxSave, ecx );
+	mov( edxSave, edx );
+	mov( ediSave, edi );
+	leave();
+	ret( _parms_ );
+	
+convError:
+	raise( ex.ConversionError );
+	
+Overflow:
+	raise( ex.ValueOutOfRange );
+	
+IllegalChar:
+	raise( ex.IllegalChar );
+
+end atoh128;
+
+
+end ConvUnit;

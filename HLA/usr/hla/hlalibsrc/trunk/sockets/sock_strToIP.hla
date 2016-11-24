@@ -1,0 +1,87 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit sockets;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "sockets.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+
+
+// socket_t.strToAdrs-
+//
+//	Converts a string of the form "aaa.bbb.ccc.ddd" to
+// a 32-bit integer in little endian format. "aaa", ..., "ddd"
+// are all 8-bit unsigned integers.  The value corresponding
+// to "aaa" winds up in the H.O. byte of EAX upon return,
+// "ddd" winds up in the L.O. byte.
+
+procedure sock.strToIP( s:string );
+var
+	delims	:cset;
+begin strToIP;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	push( ebx );
+	push( esi );
+	
+	conv.getDelimiters( delims );
+	conv.setDelimiters( {'.'} );
+	xor( ebx, ebx );
+	
+	// Parse address string of the form "ddd.ddd.ddd.ddd" where
+	// ddd is a decimal integer in the range 0..255.
+	
+	mov( s, esi );
+	conv.atou8( [esi] );
+
+	mov( al, bh );
+	cmp( (type byte [esi]), '.' );
+	jne badAddress;
+	add( 1, esi );
+	
+	conv.atou8( [esi] );
+	mov( al, bl );
+	shl( 16, ebx );
+	cmp( (type byte [esi]), '.' );
+	jne badAddress;
+	add( 1, esi );
+	
+	conv.atou8( [esi] );
+	mov( al, bh );
+	cmp( (type byte [esi]), '.' );
+	jne badAddress;
+	add( 1, esi );
+	
+	conv.atou8( [esi] );
+	mov( al, bl );
+	mov( ebx, eax );
+
+	conv.setDelimiters( delims );
+	pop( esi );
+	pop( ebx );
+	leave();
+	ret( _parms_ );	
+	
+badAddress:
+	raise( ex.ConversionError );
+	
+end strToIP;
+
+
+end sockets;

@@ -1,0 +1,68 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit bitsUnit;
+
+#include( "bits.hhf" );
+
+
+/******************************************************************/
+/* 	                                                              */
+/* bits.merge16-                                                  */
+/*                                                             	  */
+/* Given two 16-bit values (odd and even), this function merges   */
+/* the two words to produce a dword, with odd's bits in the odd-  */
+/* numbered bit positions and even's bits in the even-numbered 	  */
+/* bit positions. Returns the result in EAX.                      */
+/* 	                                                              */
+/******************************************************************/
+	
+
+procedure bits.merge16( even:word; odd:word ); @nodisplay; @noframe;
+const
+	_odd	:text := "esp+12";
+	_even	:text := "esp+16";
+begin merge16;
+
+	push( ebx );
+	push( ecx );
+	
+	// Stack at this point:
+	//
+	// ESP+16:	even
+	// ESP+12:	odd
+	// ESP+8:	return address
+	// ESP+4:	ebx
+	// ESP:		ecx
+	
+	movzx( (type byte [_odd+1]), ebx );
+	movzx( (type byte [_even+1]), ecx );
+	mov( bits.SpreadBitsOdd8 [ ebx*2 ], ax );
+	or(  bits.SpreadBitsEven8[ ecx*2 ], ax );
+	shl( 16, eax );
+
+	movzx( (type byte [_odd]), ebx );
+	movzx( (type byte [_even]), ecx );
+	mov( bits.SpreadBitsOdd8 [ ebx*2 ], ax );
+	or(  bits.SpreadBitsEven8[ ecx*2 ], ax );
+	
+	pop( ecx );
+	pop( ebx );
+	ret( _parms_ );
+
+end merge16;
+
+
+
+end bitsUnit;

@@ -1,0 +1,283 @@
+unit rpcUnit;
+
+#includeOnce( "rpc.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "memory.hhf" )
+#includeOnce( "blobs.hhf" )
+#includeOnce( "stdout.hhf" )
+
+type 
+	psrvr	:pointer to vServer_t;
+
+	// Note: Because all of the routines in this module are methods,
+	// they will all be linked into the program (even if they aren't
+	// explicitly called) because their address appears in the VMT.
+	// For this reason, we'll stick them all in the same source file
+	// to make them easier to maintain (and faster to compile).
+	
+	
+	// getByte- The client retrieves a byte from the server:
+	
+	method rpcBase_t.getByte( var b:byte );
+	var
+		thisSave	:dword;
+	begin getByte;
+
+		push( eax );
+		push( esi );
+		push( edi );
+		
+		mov( esi, thisSave );
+		repeat
+		
+			mov( thisSave, esi );
+		    lea( esi, this.server );
+		    (type server_t [esi]).read( b, 1 );
+			
+		until( eax = 1 );
+
+		pop( edi );
+		pop( esi );
+		pop( eax );
+
+	end getByte;
+	
+	
+
+
+	method rpcBase_t.getWord( var w:word );
+	var
+		thisSave	:dword;
+		
+	begin getWord;
+
+		push( eax );
+		push( ecx );
+		push( edx );
+		push( esi );
+		push( edi );
+		
+		mov( esi, thisSave );
+		mov( w, edx );
+		mov( @size( word ), ecx );
+		repeat
+		
+			mov( thisSave, esi );
+		    lea( esi, (type rpcBase_t [esi]).server );
+		    (type server_t [esi]).read( [edx], ecx );
+			add( eax, edx );
+			sub( eax, ecx );
+			
+		until( @z );
+
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		
+	end getWord;
+
+
+	method rpcBase_t.getDword( var d:dword );
+	var
+		thisSave	:dword;
+		
+	begin getDword;
+
+		push( eax );
+		push( ecx );
+		push( edx );
+		push( esi );
+		push( edi );
+		
+		
+		mov( esi, thisSave );
+		mov( d, edx );
+		mov( @size( dword ), ecx );
+		repeat
+		
+			mov( thisSave, esi );
+		    lea( esi, (type rpcBase_t [esi]).server );
+		    (type server_t [esi]).read( [edx], ecx );
+			add( eax, edx );
+			sub( eax, ecx );
+			
+		until( @z );
+
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		
+	end getDword;
+
+
+	method rpcBase_t.getQword( var q:qword );
+	var
+		thisSave	:dword;
+	begin getQword;
+
+		push( eax );
+		push( ecx );
+		push( edx );
+		push( esi );
+		push( edi );
+		
+		mov( esi, thisSave );
+		mov( q, edx );
+		mov( @size( qword ), ecx );
+		repeat
+		
+			mov( thisSave, esi );
+		    lea( esi, (type rpcBase_t [esi]).server );
+		    (type server_t [esi]).read( [edx], ecx );
+			add( eax, edx );
+			sub( eax, ecx );
+			
+		until( @z );
+
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		
+	end getQword;
+
+
+	method rpcBase_t.getTbyte( var tb:tbyte );
+	var
+		thisSave	:dword;
+	begin getTbyte;
+
+		push( eax );
+		push( ecx );
+		push( edx );
+		push( esi );
+		push( edi );
+		
+		mov( esi, thisSave );
+		mov( tb, edx );
+		mov( @size( tbyte ), ecx );
+		repeat
+		
+			mov( thisSave, esi );
+		    lea( esi, (type rpcBase_t [esi]).server );
+		    (type server_t [esi]).read( [edx], ecx );
+			add( eax, edx );
+			sub( eax, ecx );
+			
+		until( @z );
+
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		
+	end getTbyte;
+
+
+	method rpcBase_t.getLword( var l:lword );
+	var
+		thisSave	:dword;
+	begin getLword;
+
+		push( eax );
+		push( ecx );
+		push( edx );
+		push( esi );
+		push( edi );
+		
+		mov( esi, thisSave );
+		mov( l, edx );
+		mov( @size( lword ), ecx );
+		repeat
+		
+			mov( thisSave, esi );
+		    lea( esi, (type rpcBase_t [esi]).server );
+		    (type server_t [esi]).read( [edx], ecx );
+			add( eax, edx );
+			sub( eax, ecx );
+			
+		until( @z );
+
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		
+	end getLword;
+
+
+	method rpcBase_t.a_getString;
+	var
+		len			:dword;
+		s			:string;
+		
+	begin a_getString;
+
+		push( ecx );
+		push( edx );
+		push( esi );
+		push( edi );
+
+		this.getDword( len );
+
+		str.alloc( len );
+		mov( eax, s );
+	    lea( esi, (type rpcBase_t [esi]).server );
+	    (type server_t [esi]).read( [eax], len );
+		
+		mov( s, edi );
+		mov( len, eax );
+		mov( eax, (type str.strRec [edi]).length );
+		mov( 0, (type byte [eax+edi]));
+
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		mov( s, eax );
+		
+	end a_getString;
+
+
+	method rpcBase_t.a_getBlob_t;
+	var
+		len			:dword;
+		b			:blob.t;
+		
+	begin a_getBlob_t;
+
+		push( ecx );
+		push( edx );
+		push( esi );
+		push( edi );
+
+		this.getDword( len );
+
+		blob.alloc( len );
+		mov( eax, b );
+		mov( len, ecx );
+	    lea( esi, (type rpcBase_t [esi]).server );
+		
+	    (type server_t [esi]).read( [eax], len );
+		
+		mov( b, eax );
+		mov( len, ecx );
+		mov( ecx, (type blob.blobRec [eax]).length );
+		
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		mov( b, eax );
+		
+	end a_getBlob_t;
+
+
+end rpcUnit;

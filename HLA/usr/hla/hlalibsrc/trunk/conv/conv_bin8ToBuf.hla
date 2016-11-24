@@ -1,0 +1,118 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 8/17/2006, by Randall Hyde
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "stdlibdata.hhf" );
+#includeOnce( "conv.hhf" )
+
+/*************************************************************************/
+/*                                                                       */
+/* _hexToBuf32-                                                          */
+/*                                                                       */
+/* On entry:                                                             */
+/* 	EAX contains a numeric value to convert to a hexadecimal string.     */
+/*  ECX contains the number of digits to print (from L.O.->H.O.)         */
+/*    including a count for the underscore if one is to be inserted.     */
+/* 	                                                                     */
+/* 	EDI points at the end of a memory buffer large enough to hold a      */
+/* 	32-bit hexadecimal value (at least 8 bytes if OutputUnderscores is   */
+/*  false, at least 9 bytes if OutputUnderscores is true).               */
+/*                                                                       */
+/* On exit:                                                              */
+/* 	The buffer will contain a string that is the                         */
+/* 	hexadecimal representation of the value and EDI will point at the    */
+/* 	start of the string. If outputUnderscores is true and there are 5 or */
+/*  or more digits to output, this routine will insert an underscore     */
+/*  between the 4th and 5th digits.                                      */
+/*                                                                       */
+/*************************************************************************/
+
+
+
+
+
+procedure conv.bin8ToBuf
+( 
+		b		:byte in al;
+	var buffer	:var in edi 
+);
+	@noframe; 
+	@nodisplay; 
+	@noalignstack;
+
+readonly
+	binStrs	:char[256,8] :=
+	[
+		#for( i := 0 to 255 )
+		
+			?j := $80;
+			[
+				#for( k := 0 to 7 )
+					
+					@char( @uns8('0') + @uns8((i & j) <> 0) ),
+					?j := j >> 1;
+					
+				#endfor
+			],
+			
+		#endfor
+	];
+
+		
+begin bin8ToBuf;
+
+	push( eax );
+	push( ecx );
+	
+
+	// If we're outputting underscores, then go handle the output 
+	// using a special version of this routine. (Note: OutputUnderscores is
+	// a global object in the HLA Standard Library.)
+	
+	movzx( al, ecx );
+	cmp( _hla.get_OutputUnderscores(), 0 );
+	jne DoUnderscores;
+		
+		mov( (type dword binStrs[ecx*8+4]), eax );
+		mov( eax, [edi] );
+		mov( (type dword binStrs[ecx*8]), eax );
+		mov( eax, [edi+4] );
+		add( 4, edi );
+		jmp binToBuf8Done;
+		
+		
+		
+	// Version of the above code that emits underscores between
+	// every four digits.  Yep, repeated code (ugly), but done
+	// because the underscore processing is slower.
+			
+	DoUnderscores:
+		mov( (type dword binStrs[ecx*8+4]), eax );
+		mov( eax, [edi] );
+		mov( '_', (type char [edi+4]) );
+		mov( (type dword binStrs[ecx*8]), eax );
+		mov( eax, [edi+5] );
+		add( 5, edi );
+
+
+	
+binToBuf8Done:
+	pop( ecx );
+	pop( eax );
+	ret();
+			
+end bin8ToBuf;
+
+end ConvUnit;

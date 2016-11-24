@@ -1,0 +1,99 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit charSets;
+
+#include( "cset.hhf" );
+
+
+/**********************************************/
+/*                                            */
+/* extract-                                   */
+/*                                            */
+/* Removes a character from  a character set. */
+/* Returns the character in AL.               */
+/* Returns carry clear if the cset was empty  */
+/* Returns carry=1 if it successfully         */
+/* extracts a character.                      */
+/*                                            */
+/**********************************************/
+
+procedure cs.extract( var dest:cset ); @nodisplay; @noframe;
+const
+	_dest	:text := "(type dword [esp+12])";
+	
+begin extract;
+
+		push( ebx );
+		push( ecx );
+	
+		// Stack at this point:
+		//
+		//	esp+12	dest:dword
+		//	esp+8	return address
+		//	esp+4	ebx
+		//	esp		ecx
+	
+		mov( _dest, ebx );	// BSF is really slow, so we'll do a
+		xor( ecx, ecx );	// quick check for zero (to avoid a BSF)
+		mov( [ebx], eax );	// in this code sequence.
+		test( eax, eax );
+		jnz GotBit;
+		
+		mov( [ebx+4], eax );
+		add( 32, ecx );
+		test( eax, eax );
+		jnz GotBit;
+		
+		mov( [ebx+8], eax );
+		add( 32, ecx );
+		test( eax, eax );
+		jnz GotBit;
+		
+		mov( [ebx+12], eax );
+		add( 32, ecx );
+		test( eax, eax );
+		jnz GotBit;
+		
+		bsf( [ebx], eax );
+		jnz GotBit;
+				
+		// Didn't find a bit.
+		
+		mov( -1, eax );		// Deprecated- Return -1 in EAX if failure.
+		pop( ecx );
+		pop( ebx );
+		clc();
+		ret( _parms_ );
+		
+	GotBit:
+		bsf( eax, eax );	// Compute the bit # in current dword
+		add( ecx, eax );	// Add in bit offset to current dword
+		btr( eax, [ebx] );	// Clear (extract) the bit.
+		pop( ecx );
+		pop( ebx );
+		stc();
+		ret( _parms_ );
+		
+end extract;
+
+
+
+end charSets;
+
+
+
+
+	
+

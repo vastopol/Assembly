@@ -1,0 +1,175 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" )
+#include( "excepts.hhf" )
+#include( "memory.hhf" )
+#include( "x86.hhf" )
+
+
+//  delete,                                                   
+//  a_delete-                                                 
+//                                                            
+//  These routines remove characters from a string.           
+//  The delete routine destructively removes characters       
+//  from a specified string variable.  The adelete routine    
+//  allocates storage for a new string and copies the string, 
+//  minus the deleted portion, to the newly allocated storage.
+//  The original string is left unchanged by adelete.         
+//                                                            
+//  Inputs-                                                   
+//                                                            
+//		dest-   Pointer to string to remove characters from.      
+//		start-  Starting position to begin deleting characters.   
+//		length- Number of characters to delete. 
+//
+//	Returns-
+//
+//		EAX-	Pointer to new string that is allocated on the heap.
+//		carry-	Set if operation successful, clear if call attempts
+//				to delete characters beyond the end of the source string.                  
+
+
+
+
+
+
+procedure str.a_delete
+(
+	s		:string;
+	start	:dword;
+	len		:dword
+);  @noframe;
+var
+	saveECX		:dword;
+	saveESI		:dword;
+	saveEDI		:dword;
+	saveFlags	:dword;
+		
+begin a_delete;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_-4), esp );
+	stc();						// Assume success on return
+	pushfd();					// Allocate and initialize saveFlags
+	
+	mov( edi, saveEDI );
+	mov( esi, saveESI );
+	mov( ecx, saveECX );
+	cld();
+	
+	// Verify that dest is non-NULL.
+	
+	mov( s, esi );
+	test( esi, esi );
+	jz attemptToDerefNULL;
+
+	// Compute the length of the resulting string.
+	// First off, if start > length(s), then raise
+	// an exception.
+	//
+	// Otherwise, if (start+length) < length(s), then the
+	//	result length is length(s) - length,
+	//	otherwise the result length is length(s) - start.
+	
+	mov( start, eax );
+	mov( (type str.strRec [esi]).length, ecx );
+	cmp( eax, ecx );
+	ja StringIndex;
+	je lenOK;
+	
+		add( len, eax );
+		cmp( eax, ecx );
+		jae subStart;
+		
+			sub( len, ecx );
+			jmp lenOK;
+			
+		subStart:
+			and( !x86.flag_carry, saveFlags );		// Return length underflow.
+			sub( start, ecx );
+			
+		
+	lenOK:
+	
+	// Allocate storage for the result string.
+	
+	str.alloc( ecx );
+	mov( ecx, (type str.strRec [eax]).length );		// Save final length of string.
+	push( eax );		// Save for return value.
+	mov( eax, edi );	// Move dest chars here.
+	
+	// If start <> 0, then we need to copy some data from the beginning
+	// of the dest string to our newly allocated storage.
+	
+	mov( start, ecx );
+	test( ecx, ecx );	// Note: jecx won't work on Mac OSX
+	jz NoMove;
+
+		// Move "start" chars from dest to the new string.
+		
+		rep.movsb();
+		
+	NoMove:
+	
+	// If start+length is less than length( s ), then we need to move
+	// some characters from the end of s to dest.
+	
+	mov( start, eax );
+	add( len, eax );
+	mov( s, esi );
+	mov( (type str.strRec [esi]).length, ecx );
+	cmp( eax, ecx );
+	jae noCharsFromSrc;
+	
+		add( eax, esi );		// Point at new source for string.
+		sub( eax, ecx );		// Compute remaining chars to copy.
+		jz NoMove2;
+		
+			rep.movsb();
+			
+		NoMove2:
+		
+	noCharsFromSrc:
+	mov( 0, (type byte [edi] ));	// Emit zero terminating byte;
+
+	pop( eax );		// Retrieve ptr to the string.
+	mov( saveEDI, edi );
+	mov( saveESI, esi );
+	mov( saveECX, ecx );
+	popfd();
+	leave();
+	ret( _parms_ );	
+
+attemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+StringIndex:
+	raise( ex.StringIndexError );
+	
+end a_delete;
+
+
+end stringUnit;
+
+
+
+
+	
+

@@ -1,0 +1,157 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+#include( "../include/fileiounit.hhf" )
+#include( "stdout.hhf" )
+
+/*********************************************************/
+/*                                                       */
+/* fgeti32-                                              */
+/*                                                       */
+/* Reads a 32-bit signed integer from the specified file */
+/* and returns the integer value in EAX.                 */
+/*                                                       */
+/*********************************************************/
+
+
+
+procedure fileio.geti32( Handle:dword in eax ); @noframe; @nodisplay;
+
+var
+	lHandle		:dword;
+	Delimiters	:cset;
+	IsNeg		:boolean;
+	
+begin geti32;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( edx );
+	mov( eax, lHandle );
+	
+	conv.getDelimiters( Delimiters );
+	xor( eax, eax );
+	xor( edx, edx );
+	
+	// Skip over any leading delimiters:
+	
+	repeatUntilNC:
+	
+		fileio.getc( lHandle );
+		bt( eax, (type dword Delimiters ));
+		jc repeatUntilNC;
+		
+	
+	
+	// Process a possible leading minus sign:
+	
+	mov( false, IsNeg );
+	cmp( al, '-' );
+	jne ALnotMinus;
+	
+		mov( true, IsNeg );
+		fileio.getc( lHandle );
+		
+	ALnotMinus:
+	
+		
+	// Okay, input the digits and convert to a number:
+	
+	
+	repeatUntilC:
+	
+		// The character must be a numeric digit.
+		
+		cmp( al, '0' );
+		jb convErr;
+		cmp( al, '9' );
+		ja convErr;
+
+		// Note that we check for *unsigned* overflow here.
+		// The problem with checking the signed overflow flag
+		// is that we need to allow $8000_0000 as a valid
+		// entry, in case we're going to negate it later.
+		
+		shl( 1, edx );	// Multiply edx by 10.
+		jc Overflow;
+			
+		push( edx );	// Save *2.
+		shl( 1, edx );
+		jc Overflow;
+		
+		shl( 1, edx );	// This is *8.
+		jc Overflow;
+		
+		and( $f, eax );	// Add in current digit.
+		add( eax, edx );
+		jc Overflow;
+		
+		pop( eax );		// Add in *2.
+		add( eax, edx );
+		jc Overflow;
+
+		
+		// Skip any underscores in the middle of the number.
+		// (Technically, this allows underscores at the end
+		// of the number too, but we'll ignore this issue).
+		
+		repeatUntilALne_:
+		
+			fileio.eof( lHandle );
+			cmp( al, false );
+			jne exitIfEOF;
+
+			fileio.getc( lHandle );
+			cmp( al, '_' );
+			je repeatUntilALne_;
+			
+		movzx( al, eax );
+		bt( eax, (type dword Delimiters ));
+		jnc repeatUntilC;
+			
+		
+	exitIfEOF:
+	
+	// Check for signed overflow here:
+	
+	cmp( edx, $8000_0000 );
+	ja Overflow;
+	
+	mov( edx, eax );
+	neg( eax );
+	cmp( IsNeg, false );
+	jne WasntNeg;
+	
+		neg( eax );
+		cmp( eax, $8000_0000 );
+		je Overflow;
+		
+	WasntNeg:
+		pop( edx );
+		leave();
+		ret();
+	
+convErr:
+	raise( ex.ConversionError );
+
+Overflow:
+	raise( ex.ValueOutOfRange );
+		
+end geti32;
+
+	
+end FileIOUnit;
+

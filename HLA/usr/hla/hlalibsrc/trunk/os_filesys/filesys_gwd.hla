@@ -1,0 +1,234 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+#include( "excepts.hhf" )
+#include( "../include/fileiounit.hhf" )
+
+
+/*********************************************************/
+/*                                                       */
+/* fGWD-                                                 */
+/*                                                       */
+/* Gets the current working directory and stores it into */
+/* the string passed as a parameter.                     */
+/* Raising the ex.StringOverflow exception if the full   */
+/* pathname will not fit into the string.                */
+/*                                                       */
+/*********************************************************/
+
+// 2-1-2003: Corrected two defects in Windows version.
+// 1. Wasn't storing the length of the resulting string properly
+// 2. Wasn't properly checking for string overflow.
+
+#if( os.linux )
+
+	procedure filesys.gwd( directory:string ); @nodisplay; @noframe;
+	var
+		maxLen:dword;
+	begin gwd;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( eax );
+		push( ebx );
+		mov( directory, eax );
+		linux.getcwd( [eax], (type linux.size_t (type str.strRec [eax]).maxlen) );
+		test( eax, eax );
+		jz StringOverflow;
+		
+		// We have to compute the length of the string since
+		// Linux doesn't do that for us.  Since Linux already
+		// checked for string overflow and zero-terminated the
+		// string, we don't have to deal with that.
+		
+		mov( directory, ebx );
+		mov( 0, al );
+		dec( ebx );
+		whileALneEBX:
+		
+			inc( ebx );
+			cmp( al, [ebx] );
+			jne whileALneEBX;
+
+		mov( directory, eax );
+		sub( eax, ebx );		// Compute string length.
+		mov( ebx, (type str.strRec [eax]).length );
+			
+		
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+	
+	
+	StringOverflow:
+		raise( ex.StringOverflow );
+	
+		
+	end gwd;
+
+#elseif( os.freeBSD )
+
+	procedure filesys.gwd( directory:string ); @nodisplay; @noframe;
+	var
+		maxLen:dword;
+	begin gwd;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( eax );
+		push( ebx );
+		mov( directory, eax );
+		bsd.getcwd( [eax], (type bsd.size_t (type str.strRec [eax]).maxlen) );
+		jc StringOverflow;
+		
+		// We have to compute the length of the string since
+		// FreeBSD doesn't do that for us.  Since FreeBSD already
+		// checked for string overflow and zero-terminated the
+		// string, we don't have to deal with that.
+		
+		mov( directory, ebx );
+		mov( 0, al );
+		dec( ebx );
+		whileALneEBX:
+		
+			inc( ebx );
+			cmp( al, [ebx] );
+			jne whileALneEBX;
+
+		mov( directory, eax );
+		sub( eax, ebx );		// Compute string length.
+		mov( ebx, (type str.strRec [eax]).length );
+			
+		
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+	
+	
+	StringOverflow:
+		raise( ex.StringOverflow );
+	
+		
+	end gwd;
+
+#elseif( os.macOS )
+
+	procedure filesys.gwd( directory:string ); @nodisplay; @noframe;
+	var
+		maxLen:dword;
+	begin gwd;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( eax );
+		push( ebx );
+		mov( directory, eax );
+		mac.getcwd( [eax], (type mac.size_t (type str.strRec [eax]).maxlen) );
+		jc StringOverflow;
+		
+		// We have to compute the length of the string since
+		// FreeBSD doesn't do that for us.  Since FreeBSD already
+		// checked for string overflow and zero-terminated the
+		// string, we don't have to deal with that.
+		
+		mov( directory, ebx );
+		mov( 0, al );
+		dec( ebx );
+		whileALneEBX:
+		
+			inc( ebx );
+			cmp( al, [ebx] );
+			jne whileALneEBX;
+
+		mov( directory, eax );
+		sub( eax, ebx );		// Compute string length.
+		mov( ebx, (type str.strRec [eax]).length );
+			
+		
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+	
+	
+	StringOverflow:
+		raise( ex.StringOverflow );
+	
+		
+	end gwd;
+
+#elseif( os.win32 )
+
+	procedure filesys.gwd( directory:string ); @nodisplay; @noframe;
+	var
+		maxLen:dword;
+	begin gwd;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ecx );
+		push( ebx );
+		pushfd();
+		cld();
+
+		// Compute the maximum path length possible.  Note that
+		// "SetCurrentDirectory" expects this count to include
+		// room for a zero terminating byte (whereas the maxlen
+		// field of an HLA string does not include this).
+
+		mov( directory, ebx );
+		mov( (type str.strRec [ebx]).maxlen, eax );
+		mov( eax, maxLen );  // Save so we can test for success later.
+		inc( eax );
+
+		// Okay, get the pathname:
+
+		GetCurrentDirectory( directory, eax );
+		cmp( eax, maxLen );
+		je StringOverflow;
+		mov( eax, (type str.strRec [ebx]).length );
+		popfd();
+		pop( ebx );
+		pop( ecx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+
+		// The pathname was too long for the string, raise an exception.
+
+	StringOverflow:
+		raise( ex.StringOverflow );
+		
+	end gwd;
+
+#else
+
+	#print( "Unknown OS!" )
+	
+#endif
+
+end FileIOUnit;
+

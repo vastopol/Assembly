@@ -1,0 +1,99 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+
+
+
+unit bitsUnit;
+
+#include( "bits.hhf" );
+
+/******************************************************************/
+/*                                                                */
+/* coalesce-                                                      */
+/*                                                                */
+/* 	Coalesces a set of bits specified by a bit mask and           */
+/* 	returns that set of bits in the EAX register.                 */
+/* 	                                                              */
+/* On Entry:                                                      */
+/*                                                                */
+/* 	source:		Data to coalesce.                                 */
+/* 	mask:		Bit positions to coalesce.                        */
+/* 	                                                              */
+/* On Exit:                                                       */
+/*                                                                */
+/* 	EAX:		Coalesced bits.                                   */
+/* 	                                                              */
+/* This function looks at the mask dword. Starting with bit #0    */
+/* this function scans for set bits and exacts the corresponding  */
+/* bit from the source and places it in the next available bit    */
+/* position (starting from bit #0) in the return value (EAX).     */
+/*                                                                */
+/* For example, if we have the following on input                 */
+/*                                                                */
+/*                                                                */
+/* source:	$1248_FECC (%0001_0010_0100_1000_1111_1110_1100_1100) */
+/* mask:    $1234      (%0000_0000_0000_0000_0001_0010_0011_0100) */
+/*                                                                */
+/* Then the result returned in EAX will be:                       */
+/*                                                                */
+/* EAX:	$19 (%0000_0000_0000_0000_0000_0000_0001_1001)            */
+/*                                                                */
+/* This is computed from the mask and source as follows:          */
+/*                                                                */
+/*            %0001_0010_0100_1000_1111_1110_1100_1100            */
+/*            %0000_0000_0000_0000_0001_0010_0011_0100            */
+/* dest posn:						  4   3    21  0              */
+/*                                                                */
+/******************************************************************/
+
+
+procedure bits.coalesce( source:dword; mask:dword ); 
+	@nodisplay; 
+	@noframe;
+begin coalesce;
+
+			push( ebx );
+			push( edx );
+	
+			// At this point, the stack looks like this:
+			//
+			//  ESP+16:	source
+			//	ESP+12: mask
+			//	ESP+8:	return address
+			//	ESP+4:	Saved EBX value
+			//	ESP:	Saved EDX value
+	
+			mov( [esp+12], edx );	// Get a copy of mask.
+			mov( [esp+16], ebx );	// Get a copy of source.
+	
+			sub( eax, eax );		// Clear destination value.
+			jmp	ShiftLoop;
+			
+			// Copy a bit from EBX to EAX:
+			
+			align(4);
+
+ShiftInEAX:	adc( ebx, ebx );        // adc=rcl, a little faster on
+			adc( eax, eax );		//  some processors.
+
+			// Check mask to see if we need to copy a bit:
+
+ShiftLoop:	shl( 1, edx );		
+			jc ShiftInEAX;
+			rcl( 1, ebx );			// Can't use ADC here, must preserve Z.
+			jnz	ShiftLoop;			// Branch if EDX is not zero.
+
+			pop( edx );
+			pop( ebx );
+			ret( _parms_ );
+			
+end coalesce;
+
+end bitsUnit;	

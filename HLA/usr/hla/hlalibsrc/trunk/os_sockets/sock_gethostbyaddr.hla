@@ -1,0 +1,170 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit sockets;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#include( "sockets.hhf" )
+#include( "os.hhf" )
+#include( "excepts.hhf" )
+
+#if( os.win32 )
+
+	#include( "w.hhf" )
+
+#elseif( os.linux )
+	#include( "linux.hhf" )
+	procedure _gethostbyaddr( addr:dword; len:dword; _type:dword );
+		@cdecl;
+		@external( "gethostbyaddr" );
+		
+#elseif( os.freeBSD )
+	#include( "bsd.hhf" )
+#elseif( os.macOS )
+	#include( "mac.hhf" )
+#else
+	#error( "gethostbyaddr.hla: unsupported OS" )
+#endif
+
+
+// sock.gethostbyaddr-
+//
+//	Fills in a sock.hostent record for the
+// hostname passed as an IP address.
+
+procedure sock.gethostbyaddr
+( 
+	var addr	:var; 
+		len		:dword; 
+		_type	:dword;
+	var	hstent	:hla.hostent 
+);
+begin gethostbyaddr;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	
+	#if( os.win32 )
+	
+		push( ecx );
+		push( edx );
+		
+		w.gethostbyaddr( val addr, len, _type );
+		test( eax, eax );
+		jz WinSocketError;
+		
+		mov( hstent, edx );
+		mov( (type w.hostent [eax]).h_name, ecx );
+		mov( ecx, (type hla.hostent [edx]).h_name ); 
+		mov( (type w.hostent [eax]).h_alias, ecx );
+		mov( ecx, (type hla.hostent [edx]).h_aliases ); 
+		mov( (type w.hostent [eax]).h_addr, cx );
+		mov( cx, (type hla.hostent [edx]).h_addrtype ); 
+		mov( (type w.hostent [eax]).h_len, cx );
+		mov( cx, (type hla.hostent [edx]).h_length ); 
+		mov( (type w.hostent [eax]).h_list, ecx );
+		mov( ecx, (type hla.hostent [edx]).h_addr_list ); 		
+		
+		pop( edx );
+		pop( ecx );
+		
+	#elseif( os.linux )
+		
+		push( ecx );
+		push( edx );
+		
+		_gethostbyaddr( addr, len, _type );
+		add( 12, esp );
+		test( eax, eax );
+		jz SocketError;
+		
+		mov( hstent, edx );
+		mov( (type linux.hostent [eax]).h_name, ecx );
+		mov( ecx, (type hla.hostent [edx]).h_name ); 
+		mov( (type linux.hostent [eax]).h_aliases, ecx );
+		mov( ecx, (type hla.hostent [edx]).h_aliases ); 
+		mov( (type linux.hostent [eax]).h_addrtype, ecx );
+		mov( cx, (type hla.hostent [edx]).h_addrtype ); 
+		mov( (type linux.hostent [eax]).h_length, ecx );
+		mov( cx, (type hla.hostent [edx]).h_length ); 
+		mov( (type linux.hostent [eax]).h_addr_list, ecx );
+		mov( ecx, (type hla.hostent [edx]).h_addr_list ); 		
+		
+		pop( edx );
+		pop( ecx );
+
+	#elseif( os.freeBSD )
+		
+		bsd.gethostbyaddr(  addr, len, _type );
+		jc SocketError;
+		
+		mov( hstent, edx );
+		mov( (type bsd.hostent [eax]).h_name, ecx );
+		mov( ecx, (type hla.hostent [edx]).h_name ); 
+		mov( (type bsd.hostent [eax]).h_aliases, ecx );
+		mov( ecx, (type hla.hostent [edx]).h_aliases ); 
+		mov( (type bsd.hostent [eax]).h_addrtype, ecx );
+		mov( cx, (type hla.hostent [edx]).h_addrtype ); 
+		mov( (type bsd.hostent [eax]).h_length, ecx );
+		mov( cx, (type hla.hostent [edx]).h_length ); 
+		mov( (type bsd.hostent [eax]).h_addr_list, ecx );
+		mov( ecx, (type hla.hostent [edx]).h_addr_list ); 		
+		
+		pop( edx );
+		pop( ecx );
+
+	#elseif( os.macOS )
+		
+		mac.gethostbyaddr(  addr, len, _type );
+		jc SocketError;
+		
+		mov( hstent, edx );
+		mov( (type mac.hostent [eax]).h_name, ecx );
+		mov( ecx, (type hla.hostent [edx]).h_name ); 
+		mov( (type mac.hostent [eax]).h_aliases, ecx );
+		mov( ecx, (type hla.hostent [edx]).h_aliases ); 
+		mov( (type mac.hostent [eax]).h_addrtype, ecx );
+		mov( cx, (type hla.hostent [edx]).h_addrtype ); 
+		mov( (type mac.hostent [eax]).h_length, ecx );
+		mov( cx, (type hla.hostent [edx]).h_length ); 
+		mov( (type mac.hostent [eax]).h_addr_list, ecx );
+		mov( ecx, (type hla.hostent [edx]).h_addr_list ); 		
+		
+		pop( edx );
+		pop( ecx );
+
+	#else
+	
+		#error( "Unknown OS!" );
+		xor( eax, eax );	// Force a socket error!
+		
+	#endif	
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+#if( os.win32 )
+WinSocketError:
+	w.WSAGetLastError();
+	mov( eax, edx );
+#endif
+	
+SocketError:
+	raise( ex.SocketError );
+	
+end gethostbyaddr;
+
+
+end sockets;

@@ -1,0 +1,131 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit hlaUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "hla.hhf" )
+#include( "conv.hhf" )
+#include( "excepts.hhf" )
+#include( "stdlibdata.hhf" )
+
+
+// baseSocketClass_t.geth64
+//
+//	Reads a 64-bit hexadecimal integer from a stream.
+//	Returns value in EDX:EAX.
+//
+//	arg:
+//
+//		getc:
+//			Reads a character from a stream and returns it in EAX
+//			(zero-extended to EAX). Returns carry clear if valid
+//			read operation, carry set if EOF.
+
+procedure hla.geth64( getc:thunk ); 
+	@noframe;
+	@nodisplay;
+	
+var
+	ebxSave		:dword;
+	ecxSave		:dword;
+	Delimiters	:cset;
+	
+begin geth64;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( ebx, ebxSave );
+	mov( ecx, ecxSave );
+	
+	conv.getDelimiters( Delimiters );
+	
+	xor( eax, eax );
+	xor( edx, edx );
+	xor( ecx, ecx );
+	
+	// Skip over any leading delimiters:
+	
+	repeatUntilNC:
+	
+		getc();
+		jc convErr;
+		movzx( al, eax );
+		bt( eax, Delimiters );
+		jc repeatUntilNC;
+
+
+	// Okay, input the digits and convert to a number:
+	
+	repeatUntilC:
+	
+		// The character must be a numeric digit.
+		// The following code converts the character in
+		// al to the range $FA..$FF, $00..$09 if it is
+		// a hexadecimal character.
+		
+		movsx( stdlib.hexConvTbl[ eax ], eax );
+		cmp( eax, -1 );
+		je convErr;
+
+		cmp( edx, $1000_0000 );
+		jae Overflow;
+		shld( 4, ecx, edx );	// Multiply edx:ecx by 16
+		shl( 4, ecx );
+			
+		// Add in the current character:
+		
+		add( eax, ecx );		// Never a carry!
+		
+
+		// Skip any underscores in the middle of the number.
+		// (Technically, this allows underscores at the end
+		// of the number too, but we'll ignore this issue).
+		
+		repeatUntilALne_:
+		
+			getc();
+			jc allDone;			// EOF counts as a delimiter
+			cmp( al, '_' );
+			je repeatUntilALne_;
+			cmp( al, $80 );
+			jae illegalChar;
+			movzx( al, eax );
+			bt( eax, (type dword Delimiters ));
+			jnc repeatUntilC;
+		
+
+	
+	allDone:
+		mov( ecx, eax );
+		mov( ebxSave, ebx );
+		mov( ecxSave, ecx );
+		leave( );
+		ret();
+	
+convErr:
+	raise( ex.ConversionError );
+
+Overflow:
+	raise( ex.ValueOutOfRange );
+	
+illegalChar:
+	raise( ex.IllegalChar );
+		
+end geth64;
+
+end hlaUnit;
+

@@ -1,0 +1,69 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit patterns;
+#includeOnce( "../include/pat.hhf" )
+#includeOnce( "patterns.hhf" )
+#include( "chars.hhf" )
+	
+	
+
+/************************************************************/
+/*                                                          */
+/* OneOrMoreWS-                                             */
+/*                                                          */
+/* Matches one or more characters in a string from          */
+/* the WhiteSpace character set.                            */
+/*                                                          */
+/* Disposition:		Eager                                   */
+/* BackTrackable:	Yes                                     */
+/*                                                          */
+/* Entry Parameters:                                        */
+/*                                                          */
+/* 	ESI:	Pointer to sequence of characters to match.     */
+/* 	EDI:	Pointer to byte beyond last char to match.      */
+/*                                                          */
+/* Exit Parameters (if success):                            */
+/*                                                          */
+/*  EBX:	Points at the start of matched sequence.		*/
+/* 	ESI:	Points at first character not in WhiteSpace.    */
+/* 	EDI:	Unchanged from entry value.                     */
+/*                                                          */
+/* Exit Parameters (if failure):                            */
+/*															*/
+/*	EDI:	Unchanged from original entry value.			*/
+/*	ESI:	Unchanged from original entry value.			*/
+/*                                                          */
+/* Unless noted, assume all other registers can be modified */
+/* by this code.                                            */
+/*                                                          */
+/************************************************************/
+
+		
+procedure pat.oneOrMoreWS; @nodisplay; @noframe;
+begin oneOrMoreWS;
+
+	push( ebp );
+	mov( esp, ebp );
+
+	pat.oneOrMoreCset( chars.WhiteSpaceCset );
+
+	mov( [ebp+4], eax );
+	mov( [ebp], ebp );
+	jmp( eax );
+	
+end oneOrMoreWS;
+
+
+end patterns;

@@ -1,0 +1,162 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeOnce( "blobs.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "threads.hhf" );
+
+
+// blob.cat2-
+//	Concatenates one blob to the end of another.
+
+procedure blob.cat2( src:blob.blob; dest:blob.blob ); 
+	@noframe;
+var
+	saveEAX		:dword;
+	saveECX		:dword;
+	saveESI		:dword;
+	saveEDI		:dword;
+	saveFlags	:dword;
+begin cat2;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_-4), esp );
+	pushfd();	// Allocates and initializes saveFlags
+	cld();
+	
+	mov( eax, saveEAX );
+	mov( ecx, saveECX );
+	mov( esi, saveESI );
+	mov( edi, saveEDI );
+	
+	// Make sure the blob pointers are non-NULL.
+	
+	mov( src, esi );
+	mov( dest, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+
+	#if( @thread )
+	
+	try
+	
+		thread.enterCriticalSection( (type blob.blobRec [esi]).criticalSection );
+		cmp( esi, edi );
+		je noEnter;
+		
+			thread.enterCriticalSection( (type blob.blobRec [edi]).criticalSection );
+			
+		noEnter:
+	
+	#endif
+
+		// Compute new length and verify that the destination blob
+		// can hold the result.
+		
+		mov( (type blob.blobRec [edi]).length, ecx );
+		mov( ecx, eax ); 							//Save for later.
+		
+		add( (type blob.blobRec [esi]).length, ecx );
+		cmp( ecx,  (type blob.blobRec [edi]).maxlen );
+		jbe noBlobOverflow;
+		
+			raise( ex.BlobOverflow );
+			
+		noBlobOverflow:
+			
+		mov( ecx, (type blob.blobRec [edi]).length );
+		
+		// Set the write cursor equal to the new length:
+		
+		mov( ecx, (type blob.blobRec [edi]).wcursor );
+		
+		// Set the read cursor to zero:
+		
+		mov( 0, (type blob.blobRec [edi]).rcursor );
+		
+		// Okay, the destination blob can hold the result.
+		// Concatenate the source blob to the end of the dest blob.
+		// Note: unfortunately, we cannot copy DWORDs here because the
+		// dynamic lengths of the source and destination blobs could
+		// cause an overflow.  Furthermore, we don't know if the dest
+		// (concat) address is dword-aligned, so there may be little
+		// benefit to this.  
+		//
+		// In the future: after some research, we might be able to speed
+		// this up by computing whether dword moves are possible.  For now,
+		// this code just sticks with the simple (though slow) approach.
+		
+		
+		mov( (type blob.blobRec [esi]).length, ecx );
+		add( eax, edi );		// Start storing source here.
+		rep.movsb();			// Copy source to the end of dest.
+	
+	#if( @thread )
+	
+	  anyexception
+	
+		mov( dest, edx );
+		thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		cmp( edx, src );
+		je noLeave1;
+		
+			mov( src, edx );
+			thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		
+		noLeave1:
+		push( saveFlags );
+		popfd();
+		reraise( eax );
+		
+	endtry;
+	mov( dest, ecx );
+	thread.leaveCriticalSection( (type blob.blobRec [ecx]).criticalSection );
+	cmp( ecx, src );
+	je noLeave2;
+	
+		mov( src, ecx );
+		thread.leaveCriticalSection( (type blob.blobRec [ecx]).criticalSection );
+		
+	noLeave2:
+	
+	#endif
+	mov( saveEAX, eax );
+	mov( saveECX, ecx );
+	mov( saveESI, esi );
+	mov( saveEDI, edi );
+	popfd();
+	leave();
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+
+end cat2;
+
+end blobUnit;
+
+
+
+
+	
+

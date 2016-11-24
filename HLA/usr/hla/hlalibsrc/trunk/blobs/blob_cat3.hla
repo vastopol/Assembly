@@ -1,0 +1,200 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" );
+#include( "excepts.hhf" );
+#includeOnce( "threads.hhf" );
+
+// blob.cat3-
+//
+//	Concatenates two blobs and leaves the result in a third blob.
+
+procedure blob.cat3( src1:blob.blob; src2:blob.blob; dest:blob.blob ); 
+	@noframe; 
+	@nodisplay;
+var
+	eaxSave		:dword;
+	ecxSave		:dword;
+	esiSave		:dword;
+	ediSave		:dword;
+	saveFlags	:dword;
+	
+begin cat3;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_-4), esp );
+	pushfd();	// Allocates and initializes saveFlags
+	cld();
+	
+	mov( eax, eaxSave );
+	mov( ecx, ecxSave );
+	mov( esi, esiSave );
+	mov( edi, ediSave );
+	
+	mov( dest, edi );
+	test( edi, edi );
+	jz attemptToDerefNULL;
+	
+	// Compute the length of the new blob.
+	
+	mov( src2, ecx );
+	test( ecx, ecx );
+	jz attemptToDerefNULL;
+	
+	mov( src1, esi );
+	test( esi, esi );
+	jz attemptToDerefNULL;
+	
+	#if( @thread )
+	
+	try
+	
+		thread.enterCriticalSection( (type blob.blobRec [edi]).criticalSection );
+		cmp( esi, edi );
+		je noEnterSrc1;
+			thread.enterCriticalSection( (type blob.blobRec [esi]).criticalSection );
+		noEnterSrc1:
+		cmp( ecx, edi );
+		je noEnterSrc2;
+		cmp( ecx, esi );
+		je noEnterSrc2;
+		
+			thread.enterCriticalSection( (type blob.blobRec [ecx]).criticalSection );
+			
+		noEnterSrc2:
+	
+	#endif
+
+		mov( (type blob.blobRec [ecx]).length, ecx );
+		add( (type blob.blobRec [esi]).length, ecx );
+		
+		// See if the length of the new blob exceeds the maxlen of the
+		// destination blob:
+		
+		cmp( ecx, (type blob.blobRec [edi]).maxlen );
+		jbe noBlobOverflow;
+		
+			raise( ex.BlobOverflow );
+		
+		noBlobOverflow:
+		
+		mov( ecx, (type blob.blobRec[edi]).length );	// Set the string length.
+		mov( edi, eax );								// Save for later.
+		
+		// Copy the first blob into the storage area:
+		
+		mov( (type blob.blobRec [esi]).length, ecx );
+		add( 3, ecx );		// Round length up to next even dword multiple
+		shr( 2, ecx );		// Compute # of dwords to move.
+		jz NoMove;
+		
+			rep.movsd();		// Copy the first source string.
+			
+		NoMove:
+		
+		// Since we copied dwords, we may have moved too many bytes.
+		// So recompute the starting address for the second source blob here.
+		
+		mov( src1, esi );
+		mov( eax, edi );
+		add( (type blob.blobRec [esi]).length, edi );
+		
+		// Okay, now copy the second source blob to the end of the
+		// first one.  The same efficency comments noted in "cat" apply here.
+		
+		mov( src2, esi );
+		mov( (type blob.blobRec [esi]).length, ecx );
+		rep.movsb();
+		  
+		// Set the length and write cursor fields to the end of the new blob:
+		
+		mov( dest, esi );
+		sub( esi, edi );
+		mov( edi, (type blob.blobRec [esi]).wcursor );
+		mov( edi, (type blob.blobRec [esi]).length );
+		
+		// Set the read cursor to zero:
+		
+		mov( 0, (type blob.blobRec [esi]).rcursor );
+	
+	#if( @thread )
+	
+	  anyexception
+	
+		pushad();
+		mov( src1, esi );
+		mov( src2, ecx );
+		mov( dest, edi );
+		thread.leaveCriticalSection( (type blob.blobRec [edi]).criticalSection );
+		cmp( esi, edi );
+		je noleaveSrc1a;
+			thread.leaveCriticalSection( (type blob.blobRec [esi]).criticalSection );
+		noleaveSrc1a:
+		cmp( ecx, edi );
+		je noleaveSrc2a;
+		cmp( ecx, esi );
+		je noleaveSrc2a;
+		
+			thread.leaveCriticalSection( (type blob.blobRec [ecx]).criticalSection );
+			
+		noleaveSrc2a:
+		push( saveFlags );
+		popfd();
+		popad();
+		reraise( eax );
+		
+	endtry;
+	mov( dest, edi );
+	mov( src1, esi );
+	mov( src2, ecx );
+	thread.leaveCriticalSection( (type blob.blobRec [edi]).criticalSection );
+	cmp( esi, edi );
+	je noleaveSrc1b;
+		thread.leaveCriticalSection( (type blob.blobRec [esi]).criticalSection );
+	noleaveSrc1b:
+	cmp( ecx, edi );
+	je noleaveSrc2b;
+	cmp( ecx, esi );
+	je noleaveSrc2b;
+	
+		thread.leaveCriticalSection( (type blob.blobRec [ecx]).criticalSection );
+		
+	noleaveSrc2b:
+		
+	#endif
+	mov( eaxSave, eax );
+	mov( ecxSave, ecx );
+	mov( esiSave, esi );
+	mov( ediSave, edi );
+	popfd();
+	leave();
+	ret( _parms_ );
+	
+attemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end cat3;
+
+end blobUnit;
+
+
+
+
+	
+

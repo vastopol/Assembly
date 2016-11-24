@@ -1,0 +1,104 @@
+program DaysBetween_test;
+#include( "stdlib.hhf" )
+
+static
+	baseDate	:date.daterec;
+	incDate		:date.daterec;
+	FiveYears	:date.daterec;
+	endDate		:date.daterec;
+	
+	days		:dword;
+	days5		:dword;
+		
+	
+begin DaysBetween_test;
+
+	 
+	date.setFormat( date.mmddyyyy );
+	
+	date.pack( 1, 1, date.minYear, incDate );
+	mov( incDate, eax );
+	mov( eax, baseDate );
+	
+	date.pack( 12, 31, date.maxYear-1, endDate );
+	
+	mov( 0, days );
+	while( mov( endDate, eax ) >= (type dword incDate) ) do
+	
+		// Test the number of days up to the current date:
+		
+		date.daysBetween( baseDate, incDate );		
+		if( eax <> days ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"date.daysBetween failed!", nl,
+				"daysBetween =  ", (type uns32 eax ), nl,
+				"days        =  ", (type uns32 days ), nl,
+				"date =    '"
+			);
+			date.a_toString( incDate );
+			stderr.put
+			(
+				(type string eax), "'" nl
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		
+		// Let's test a set of dates up to five years before the test date.
+		
+		mov( incDate.year, ax );
+		if( ax >= date.minYear+6 ) then
+		
+			mov( incDate, eax );
+			mov( eax, FiveYears );
+			date.subDays( 4*400, FiveYears );
+			for( mov( 4*400, ebx ); ebx > 0; sub( 200, ebx )) do
+			
+				date.daysBetween( FiveYears, incDate );
+				if( eax <> ebx ) then
+				
+					stderr.put
+					( 
+						nl nl 
+						"***************************************************" nl
+						"date.daysBetween(2) failed!", nl,
+						"daysBetween =  ", (type uns32 eax ), nl,
+						"days        =  ", (type uns32 days ), nl,
+						"date =    '"
+					);
+					date.a_toString( incDate );
+					stderr.put
+					(
+						(type string eax), "'" nl
+						"***************************************************" nl
+						nl 
+					);
+					stdout.put( "Press Enter to Continue: " );
+					stdin.readLn();
+					os.exitProcess(1);
+				
+				endif;
+				date.addDays( 200, FiveYears );
+				
+			endfor;
+			
+		endif;
+		inc( days );
+		date.addDays( 1, incDate );
+		
+		
+	endwhile;
+	stderr.put( "date.daysBetween succeeded!" nl );
+	os.exitProcess(0);
+		
+end DaysBetween_test;
+
+													

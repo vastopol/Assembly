@@ -1,0 +1,168 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+
+
+/*****************************************************/
+/*                                                   */
+/* atoi128-                                          */
+/*                                                   */
+/* ASCII to signed integer.                          */
+/*                                                   */
+/* ESI points at a string containing decimal digits. */
+/* This function converts that string to a 128-bit   */
+/* unsigned integer.                                 */
+/*                                                   */
+/* On return, this routine stores the converted      */
+/* value at the location pointed at by "l".          */
+/* ESI points at the first non-digit in the string.  */
+/*                                                   */
+/* On entry, ESI must point at at least one legal    */
+/* decimal digit character or a minus sign.          */
+/*                                                   */
+/* A legal delimiter character (see the Delimiters   */
+/* cset above) must terminate the string of digits,  */
+/* otherwise this routine raises an exception.       */
+/*                                                   */
+/* If the string of digits corresponds to a value    */
+/* too large for 128 bits, this routine raises an    */
+/* exception.                                        */
+/*                                                   */
+/* If any character in the string of digits has its  */
+/* H.O. bit set, this routine raises an exception.   */
+/*                                                   */
+/*****************************************************/
+
+	
+procedure conv.atoi128( var buffer:var in esi; var l:lword ); 
+	@nodisplay; 
+	@noframe;
+begin atoi128;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( edi );
+
+	mov( _hla.get_Delimiters(), edi );
+	test( esi, esi );
+	jz refNULL;
+	dec( esi );
+	whileDelimLoop:
+	
+		NextChar;
+		cmp( eax, $80 );
+		jae IllegalChar;
+		bt( eax, (type dword [edi] ));
+		jc whileDelimLoop;
+
+	cmp( al, '-' );
+	jne notNegative;
+	
+		// If this number has a leading minus sign, then skip over it,
+		// convert the number to an unsigned integer, check for overflow,
+		// and then negate the result.
+		
+		inc( esi );
+		_atou128();		// returns EDX:ECX:EBX:EDI
+
+		// We need to pass $8000_0000 on through, but all other
+		// values greater than this cause an exception.
+		 
+		cmp( edx, $8000_0000 );
+		jb inRange;
+		ja raiseVOR;
+
+			test( ecx, ecx );
+			jnz raiseVOR;
+			test( ebx, ebx );
+			jnz raiseVOR;
+			test( eax, eax );
+			jnz raiseVOR;
+			
+		inRange:
+		
+		// 128-bit negation:
+
+		xor( edi, edi );
+		sub( eax, edi );
+
+		mov( 0, eax );
+		sbb( ebx, eax );
+
+		mov( 0, ebx );
+		sbb( ecx, ebx );
+
+		mov( 0, ecx );
+		sbb( edx, ecx );
+
+		// Store away the negated result:
+
+		mov( l, edx );
+		mov( edi, [edx] );
+		mov( eax, [edx+4] );
+		mov( ebx, [edx+8] );
+		mov( ecx, [edx+12] );
+		jmp done;
+		
+	notNegative:
+	
+		// If the number does not have a leading "-" character, then
+		// treat it like an unsigned integer.  Note, however, that
+		// the H.O. bit of the result must be clear or we have an
+		// overflow.
+		
+		_atou128();
+		bt( 31, edx );
+		jc raiseVOR;
+
+		// Store away the result:
+
+		mov( l, edi );
+		mov( eax, [edi] );
+		mov( ebx, [edi+4] );
+		mov( ecx, [edi+8] );
+		mov( edx, [edi+12] );
+		
+done:
+		
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+
+raiseVOR:
+	raise( ex.ValueOutOfRange );
+
+refNULL:
+	raise( ex.AttemptToDerefNULL );
+
+IllegalChar:
+	raise( ex.IllegalChar );
+
+end atoi128;
+
+
+end ConvUnit;

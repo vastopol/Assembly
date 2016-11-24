@@ -1,0 +1,174 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+
+/**************************************************************/
+/*                                                            */
+/* index3-                                                    */
+/*                                                            */
+/* This functions searches for the first occurrence of        */
+/* str2 within str1 starting at index position "offs" within  */
+/* the src1 string using a case insensitive search.           */
+/* It returns the numerical index (offs..len(str1)-1) if the  */
+/* string is found. It returns -1 if str2 does not appear     */
+/* within str1.                                               */
+/*                                                            */
+/* Efficiency note: This brute force way probably isn't       */
+/* the best algorithm.  It works great for short strings      */
+/* (especially if str2 is short), but better algorithms       */
+/* exist for string matching if str1 and str2 are long.       */
+/* Perhaps this should be fixed in a future version.          */
+/*                                                            */
+/**************************************************************/
+
+
+
+procedure str.iindex3( src1:string; offs:dword; src2:string ); 
+	@noframe;
+var
+	attempts: 	int32;
+	
+begin iindex3;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( esi );
+	push( edi );
+	
+	mov( src2, edi );
+	mov( src1, esi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+
+	mov( (type str.strRec [edi]).length, ebx );
+	mov( (type str.strRec [esi]).length, eax );
+	sub( offs, eax );
+	jc StringIndexError;
+
+	mov( eax, attempts );
+	
+		test( ebx, ebx );
+		jnz lenNot0;
+		
+			// If the length of src2 is zero, return failure.
+			
+			mov( -1, eax );
+			jmp FoundMatch;
+			
+		lenNot0:
+		cmp( attempts, ebx );
+		jb notSubstr;
+
+			sub( ebx, attempts );
+			mov( edi, edx );	// Save ptr to src2 so we can reset on failure.
+			add( offs, esi );	// Add starting offset to ESI
+			dec( esi );			// Moved out of the loop below.
+			repeatUntilAttemptsLT0:
+				
+				lea( edi, [edx-1] );	// Need -1 'cause of INC below
+				lea( ecx, [ebx+1] );	// Need +1 'cause of DEC below
+				push( esi );
+
+				striCmpLp:
+					inc( esi );
+					inc( edi );
+					dec( ecx );
+					jz theyMatched;
+
+					mov( [esi], al );
+					cmp( al, [edi] );
+					je striCmpLp;
+
+					// If it didn't match, try flipping the case and
+					// trying again:
+
+					cmp( al, 'A' );
+					jb NotFound;
+					cmp( al, 'Z' );
+					jbe switchCase;
+					cmp( al, 'a' );
+					jb NotFound;
+					cmp( al, 'z' );
+					ja NotFound;
+				  switchCase:
+					xor( $20, al );
+					cmp( al, [edi] );
+					je striCmpLp;
+					jmp NotFound;
+
+				  theyMatched:				
+					// We found the string, so compute the
+					// index and exit the loop.
+						
+					pop( eax );			// Retrieve ptr into src1.
+					inc( eax );			// Adjust for DEC earlier.				
+					sub( src1, eax );	// Compute index.
+					jmp FoundMatch;
+					
+				NotFound:
+				
+				// Okay, src2 didn't match at the current position,
+				// try the next character position in src1.
+				
+				pop( esi );			// Retrieve ptr into src1.
+				inc( esi );			// Bump up by one character position.
+				dec( attempts );	// Are we done yet?
+				jns repeatUntilAttemptsLT0;
+			
+		notSubstr:
+		
+		// If we get down here, then src2 is not a substring of src1.
+		
+		mov( -1, eax );		// Deprecated
+		
+	FoundMatch:
+	pop( edi );
+	pop( esi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	cmp( eax, -1 );		// Clear carry on success, set if no match.
+	leave();
+	ret( _parms_ );
+		
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+StringIndexError:
+	raise( ex.StringIndexError );
+
+end iindex3;
+
+
+end stringUnit;
+
+
+
+
+	
+

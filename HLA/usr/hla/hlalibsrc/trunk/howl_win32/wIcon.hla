@@ -1,0 +1,219 @@
+unit wIcon_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( wIcon_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wIcon objects here:
+
+
+					
+procedure wIcon_t.create_wIcon
+(
+	wiName		:string;
+	iconName	:string;
+	parent		:dword;
+	x			:dword; 
+	y			:dword;
+	width		:dword;
+	height		:dword;
+	bkgColor	:dword 
+);;
+	
+_begin( wIcon_t, create_wIcon );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wIcon_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	
+	// We're going to create a surface object here.
+	// However, this widget is not going to use
+	// the window that create_wSurface creates;
+	// instead, the rectangle will be drawn directly
+	// on the parent's window. 
+	
+	(type wSurface_t [esi]).create_wSurface
+	(
+		wiName,
+		0,								// ex style
+		w.WS_CHILD | w.WS_VISIBLE,		// style
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height,
+		bkgColor,
+		false
+	);
+	mov( cl, this.wBase_private.onHeap );
+		
+	howl.setType( wIcon_c );
+	mov( &wIcon_t._VMT_, this._pVMT_ );
+
+	mov( iconName, eax );
+	if( eax < $1_0000 ) then // icon resource ID
+	
+		mov( eax, this.wIcon_private.iconName );
+		w.LoadIcon( NULL, eax );
+		
+	else	// We've got an actual string:
+	
+		str.a_cpy( eax );			// Must dup the string, it gets freed.
+		mov( eax, this.wIcon_private.iconName );
+		w.LoadIcon( howl.howlInstance, eax );
+		
+	endif;
+	mov( eax, this.wIcon_private.iconHandle );
+		
+	pop( edx );
+	pop( ecx );			   
+	pop( eax );
+	
+_end( wIcon_t, create_wIcon );
+
+
+// destroy-
+//
+//	Frees the iconName string if it was allocated on the heap:
+
+method wIcon_t.destroy;;
+_begin( wIcon_t, destroy );
+
+	if( this.wIcon_private.iconName >= $1_0000 ) then // It's a string
+
+		str.free( this.wIcon_private.iconName );
+		
+	endif;
+	super.destroy();
+	
+_end( wIcon_t, destroy );
+
+
+
+
+
+
+// Accessor methods:
+
+method wIcon_t.get_iconName; @noframe;;
+_begin( wIcon_t, get_iconName );
+
+	mov( this.wIcon_private.iconName, eax );
+	ret();
+	 
+_end( wIcon_t, get_iconName );
+
+
+
+// Load an icon-
+//	Either from a file or a standard icon resource.
+//
+//	From a file:	specify the filename as the parameter.
+//	Standard icon:	specify @string( id ) (e.g., @string( w.IDI_APPLICATION ))
+//					as the parameter.
+ 
+method wIcon_t.load_icon( iconName:string );;
+_begin( wIcon_t, load_icon );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	// If the existing iconName is a string, we've got to deallocate the
+	// storage for it:
+	
+	if( (type dword this.wIcon_private.iconName ) >= $1_0000 ) then
+	
+		str.free( this.wIcon_private.iconName );
+		
+	endif;
+
+	mov( iconName, eax );
+	if( eax < $1_0000 ) then // icon resource ID
+	
+		mov( eax, this.wIcon_private.iconName );
+		w.LoadIcon( NULL, eax );
+		
+	else	// We've got an actual string:
+	
+		str.a_cpy( eax );			// Must dup the string, it gets freed.
+		mov( eax, this.wIcon_private.iconName );
+		w.LoadIcon( howl.howlInstance, eax );
+		
+	endif;
+	mov( eax, this.wIcon_private.iconHandle );
+
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wIcon_t, load_icon );
+
+
+
+method wIcon_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);
+var
+	ps			:w.PAINTSTRUCT;
+
+_begin( wIcon_t, processMessage );
+
+	if( uMsg = w.WM_PAINT ) then
+	
+		// Note: do the actual drawing on the parent's window:
+		
+		w.BeginPaint( this.handle, ps );
+			
+			w.DrawIcon( eax, 0, 0, this.wIcon_private.iconHandle );						
+			
+		w.EndPaint( this.handle, ps );
+		exit processMessage;
+		
+	elseif( uMsg = w.WM_MOUSEACTIVATE ) then
+	
+		if( this.wClickable_private.onClick <> NULL ) then
+		
+			this.wClickable_private.onClick( esi, wParam, lParam );
+			mov( w.MA_NOACTIVATEANDEAT, eax );
+			exit processMessage;
+		
+		endif;
+
+	endif;
+	super.processMessage( hwnd, uMsg, wParam, lParam );
+	
+_end( wIcon_t, processMessage );
+
+
+end	wIcon_u;

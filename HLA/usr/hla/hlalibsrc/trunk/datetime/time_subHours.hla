@@ -1,0 +1,80 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "excepts.hhf" )
+
+	
+// subHours-
+//
+//	This procedure subtracts an arbitrary number of
+// subHours from a time. If returns the number of times
+// the time crosses the 00:00:00 threshold (i.e., the
+// number of 'negative' days) in EAX.
+
+procedure time.subHours( hours:uns32; var HMS:time.timerec ); 
+	@nodisplay; 
+	@noframe;
+begin subHours;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ebx );
+	push( edx );
+	
+	mov( HMS, ebx );
+	movzx( (type time.timerec [ebx]).hours, eax );
+	sub( hours, eax );
+	js crossedDay;
+	
+	mov( ax, (type time.timerec [ebx]).hours );
+	xor( eax, eax );
+	pop( edx );
+	pop( ebx );
+	pop( ebp );
+	ret( _parms_ );
+	
+crossedDay:
+	cmp( eax, -24 );
+	jl slowComputation;
+	add( 24, eax );
+	mov( ax, (type time.timerec [ebx]).hours );
+	mov( 1, eax );
+	pop( edx );
+	pop( ebx );
+	pop( ebp );
+	ret( _parms_ );
+	
+slowComputation:
+	neg( eax );
+	xor( edx, edx );
+	div( 24, edx:eax );
+	test( edx, edx );
+	jz NotNewDayYet;
+	
+		neg( edx );
+		add( 24, edx );
+		inc( eax );
+		
+	NotNewDayYet:
+	mov( dx, (type time.timerec [ebx]).hours );
+	pop( edx );
+	pop( ebx );
+	pop( ebp );
+	ret( _parms_ );
+					
+end subHours;
+	
+end DateTime;			

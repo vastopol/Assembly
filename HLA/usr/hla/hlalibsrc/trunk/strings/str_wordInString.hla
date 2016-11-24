@@ -1,0 +1,186 @@
+unit str_wordInStr_unit;
+
+//synopsis
+//	An iterator that makes a local copy of the string and
+//	yields one word at a time from the local copy.
+//	words are defined by whitespace and start/end of string
+//	yielded words are stored as a local HLA string
+//	and freed after control is returned to the iterator
+
+//	Version History:
+//
+//	Revision:	3
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 06, 2007
+//	Note:		changed to library format, code improvement
+//
+//	Revision:	2
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 06, 2007
+//	Note:		removed some unnecessary instructions
+//				updated with renamed cpyzn
+
+
+//	Revision:	1
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 05, 2007
+//	Note:		1st release
+//				-Are there any special register preservation
+//				convention for iterators and foreach loops?
+//				-What about punctuation?
+//				-Some format should be conceived for local strings
+
+
+	#includeonce ("strings.hhf")
+	#includeonce ("excepts.hhf")
+	
+
+	// Special version of WhiteSpaceCSet that includes #0 as
+	// a member (required by this code)
+	
+	readonly(16)
+		WhiteSpaceCset :cset; @nostorage;
+			cset { #0,' ', #10, #13, #9 };
+			cset {};
+	 
+
+	iterator str.wordInStr( s:string );
+		@nodisplay; @noframe; @noalignstack;
+		
+		var
+			saveEAX	:dword;
+			saveEBX	:dword;
+			saveEBX2:dword;
+			saveECX	:dword;
+			saveEDX	:dword;
+			saveESI	:dword;
+			saveEDI	:dword;
+			addESP	:dword;
+		
+	begin wordInStr;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( eax, saveEAX );
+		mov( ebx, saveEBX );
+		mov( ecx, saveECX );
+		mov( edx, saveEDX );
+		mov( esi, saveESI );
+		mov( edi, saveEDI );
+		
+		mov( s, esi );	
+		test( esi, esi );
+		jz raiseDerefNULL;
+		
+		// make local copy of string
+		// aligned to dword boundry
+		
+		mov( (type str.strRec[esi]).length, ecx );
+		mov( ecx, eax );
+		add( 4, eax );
+		and( -4, eax );
+	
+		sub( eax, esp );
+		mov( esp, edi );	// edi = dest
+		push( edi );
+		rep.movsb();
+		mov( #0, (type byte[edi]) );
+		
+		// we have a local copy of s starting at
+		// esi, skip leading delimiters
+		pop( ebx );
+		call skipDelims;
+		
+		mov( ebx, esi );
+		_iterator:
+			sub( 1, ebx );
+			getWord:
+				add( 1, ebx );
+				movzx( (type byte [ebx]), ecx );
+				bt( ecx, WhiteSpaceCset );
+				jnc getWord;
+
+			// here, edi = start of word, esi = end of word
+			// if edi = esi we are at end of string and nothing
+			// more to return
+			
+			mov( ebx, ecx );
+			sub( esi, ecx );
+			jz _doneIterator;
+			
+			// ecx = length of word
+			// save actual length before dword alignment
+			
+			mov( ecx, eax );
+			add( 12, eax );
+			and( -4, eax );	// dword alignment
+			sub( eax, esp );
+			mov( eax, addESP );
+			
+			 // get string pointer in edi
+			 
+			lea( edi, [esp + str.BytesBeforeStr] );
+			mov( edi, edx );	// save str pointer
+			mov( ecx, (type str.strRec[edi]).length );
+			mov( ecx, (type str.strRec[edi]).maxlen );
+			rep.movsb();
+			mov( #0, (type byte[edi]) );
+			
+			mov( edx, eax );	// yield pointer
+
+			// need to preserve ebx since that is our scan pointer
+			
+			mov( ebx, saveEBX2 );
+			yield();
+			mov( saveEBX2, ebx );
+			
+			// restore stack
+			add( addESP, esp );
+			
+			// update ebx pos
+			call skipDelims;
+			mov( ebx, esi );	// esi = start of next word
+
+			jmp _iterator;
+			
+		_doneIterator:
+		
+		mov( saveEAX, eax );
+		mov( saveEBX, ebx );
+		mov( saveECX, ecx );
+		mov( saveEDX, edx );
+		mov( saveESI, esi );
+		mov( saveEDI, edi );
+
+
+		// restore stack!
+		mov( ebp, esp );
+		pop( ebp );
+		
+		// return "failure" to exit iterator
+		add( 4, esp );	
+		ret();
+
+		skipDelims:
+			sub( 1, ebx );
+			xor( eax, eax );
+			_skip:
+				add( 1, ebx ); 
+				mov( [ebx], al );
+				test( al, al );  // we don't want to scan beyond zero
+				jz _done;
+				bt( eax, WhiteSpaceCset );
+				jc _skip;
+			_done:
+			ret();
+
+		raiseDerefNULL:
+			raise( ex.AttemptToDerefNULL );
+	
+	end wordInStr;
+
+
+
+end str_wordInStr_unit;

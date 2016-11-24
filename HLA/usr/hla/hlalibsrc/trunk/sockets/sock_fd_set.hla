@@ -1,0 +1,71 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit sockets;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#include( "sockets.hhf" )
+#include( "excepts.hhf" )
+
+
+// fd_set-
+//
+//	Union fd into fdset.
+		
+procedure sock.fd_set( fd:dword; var fdset:hla.fd_set_t );
+begin fd_set;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	push( ecx );
+
+	// First, we have to see if fd is already a member of fdset:
+	
+	mov( fdset, ebx );
+	mov( fd, eax );
+	mov( -1, ecx );
+	whileECXltCount:
+		add( 1, ecx );
+		cmp( ecx, (type hla.fd_set_t [ebx]).fd_count );
+		jae notFound;
+		cmp( eax, (type hla.fd_set_t [ebx]).fd_array[ecx*4] );
+		jne whileECXltCount;
+		
+		// If fd was already in the set, then just leave without doing anything:
+		
+	allDone:
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	// If fd was not found in the set, then append it to the end of the set:
+	
+	notFound:
+		cmp( ecx, hla.max_fd_elements );	// Avoid buffer overflows
+		jae SocketError;
+		mov( eax, (type hla.fd_set_t [ebx]).fd_array[ecx*4] );
+		inc( (type hla.fd_set_t [ebx]).fd_count );
+		jmp allDone;
+		
+SocketError:
+	raise( ex.SocketError );
+	
+end fd_set;
+
+
+end sockets;

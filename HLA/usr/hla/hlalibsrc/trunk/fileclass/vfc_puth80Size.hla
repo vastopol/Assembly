@@ -1,0 +1,80 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileClass;
+
+#includeonce( "fileclass.hhf" )
+#includeonce( "conv.hhf" )
+
+?@NoStackAlign := true;
+?@NoDisplay := true;
+?@NoFrame := true;		
+		
+
+
+
+
+method virtualFile_t.puth80Size( tb:tbyte; width:int32; fill:char );
+var
+	eaxSave		:dword;
+	ecxSave		:dword;
+	ediSave		:dword;
+	numWidth	:uns32;
+	numPad		:uns32;
+	buffer		:char[4096];
+	
+begin puth80Size;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( edi, ediSave );
+	mov( ecx, ecxSave );
+	mov( eax, eaxSave );
+
+	// Compute the actual size of the number for later use:
+
+	conv.h80Size( tb );		// Compute # of print positions required
+	mov( eax, numWidth );
+
+
+	// Convert the hex value to a string and put it at
+	// just before the padding characters:
+
+	lea( edi, buffer );
+	conv._hexToBuf80Size
+	( 
+		tb, 
+		width, 
+		numWidth, 
+		fill, 
+		[edi], 
+		@size( buffer ) -1 
+	);
+
+	// Output the sequence to the specified file:
+
+	this.write( [edi], ecx );
+
+
+	mov( ediSave, edi );
+	mov( ecxSave, ecx );
+	mov( eaxSave, eax );
+	leave();
+	ret( _parms_ );
+	
+end puth80Size;
+
+
+end FileClass;

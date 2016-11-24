@@ -1,0 +1,198 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit consoleUnit;
+
+#include( "console.hhf" )
+
+#includeonce( "os.hhf" )
+#includeonce( "stdout.hhf" )
+
+?@nodisplay := true;
+?@noalignstack := true;	
+
+#if( os.linux | os.freeBSD | os.macOS )
+
+	// clrToBOScrn - Clears from the cursor to the beginning 
+	//               of the screen
+	//
+	// Linux:
+	// ANSI ESC sequence is ESC "[1J"
+
+	procedure console.clrToBOScrn; @noframe;
+	const
+		sys_write		:= 4;
+
+	readonly
+		clrBOLNScrnStr:byte; @nostorage;
+				byte #$1b "[1J";
+				
+	begin clrToBOScrn;
+	
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+
+		stdout.write( &clrBOLNScrnStr, 4 );
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		ret();
+		
+	end clrToBOScrn;
+	
+#elseif( os.win32 )
+
+	#include( "stdout.hhf" )
+	
+	type 
+	 	COORD: record
+			x: word;
+			y: word;
+		endrecord;
+
+
+	 	SMALL_RECT: record
+			Left: word;
+			Top: word;
+			Right: word;
+			Bottom: word;
+		endrecord;
+	
+		CONSOLE_SCREEN_BUFFER_INFO: record
+
+			dwSize: COORD;
+			dwCursorPosition: COORD;
+			wAttributes: word;
+			srWindow: SMALL_RECT;
+			dwMaximumWindowSize: COORD;
+			
+		endrecord;
+		
+	static
+		FillConsoleOutputAttribute: procedure
+		( 
+				hConsoleOutput			:dword; 
+				wAttribute				:word; 
+				nLength					:dword; 
+				dwWriteCoord			:COORD; 
+			var	lpNumberOfAttrsWritten	:dword
+		);
+			@stdcall;
+			@returns( "eax" );
+			@external( "__imp__FillConsoleOutputAttribute@20" );
+
+		FillConsoleOutputCharacter: procedure
+		( 
+			hConsoleOutput:				dword; 
+			cCharacter:					char; 
+			nLength:					dword; 
+			dwWriteCoord:				COORD; 
+			var	lpNumberOfAttrsWritten:	dword
+		);
+			@stdcall;
+			@returns( "eax" );
+			@external( "__imp__FillConsoleOutputCharacterA@20" );
+
+			
+		GetConsoleScreenBufferInfo: procedure
+		( 
+				handle:	dword; 
+			var csbi:	CONSOLE_SCREEN_BUFFER_INFO
+		);
+			@stdcall;
+			@returns( "eax" );
+			@external( "__imp__GetConsoleScreenBufferInfo@8" );
+		
+	
+
+	
+	
+	procedure console.clrToBOScrn; @noframe;
+	var
+		handle			:dword;
+		size			:dword;
+		charsWritten	:dword;
+		csbi			:CONSOLE_SCREEN_BUFFER_INFO;
+		
+	begin clrToBOScrn;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		pushad();
+		
+		stdout.handle();
+		mov( eax, handle );
+
+		// Compute the number of character positions left on the current line.
+		
+		GetConsoleScreenBufferInfo( handle, csbi );
+
+		// Compute the number of character cells from the start of
+		// the buffer to the current cursor position.
+		//
+		// Begin by computing the number of cell positions to the start
+		// of the line that the cursor is on:
+		
+		movzx( csbi.dwSize.x, eax );
+		movzx( csbi.dwCursorPosition.y, edx );
+		intmul( edx, eax );
+		
+		// Now add in the number of cells up to (and including) the
+		// current cursor position:
+		
+		movzx( csbi.dwCursorPosition.x, edx );
+		add( edx, eax );
+		inc( eax );
+		mov( eax, size );
+		
+		// Fill the screen up to the cursor position with blanks:
+		
+		FillConsoleOutputCharacter
+		( 
+			handle,
+			' ', 
+			size, 
+			#{ pushd( 0 ); }#, // COORD:[0,0] 
+			charsWritten
+		);
+		
+		// Set the screen attributes:
+		
+		movzx( csbi.wAttributes, eax );
+		FillConsoleOutputAttribute
+		(
+			handle,
+			ax,
+			size,
+			#{ pushd( 0 ); }#,  // COORD:[0,0] 
+			charsWritten
+		);
+		
+		popad();
+		leave();
+		ret();
+			
+	end clrToBOScrn;
+	
+
+#endif
+
+
+end consoleUnit;

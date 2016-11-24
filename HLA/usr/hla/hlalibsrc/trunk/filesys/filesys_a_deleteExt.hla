@@ -1,0 +1,50 @@
+unit filesys_extName_unit;
+
+// filesys.a_deleteExt:
+//
+//	Extracts the path and base name components of a full pathname
+//  (that is, it returns the full pathname minus the ".ext" extension).
+//	Returns a pointer to the path name that is allocated on the heap.
+//
+//	Return values:
+//		EAX = pointer to basename on heap.
+
+	
+	#includeOnce( "filesys.hhf" )
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "excepts.hhf" )
+	#includeOnce( "memory.hhf" )
+		
+
+	procedure filesys.a_deleteExt( pathname:string );
+		@nodisplay; @noalignstack; @noframe;
+		
+	begin a_deleteExt;
+		
+		push( ebp );
+		mov( esp, ebp );
+		
+		// Sanity check:
+		
+		mov( pathname, eax );
+		test( eax, eax );
+		jz radn;
+		
+		// The basename's length is always less than or equal to
+		// the pathname's length, so use that as the size of the 
+		// string we're going to allocate.
+		
+		mov( (type str.strRec [eax]).length, eax );
+		str.alloc( eax );
+		filesys.deleteExt( pathname, eax );
+		pop( ebp );
+		ret( _parms_ );
+	
+	radn:
+		raise( ex.AttemptToDerefNULL );
+			 
+	end a_deleteExt;
+
+
+
+end filesys_extName_unit;

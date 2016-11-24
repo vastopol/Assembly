@@ -1,0 +1,244 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" )
+#include( "stdout.hhf" )
+
+
+/********************************************************************/
+/*                                                         			*/
+/* zcat-                                                        	*/
+/*                                                              	*/
+/* Concatenates one zero-terminated string to the end of another	*/
+/* Also returns the length of the string in EAX.					*/
+/*                                                              	*/
+/********************************************************************/
+
+procedure zstr.cat( zsrc:zstring; zdest:zstring ); 
+	@noframe;
+	
+const
+	zsrcp	:text := "[esp+24]";
+	zdestp	:text := "[esp+20]";
+	
+begin cat;
+
+	push( ecx );
+	push( edx );
+	push( esi );
+	push( edi );
+	
+	// First, locate the end of the destination string:
+	
+	mov( zdestp, edi );
+	
+	// We need to get EDI dword-aligned before proceeding.
+	// This prevents illegal memory accesses by stepping beyond
+	// a page boundary in memory (pages are always dword-aligned).
+	
+	test( 3, edi );
+	jz EDIisAligned;
+	
+	cmp( (type char [edi]), #0 );
+	je SetEDI;
+	add( 1, edi );
+	test( 3, edi );
+	jz EDIisAligned;
+	
+	cmp( (type char [edi]), #0 );
+	je SetEDI;
+	add( 1, edi );
+	test( 3, edi );
+	jz EDIisAligned;
+	
+	cmp( (type char [edi]), #0 );
+	je SetEDI;
+	add( 1, edi );				// After this, EDI is aligned.
+	
+	EDIisAligned:
+		sub( 32, edi );			// To counteract add immediately below.
+	LenLoop:
+		add( 32, edi );			// Skip chars this loop just processed.
+	LenLoop2:
+		mov( [edi], eax );		// Get next four chars into EAX.
+		and( $7f7f7f7f, eax );	// Clear H.O. bit (note:$80->$00!)
+		sub( $01010101, eax );	// $00 and $80->$FF, all others have pos val.
+		and( $80808080, eax );	// Test all H.O. bits.  If any are set, then
+		jnz Len0;			//  we've got a $00 or $80 byte.
+		
+		mov( [edi+4], eax );	// The following are all in-line expansions
+		and( $7f7f7f7f, eax );	// of the above (we'll process 32 bytes on
+		sub( $01010101, eax );	// each iteration of this loop). 
+		and( $80808080, eax );
+		jnz Len4;
+		
+		mov( [edi+8], eax );
+		and( $7f7f7f7f, eax );
+		sub( $01010101, eax );
+		and( $80808080, eax );
+		jnz Len8;
+		
+		mov( [edi+12], eax );
+		and( $7f7f7f7f, eax );
+		sub( $01010101, eax );
+		and( $80808080, eax );
+		jnz Len12;
+		
+		mov( [edi+16], eax );
+		and( $7f7f7f7f, eax );
+		sub( $01010101, eax );
+		and( $80808080, eax );
+		jnz Len16;
+		
+		mov( [edi+20], eax );
+		and( $7f7f7f7f, eax );
+		sub( $01010101, eax );
+		and( $80808080, eax );
+		jnz Len20;
+		
+		mov( [edi+24], eax );
+		and( $7f7f7f7f, eax );
+		sub( $01010101, eax );
+		and( $80808080, eax );
+		jnz Len24;
+		
+		mov( [edi+28], eax );
+		and( $7f7f7f7f, eax );
+		sub( $01010101, eax );
+		and( $80808080, eax );
+		jz LenLoop;
+	
+	// Okay, we've found a $00 or $80 byte in positions
+	// 28..31.  Check for the location of the zero byte, if any.
+		
+		add( 28, edi );
+		jmp	Len0;
+
+	// If we get to this point, we've found a zero byte in
+	// positions 4..7:
+	
+	Len4:
+		add( 4, edi );
+		jmp	Len0;
+
+	// If we get to this point, we've found a zero byte in
+	// positions 8..11:
+	
+	Len8:
+		add( 8, edi );
+		jmp	Len0;
+
+	// If we get to this point, we've found a zero byte in
+	// positions 12..15:
+	
+	Len12:
+		add( 12, edi );
+		jmp	Len0;
+
+	// If we get to this point, we've found a zero byte in
+	// positions 16..19:
+	
+	Len16:
+		add( 16, edi );
+		jmp	Len0;
+
+	// If we get to this point, we've found a zero byte in
+	// positions 20..23:
+	
+	Len20:
+		add( 20, edi );
+		jmp	Len0;
+
+	// If we get to this point, we've found a zero byte in
+	// positions 24..27:
+	
+	Len24:
+		add( 24, edi );
+
+	// If we get to this point, we've found a zero byte in
+	// positions 0..3 or we've branched here from one of the
+	// above conditions
+	
+	Len0:
+		mov( [edi], eax );			// Get the original four bytes.
+		cmp( al, 0 );				// See if the first byte contained zero.
+		je SetEDI;
+		inc( edi );
+		cmp( ah, 0 );				// See if the second byte contained zero.
+		je SetEDI;
+		inc( edi );
+		test( $FF_0000, eax );		// See if byte #2 contained a zero.
+		je SetEDI;
+		inc( edi );
+		test( $FF00_0000, eax );	// See if the H.O. byte contained zero.
+		je SetEDI;
+		
+		// Well, it must have been a $80 byte we encountered.
+		// (Fortunately, they are rare in ASCII strings, so all this
+		// extra computation rarely occurs).  Jump back into the zero
+		// loop and continue processing.
+	
+		add( 4, edi );	// Skip bytes we just processed.
+		jmp LenLoop2;	// Don't bother adding 32 in the ZeroLoop!
+		
+		
+	
+	
+	// Okay, EDI points at the zero byte at the end of the dest string,
+	// concatenate the source to the end of dest here:
+
+	SetEDI:
+		mov( zsrcp, esi );
+		xor( ecx, ecx );
+		dec( esi );			// Because of add, below.
+		dec( edi );			// Ditto.
+		
+	CopyChars:
+		add( 1, esi );
+		add( 1, edi );		
+		mov( [esi], al );
+		mov( al, [edi] );
+		cmp( al, 0 );
+		jne CopyChars;
+		
+		
+		
+	// Okay, we've found a zero byte in position zero, one, two, or
+	// three of the current dword.  Write out all the appropriate bytes
+	// (including the zero byte) to the destination string and then
+	// return to the caller.
+	
+	EOS:
+		mov( edi, eax );
+		sub( zdestp, eax );					// Return length in EAX.
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		ret( _parms_ );
+		
+		
+end cat;
+	
+end stringUnit;
+
+
+
+
+	
+

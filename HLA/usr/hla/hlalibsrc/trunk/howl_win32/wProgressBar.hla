@@ -1,0 +1,185 @@
+unit wProgressBar_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( wProgressBar_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+//
+// Handle wProgressBar_t objects here:
+
+
+
+procedure wProgressBar_t.create_wProgressBar
+(
+	wpbName		:string;		   
+	parent		:dword; 									
+	x			:dword; 
+	y			:dword;
+	width		:dword;
+	height		:dword 
+);;
+	
+_begin( wProgressBar_t, create_wProgressBar );
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wProgressBar_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+
+	// We need to create a window that will hold this object.
+
+	(type wVisual_t [esi]).create_wVisual
+	(
+		wpbName,
+		parent,									
+		x,		
+		y,		
+		width,	
+		height	  
+	);	
+	mov( cl, this.wBase_private.onHeap );
+	
+	w.CreateWindowEx
+	(
+		0,
+		w.PROGRESS_CLASS,					// ProgressBar class name
+		NULL,								// ProgressBar caption
+		w.WS_CHILD | w.WS_VISIBLE,
+		x,
+		y,
+		width,
+		height,
+		parent,
+		this.wBase_private.objectID,
+		howl.howlInstance,
+		NULL
+	);
+	mov( eax, this.handle );
+	w.SetWindowLong( eax, w.GWL_USERDATA, esi );
+	
+	// Initialize the type string field:
+		
+	howl.setType( wProgressBar_c );
+	
+	// Initialize the VMT pointer:
+	
+	mov( &wProgressBar_t._VMT_, this._pVMT_ );
+	
+	// Initialize the range to the Windows default (0..100);
+	
+	this.set_range( 0, 100 );
+	w.SendMessage( this.handle, w.PBM_SETSTEP, 5, 0 );
+			   
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wProgressBar_t, create_wProgressBar );
+	
+
+
+// Retrieve the current progress bar position:
+
+method wProgressBar_t.get_position;;
+_begin( wProgressBar_t, get_position );
+
+	movzx( this.wProgressBar_private.position, eax );
+	
+_end( wProgressBar_t, get_position );
+
+
+
+// Set the current progress bar position:
+
+method wProgressBar_t.set_position( position:word );;
+_begin( wProgressBar_t, set_position );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	movzx( position, eax );
+	mov( ax, this.wProgressBar_private.position );
+	w.SendMessage( this.handle, w.PBM_SETPOS, eax, 0 );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wProgressBar_t, set_position );
+
+
+// Get the low end of the progress bar's range:
+
+method wProgressBar_t.get_lowRange;;
+_begin( wProgressBar_t, get_lowRange );
+
+	movzx( this.wProgressBar_private.lowRange, eax );
+	
+_end( wProgressBar_t, get_lowRange );
+
+
+
+// Get the high end of the progress bar's range:
+
+method wProgressBar_t.get_hiRange;;
+_begin( wProgressBar_t, get_hiRange );
+
+	movzx( this.wProgressBar_private.hiRange, eax );
+	
+_end( wProgressBar_t, get_hiRange );
+
+
+// Set the range of the progress bar:
+
+method wProgressBar_t.set_range( low:word; high:word );;
+_begin( wProgressBar_t, set_range );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	movzx( high, eax );
+	mov( ax, this.wProgressBar_private.hiRange );
+	
+	shl( 16, eax );
+	movzx( low, ecx );
+	mov( cx, this.wProgressBar_private.lowRange );
+	or( ecx, eax );
+	
+	w.SendMessage( this.handle, w.PBM_SETRANGE, 0, eax );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wProgressBar_t, set_range );
+
+
+
+end	wProgressBar_u;

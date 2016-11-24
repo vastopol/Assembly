@@ -1,0 +1,106 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+
+
+/*************************************************************/
+/*                                                           */
+/* lower1,                                                   */
+/* lower2,                                                   */
+/* a_lower-                                                  */
+/*                                                           */
+/* Just like upper and aupper above except, of course, these */
+/* routines translate upper case characters to lower case    */
+/* rather than vice versa.                                   */
+/*                                                           */
+/*************************************************************/
+
+procedure str.lower2( src: string; dest:string ); @noframe;
+begin lower2;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( esi );
+	push( edi );
+	push( eax );
+	
+	mov( dest, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+	mov( src, esi );
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+	mov( (type str.strRec [esi]).length, eax );
+	cmp( eax, (type str.strRec [edi]).maxlen );
+	ja StringOverflow;
+	mov( eax, (type str.strRec [edi]).length );
+	
+	// Until we encounter a zero byte, convert any upper
+	// case characters to lower case.
+	
+	sub( 1, esi );			// Because of ADD, below. 
+	loopForever:
+		mov( [esi+1], al );	// Get next character
+		add( 1, esi );		// Move on to the next character.
+		cmp( al, 0 );
+		jz allDone;			// Quit when we find a zero byte.
+		
+		// If an upper case character, convert it to lower case
+		// and store the result back into the destination string.
+		
+		cmp( al, 'A' );
+		jb noConv;
+		cmp( al, 'Z' );
+		ja noConv;
+		
+			or( $20, al );	// Magic UC->lc translation.
+			
+		noConv:
+		mov( al, [edi] );	// Save result.
+		add( 1, edi );
+		jmp loopForever;
+		
+	allDone:
+	
+	pop( eax );
+	pop( edi );
+	pop( esi );
+	pop( ebp );
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+StringOverflow:
+	raise( ex.StringOverflow );
+
+end lower2;
+
+end stringUnit;
+
+
+
+
+	
+

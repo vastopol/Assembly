@@ -1,0 +1,56 @@
+program charToCset_test;
+#include( "stdlib.hhf" )
+
+type
+	c2cs_t:
+		record
+			_char		:char;
+			_cset		:cset;
+		endrecord;
+		
+const
+	c2cs_c :c2cs_t[] :=
+		[
+			#for( i := 0 to 126 )
+				c2cs_t:[ char(i), { char(i) }],
+			#endfor
+			c2cs_t:[ #$7f, { #$7f }]
+		];
+		
+		
+static
+	csresult	:cset;
+	c2cs 		:c2cs_t[ @elements( c2cs_c ) ] := c2cs_c;
+	
+begin charToCset_test;
+
+	
+		for( mov( 0, ecx ); ecx<$80; inc(ecx) )do
+		
+		
+			intmul( @size( c2cs_t ), ecx, edx );
+			mov( c2cs._char[edx], al );
+			cs.charToCset( al, csresult );
+			if( cs.ne( csresult, c2cs._cset[edx]) ) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"cs.charToCset failed!  ecx=", ecx, nl
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			
+		endfor;
+		stderr.put( "cs.charToCset succeeded!" nl );
+		os.exitProcess(0);
+		
+end charToCset_test;
+
+													

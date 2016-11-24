@@ -1,0 +1,220 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit patterns;
+#includeOnce( "../include/pat.hhf" )
+#includeOnce( "patterns.hhf" )
+#includeOnce( "misctypes.hhf" )
+
+	
+	
+
+/**********************************************************************/
+/*                                                                    */
+/* MatchToStr-                                                        */
+/*                                                                    */
+/* Matches all the characters in a string upto (and including)        */
+/* the specified string.  On backtrack, it will skip over the         */
+/* current string and continue searching with the next char.          */
+/*                                                                    */
+/* Disposition:	Lazy                                                  */
+/* BackTrackable:	Yes.                                              */
+/*                                                                    */
+/* Entry Parameters:                                                  */
+/*                                                                    */
+/* 	ESI:	Pointer to sequence of characters to match.               */
+/* 	EDI:	Pointer to byte beyond last char to match.                */
+/* 	s:		String to match.                                          */
+/*                                                                    */
+/* Exit Parameters (if success):                                      */
+/*                                                                    */
+/*     EBX:	Points at the start of the sequence that was matched.     */
+/*     ESI:	Points at char beyond last matched character in s.        */
+/*     EDI:	Unchanged from entry value.                               */
+/*                                                                    */
+/* Exit Parameters (if failure):                                      */
+/* 														              */
+/*     EDI:	Unchanged from original entry value.			          */
+/*     ESI:	Unchanged from original entry value.			          */
+/*                                                                    */
+/*                                                                    */
+/* Unless noted, assume all other registers can be modified           */
+/* by this code.                                                      */
+/*                                                                    */
+/**********************************************************************/
+
+
+
+procedure pat.matchToStr( s:string ); @nodisplay; @noalignstack;
+var
+	cursor: 	misc.pChar;		// Save last matched posn here.
+	startPosn:	misc.pChar; 	// Save start of str here.
+	endStr:		misc.pChar;		// End of string goes here.
+	espSave:	dword;			// To clean stk after back trk.
+	FailToSave:	pat.FailRec;	// Save global FailTo value here.
+	
+begin matchToStr;
+
+	// If some routine after this one fails and transfers
+	// control via backtracking to this code, the stack
+	// will be a mess.  So save esp so we can clean up
+	// the stack if backtracking is necessary.
+	
+	mov( esp, espSave );
+	
+	// Save the pointer to the start of the string
+	// to match.  This is used as a "fence" value
+	// to prevent backtracking past the start of
+	// the string if things go really wrong.
+	
+	mov( esi, startPosn );
+	mov( esi, ebx );
+
+	// Save pointer to end of string to match.
+	// This is needed to restore this value when
+	// backtracking occurs.
+	// Fail if (somehow) we are already beyond the
+	// end of the string to match.
+
+	mov( edi, endStr );
+	cmp( esi, edi );
+	jae fail1;
+	
+	// Okay, lazily match a string if possible.
+	// Note: this brute force algorithms *needs*
+	// to be updated before too long!
+	
+
+	cld();
+	mov( s, edi );
+	push( esi );
+	lazyMatch:
+		pop( esi );
+		mov( endStr, ecx );
+		sub( esi, ecx );
+		mov( [edi], al );
+
+		xchg( esi, edi );	
+		repne.scasb();
+		xchg( esi, edi );
+		jne fail7;
+		
+		push( esi );
+		push( edi );
+		dec( esi );
+		mov( (type str.strRec [edi]).length, ecx );
+		repe.cmpsb();
+		pop( edi );
+		jne lazyMatch;
+		
+	// So we can easily back track, save a pointer
+	// to the first non-matching character.
+	
+	mov( esi, cursor );
+	mov( endStr, edi );
+
+	// If we've gotten to this point, we've matched the
+	// string, so succeed.
+
+	pat._success_( FailToSave, FailToHere );
+
+
+
+
+	// If someone after us fails and invokes
+	// backtracking, control is transfered to
+	// this point.  First, we need to restore
+	// ESP to clean up the junk on the stack.
+	// Then, if we matched a character above,
+	// we back up one character.  If we matched
+	// zero characters above, then we propogate
+	// the failure to whomever called us.
+	
+	FailToHere:
+
+		mov( espSave, esp );	// Clean up stack.
+		
+		mov( cursor, esi );		// Get last posn we matched.
+		inc( esi );				// Advance one character position.
+		mov( endStr, edi );
+		mov( startPosn, ebx );
+		
+		// Fail if we run off the end of the string.
+		
+		cmp( esi, edi );
+		jae fail5;
+
+		// Okay, lazily match a string if possible.
+		// Note: this brute force algorithms *needs*
+		// to be updated before too long!
+		
+
+		cld();
+		mov( s, edi );
+		push( esi );
+		lazyMatch2:
+			pop( esi );
+			mov( endStr, ecx );
+			sub( esi, ecx );
+			mov( [edi], al );
+			
+			xchg( esi, edi );
+			repne.scasb();
+			xchg( esi, edi );
+			jne fail6;
+			
+			push( esi );
+			push( edi );
+			dec( esi );
+			mov( (type str.strRec [edi]).length, ecx );
+			
+			repe.cmpsb();
+			pop( edi );
+			jne lazyMatch2;
+		
+		// Okay, we matched the next occurrence of the
+		// string. Return success.
+
+		mov( esi, cursor );
+		mov( endStr, edi );
+		mov( [ebp+4], eax );
+		mov( [ebp], ebp );		
+		jmp( eax );	// Jump to success address.
+
+
+fail7:
+	mov( endStr, edi );	
+fail4:	
+	mov( startPosn, esi );
+fail1:
+	pat._fail_( pat.FailTo );
+
+fail6:
+	mov( endStr, edi );
+fail5:
+
+	// Need to restore FailTo address because it
+	// currently points at us.  We want to jump
+	// to the correct location.
+
+	mov( ebx, esi );
+	mov( FailToSave.ebpSave, pat.FailTo.ebpSave );
+	mov( FailToSave.jmpAdrs, pat.FailTo.jmpAdrs );
+	pat._fail_( pat.FailTo );
+
+end matchToStr;
+
+
+
+end patterns;

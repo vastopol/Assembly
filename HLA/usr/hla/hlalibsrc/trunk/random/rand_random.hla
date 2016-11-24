@@ -1,0 +1,61 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit randomUnit;
+#include( "rand.hhf" )
+#include( "../include/random.hhf" )
+
+// In theory, the following static object ought to be protected
+// in multi-threaded environments. In practice, this isn't necessary
+// as the end result would simply be that two threads get the same
+// random number now and then (which should be okay). Two threads calling
+// "randomize" might do funny things, but the result should still be okay.
+
+static
+	align( 4 );
+	
+	// Seed for the linear congruential generator:
+	
+	lcSeed: dword := 0;
+	
+	
+
+// random-	Returns a uniformly distributed random number in EAX
+//			using a linear congruental generator.
+
+
+procedure rand.random; @nodisplay; @noframe;
+const
+	a:uns32 := 5;
+	
+begin random;
+
+	push( edx );
+	neg( lcSeed );
+	mov( a, eax );
+	mul( lcSeed );
+	sub( edx, eax );
+	jns skipSub;
+	
+		add( 2, eax );
+		
+	skipSub:
+	dec( eax );
+	mov( eax, lcSeed );
+	pop( edx );
+	ret();
+	
+end random;
+
+end randomUnit;

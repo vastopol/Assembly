@@ -1,0 +1,15 @@
+unit stdlib_data;
+#include( "chars.hhf" )
+
+namespace chars;
+
+	readonly(16)
+		DigitsCset :cset; @nostorage;
+			cset { '0'..'9' };
+			cset {};
+	 
+end chars;
+
+end stdlib_data;
+
+													

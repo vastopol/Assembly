@@ -1,0 +1,157 @@
+unit filesys_unit;
+
+// filesys.hasUncName( pathname:string );
+//
+//	Returns zero in EAX if the pathname does not begin with a
+//  UNC prefix of the form "//computerName/folder" or 
+//	"type://computerName/folder". If a UNC prefix is present,
+//	then this function returns the index into the string of the
+//	first character following the UNC prefix (specifically, the
+//	'/' character).
+//
+//	Returns carry set if there is no UNC name present (along with
+//	returning zero in EAX), or if it can properly parse a UNC name
+//	(and returns the index of the pathname portion in EAX). 
+//
+//	Returns with carry clear and EAX = 0 if the pathname begins with  
+//	"//" or "type://" but the following chars do not follow proper  
+//	UNC syntax or if the pathname cannot be properly parsed to determine
+//	if there is a syntactically valid UNC name.
+
+ 
+#includeOnce( "filesys.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "chars.hhf" )
+
+procedure filesys.hasUncName( pathname:string );
+	@nodisplay; @noframe; @noalignstack;
+
+begin hasUncName;
+	
+	push( ebp );
+	mov( esp, ebp );
+	push( ebx );
+	
+	// Sanity check:
+	
+	mov( pathname, ebx );
+	test( ebx, ebx );
+	jz AttemptToDerefNull;
+	
+	mov( [ebx], al );
+	cmp( al, '/' );
+	je possibleUNCname;
+	cmp( al, '\' );
+	je possibleUNCname;
+	
+		// Doesn't begin with "//", but we could have "type://"
+		
+		cmp( al, ':' );	// Begins with ':'? Syntax error.
+		je badPath;
+		scanForColon:
+			add( 1, ebx );
+			mov( [ebx], al );
+			cmp( al, '\' );
+			je notUNC;
+			cmp( al, '/' );
+			je notUNC;
+			cmp( al, 0 );	// end of string?
+			je notUNC;
+			cmp( al, ':' );
+			jne scanForColon;
+			
+		// Check for "//" here. Note that if "//" is not present,
+		// this isn't necessary a syntax error because this could
+		// be a Windows drive letter prefix.
+		
+		add( 1, ebx );
+		mov( [ebx], al );
+		cmp( al, '/' );
+		je possibleUNCname;
+		
+			cmp( al, '\' );
+			jne notUNC;
+			
+	possibleUNCname:
+		add( 1, ebx );
+		mov( [ebx], al );
+		cmp( al, '\' );
+		je parseUNC;
+		
+			cmp( al, '/' );
+			jne notUNC;
+			
+			
+		// Okay, we've seen "//" or "type://" so now we need to parse
+		// the computer name and the shared folder name:
+		
+		parseUNC:
+		add( 1, ebx );
+		mov( [ebx], al );	// Must not be '/'!
+		cmp( al, '/' );
+		je badPath;
+		cmp( al, '\' );
+		je badPath;
+		scanCompName:
+			add(1, ebx );
+			mov( [ebx], al );
+			cmp( al, 0 );		// Error if end of string.
+			je badPath;
+			cmp( al, '/' );
+			je gotCompName;
+			cmp( al, '\' );
+			jne scanCompName;
+			
+		gotCompName:
+		add( 1, ebx );
+		mov( [ebx], al );	// Must not be '/'!
+		cmp( al, '/' );
+		je badPath;
+		cmp( al, '\' );
+		je badPath;
+		scanFolderName:
+			add(1, ebx );
+			mov( [ebx], al );
+			cmp( al, 0 );		// Error if end of string.
+			je badPath;
+			cmp( al, '/' );
+			je isUNC;
+			cmp( al, '\' );
+			jne scanFolderName;
+			
+		// Okay, if we get here, we've got something that
+		// looks like a syntactically correct UNC prefix.
+		// Return the index to the character following
+		// the '/' we just saw:
+		
+		isUNC:
+			sub( pathname, ebx );	// Compute index
+			lea( eax, [ebx+1] );	// Skip past '/' char.
+			stc();
+			pop( ebx );
+			pop( ebp );
+			ret( _parms_ );
+	
+			
+	notUNC:
+		xor( eax, eax );
+		stc();
+		pop( ebx );
+		pop( ebp );
+		ret( _parms_ );
+		
+	badPath:
+		xor( eax, eax );	// Also clears carry flag.
+		pop( ebx );
+		pop( ebp );
+		ret( _parms_ );
+	
+AttemptToDerefNull:
+	raise( ex.AttemptToDerefNULL );
+	
+end hasUncName;
+
+
+
+end filesys_unit;

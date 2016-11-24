@@ -1,0 +1,1361 @@
+program convhtobuf_test;
+#include( "stdlib.hhf" )
+
+static
+	buf			:str.strvar(256);
+
+	procedure cmpbuf( buf:string; cmpto:string ); @returns( "@ne" );
+	begin cmpbuf;
+
+		push( esi );
+		push( edi );
+		push( ecx );
+
+		mov( buf, esi );
+		mov( cmpto, edi );
+		mov( (type str.strRec [edi]).length, ecx );
+		add( 1, ecx );
+		repe.cmpsb();
+
+		pop( ecx );
+		pop( edi );
+		pop( esi );
+
+	end cmpbuf;
+	
+	#macro bufTest( function, theValue, strValue, exceptionValue );
+	
+		mov( buf, edi );
+		@text( "conv." + @string( function )) ( theValue, [edi] );
+		mov( 0, (type byte [edi]));
+		if( cmpbuf( buf, strValue )) then
+
+			printCmp( @string( function ), strValue );
+			raise( exceptionValue );
+
+		endif;
+
+	#endmacro
+	
+	procedure printCmp( function:string; strValue:string );
+	begin printCmp;
+	
+		stderr.put( function, " failed!" nl);
+		stderr.put( "Should be '", strValue, "'" nl );
+		stderr.put( "     was: '" );
+		mov( buf, edi );
+		while( (type byte [edi]) <> 0 ) do
+		
+			stderr.put( (type char [edi]) );
+			inc( edi );
+			
+		endwhile;
+		stderr.put( "'" nl );
+	
+	end printCmp;
+	
+		
+	
+		
+begin convhtobuf_test;
+
+	conv.setUnderscores( false );
+
+		bufTest( h64ToBuf, $0,                                 "0", $64_1640 );
+
+	// Testing conv.btobuf
+
+	try
+
+		bufTest( bToBuf, $0,  "00", $1080 );
+		bufTest( bToBuf, $1,  "01", $1081 );
+		bufTest( bToBuf, $2,  "02", $1082 );
+		bufTest( bToBuf, $3,  "03", $1083 );
+		bufTest( bToBuf, $4,  "04", $1084 );
+		bufTest( bToBuf, $5,  "05", $1085 );
+		bufTest( bToBuf, $6,  "06", $1086 );
+		bufTest( bToBuf, $7,  "07", $1087 );
+		bufTest( bToBuf, $8,  "08", $1088 );
+		bufTest( bToBuf, $9,  "09", $1089 );
+		bufTest( bToBuf, $a,  "0A", $108a );
+		bufTest( bToBuf, $b,  "0B", $108b );
+		bufTest( bToBuf, $c,  "0C", $108c );
+		bufTest( bToBuf, $d,  "0D", $108d );
+		bufTest( bToBuf, $e,  "0E", $108e );
+		bufTest( bToBuf, $f,  "0F", $108f );
+
+		bufTest( bToBuf, $00, "00", $2080 );
+		bufTest( bToBuf, $10, "10", $2081 );
+		bufTest( bToBuf, $20, "20", $2082 );
+		bufTest( bToBuf, $30, "30", $2083 );
+		bufTest( bToBuf, $40, "40", $2084 );
+		bufTest( bToBuf, $50, "50", $2085 );
+		bufTest( bToBuf, $60, "60", $2086 );
+		bufTest( bToBuf, $70, "70", $2087 );
+		bufTest( bToBuf, $80, "80", $2088 );
+		bufTest( bToBuf, $90, "90", $2089 );
+		bufTest( bToBuf, $a0, "A0", $208a );
+		bufTest( bToBuf, $b0, "B0", $208b );
+		bufTest( bToBuf, $c0, "C0", $208c );
+		bufTest( bToBuf, $d0, "D0", $208d );
+		bufTest( bToBuf, $e0, "E0", $208e );
+		bufTest( bToBuf, $f0, "F0", $208f );
+
+		bufTest( bToBuf, $11, "11", $F084 );
+		bufTest( bToBuf, $7F, "7F", $F085 );
+		bufTest( bToBuf, $FF, "FF", $F086 );
+	
+		
+		stderr.put( "conv.bToBuf succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"conv.bToBuf failed! eax=", eax, nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+
+
+	// Testing conv.h8tobuf
+
+	try
+
+		bufTest( h8ToBuf, $0,  "0",  $80_1080 );
+		bufTest( h8ToBuf, $1,  "1",  $80_1081 );
+		bufTest( h8ToBuf, $2,  "2",  $80_1082 );
+		bufTest( h8ToBuf, $3,  "3",  $80_1083 );
+		bufTest( h8ToBuf, $4,  "4",  $80_1084 );
+		bufTest( h8ToBuf, $5,  "5",  $80_1085 );
+		bufTest( h8ToBuf, $6,  "6",  $80_1086 );
+		bufTest( h8ToBuf, $7,  "7",  $80_1087 );
+		bufTest( h8ToBuf, $8,  "8",  $80_1088 );
+		bufTest( h8ToBuf, $9,  "9",  $80_1089 );
+		bufTest( h8ToBuf, $a,  "A",  $80_108a );
+		bufTest( h8ToBuf, $b,  "B",  $80_108b );
+		bufTest( h8ToBuf, $c,  "C",  $80_108c );
+		bufTest( h8ToBuf, $d,  "D",  $80_108d );
+		bufTest( h8ToBuf, $e,  "E",  $80_108e );
+		bufTest( h8ToBuf, $f,  "F",  $80_108f );
+				  
+		bufTest( h8ToBuf, $00, "0",  $80_2080 );
+		bufTest( h8ToBuf, $10, "10", $80_2081 );
+		bufTest( h8ToBuf, $20, "20", $80_2082 );
+		bufTest( h8ToBuf, $30, "30", $80_2083 );
+		bufTest( h8ToBuf, $40, "40", $80_2084 );
+		bufTest( h8ToBuf, $50, "50", $80_2085 );
+		bufTest( h8ToBuf, $60, "60", $80_2086 );
+		bufTest( h8ToBuf, $70, "70", $80_2087 );
+		bufTest( h8ToBuf, $80, "80", $80_2088 );
+		bufTest( h8ToBuf, $90, "90", $80_2089 );
+		bufTest( h8ToBuf, $a0, "A0", $80_208a );
+		bufTest( h8ToBuf, $b0, "B0", $80_208b );
+		bufTest( h8ToBuf, $c0, "C0", $80_208c );
+		bufTest( h8ToBuf, $d0, "D0", $80_208d );
+		bufTest( h8ToBuf, $e0, "E0", $80_208e );
+		bufTest( h8ToBuf, $f0, "F0", $80_208f );
+				  					 
+		bufTest( h8ToBuf, $11, "11", $80_F084 );
+		bufTest( h8ToBuf, $7F, "7F", $80_F085 );
+		bufTest( h8ToBuf, $FF, "FF", $80_F086 );
+	
+		
+		stderr.put( "conv.h8ToBuf succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"conv.h8ToBuf failed! eax=", eax, nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+
+	// Testing conv.wToBuf
+
+	try
+
+		bufTest( wToBuf, $0,  "0000", $1160 );
+		bufTest( wToBuf, $1,  "0001", $1161 );
+		bufTest( wToBuf, $2,  "0002", $1162 );
+		bufTest( wToBuf, $3,  "0003", $1163 );
+		bufTest( wToBuf, $4,  "0004", $1164 );
+		bufTest( wToBuf, $5,  "0005", $1165 );
+		bufTest( wToBuf, $6,  "0006", $1166 );
+		bufTest( wToBuf, $7,  "0007", $1167 );
+		bufTest( wToBuf, $8,  "0008", $1168 );
+		bufTest( wToBuf, $9,  "0009", $1169 );
+		bufTest( wToBuf, $a,  "000A", $116a );
+		bufTest( wToBuf, $b,  "000B", $116b );
+		bufTest( wToBuf, $c,  "000C", $116c );
+		bufTest( wToBuf, $d,  "000D", $116d );
+		bufTest( wToBuf, $e,  "000E", $116e );
+		bufTest( wToBuf, $f,  "000F", $116f );
+
+		bufTest( wToBuf, $00, "0000", $2160 );
+		bufTest( wToBuf, $10, "0010", $2161 );
+		bufTest( wToBuf, $20, "0020", $2162 );
+		bufTest( wToBuf, $30, "0030", $2163 );
+		bufTest( wToBuf, $40, "0040", $2164 );
+		bufTest( wToBuf, $50, "0050", $2165 );
+		bufTest( wToBuf, $60, "0060", $2166 );
+		bufTest( wToBuf, $70, "0070", $2167 );
+		bufTest( wToBuf, $80, "0080", $2168 );
+		bufTest( wToBuf, $90, "0090", $2169 );
+		bufTest( wToBuf, $a0, "00A0", $216a );
+		bufTest( wToBuf, $b0, "00B0", $216b );
+		bufTest( wToBuf, $c0, "00C0", $216c );
+		bufTest( wToBuf, $d0, "00D0", $216d );
+		bufTest( wToBuf, $e0, "00E0", $216e );
+		bufTest( wToBuf, $f0, "00F0", $216f );
+
+		bufTest( wToBuf, $000, "0000", $3160 );
+		bufTest( wToBuf, $100, "0100", $3161 );
+		bufTest( wToBuf, $200, "0200", $3162 );
+		bufTest( wToBuf, $300, "0300", $3163 );
+		bufTest( wToBuf, $400, "0400", $3164 );
+		bufTest( wToBuf, $500, "0500", $3165 );
+		bufTest( wToBuf, $600, "0600", $3166 );
+		bufTest( wToBuf, $700, "0700", $3167 );
+		bufTest( wToBuf, $800, "0800", $3168 );
+		bufTest( wToBuf, $900, "0900", $3169 );
+		bufTest( wToBuf, $a00, "0A00", $316a );
+		bufTest( wToBuf, $b00, "0B00", $316b );
+		bufTest( wToBuf, $c00, "0C00", $316c );
+		bufTest( wToBuf, $d00, "0D00", $316d );
+		bufTest( wToBuf, $e00, "0E00", $316e );
+		bufTest( wToBuf, $f00, "0F00", $316f );
+
+		bufTest( wToBuf, $0000, "0000", $4160 );
+		bufTest( wToBuf, $1000, "1000", $4161 );
+		bufTest( wToBuf, $2000, "2000", $4162 );
+		bufTest( wToBuf, $3000, "3000", $4163 );
+		bufTest( wToBuf, $4000, "4000", $4164 );
+		bufTest( wToBuf, $5000, "5000", $4165 );
+		bufTest( wToBuf, $6000, "6000", $4166 );
+		bufTest( wToBuf, $7000, "7000", $4167 );
+		bufTest( wToBuf, $8000, "8000", $4168 );
+		bufTest( wToBuf, $9000, "9000", $4169 );
+		bufTest( wToBuf, $a000, "A000", $416a );
+		bufTest( wToBuf, $b000, "B000", $416b );
+		bufTest( wToBuf, $c000, "C000", $416c );
+		bufTest( wToBuf, $d000, "D000", $416d );
+		bufTest( wToBuf, $e000, "E000", $416e );
+		bufTest( wToBuf, $f000, "F000", $416f );
+
+		bufTest( wToBuf, $11,   "0011", $f160 );
+		bufTest( wToBuf, $7F,   "007F", $f161 );
+		bufTest( wToBuf, $FF,   "00FF", $f162 );
+		bufTest( wToBuf, $11F,  "011F", $f163 );
+		bufTest( wToBuf, $7FF,  "07FF", $f164 );
+		bufTest( wToBuf, $FFFf, "FFFF", $f165 );
+		bufTest( wToBuf, $11Ff, "11FF", $f166 );
+		bufTest( wToBuf, $7FFf, "7FFF", $f167 );
+		bufTest( wToBuf, $FFFf, "FFFF", $f168 );
+	
+		
+		stderr.put( "conv.wToBuf succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"conv.wToBuf failed! eax=", eax, nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+
+
+
+
+
+
+	// Testing conv.h16ToBuf
+
+	try
+
+		bufTest( h16ToBuf, $0,       "0", $16_1160 );
+		bufTest( h16ToBuf, $1,       "1", $16_1161 );
+		bufTest( h16ToBuf, $2,       "2", $16_1162 );
+		bufTest( h16ToBuf, $3,       "3", $16_1163 );
+		bufTest( h16ToBuf, $4,       "4", $16_1164 );
+		bufTest( h16ToBuf, $5,       "5", $16_1165 );
+		bufTest( h16ToBuf, $6,       "6", $16_1166 );
+		bufTest( h16ToBuf, $7,       "7", $16_1167 );
+		bufTest( h16ToBuf, $8,       "8", $16_1168 );
+		bufTest( h16ToBuf, $9,       "9", $16_1169 );
+		bufTest( h16ToBuf, $a,       "A", $16_116a );
+		bufTest( h16ToBuf, $b,       "B", $16_116b );
+		bufTest( h16ToBuf, $c,       "C", $16_116c );
+		bufTest( h16ToBuf, $d,       "D", $16_116d );
+		bufTest( h16ToBuf, $e,       "E", $16_116e );
+		bufTest( h16ToBuf, $f,       "F", $16_116f );
+										   
+		bufTest( h16ToBuf, $00,      "0", $16_2160 );
+		bufTest( h16ToBuf, $10,     "10", $16_2161 );
+		bufTest( h16ToBuf, $20,     "20", $16_2162 );
+		bufTest( h16ToBuf, $30,     "30", $16_2163 );
+		bufTest( h16ToBuf, $40,     "40", $16_2164 );
+		bufTest( h16ToBuf, $50,     "50", $16_2165 );
+		bufTest( h16ToBuf, $60,     "60", $16_2166 );
+		bufTest( h16ToBuf, $70,     "70", $16_2167 );
+		bufTest( h16ToBuf, $80,     "80", $16_2168 );
+		bufTest( h16ToBuf, $90,     "90", $16_2169 );
+		bufTest( h16ToBuf, $a0,     "A0", $16_216a );
+		bufTest( h16ToBuf, $b0,     "B0", $16_216b );
+		bufTest( h16ToBuf, $c0,     "C0", $16_216c );
+		bufTest( h16ToBuf, $d0,     "D0", $16_216d );
+		bufTest( h16ToBuf, $e0,     "E0", $16_216e );
+		bufTest( h16ToBuf, $f0,     "F0", $16_216f );
+										   
+		bufTest( h16ToBuf, $000,     "0", $16_3160 );
+		bufTest( h16ToBuf, $100,   "100", $16_3161 );
+		bufTest( h16ToBuf, $200,   "200", $16_3162 );
+		bufTest( h16ToBuf, $300,   "300", $16_3163 );
+		bufTest( h16ToBuf, $400,   "400", $16_3164 );
+		bufTest( h16ToBuf, $500,   "500", $16_3165 );
+		bufTest( h16ToBuf, $600,   "600", $16_3166 );
+		bufTest( h16ToBuf, $700,   "700", $16_3167 );
+		bufTest( h16ToBuf, $800,   "800", $16_3168 );
+		bufTest( h16ToBuf, $900,   "900", $16_3169 );
+		bufTest( h16ToBuf, $a00,   "A00", $16_316a );
+		bufTest( h16ToBuf, $b00,   "B00", $16_316b );
+		bufTest( h16ToBuf, $c00,   "C00", $16_316c );
+		bufTest( h16ToBuf, $d00,   "D00", $16_316d );
+		bufTest( h16ToBuf, $e00,   "E00", $16_316e );
+		bufTest( h16ToBuf, $f00,   "F00", $16_316f );
+										   
+		bufTest( h16ToBuf, $0000,    "0", $16_4160 );
+		bufTest( h16ToBuf, $1000, "1000", $16_4161 );
+		bufTest( h16ToBuf, $2000, "2000", $16_4162 );
+		bufTest( h16ToBuf, $3000, "3000", $16_4163 );
+		bufTest( h16ToBuf, $4000, "4000", $16_4164 );
+		bufTest( h16ToBuf, $5000, "5000", $16_4165 );
+		bufTest( h16ToBuf, $6000, "6000", $16_4166 );
+		bufTest( h16ToBuf, $7000, "7000", $16_4167 );
+		bufTest( h16ToBuf, $8000, "8000", $16_4168 );
+		bufTest( h16ToBuf, $9000, "9000", $16_4169 );
+		bufTest( h16ToBuf, $a000, "A000", $16_416a );
+		bufTest( h16ToBuf, $b000, "B000", $16_416b );
+		bufTest( h16ToBuf, $c000, "C000", $16_416c );
+		bufTest( h16ToBuf, $d000, "D000", $16_416d );
+		bufTest( h16ToBuf, $e000, "E000", $16_416e );
+		bufTest( h16ToBuf, $f000, "F000", $16_416f );
+										    
+		bufTest( h16ToBuf, $11,     "11", $16_f160 );
+		bufTest( h16ToBuf, $7F,     "7F", $16_f161 );
+		bufTest( h16ToBuf, $FF,     "FF", $16_f162 );
+		bufTest( h16ToBuf, $11F,   "11F", $16_f163 );
+		bufTest( h16ToBuf, $7FF,   "7FF", $16_f164 );
+		bufTest( h16ToBuf, $FFFf, "FFFF", $16_f165 );
+		bufTest( h16ToBuf, $11Ff, "11FF", $16_f166 );
+		bufTest( h16ToBuf, $7FFf, "7FFF", $16_f167 );
+		bufTest( h16ToBuf, $FFFf, "FFFF", $16_f168 );
+	
+		
+		stderr.put( "conv.h16ToBuf succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"conv.h16ToBuf failed! eax=", eax, nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+
+	// Testing conv.dToBuf
+
+	try
+
+		bufTest( dToBuf, $0,  "00000000", $1320 );
+		bufTest( dToBuf, $1,  "00000001", $1321 );
+		bufTest( dToBuf, $2,  "00000002", $1322 );
+		bufTest( dToBuf, $3,  "00000003", $1323 );
+		bufTest( dToBuf, $4,  "00000004", $1324 );
+		bufTest( dToBuf, $5,  "00000005", $1325 );
+		bufTest( dToBuf, $6,  "00000006", $1326 );
+		bufTest( dToBuf, $7,  "00000007", $1327 );
+		bufTest( dToBuf, $8,  "00000008", $1328 );
+		bufTest( dToBuf, $9,  "00000009", $1329 );
+		bufTest( dToBuf, $a,  "0000000A", $132a );
+		bufTest( dToBuf, $b,  "0000000B", $132b );
+		bufTest( dToBuf, $c,  "0000000C", $132c );
+		bufTest( dToBuf, $d,  "0000000D", $132d );
+		bufTest( dToBuf, $e,  "0000000E", $132e );
+		bufTest( dToBuf, $f,  "0000000F", $132f );
+
+		bufTest( dToBuf, $00, "00000000", $2320 );
+		bufTest( dToBuf, $10, "00000010", $2321 );
+		bufTest( dToBuf, $20, "00000020", $2322 );
+		bufTest( dToBuf, $30, "00000030", $2323 );
+		bufTest( dToBuf, $40, "00000040", $2324 );
+		bufTest( dToBuf, $50, "00000050", $2325 );
+		bufTest( dToBuf, $60, "00000060", $2326 );
+		bufTest( dToBuf, $70, "00000070", $2327 );
+		bufTest( dToBuf, $80, "00000080", $2328 );
+		bufTest( dToBuf, $90, "00000090", $2329 );
+		bufTest( dToBuf, $a0, "000000A0", $232a );
+		bufTest( dToBuf, $b0, "000000B0", $232b );
+		bufTest( dToBuf, $c0, "000000C0", $232c );
+		bufTest( dToBuf, $d0, "000000D0", $232d );
+		bufTest( dToBuf, $e0, "000000E0", $232e );
+		bufTest( dToBuf, $f0, "000000F0", $232f );
+
+		bufTest( dToBuf, $000, "00000000", $3320 );
+		bufTest( dToBuf, $100, "00000100", $3321 );
+		bufTest( dToBuf, $200, "00000200", $3322 );
+		bufTest( dToBuf, $300, "00000300", $3323 );
+		bufTest( dToBuf, $400, "00000400", $3324 );
+		bufTest( dToBuf, $500, "00000500", $3325 );
+		bufTest( dToBuf, $600, "00000600", $3326 );
+		bufTest( dToBuf, $700, "00000700", $3327 );
+		bufTest( dToBuf, $800, "00000800", $3328 );
+		bufTest( dToBuf, $900, "00000900", $3329 );
+		bufTest( dToBuf, $a00, "00000A00", $332a );
+		bufTest( dToBuf, $b00, "00000B00", $332b );
+		bufTest( dToBuf, $c00, "00000C00", $332c );
+		bufTest( dToBuf, $d00, "00000D00", $332d );
+		bufTest( dToBuf, $e00, "00000E00", $332e );
+		bufTest( dToBuf, $f00, "00000F00", $332f );
+
+		bufTest( dToBuf, $0000, "00000000", $4320 );
+		bufTest( dToBuf, $1000, "00001000", $4321 );
+		bufTest( dToBuf, $2000, "00002000", $4322 );
+		bufTest( dToBuf, $3000, "00003000", $4323 );
+		bufTest( dToBuf, $4000, "00004000", $4324 );
+		bufTest( dToBuf, $5000, "00005000", $4325 );
+		bufTest( dToBuf, $6000, "00006000", $4326 );
+		bufTest( dToBuf, $7000, "00007000", $4327 );
+		bufTest( dToBuf, $8000, "00008000", $4328 );
+		bufTest( dToBuf, $9000, "00009000", $4329 );
+		bufTest( dToBuf, $a000, "0000A000", $432a );
+		bufTest( dToBuf, $b000, "0000B000", $432b );
+		bufTest( dToBuf, $c000, "0000C000", $432c );
+		bufTest( dToBuf, $d000, "0000D000", $432d );
+		bufTest( dToBuf, $e000, "0000E000", $432e );
+		bufTest( dToBuf, $f000, "0000F000", $432f );
+
+		bufTest( dToBuf, $0_0000, "00000000", $5320 );
+		bufTest( dToBuf, $1_0000, "00010000", $5321 );
+		bufTest( dToBuf, $2_0000, "00020000", $5322 );
+		bufTest( dToBuf, $3_0000, "00030000", $5323 );
+		bufTest( dToBuf, $4_0000, "00040000", $5324 );
+		bufTest( dToBuf, $5_0000, "00050000", $5325 );
+		bufTest( dToBuf, $6_0000, "00060000", $5326 );
+		bufTest( dToBuf, $7_0000, "00070000", $5327 );
+		bufTest( dToBuf, $8_0000, "00080000", $5328 );
+		bufTest( dToBuf, $9_0000, "00090000", $5329 );
+		bufTest( dToBuf, $a_0000, "000A0000", $532a );
+		bufTest( dToBuf, $b_0000, "000B0000", $532b );
+		bufTest( dToBuf, $c_0000, "000C0000", $532c );
+		bufTest( dToBuf, $d_0000, "000D0000", $532d );
+		bufTest( dToBuf, $e_0000, "000E0000", $532e );
+		bufTest( dToBuf, $f_0000, "000F0000", $532f );
+
+		bufTest( dToBuf, $00_0000, "00000000", $6320 );
+		bufTest( dToBuf, $10_0000, "00100000", $6321 );
+		bufTest( dToBuf, $20_0000, "00200000", $6322 );
+		bufTest( dToBuf, $30_0000, "00300000", $6323 );
+		bufTest( dToBuf, $40_0000, "00400000", $6324 );
+		bufTest( dToBuf, $50_0000, "00500000", $6325 );
+		bufTest( dToBuf, $60_0000, "00600000", $6326 );
+		bufTest( dToBuf, $70_0000, "00700000", $6327 );
+		bufTest( dToBuf, $80_0000, "00800000", $6328 );
+		bufTest( dToBuf, $90_0000, "00900000", $6329 );
+		bufTest( dToBuf, $a0_0000, "00A00000", $632a );
+		bufTest( dToBuf, $b0_0000, "00B00000", $632b );
+		bufTest( dToBuf, $c0_0000, "00C00000", $632c );
+		bufTest( dToBuf, $d0_0000, "00D00000", $632d );
+		bufTest( dToBuf, $e0_0000, "00E00000", $632e );
+		bufTest( dToBuf, $f0_0000, "00F00000", $632f );
+
+		bufTest( dToBuf, $000_0000, "00000000", $7320 );
+		bufTest( dToBuf, $100_0000, "01000000", $7321 );
+		bufTest( dToBuf, $200_0000, "02000000", $7322 );
+		bufTest( dToBuf, $300_0000, "03000000", $7323 );
+		bufTest( dToBuf, $400_0000, "04000000", $7324 );
+		bufTest( dToBuf, $500_0000, "05000000", $7325 );
+		bufTest( dToBuf, $600_0000, "06000000", $7326 );
+		bufTest( dToBuf, $700_0000, "07000000", $7327 );
+		bufTest( dToBuf, $800_0000, "08000000", $7328 );
+		bufTest( dToBuf, $900_0000, "09000000", $7329 );
+		bufTest( dToBuf, $a00_0000, "0A000000", $732a );
+		bufTest( dToBuf, $b00_0000, "0B000000", $732b );
+		bufTest( dToBuf, $c00_0000, "0C000000", $732c );
+		bufTest( dToBuf, $d00_0000, "0D000000", $732d );
+		bufTest( dToBuf, $e00_0000, "0E000000", $732e );
+		bufTest( dToBuf, $f00_0000, "0F000000", $732f );
+
+		bufTest( dToBuf, $0000_0000, "00000000", $8320 );
+		bufTest( dToBuf, $1000_0000, "10000000", $8321 );
+		bufTest( dToBuf, $2000_0000, "20000000", $8322 );
+		bufTest( dToBuf, $3000_0000, "30000000", $8323 );
+		bufTest( dToBuf, $4000_0000, "40000000", $8324 );
+		bufTest( dToBuf, $5000_0000, "50000000", $8325 );
+		bufTest( dToBuf, $6000_0000, "60000000", $8326 );
+		bufTest( dToBuf, $7000_0000, "70000000", $8327 );
+		bufTest( dToBuf, $8000_0000, "80000000", $8328 );
+		bufTest( dToBuf, $9000_0000, "90000000", $8329 );
+		bufTest( dToBuf, $a000_0000, "A0000000", $832a );
+		bufTest( dToBuf, $b000_0000, "B0000000", $832b );
+		bufTest( dToBuf, $c000_0000, "C0000000", $832c );
+		bufTest( dToBuf, $d000_0000, "D0000000", $832d );
+		bufTest( dToBuf, $e000_0000, "E0000000", $832e );
+		bufTest( dToBuf, $f000_0000, "F0000000", $832f );
+
+		bufTest( dToBuf, $11,        "00000011", $f320 );
+		bufTest( dToBuf, $7F,        "0000007F", $f321 );
+		bufTest( dToBuf, $FF,        "000000FF", $f322 );
+		bufTest( dToBuf, $11F,       "0000011F", $f323 );
+		bufTest( dToBuf, $7FF,       "000007FF", $f324 );
+		bufTest( dToBuf, $FFFf,      "0000FFFF", $f325 );
+		bufTest( dToBuf, $11Ff,      "000011FF", $f326 );
+		bufTest( dToBuf, $7FFf,      "00007FFF", $f327 );
+		bufTest( dToBuf, $FFFf,      "0000FFFF", $f328 );
+		bufTest( dToBuf, $F_FFFf,    "000FFFFF", $f329 );
+		bufTest( dToBuf, $FF_FFFf,   "00FFFFFF", $f32a );
+		bufTest( dToBuf, $FFF_FFFf,  "0FFFFFFF", $f32b );
+		bufTest( dToBuf, $FFFF_FFFf, "FFFFFFFF", $f32c );
+	
+		
+		stderr.put( "conv.dToBuf succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"conv.dToBuf failed! eax=", eax, nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+
+
+
+
+
+
+
+	// Testing conv.h32ToBuf
+
+	try
+
+		bufTest( h32ToBuf, $0,                "0", $32_1320 );
+		bufTest( h32ToBuf, $1,                "1", $32_1321 );
+		bufTest( h32ToBuf, $2,                "2", $32_1322 );
+		bufTest( h32ToBuf, $3,                "3", $32_1323 );
+		bufTest( h32ToBuf, $4,                "4", $32_1324 );
+		bufTest( h32ToBuf, $5,                "5", $32_1325 );
+		bufTest( h32ToBuf, $6,                "6", $32_1326 );
+		bufTest( h32ToBuf, $7,                "7", $32_1327 );
+		bufTest( h32ToBuf, $8,                "8", $32_1328 );
+		bufTest( h32ToBuf, $9,                "9", $32_1329 );
+		bufTest( h32ToBuf, $a,                "A", $32_132a );
+		bufTest( h32ToBuf, $b,                "B", $32_132b );
+		bufTest( h32ToBuf, $c,                "C", $32_132c );
+		bufTest( h32ToBuf, $d,                "D", $32_132d );
+		bufTest( h32ToBuf, $e,                "E", $32_132e );
+		bufTest( h32ToBuf, $f,                "F", $32_132f );
+													
+		bufTest( h32ToBuf, $00,               "0", $32_2320 );
+		bufTest( h32ToBuf, $10,              "10", $32_2321 );
+		bufTest( h32ToBuf, $20,              "20", $32_2322 );
+		bufTest( h32ToBuf, $30,              "30", $32_2323 );
+		bufTest( h32ToBuf, $40,              "40", $32_2324 );
+		bufTest( h32ToBuf, $50,              "50", $32_2325 );
+		bufTest( h32ToBuf, $60,              "60", $32_2326 );
+		bufTest( h32ToBuf, $70,              "70", $32_2327 );
+		bufTest( h32ToBuf, $80,              "80", $32_2328 );
+		bufTest( h32ToBuf, $90,              "90", $32_2329 );
+		bufTest( h32ToBuf, $a0,              "A0", $32_232a );
+		bufTest( h32ToBuf, $b0,              "B0", $32_232b );
+		bufTest( h32ToBuf, $c0,              "C0", $32_232c );
+		bufTest( h32ToBuf, $d0,              "D0", $32_232d );
+		bufTest( h32ToBuf, $e0,              "E0", $32_232e );
+		bufTest( h32ToBuf, $f0,              "F0", $32_232f );
+													
+		bufTest( h32ToBuf, $000,              "0", $32_3320 );
+		bufTest( h32ToBuf, $100,            "100", $32_3321 );
+		bufTest( h32ToBuf, $200,            "200", $32_3322 );
+		bufTest( h32ToBuf, $300,            "300", $32_3323 );
+		bufTest( h32ToBuf, $400,            "400", $32_3324 );
+		bufTest( h32ToBuf, $500,            "500", $32_3325 );
+		bufTest( h32ToBuf, $600,            "600", $32_3326 );
+		bufTest( h32ToBuf, $700,            "700", $32_3327 );
+		bufTest( h32ToBuf, $800,            "800", $32_3328 );
+		bufTest( h32ToBuf, $900,            "900", $32_3329 );
+		bufTest( h32ToBuf, $a00,            "A00", $32_332a );
+		bufTest( h32ToBuf, $b00,            "B00", $32_332b );
+		bufTest( h32ToBuf, $c00,            "C00", $32_332c );
+		bufTest( h32ToBuf, $d00,            "D00", $32_332d );
+		bufTest( h32ToBuf, $e00,            "E00", $32_332e );
+		bufTest( h32ToBuf, $f00,            "F00", $32_332f );
+													
+		bufTest( h32ToBuf, $0000,             "0", $32_4320 );
+		bufTest( h32ToBuf, $1000,          "1000", $32_4321 );
+		bufTest( h32ToBuf, $2000,          "2000", $32_4322 );
+		bufTest( h32ToBuf, $3000,          "3000", $32_4323 );
+		bufTest( h32ToBuf, $4000,          "4000", $32_4324 );
+		bufTest( h32ToBuf, $5000,          "5000", $32_4325 );
+		bufTest( h32ToBuf, $6000,          "6000", $32_4326 );
+		bufTest( h32ToBuf, $7000,          "7000", $32_4327 );
+		bufTest( h32ToBuf, $8000,          "8000", $32_4328 );
+		bufTest( h32ToBuf, $9000,          "9000", $32_4329 );
+		bufTest( h32ToBuf, $a000,          "A000", $32_432a );
+		bufTest( h32ToBuf, $b000,          "B000", $32_432b );
+		bufTest( h32ToBuf, $c000,          "C000", $32_432c );
+		bufTest( h32ToBuf, $d000,          "D000", $32_432d );
+		bufTest( h32ToBuf, $e000,          "E000", $32_432e );
+		bufTest( h32ToBuf, $f000,          "F000", $32_432f );
+													
+		bufTest( h32ToBuf, $0_0000,           "0", $32_5320 );
+		bufTest( h32ToBuf, $1_0000,       "10000", $32_5321 );
+		bufTest( h32ToBuf, $2_0000,       "20000", $32_5322 );
+		bufTest( h32ToBuf, $3_0000,       "30000", $32_5323 );
+		bufTest( h32ToBuf, $4_0000,       "40000", $32_5324 );
+		bufTest( h32ToBuf, $5_0000,       "50000", $32_5325 );
+		bufTest( h32ToBuf, $6_0000,       "60000", $32_5326 );
+		bufTest( h32ToBuf, $7_0000,       "70000", $32_5327 );
+		bufTest( h32ToBuf, $8_0000,       "80000", $32_5328 );
+		bufTest( h32ToBuf, $9_0000,       "90000", $32_5329 );
+		bufTest( h32ToBuf, $a_0000,       "A0000", $32_532a );
+		bufTest( h32ToBuf, $b_0000,       "B0000", $32_532b );
+		bufTest( h32ToBuf, $c_0000,       "C0000", $32_532c );
+		bufTest( h32ToBuf, $d_0000,       "D0000", $32_532d );
+		bufTest( h32ToBuf, $e_0000,       "E0000", $32_532e );
+		bufTest( h32ToBuf, $f_0000,       "F0000", $32_532f );
+													
+		bufTest( h32ToBuf, $00_0000,          "0", $32_6320 );
+		bufTest( h32ToBuf, $10_0000,     "100000", $32_6321 );
+		bufTest( h32ToBuf, $20_0000,     "200000", $32_6322 );
+		bufTest( h32ToBuf, $30_0000,     "300000", $32_6323 );
+		bufTest( h32ToBuf, $40_0000,     "400000", $32_6324 );
+		bufTest( h32ToBuf, $50_0000,     "500000", $32_6325 );
+		bufTest( h32ToBuf, $60_0000,     "600000", $32_6326 );
+		bufTest( h32ToBuf, $70_0000,     "700000", $32_6327 );
+		bufTest( h32ToBuf, $80_0000,     "800000", $32_6328 );
+		bufTest( h32ToBuf, $90_0000,     "900000", $32_6329 );
+		bufTest( h32ToBuf, $a0_0000,     "A00000", $32_632a );
+		bufTest( h32ToBuf, $b0_0000,     "B00000", $32_632b );
+		bufTest( h32ToBuf, $c0_0000,     "C00000", $32_632c );
+		bufTest( h32ToBuf, $d0_0000,     "D00000", $32_632d );
+		bufTest( h32ToBuf, $e0_0000,     "E00000", $32_632e );
+		bufTest( h32ToBuf, $f0_0000,     "F00000", $32_632f );
+													
+		bufTest( h32ToBuf, $000_0000,         "0", $32_7320 );
+		bufTest( h32ToBuf, $100_0000,   "1000000", $32_7321 );
+		bufTest( h32ToBuf, $200_0000,   "2000000", $32_7322 );
+		bufTest( h32ToBuf, $300_0000,   "3000000", $32_7323 );
+		bufTest( h32ToBuf, $400_0000,   "4000000", $32_7324 );
+		bufTest( h32ToBuf, $500_0000,   "5000000", $32_7325 );
+		bufTest( h32ToBuf, $600_0000,   "6000000", $32_7326 );
+		bufTest( h32ToBuf, $700_0000,   "7000000", $32_7327 );
+		bufTest( h32ToBuf, $800_0000,   "8000000", $32_7328 );
+		bufTest( h32ToBuf, $900_0000,   "9000000", $32_7329 );
+		bufTest( h32ToBuf, $a00_0000,   "A000000", $32_732a );
+		bufTest( h32ToBuf, $b00_0000,   "B000000", $32_732b );
+		bufTest( h32ToBuf, $c00_0000,   "C000000", $32_732c );
+		bufTest( h32ToBuf, $d00_0000,   "D000000", $32_732d );
+		bufTest( h32ToBuf, $e00_0000,   "E000000", $32_732e );
+		bufTest( h32ToBuf, $f00_0000,   "F000000", $32_732f );
+													
+		bufTest( h32ToBuf, $0000_0000,        "0", $32_8320 );
+		bufTest( h32ToBuf, $1000_0000, "10000000", $32_8321 );
+		bufTest( h32ToBuf, $2000_0000, "20000000", $32_8322 );
+		bufTest( h32ToBuf, $3000_0000, "30000000", $32_8323 );
+		bufTest( h32ToBuf, $4000_0000, "40000000", $32_8324 );
+		bufTest( h32ToBuf, $5000_0000, "50000000", $32_8325 );
+		bufTest( h32ToBuf, $6000_0000, "60000000", $32_8326 );
+		bufTest( h32ToBuf, $7000_0000, "70000000", $32_8327 );
+		bufTest( h32ToBuf, $8000_0000, "80000000", $32_8328 );
+		bufTest( h32ToBuf, $9000_0000, "90000000", $32_8329 );
+		bufTest( h32ToBuf, $a000_0000, "A0000000", $32_832a );
+		bufTest( h32ToBuf, $b000_0000, "B0000000", $32_832b );
+		bufTest( h32ToBuf, $c000_0000, "C0000000", $32_832c );
+		bufTest( h32ToBuf, $d000_0000, "D0000000", $32_832d );
+		bufTest( h32ToBuf, $e000_0000, "E0000000", $32_832e );
+		bufTest( h32ToBuf, $f000_0000, "F0000000", $32_832f );
+													
+		bufTest( h32ToBuf, $11,              "11", $32_f320 );
+		bufTest( h32ToBuf, $7F,              "7F", $32_f321 );
+		bufTest( h32ToBuf, $FF,              "FF", $32_f322 );
+		bufTest( h32ToBuf, $11F,            "11F", $32_f323 );
+		bufTest( h32ToBuf, $7FF,            "7FF", $32_f324 );
+		bufTest( h32ToBuf, $FFFf,          "FFFF", $32_f325 );
+		bufTest( h32ToBuf, $11Ff,          "11FF", $32_f326 );
+		bufTest( h32ToBuf, $7FFf,          "7FFF", $32_f327 );
+		bufTest( h32ToBuf, $FFFf,          "FFFF", $32_f328 );
+		bufTest( h32ToBuf, $F_FFFf,       "FFFFF", $32_f329 );
+		bufTest( h32ToBuf, $FF_FFFf,     "FFFFFF", $32_f32a );
+		bufTest( h32ToBuf, $FFF_FFFf,   "FFFFFFF", $32_f32b );
+		bufTest( h32ToBuf, $FFFF_FFFf, "FFFFFFFF", $32_f32c );
+	
+		
+		stderr.put( "conv.h32ToBuf succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"conv.h32ToBuf failed! eax=", eax, nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+
+	// Testing conv.qToBuf
+
+	try
+
+		bufTest( qToBuf, $0,  "0000000000000000", $1640 );
+		bufTest( qToBuf, $1,  "0000000000000001", $1641 );
+		bufTest( qToBuf, $2,  "0000000000000002", $1642 );
+		bufTest( qToBuf, $3,  "0000000000000003", $1643 );
+		bufTest( qToBuf, $4,  "0000000000000004", $1644 );
+		bufTest( qToBuf, $5,  "0000000000000005", $1645 );
+		bufTest( qToBuf, $6,  "0000000000000006", $1646 );
+		bufTest( qToBuf, $7,  "0000000000000007", $1647 );
+		bufTest( qToBuf, $8,  "0000000000000008", $1648 );
+		bufTest( qToBuf, $9,  "0000000000000009", $1649 );
+		bufTest( qToBuf, $a,  "000000000000000A", $164a );
+		bufTest( qToBuf, $b,  "000000000000000B", $164b );
+		bufTest( qToBuf, $c,  "000000000000000C", $164c );
+		bufTest( qToBuf, $d,  "000000000000000D", $164d );
+		bufTest( qToBuf, $e,  "000000000000000E", $164e );
+		bufTest( qToBuf, $f,  "000000000000000F", $164f );
+
+		bufTest( qToBuf, $00, "0000000000000000", $2640 );
+		bufTest( qToBuf, $10, "0000000000000010", $2641 );
+		bufTest( qToBuf, $20, "0000000000000020", $2642 );
+		bufTest( qToBuf, $30, "0000000000000030", $2643 );
+		bufTest( qToBuf, $40, "0000000000000040", $2644 );
+		bufTest( qToBuf, $50, "0000000000000050", $2645 );
+		bufTest( qToBuf, $60, "0000000000000060", $2646 );
+		bufTest( qToBuf, $70, "0000000000000070", $2647 );
+		bufTest( qToBuf, $80, "0000000000000080", $2648 );
+		bufTest( qToBuf, $90, "0000000000000090", $2649 );
+		bufTest( qToBuf, $a0, "00000000000000A0", $264a );
+		bufTest( qToBuf, $b0, "00000000000000B0", $264b );
+		bufTest( qToBuf, $c0, "00000000000000C0", $264c );
+		bufTest( qToBuf, $d0, "00000000000000D0", $264d );
+		bufTest( qToBuf, $e0, "00000000000000E0", $264e );
+		bufTest( qToBuf, $f0, "00000000000000F0", $264f );
+
+		bufTest( qToBuf, $000, "0000000000000000", $3640 );
+		bufTest( qToBuf, $100, "0000000000000100", $3641 );
+		bufTest( qToBuf, $200, "0000000000000200", $3642 );
+		bufTest( qToBuf, $300, "0000000000000300", $3643 );
+		bufTest( qToBuf, $400, "0000000000000400", $3644 );
+		bufTest( qToBuf, $500, "0000000000000500", $3645 );
+		bufTest( qToBuf, $600, "0000000000000600", $3646 );
+		bufTest( qToBuf, $700, "0000000000000700", $3647 );
+		bufTest( qToBuf, $800, "0000000000000800", $3648 );
+		bufTest( qToBuf, $900, "0000000000000900", $3649 );
+		bufTest( qToBuf, $a00, "0000000000000A00", $364a );
+		bufTest( qToBuf, $b00, "0000000000000B00", $364b );
+		bufTest( qToBuf, $c00, "0000000000000C00", $364c );
+		bufTest( qToBuf, $d00, "0000000000000D00", $364d );
+		bufTest( qToBuf, $e00, "0000000000000E00", $364e );
+		bufTest( qToBuf, $f00, "0000000000000F00", $364f );
+
+		bufTest( qToBuf, $0000, "0000000000000000", $4640 );
+		bufTest( qToBuf, $1000, "0000000000001000", $4641 );
+		bufTest( qToBuf, $2000, "0000000000002000", $4642 );
+		bufTest( qToBuf, $3000, "0000000000003000", $4643 );
+		bufTest( qToBuf, $4000, "0000000000004000", $4644 );
+		bufTest( qToBuf, $5000, "0000000000005000", $4645 );
+		bufTest( qToBuf, $6000, "0000000000006000", $4646 );
+		bufTest( qToBuf, $7000, "0000000000007000", $4647 );
+		bufTest( qToBuf, $8000, "0000000000008000", $4648 );
+		bufTest( qToBuf, $9000, "0000000000009000", $4649 );
+		bufTest( qToBuf, $a000, "000000000000A000", $464a );
+		bufTest( qToBuf, $b000, "000000000000B000", $464b );
+		bufTest( qToBuf, $c000, "000000000000C000", $464c );
+		bufTest( qToBuf, $d000, "000000000000D000", $464d );
+		bufTest( qToBuf, $e000, "000000000000E000", $464e );
+		bufTest( qToBuf, $f000, "000000000000F000", $464f );
+
+		bufTest( qToBuf, $0_0000, "0000000000000000", $5640 );
+		bufTest( qToBuf, $1_0000, "0000000000010000", $5641 );
+		bufTest( qToBuf, $2_0000, "0000000000020000", $5642 );
+		bufTest( qToBuf, $3_0000, "0000000000030000", $5643 );
+		bufTest( qToBuf, $4_0000, "0000000000040000", $5644 );
+		bufTest( qToBuf, $5_0000, "0000000000050000", $5645 );
+		bufTest( qToBuf, $6_0000, "0000000000060000", $5646 );
+		bufTest( qToBuf, $7_0000, "0000000000070000", $5647 );
+		bufTest( qToBuf, $8_0000, "0000000000080000", $5648 );
+		bufTest( qToBuf, $9_0000, "0000000000090000", $5649 );
+		bufTest( qToBuf, $a_0000, "00000000000A0000", $564a );
+		bufTest( qToBuf, $b_0000, "00000000000B0000", $564b );
+		bufTest( qToBuf, $c_0000, "00000000000C0000", $564c );
+		bufTest( qToBuf, $d_0000, "00000000000D0000", $564d );
+		bufTest( qToBuf, $e_0000, "00000000000E0000", $564e );
+		bufTest( qToBuf, $f_0000, "00000000000F0000", $564f );
+
+		bufTest( qToBuf, $00_0000, "0000000000000000", $6640 );
+		bufTest( qToBuf, $10_0000, "0000000000100000", $6641 );
+		bufTest( qToBuf, $20_0000, "0000000000200000", $6642 );
+		bufTest( qToBuf, $30_0000, "0000000000300000", $6643 );
+		bufTest( qToBuf, $40_0000, "0000000000400000", $6644 );
+		bufTest( qToBuf, $50_0000, "0000000000500000", $6645 );
+		bufTest( qToBuf, $60_0000, "0000000000600000", $6646 );
+		bufTest( qToBuf, $70_0000, "0000000000700000", $6647 );
+		bufTest( qToBuf, $80_0000, "0000000000800000", $6648 );
+		bufTest( qToBuf, $90_0000, "0000000000900000", $6649 );
+		bufTest( qToBuf, $a0_0000, "0000000000A00000", $664a );
+		bufTest( qToBuf, $b0_0000, "0000000000B00000", $664b );
+		bufTest( qToBuf, $c0_0000, "0000000000C00000", $664c );
+		bufTest( qToBuf, $d0_0000, "0000000000D00000", $664d );
+		bufTest( qToBuf, $e0_0000, "0000000000E00000", $664e );
+		bufTest( qToBuf, $f0_0000, "0000000000F00000", $664f );
+
+		bufTest( qToBuf, $000_0000, "0000000000000000", $7640 );
+		bufTest( qToBuf, $100_0000, "0000000001000000", $7641 );
+		bufTest( qToBuf, $200_0000, "0000000002000000", $7642 );
+		bufTest( qToBuf, $300_0000, "0000000003000000", $7643 );
+		bufTest( qToBuf, $400_0000, "0000000004000000", $7644 );
+		bufTest( qToBuf, $500_0000, "0000000005000000", $7645 );
+		bufTest( qToBuf, $600_0000, "0000000006000000", $7646 );
+		bufTest( qToBuf, $700_0000, "0000000007000000", $7647 );
+		bufTest( qToBuf, $800_0000, "0000000008000000", $7648 );
+		bufTest( qToBuf, $900_0000, "0000000009000000", $7649 );
+		bufTest( qToBuf, $a00_0000, "000000000A000000", $764a );
+		bufTest( qToBuf, $b00_0000, "000000000B000000", $764b );
+		bufTest( qToBuf, $c00_0000, "000000000C000000", $764c );
+		bufTest( qToBuf, $d00_0000, "000000000D000000", $764d );
+		bufTest( qToBuf, $e00_0000, "000000000E000000", $764e );
+		bufTest( qToBuf, $f00_0000, "000000000F000000", $764f );
+
+		bufTest( qToBuf, $0000_0000, "0000000000000000", $8640 );
+		bufTest( qToBuf, $1000_0000, "0000000010000000", $8641 );
+		bufTest( qToBuf, $2000_0000, "0000000020000000", $8642 );
+		bufTest( qToBuf, $3000_0000, "0000000030000000", $8643 );
+		bufTest( qToBuf, $4000_0000, "0000000040000000", $8644 );
+		bufTest( qToBuf, $5000_0000, "0000000050000000", $8645 );
+		bufTest( qToBuf, $6000_0000, "0000000060000000", $8646 );
+		bufTest( qToBuf, $7000_0000, "0000000070000000", $8647 );
+		bufTest( qToBuf, $8000_0000, "0000000080000000", $8648 );
+		bufTest( qToBuf, $9000_0000, "0000000090000000", $8649 );
+		bufTest( qToBuf, $a000_0000, "00000000A0000000", $864a );
+		bufTest( qToBuf, $b000_0000, "00000000B0000000", $864b );
+		bufTest( qToBuf, $c000_0000, "00000000C0000000", $864c );
+		bufTest( qToBuf, $d000_0000, "00000000D0000000", $864d );
+		bufTest( qToBuf, $e000_0000, "00000000E0000000", $864e );
+		bufTest( qToBuf, $f000_0000, "00000000F0000000", $864f );
+
+		bufTest( qToBuf, $0_0000_0000, "0000000000000000", $9640 );
+		bufTest( qToBuf, $1_0000_0000, "0000000100000000", $9641 );
+		bufTest( qToBuf, $2_0000_0000, "0000000200000000", $9642 );
+		bufTest( qToBuf, $3_0000_0000, "0000000300000000", $9643 );
+		bufTest( qToBuf, $4_0000_0000, "0000000400000000", $9644 );
+		bufTest( qToBuf, $5_0000_0000, "0000000500000000", $9645 );
+		bufTest( qToBuf, $6_0000_0000, "0000000600000000", $9646 );
+		bufTest( qToBuf, $7_0000_0000, "0000000700000000", $9647 );
+		bufTest( qToBuf, $8_0000_0000, "0000000800000000", $9648 );
+		bufTest( qToBuf, $9_0000_0000, "0000000900000000", $9649 );
+		bufTest( qToBuf, $a_0000_0000, "0000000A00000000", $964a );
+		bufTest( qToBuf, $b_0000_0000, "0000000B00000000", $964b );
+		bufTest( qToBuf, $c_0000_0000, "0000000C00000000", $964c );
+		bufTest( qToBuf, $d_0000_0000, "0000000D00000000", $964d );
+		bufTest( qToBuf, $e_0000_0000, "0000000E00000000", $964e );
+		bufTest( qToBuf, $f_0000_0000, "0000000F00000000", $964f );
+
+		bufTest( qToBuf, $00_0000_0000, "0000000000000000", $a640 );
+		bufTest( qToBuf, $10_0000_0000, "0000001000000000", $a641 );
+		bufTest( qToBuf, $20_0000_0000, "0000002000000000", $a642 );
+		bufTest( qToBuf, $30_0000_0000, "0000003000000000", $a643 );
+		bufTest( qToBuf, $40_0000_0000, "0000004000000000", $a644 );
+		bufTest( qToBuf, $50_0000_0000, "0000005000000000", $a645 );
+		bufTest( qToBuf, $60_0000_0000, "0000006000000000", $a646 );
+		bufTest( qToBuf, $70_0000_0000, "0000007000000000", $a647 );
+		bufTest( qToBuf, $80_0000_0000, "0000008000000000", $a648 );
+		bufTest( qToBuf, $90_0000_0000, "0000009000000000", $a649 );
+		bufTest( qToBuf, $a0_0000_0000, "000000A000000000", $a64a );
+		bufTest( qToBuf, $b0_0000_0000, "000000B000000000", $a64b );
+		bufTest( qToBuf, $c0_0000_0000, "000000C000000000", $a64c );
+		bufTest( qToBuf, $d0_0000_0000, "000000D000000000", $a64d );
+		bufTest( qToBuf, $e0_0000_0000, "000000E000000000", $a64e );
+		bufTest( qToBuf, $f0_0000_0000, "000000F000000000", $a64f );
+
+		bufTest( qToBuf, $000_0000_0000, "0000000000000000", $b640 );
+		bufTest( qToBuf, $100_0000_0000, "0000010000000000", $b641 );
+		bufTest( qToBuf, $200_0000_0000, "0000020000000000", $b642 );
+		bufTest( qToBuf, $300_0000_0000, "0000030000000000", $b643 );
+		bufTest( qToBuf, $400_0000_0000, "0000040000000000", $b644 );
+		bufTest( qToBuf, $500_0000_0000, "0000050000000000", $b645 );
+		bufTest( qToBuf, $600_0000_0000, "0000060000000000", $b646 );
+		bufTest( qToBuf, $700_0000_0000, "0000070000000000", $b647 );
+		bufTest( qToBuf, $800_0000_0000, "0000080000000000", $b648 );
+		bufTest( qToBuf, $900_0000_0000, "0000090000000000", $b649 );
+		bufTest( qToBuf, $a00_0000_0000, "00000A0000000000", $b64a );
+		bufTest( qToBuf, $b00_0000_0000, "00000B0000000000", $b64b );
+		bufTest( qToBuf, $c00_0000_0000, "00000C0000000000", $b64c );
+		bufTest( qToBuf, $d00_0000_0000, "00000D0000000000", $b64d );
+		bufTest( qToBuf, $e00_0000_0000, "00000E0000000000", $b64e );
+		bufTest( qToBuf, $f00_0000_0000, "00000F0000000000", $b64f );
+
+		bufTest( qToBuf, $0000_0000_0000, "0000000000000000", $c640 );
+		bufTest( qToBuf, $1000_0000_0000, "0000100000000000", $c641 );
+		bufTest( qToBuf, $2000_0000_0000, "0000200000000000", $c642 );
+		bufTest( qToBuf, $3000_0000_0000, "0000300000000000", $c643 );
+		bufTest( qToBuf, $4000_0000_0000, "0000400000000000", $c644 );
+		bufTest( qToBuf, $5000_0000_0000, "0000500000000000", $c645 );
+		bufTest( qToBuf, $6000_0000_0000, "0000600000000000", $c646 );
+		bufTest( qToBuf, $7000_0000_0000, "0000700000000000", $c647 );
+		bufTest( qToBuf, $8000_0000_0000, "0000800000000000", $c648 );
+		bufTest( qToBuf, $9000_0000_0000, "0000900000000000", $c649 );
+		bufTest( qToBuf, $a000_0000_0000, "0000A00000000000", $c64a );
+		bufTest( qToBuf, $b000_0000_0000, "0000B00000000000", $c64b );
+		bufTest( qToBuf, $c000_0000_0000, "0000C00000000000", $c64c );
+		bufTest( qToBuf, $d000_0000_0000, "0000D00000000000", $c64d );
+		bufTest( qToBuf, $e000_0000_0000, "0000E00000000000", $c64e );
+		bufTest( qToBuf, $f000_0000_0000, "0000F00000000000", $c64f );
+
+		bufTest( qToBuf, $0_0000_0000_0000, "0000000000000000", $d640 );
+		bufTest( qToBuf, $1_0000_0000_0000, "0001000000000000", $d641 );
+		bufTest( qToBuf, $2_0000_0000_0000, "0002000000000000", $d642 );
+		bufTest( qToBuf, $3_0000_0000_0000, "0003000000000000", $d643 );
+		bufTest( qToBuf, $4_0000_0000_0000, "0004000000000000", $d644 );
+		bufTest( qToBuf, $5_0000_0000_0000, "0005000000000000", $d645 );
+		bufTest( qToBuf, $6_0000_0000_0000, "0006000000000000", $d646 );
+		bufTest( qToBuf, $7_0000_0000_0000, "0007000000000000", $d647 );
+		bufTest( qToBuf, $8_0000_0000_0000, "0008000000000000", $d648 );
+		bufTest( qToBuf, $9_0000_0000_0000, "0009000000000000", $d649 );
+		bufTest( qToBuf, $a_0000_0000_0000, "000A000000000000", $d64a );
+		bufTest( qToBuf, $b_0000_0000_0000, "000B000000000000", $d64b );
+		bufTest( qToBuf, $c_0000_0000_0000, "000C000000000000", $d64c );
+		bufTest( qToBuf, $d_0000_0000_0000, "000D000000000000", $d64d );
+		bufTest( qToBuf, $e_0000_0000_0000, "000E000000000000", $d64e );
+		bufTest( qToBuf, $f_0000_0000_0000, "000F000000000000", $d64f );
+
+		bufTest( qToBuf, $00_0000_0000_0000, "0000000000000000", $e640 );
+		bufTest( qToBuf, $10_0000_0000_0000, "0010000000000000", $e641 );
+		bufTest( qToBuf, $20_0000_0000_0000, "0020000000000000", $e642 );
+		bufTest( qToBuf, $30_0000_0000_0000, "0030000000000000", $e643 );
+		bufTest( qToBuf, $40_0000_0000_0000, "0040000000000000", $e644 );
+		bufTest( qToBuf, $50_0000_0000_0000, "0050000000000000", $e645 );
+		bufTest( qToBuf, $60_0000_0000_0000, "0060000000000000", $e646 );
+		bufTest( qToBuf, $70_0000_0000_0000, "0070000000000000", $e647 );
+		bufTest( qToBuf, $80_0000_0000_0000, "0080000000000000", $e648 );
+		bufTest( qToBuf, $90_0000_0000_0000, "0090000000000000", $e649 );
+		bufTest( qToBuf, $a0_0000_0000_0000, "00A0000000000000", $e64a );
+		bufTest( qToBuf, $b0_0000_0000_0000, "00B0000000000000", $e64b );
+		bufTest( qToBuf, $c0_0000_0000_0000, "00C0000000000000", $e64c );
+		bufTest( qToBuf, $d0_0000_0000_0000, "00D0000000000000", $e64d );
+		bufTest( qToBuf, $e0_0000_0000_0000, "00E0000000000000", $e64e );
+		bufTest( qToBuf, $f0_0000_0000_0000, "00F0000000000000", $e64f );
+
+		bufTest( qToBuf, $000_0000_0000_0000, "0000000000000000", $f640 );
+		bufTest( qToBuf, $100_0000_0000_0000, "0100000000000000", $f641 );
+		bufTest( qToBuf, $200_0000_0000_0000, "0200000000000000", $f642 );
+		bufTest( qToBuf, $300_0000_0000_0000, "0300000000000000", $f643 );
+		bufTest( qToBuf, $400_0000_0000_0000, "0400000000000000", $f644 );
+		bufTest( qToBuf, $500_0000_0000_0000, "0500000000000000", $f645 );
+		bufTest( qToBuf, $600_0000_0000_0000, "0600000000000000", $f646 );
+		bufTest( qToBuf, $700_0000_0000_0000, "0700000000000000", $f647 );
+		bufTest( qToBuf, $800_0000_0000_0000, "0800000000000000", $f648 );
+		bufTest( qToBuf, $900_0000_0000_0000, "0900000000000000", $f649 );
+		bufTest( qToBuf, $a00_0000_0000_0000, "0A00000000000000", $f64a );
+		bufTest( qToBuf, $b00_0000_0000_0000, "0B00000000000000", $f64b );
+		bufTest( qToBuf, $c00_0000_0000_0000, "0C00000000000000", $f64c );
+		bufTest( qToBuf, $d00_0000_0000_0000, "0D00000000000000", $f64d );
+		bufTest( qToBuf, $e00_0000_0000_0000, "0E00000000000000", $f64e );
+		bufTest( qToBuf, $f00_0000_0000_0000, "0F00000000000000", $f64f );
+
+		bufTest( qToBuf, $0000_0000_0000_0000, "0000000000000000", $640 );
+		bufTest( qToBuf, $1000_0000_0000_0000, "1000000000000000", $641 );
+		bufTest( qToBuf, $2000_0000_0000_0000, "2000000000000000", $642 );
+		bufTest( qToBuf, $3000_0000_0000_0000, "3000000000000000", $643 );
+		bufTest( qToBuf, $4000_0000_0000_0000, "4000000000000000", $644 );
+		bufTest( qToBuf, $5000_0000_0000_0000, "5000000000000000", $645 );
+		bufTest( qToBuf, $6000_0000_0000_0000, "6000000000000000", $646 );
+		bufTest( qToBuf, $7000_0000_0000_0000, "7000000000000000", $647 );
+		bufTest( qToBuf, $8000_0000_0000_0000, "8000000000000000", $648 );
+		bufTest( qToBuf, $9000_0000_0000_0000, "9000000000000000", $649 );
+		bufTest( qToBuf, $a000_0000_0000_0000, "A000000000000000", $64a );
+		bufTest( qToBuf, $b000_0000_0000_0000, "B000000000000000", $64b );
+		bufTest( qToBuf, $c000_0000_0000_0000, "C000000000000000", $64c );
+		bufTest( qToBuf, $d000_0000_0000_0000, "D000000000000000", $64d );
+		bufTest( qToBuf, $e000_0000_0000_0000, "E000000000000000", $64e );
+		bufTest( qToBuf, $f000_0000_0000_0000, "F000000000000000", $64f );	
+		
+		stderr.put( "conv.qToBuf succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"conv.qToBuf failed! eax=", eax, nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+
+	// Testing conv.h64ToBuf
+
+	try
+
+		bufTest( h64ToBuf, $0,                                 "0", $64_1640 );
+		bufTest( h64ToBuf, $1,                                 "1", $64_1641 );
+		bufTest( h64ToBuf, $2,                                 "2", $64_1642 );
+		bufTest( h64ToBuf, $3,                                 "3", $64_1643 );
+		bufTest( h64ToBuf, $4,                                 "4", $64_1644 );
+		bufTest( h64ToBuf, $5,                                 "5", $64_1645 );
+		bufTest( h64ToBuf, $6,                                 "6", $64_1646 );
+		bufTest( h64ToBuf, $7,                                 "7", $64_1647 );
+		bufTest( h64ToBuf, $8,                                 "8", $64_1648 );
+		bufTest( h64ToBuf, $9,                                 "9", $64_1649 );
+		bufTest( h64ToBuf, $a,                                 "A", $64_164a );
+		bufTest( h64ToBuf, $b,                                 "B", $64_164b );
+		bufTest( h64ToBuf, $c,                                 "C", $64_164c );
+		bufTest( h64ToBuf, $d,                                 "D", $64_164d );
+		bufTest( h64ToBuf, $e,                                 "E", $64_164e );
+		bufTest( h64ToBuf, $f,                                 "F", $64_164f );
+																	 
+		bufTest( h64ToBuf, $10,                               "10", $64_2641 );
+		bufTest( h64ToBuf, $20,                               "20", $64_2642 );
+		bufTest( h64ToBuf, $30,                               "30", $64_2643 );
+		bufTest( h64ToBuf, $40,                               "40", $64_2644 );
+		bufTest( h64ToBuf, $50,                               "50", $64_2645 );
+		bufTest( h64ToBuf, $60,                               "60", $64_2646 );
+		bufTest( h64ToBuf, $70,                               "70", $64_2647 );
+		bufTest( h64ToBuf, $80,                               "80", $64_2648 );
+		bufTest( h64ToBuf, $90,                               "90", $64_2649 );
+		bufTest( h64ToBuf, $a0,                               "A0", $64_264a );
+		bufTest( h64ToBuf, $b0,                               "B0", $64_264b );
+		bufTest( h64ToBuf, $c0,                               "C0", $64_264c );
+		bufTest( h64ToBuf, $d0,                               "D0", $64_264d );
+		bufTest( h64ToBuf, $e0,                               "E0", $64_264e );
+		bufTest( h64ToBuf, $f0,                               "F0", $64_264f );
+																	 
+		bufTest( h64ToBuf, $100,                             "100", $64_3641 );
+		bufTest( h64ToBuf, $200,                             "200", $64_3642 );
+		bufTest( h64ToBuf, $300,                             "300", $64_3643 );
+		bufTest( h64ToBuf, $400,                             "400", $64_3644 );
+		bufTest( h64ToBuf, $500,                             "500", $64_3645 );
+		bufTest( h64ToBuf, $600,                             "600", $64_3646 );
+		bufTest( h64ToBuf, $700,                             "700", $64_3647 );
+		bufTest( h64ToBuf, $800,                             "800", $64_3648 );
+		bufTest( h64ToBuf, $900,                             "900", $64_3649 );
+		bufTest( h64ToBuf, $a00,                             "A00", $64_364a );
+		bufTest( h64ToBuf, $b00,                             "B00", $64_364b );
+		bufTest( h64ToBuf, $c00,                             "C00", $64_364c );
+		bufTest( h64ToBuf, $d00,                             "D00", $64_364d );
+		bufTest( h64ToBuf, $e00,                             "E00", $64_364e );
+		bufTest( h64ToBuf, $f00,                             "F00", $64_364f );
+																	 
+		bufTest( h64ToBuf, $1000,                           "1000", $64_4641 );
+		bufTest( h64ToBuf, $2000,                           "2000", $64_4642 );
+		bufTest( h64ToBuf, $3000,                           "3000", $64_4643 );
+		bufTest( h64ToBuf, $4000,                           "4000", $64_4644 );
+		bufTest( h64ToBuf, $5000,                           "5000", $64_4645 );
+		bufTest( h64ToBuf, $6000,                           "6000", $64_4646 );
+		bufTest( h64ToBuf, $7000,                           "7000", $64_4647 );
+		bufTest( h64ToBuf, $8000,                           "8000", $64_4648 );
+		bufTest( h64ToBuf, $9000,                           "9000", $64_4649 );
+		bufTest( h64ToBuf, $a000,                           "A000", $64_464a );
+		bufTest( h64ToBuf, $b000,                           "B000", $64_464b );
+		bufTest( h64ToBuf, $c000,                           "C000", $64_464c );
+		bufTest( h64ToBuf, $d000,                           "D000", $64_464d );
+		bufTest( h64ToBuf, $e000,                           "E000", $64_464e );
+		bufTest( h64ToBuf, $f000,                           "F000", $64_464f );
+																	 
+		bufTest( h64ToBuf, $1_0000,                        "10000", $64_5641 );
+		bufTest( h64ToBuf, $2_0000,                        "20000", $64_5642 );
+		bufTest( h64ToBuf, $3_0000,                        "30000", $64_5643 );
+		bufTest( h64ToBuf, $4_0000,                        "40000", $64_5644 );
+		bufTest( h64ToBuf, $5_0000,                        "50000", $64_5645 );
+		bufTest( h64ToBuf, $6_0000,                        "60000", $64_5646 );
+		bufTest( h64ToBuf, $7_0000,                        "70000", $64_5647 );
+		bufTest( h64ToBuf, $8_0000,                        "80000", $64_5648 );
+		bufTest( h64ToBuf, $9_0000,                        "90000", $64_5649 );
+		bufTest( h64ToBuf, $a_0000,                        "A0000", $64_564a );
+		bufTest( h64ToBuf, $b_0000,                        "B0000", $64_564b );
+		bufTest( h64ToBuf, $c_0000,                        "C0000", $64_564c );
+		bufTest( h64ToBuf, $d_0000,                        "D0000", $64_564d );
+		bufTest( h64ToBuf, $e_0000,                        "E0000", $64_564e );
+		bufTest( h64ToBuf, $f_0000,                        "F0000", $64_564f );
+																	 
+		bufTest( h64ToBuf, $10_0000,                      "100000", $64_6641 );
+		bufTest( h64ToBuf, $20_0000,                      "200000", $64_6642 );
+		bufTest( h64ToBuf, $30_0000,                      "300000", $64_6643 );
+		bufTest( h64ToBuf, $40_0000,                      "400000", $64_6644 );
+		bufTest( h64ToBuf, $50_0000,                      "500000", $64_6645 );
+		bufTest( h64ToBuf, $60_0000,                      "600000", $64_6646 );
+		bufTest( h64ToBuf, $70_0000,                      "700000", $64_6647 );
+		bufTest( h64ToBuf, $80_0000,                      "800000", $64_6648 );
+		bufTest( h64ToBuf, $90_0000,                      "900000", $64_6649 );
+		bufTest( h64ToBuf, $a0_0000,                      "A00000", $64_664a );
+		bufTest( h64ToBuf, $b0_0000,                      "B00000", $64_664b );
+		bufTest( h64ToBuf, $c0_0000,                      "C00000", $64_664c );
+		bufTest( h64ToBuf, $d0_0000,                      "D00000", $64_664d );
+		bufTest( h64ToBuf, $e0_0000,                      "E00000", $64_664e );
+		bufTest( h64ToBuf, $f0_0000,                      "F00000", $64_664f );
+																	 
+		bufTest( h64ToBuf, $100_0000,                    "1000000", $64_7641 );
+		bufTest( h64ToBuf, $200_0000,                    "2000000", $64_7642 );
+		bufTest( h64ToBuf, $300_0000,                    "3000000", $64_7643 );
+		bufTest( h64ToBuf, $400_0000,                    "4000000", $64_7644 );
+		bufTest( h64ToBuf, $500_0000,                    "5000000", $64_7645 );
+		bufTest( h64ToBuf, $600_0000,                    "6000000", $64_7646 );
+		bufTest( h64ToBuf, $700_0000,                    "7000000", $64_7647 );
+		bufTest( h64ToBuf, $800_0000,                    "8000000", $64_7648 );
+		bufTest( h64ToBuf, $900_0000,                    "9000000", $64_7649 );
+		bufTest( h64ToBuf, $a00_0000,                    "A000000", $64_764a );
+		bufTest( h64ToBuf, $b00_0000,                    "B000000", $64_764b );
+		bufTest( h64ToBuf, $c00_0000,                    "C000000", $64_764c );
+		bufTest( h64ToBuf, $d00_0000,                    "D000000", $64_764d );
+		bufTest( h64ToBuf, $e00_0000,                    "E000000", $64_764e );
+		bufTest( h64ToBuf, $f00_0000,                    "F000000", $64_764f );
+																	 
+		bufTest( h64ToBuf, $1000_0000,                  "10000000", $64_8641 );
+		bufTest( h64ToBuf, $2000_0000,                  "20000000", $64_8642 );
+		bufTest( h64ToBuf, $3000_0000,                  "30000000", $64_8643 );
+		bufTest( h64ToBuf, $4000_0000,                  "40000000", $64_8644 );
+		bufTest( h64ToBuf, $5000_0000,                  "50000000", $64_8645 );
+		bufTest( h64ToBuf, $6000_0000,                  "60000000", $64_8646 );
+		bufTest( h64ToBuf, $7000_0000,                  "70000000", $64_8647 );
+		bufTest( h64ToBuf, $8000_0000,                  "80000000", $64_8648 );
+		bufTest( h64ToBuf, $9000_0000,                  "90000000", $64_8649 );
+		bufTest( h64ToBuf, $a000_0000,                  "A0000000", $64_864a );
+		bufTest( h64ToBuf, $b000_0000,                  "B0000000", $64_864b );
+		bufTest( h64ToBuf, $c000_0000,                  "C0000000", $64_864c );
+		bufTest( h64ToBuf, $d000_0000,                  "D0000000", $64_864d );
+		bufTest( h64ToBuf, $e000_0000,                  "E0000000", $64_864e );
+		bufTest( h64ToBuf, $f000_0000,                  "F0000000", $64_864f );
+																	 
+		bufTest( h64ToBuf, $1_0000_0000,               "100000000", $64_9641 );
+		bufTest( h64ToBuf, $2_0000_0000,               "200000000", $64_9642 );
+		bufTest( h64ToBuf, $3_0000_0000,               "300000000", $64_9643 );
+		bufTest( h64ToBuf, $4_0000_0000,               "400000000", $64_9644 );
+		bufTest( h64ToBuf, $5_0000_0000,               "500000000", $64_9645 );
+		bufTest( h64ToBuf, $6_0000_0000,               "600000000", $64_9646 );
+		bufTest( h64ToBuf, $7_0000_0000,               "700000000", $64_9647 );
+		bufTest( h64ToBuf, $8_0000_0000,               "800000000", $64_9648 );
+		bufTest( h64ToBuf, $9_0000_0000,               "900000000", $64_9649 );
+		bufTest( h64ToBuf, $a_0000_0000,               "A00000000", $64_964a );
+		bufTest( h64ToBuf, $b_0000_0000,               "B00000000", $64_964b );
+		bufTest( h64ToBuf, $c_0000_0000,               "C00000000", $64_964c );
+		bufTest( h64ToBuf, $d_0000_0000,               "D00000000", $64_964d );
+		bufTest( h64ToBuf, $e_0000_0000,               "E00000000", $64_964e );
+		bufTest( h64ToBuf, $f_0000_0000,               "F00000000", $64_964f );
+																	 
+		bufTest( h64ToBuf, $10_0000_0000,             "1000000000", $64_a641 );
+		bufTest( h64ToBuf, $20_0000_0000,             "2000000000", $64_a642 );
+		bufTest( h64ToBuf, $30_0000_0000,             "3000000000", $64_a643 );
+		bufTest( h64ToBuf, $40_0000_0000,             "4000000000", $64_a644 );
+		bufTest( h64ToBuf, $50_0000_0000,             "5000000000", $64_a645 );
+		bufTest( h64ToBuf, $60_0000_0000,             "6000000000", $64_a646 );
+		bufTest( h64ToBuf, $70_0000_0000,             "7000000000", $64_a647 );
+		bufTest( h64ToBuf, $80_0000_0000,             "8000000000", $64_a648 );
+		bufTest( h64ToBuf, $90_0000_0000,             "9000000000", $64_a649 );
+		bufTest( h64ToBuf, $a0_0000_0000,             "A000000000", $64_a64a );
+		bufTest( h64ToBuf, $b0_0000_0000,             "B000000000", $64_a64b );
+		bufTest( h64ToBuf, $c0_0000_0000,             "C000000000", $64_a64c );
+		bufTest( h64ToBuf, $d0_0000_0000,             "D000000000", $64_a64d );
+		bufTest( h64ToBuf, $e0_0000_0000,             "E000000000", $64_a64e );
+		bufTest( h64ToBuf, $f0_0000_0000,             "F000000000", $64_a64f );
+																	 
+		bufTest( h64ToBuf, $100_0000_0000,           "10000000000", $64_b641 );
+		bufTest( h64ToBuf, $200_0000_0000,           "20000000000", $64_b642 );
+		bufTest( h64ToBuf, $300_0000_0000,           "30000000000", $64_b643 );
+		bufTest( h64ToBuf, $400_0000_0000,           "40000000000", $64_b644 );
+		bufTest( h64ToBuf, $500_0000_0000,           "50000000000", $64_b645 );
+		bufTest( h64ToBuf, $600_0000_0000,           "60000000000", $64_b646 );
+		bufTest( h64ToBuf, $700_0000_0000,           "70000000000", $64_b647 );
+		bufTest( h64ToBuf, $800_0000_0000,           "80000000000", $64_b648 );
+		bufTest( h64ToBuf, $900_0000_0000,           "90000000000", $64_b649 );
+		bufTest( h64ToBuf, $a00_0000_0000,           "A0000000000", $64_b64a );
+		bufTest( h64ToBuf, $b00_0000_0000,           "B0000000000", $64_b64b );
+		bufTest( h64ToBuf, $c00_0000_0000,           "C0000000000", $64_b64c );
+		bufTest( h64ToBuf, $d00_0000_0000,           "D0000000000", $64_b64d );
+		bufTest( h64ToBuf, $e00_0000_0000,           "E0000000000", $64_b64e );
+		bufTest( h64ToBuf, $f00_0000_0000,           "F0000000000", $64_b64f );
+																	 
+		bufTest( h64ToBuf, $1000_0000_0000,         "100000000000", $64_c641 );
+		bufTest( h64ToBuf, $2000_0000_0000,         "200000000000", $64_c642 );
+		bufTest( h64ToBuf, $3000_0000_0000,         "300000000000", $64_c643 );
+		bufTest( h64ToBuf, $4000_0000_0000,         "400000000000", $64_c644 );
+		bufTest( h64ToBuf, $5000_0000_0000,         "500000000000", $64_c645 );
+		bufTest( h64ToBuf, $6000_0000_0000,         "600000000000", $64_c646 );
+		bufTest( h64ToBuf, $7000_0000_0000,         "700000000000", $64_c647 );
+		bufTest( h64ToBuf, $8000_0000_0000,         "800000000000", $64_c648 );
+		bufTest( h64ToBuf, $9000_0000_0000,         "900000000000", $64_c649 );
+		bufTest( h64ToBuf, $a000_0000_0000,         "A00000000000", $64_c64a );
+		bufTest( h64ToBuf, $b000_0000_0000,         "B00000000000", $64_c64b );
+		bufTest( h64ToBuf, $c000_0000_0000,         "C00000000000", $64_c64c );
+		bufTest( h64ToBuf, $d000_0000_0000,         "D00000000000", $64_c64d );
+		bufTest( h64ToBuf, $e000_0000_0000,         "E00000000000", $64_c64e );
+		bufTest( h64ToBuf, $f000_0000_0000,         "F00000000000", $64_c64f );
+																	 
+		bufTest( h64ToBuf, $1_0000_0000_0000,      "1000000000000", $64_d641 );
+		bufTest( h64ToBuf, $2_0000_0000_0000,      "2000000000000", $64_d642 );
+		bufTest( h64ToBuf, $3_0000_0000_0000,      "3000000000000", $64_d643 );
+		bufTest( h64ToBuf, $4_0000_0000_0000,      "4000000000000", $64_d644 );
+		bufTest( h64ToBuf, $5_0000_0000_0000,      "5000000000000", $64_d645 );
+		bufTest( h64ToBuf, $6_0000_0000_0000,      "6000000000000", $64_d646 );
+		bufTest( h64ToBuf, $7_0000_0000_0000,      "7000000000000", $64_d647 );
+		bufTest( h64ToBuf, $8_0000_0000_0000,      "8000000000000", $64_d648 );
+		bufTest( h64ToBuf, $9_0000_0000_0000,      "9000000000000", $64_d649 );
+		bufTest( h64ToBuf, $a_0000_0000_0000,      "A000000000000", $64_d64a );
+		bufTest( h64ToBuf, $b_0000_0000_0000,      "B000000000000", $64_d64b );
+		bufTest( h64ToBuf, $c_0000_0000_0000,      "C000000000000", $64_d64c );
+		bufTest( h64ToBuf, $d_0000_0000_0000,      "D000000000000", $64_d64d );
+		bufTest( h64ToBuf, $e_0000_0000_0000,      "E000000000000", $64_d64e );
+		bufTest( h64ToBuf, $f_0000_0000_0000,      "F000000000000", $64_d64f );
+																	 
+		bufTest( h64ToBuf, $10_0000_0000_0000,    "10000000000000", $64_e641 );
+		bufTest( h64ToBuf, $20_0000_0000_0000,    "20000000000000", $64_e642 );
+		bufTest( h64ToBuf, $30_0000_0000_0000,    "30000000000000", $64_e643 );
+		bufTest( h64ToBuf, $40_0000_0000_0000,    "40000000000000", $64_e644 );
+		bufTest( h64ToBuf, $50_0000_0000_0000,    "50000000000000", $64_e645 );
+		bufTest( h64ToBuf, $60_0000_0000_0000,    "60000000000000", $64_e646 );
+		bufTest( h64ToBuf, $70_0000_0000_0000,    "70000000000000", $64_e647 );
+		bufTest( h64ToBuf, $80_0000_0000_0000,    "80000000000000", $64_e648 );
+		bufTest( h64ToBuf, $90_0000_0000_0000,    "90000000000000", $64_e649 );
+		bufTest( h64ToBuf, $a0_0000_0000_0000,    "A0000000000000", $64_e64a );
+		bufTest( h64ToBuf, $b0_0000_0000_0000,    "B0000000000000", $64_e64b );
+		bufTest( h64ToBuf, $c0_0000_0000_0000,    "C0000000000000", $64_e64c );
+		bufTest( h64ToBuf, $d0_0000_0000_0000,    "D0000000000000", $64_e64d );
+		bufTest( h64ToBuf, $e0_0000_0000_0000,    "E0000000000000", $64_e64e );
+		bufTest( h64ToBuf, $f0_0000_0000_0000,    "F0000000000000", $64_e64f );
+																	 
+		bufTest( h64ToBuf, $100_0000_0000_0000,  "100000000000000", $64_f641 );
+		bufTest( h64ToBuf, $200_0000_0000_0000,  "200000000000000", $64_f642 );
+		bufTest( h64ToBuf, $300_0000_0000_0000,  "300000000000000", $64_f643 );
+		bufTest( h64ToBuf, $400_0000_0000_0000,  "400000000000000", $64_f644 );
+		bufTest( h64ToBuf, $500_0000_0000_0000,  "500000000000000", $64_f645 );
+		bufTest( h64ToBuf, $600_0000_0000_0000,  "600000000000000", $64_f646 );
+		bufTest( h64ToBuf, $700_0000_0000_0000,  "700000000000000", $64_f647 );
+		bufTest( h64ToBuf, $800_0000_0000_0000,  "800000000000000", $64_f648 );
+		bufTest( h64ToBuf, $900_0000_0000_0000,  "900000000000000", $64_f649 );
+		bufTest( h64ToBuf, $a00_0000_0000_0000,  "A00000000000000", $64_f64a );
+		bufTest( h64ToBuf, $b00_0000_0000_0000,  "B00000000000000", $64_f64b );
+		bufTest( h64ToBuf, $c00_0000_0000_0000,  "C00000000000000", $64_f64c );
+		bufTest( h64ToBuf, $d00_0000_0000_0000,  "D00000000000000", $64_f64d );
+		bufTest( h64ToBuf, $e00_0000_0000_0000,  "E00000000000000", $64_f64e );
+		bufTest( h64ToBuf, $f00_0000_0000_0000,  "F00000000000000", $64_f64f );
+
+		bufTest( h64ToBuf, $1000_0000_0000_0000, "1000000000000000", $64_641 );
+		bufTest( h64ToBuf, $2000_0000_0000_0000, "2000000000000000", $64_642 );
+		bufTest( h64ToBuf, $3000_0000_0000_0000, "3000000000000000", $64_643 );
+		bufTest( h64ToBuf, $4000_0000_0000_0000, "4000000000000000", $64_644 );
+		bufTest( h64ToBuf, $5000_0000_0000_0000, "5000000000000000", $64_645 );
+		bufTest( h64ToBuf, $6000_0000_0000_0000, "6000000000000000", $64_646 );
+		bufTest( h64ToBuf, $7000_0000_0000_0000, "7000000000000000", $64_647 );
+		bufTest( h64ToBuf, $8000_0000_0000_0000, "8000000000000000", $64_648 );
+		bufTest( h64ToBuf, $9000_0000_0000_0000, "9000000000000000", $64_649 );
+		bufTest( h64ToBuf, $a000_0000_0000_0000, "A000000000000000", $64_64a );
+		bufTest( h64ToBuf, $b000_0000_0000_0000, "B000000000000000", $64_64b );
+		bufTest( h64ToBuf, $c000_0000_0000_0000, "C000000000000000", $64_64c );
+		bufTest( h64ToBuf, $d000_0000_0000_0000, "D000000000000000", $64_64d );
+		bufTest( h64ToBuf, $e000_0000_0000_0000, "E000000000000000", $64_64e );
+		bufTest( h64ToBuf, $f000_0000_0000_0000, "F000000000000000", $64_64f );	
+		
+		stderr.put( "conv.h64ToBuf succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"conv.h64ToBuf failed! eax=", eax, nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+end convhtobuf_test;
+
+													

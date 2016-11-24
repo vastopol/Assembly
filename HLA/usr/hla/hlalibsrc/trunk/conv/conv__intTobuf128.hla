@@ -1,0 +1,102 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 8/17/2006, by Randall Hyde
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "stdlibdata.hhf" )
+
+/******************************************************************************/
+/*                                                                            */
+/* _intToBuf128-                                                              */
+/*                                                                            */
+/* On entry:                                                                  */
+/* 	l contains a 128-bit signed numeric value to convert to a decimal string. */
+/*  ECX contains the number of digits to print (from L.O.->H.O.)              */
+/*    including counts for the underscores if some are to be inserted and a   */
+/*    count for the minus sign if the number is negative.                     */
+/* 	                                                                          */
+/* 	EDI points at the end of a memory buffer large enough to hold an          */
+/* 	int128 value.                                                             */
+/*                                                                            */
+/* On exit:                                                                   */
+/* 	The buffer will contain a string that is the                              */
+/* 	string representation of the int32 value and EDI will point at the        */
+/* 	start of the string. If OutputUnderscores is true then this routine will  */
+/*  insert underscores between each group of three digits.                    */
+/*                                                                            */
+/******************************************************************************/
+
+
+
+
+
+procedure conv._intToBuf128
+( 
+		l		:lword;
+		width	:dword; 
+	var buffer	:char in edi 
+);
+	@noframe; 
+	@nodisplay; 
+	@noalignstack;
+
+		
+begin _intToBuf128;
+
+	push( ebp );
+	mov( esp, ebp );
+
+	mov( (type dword l[12]), edx );
+	test( edx, edx );
+	jns JMPunsToBuf128;
+
+		// Negate the 128-bit value so we can call conv._unsToBuf128:
+
+		xor( eax, eax );
+		sub( (type dword l), eax );
+		mov( eax, (type dword l ));
+
+		mov( 0, eax );
+		sbb( (type dword l[4]), eax );
+		mov( eax, (type dword l[4] ));
+
+		mov( 0, eax );
+		sbb( (type dword l[8]), eax );
+		mov( eax, (type dword l[8] ));
+
+		mov( 0, eax );
+		sbb( edx, eax );
+		mov( eax, (type dword l[12] ));
+	
+		dec( width );
+		conv._unsToBuf128( l, width, [edi] );
+
+		// The number was negative, so output a "-":
+
+		sub( 1, edi );
+		mov( '-', (type char [edi]));
+		pop( ebp );
+		ret( _parms_ );
+
+	// If the number was positive or zero, then just
+	// call conv._unsToBuf128 to do all the work:
+
+	JMPunsToBuf128:
+		pop( ebp );
+		jmp conv._unsToBuf128;
+
+end _intToBuf128;
+
+end ConvUnit;

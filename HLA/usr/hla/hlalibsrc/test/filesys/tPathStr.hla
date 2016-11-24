@@ -1,0 +1,2207 @@
+program pathstrTest;
+
+// returns 0 on successful run
+// returns 1 and displays error otherwise
+
+	#include("stdlib.hhf")
+	
+	
+	static
+		sptr	:string;
+		
+		s0	:string[43] := 
+			[
+				"/mypath/basename",
+				"/mypath/basename.ext",
+				"/mypath/basename.not_ext.ext",
+				"/mypath/.ext",
+				"/mypath/.basename",
+				"/mypath/.basename.ext",
+				"/mypath/.basename.not_ext.ext",
+				"/mypath/..ext",
+				"/basename",
+				"/basename.ext",
+				"/basename.not_ext.ext",
+				"/.ext",
+				"mypath/basename",
+				"mypath/basename.ext",
+				"mypath/basename.not_ext.ext",
+				"mypath/.ext",
+				"/mypath/basename",
+				"/mypath/basename.ext",
+				"/mypath/basename.not_ext.ext",
+				"/mypath/.ext",
+				"/path/path/basename",
+				"/path/path/basename.ext",
+				"path/path/basename",
+				"path/path/basename.exe",
+				"\mypath\.basename",
+				"\mypath\.basename.ext",
+				"\mypath\.basename.not_ext.ext",
+				"\mypath\..ext",
+				"\basename",
+				"\basename.not_ext.ext",
+				"\.ext",
+				"mypath\basename",
+				"mypath\basename.ext",
+				"mypath\basename.not_ext.ext",
+				"mypath\.ext",
+				"basename",
+				"basename.ext",
+				"basename.not_ext.ext",
+				".ext",
+				"\path\path\basename",
+				"\path\path\basename.ext",
+				"path\path\basename",
+				"path\path\basename.exe"
+			];
+			
+		pathResult	:string[43] := 
+			[
+				"/mypath",		// "/mypath/basename",		
+				"/mypath",		// "/mypath/basename.ext",
+				"/mypath",		// "/mypath/basename.not_ext.ext",
+				"/mypath",		// "/mypath/.ext",
+				"/mypath",		// "/mypath/.basename",
+				"/mypath",		// "/mypath/.basename.ext",
+				"/mypath",		// "/mypath/.basename.not_ext.ext",
+				"/mypath",		// "/mypath/..ext",
+				"",				// "/basename",
+				"",				// "/basename.ext",
+				"",				// "/basename.not_ext.ext",
+				"",				// "/.ext",
+				"mypath",		// "mypath/basename",
+				"mypath",		// "mypath/basename.ext",
+				"mypath",		// "mypath/basename.not_ext.ext",
+				"mypath",		// "mypath/.ext",
+				"/mypath",		// "/mypath/basename",
+				"/mypath",		// "/mypath/basename.ext",
+				"/mypath",		// "/mypath/basename.not_ext.ext",
+				"/mypath",		// "/mypath/.ext",
+				"/path/path",	// "/path/path/basename",
+				"/path/path",	// "/path/path/basename.ext",
+				"path/path",	// "path/path/basename",
+				"path/path",	// "path/path/basename.exe",
+				"\mypath",		// "\mypath\.basename",
+				"\mypath",		// "\mypath\.basename.ext",
+				"\mypath",		// "\mypath\.basename.not_ext.ext",
+				"\mypath",		// "\mypath\..ext",
+				"",				// "\basename",
+				"",				// "\basename.not_ext.ext",
+				"",				// "\.ext",
+				"mypath",		// "mypath\basename",
+				"mypath",		// "mypath\basename.ext",
+				"mypath",		// "mypath\basename.not_ext.ext",
+				"mypath",		// "mypath\.ext",
+				"",				// "basename",
+				"",				// "basename.ext",
+				"",				// "basename.not_ext.ext",
+				"",				// ".ext"
+				"\path\path",	// "\path\path\basename",
+				"\path\path",	// "\path\path\basename.ext",
+				"path\path",	// "path\path\basename",
+				"path\path"		// "path\path\basename.exe",
+			];
+			
+		fnameResult	:string[43] := 
+			[
+				"basename",				//  "/mypath/basename",
+				"basename.ext",			//  "/mypath/basename.ext",
+				"basename.not_ext.ext",	//  "/mypath/basename.not_ext.ext",
+				".ext",					//  "/mypath/.ext",
+				".basename",			//  "/mypath/.basename",
+				".basename.ext",		//  "/mypath/.basename.ext",
+				".basename.not_ext.ext",//  "/mypath/.basename.not_ext.ext",
+				"..ext",				//  "/mypath/..ext",
+				"basename",				//  "/basename",
+				"basename.ext",			//  "/basename.ext",
+				"basename.not_ext.ext",	//  "/basename.not_ext.ext",
+				".ext",					//  "/.ext",
+				"basename",				//  "mypath/basename",
+				"basename.ext",			//  "mypath/basename.ext",
+				"basename.not_ext.ext",	//  "mypath/basename.not_ext.ext",
+				".ext",					//  "mypath/.ext",
+				"basename",				//  "/mypath/basename",
+				"basename.ext",			//  "/mypath/basename.ext",
+				"basename.not_ext.ext",	//  "/mypath/basename.not_ext.ext",
+				".ext",					//  "/mypath/.ext",
+				"basename",				//  "/path/path/basename",
+				"basename.ext",			//  "/path/path/basename.ext",
+				"basename",				//  "path/path/basename",
+				"basename.exe",			//  "path/path/basename.exe",
+				".basename",			//  "\mypath\.basename",
+				".basename.ext",		//  "\mypath\.basename.ext",
+				".basename.not_ext.ext",//  "\mypath\.basename.not_ext.ext",
+				"..ext",				//  "\mypath\..ext",
+				"basename",				//  "\basename",
+				"basename.not_ext.ext",	//  "\basename.not_ext.ext",
+				".ext",					//  "\.ext",
+				"basename",				//  "mypath\basename",
+				"basename.ext",			//  "mypath\basename.ext",
+				"basename.not_ext.ext",	//  "mypath\basename.not_ext.ext",
+				".ext",					//  "mypath\.ext",
+				"basename",				//  "basename",
+				"basename.ext",			//  "basename.ext",
+				"basename.not_ext.ext",	//  "basename.not_ext.ext",
+				".ext",					//  ".ext",
+				"basename",				//  "\path\path\basename",
+				"basename.ext",			//  "\path\path\basename.ext",
+				"basename",				//  "path\path\basename",
+				"basename.exe"			//  "path\path\basename.exe"
+			];
+			
+		basenameResult	:string[43] := 
+			[
+				"basename",				//  /mypath/basename,
+				"basename",				//  /mypath/basename.ext,
+				"basename.not_ext",		//  /mypath/basename.not_ext.ext,
+				".ext",					//  /mypath/.ext,
+				".basename",			//  /mypath/.basename,
+				".basename",			//  /mypath/.basename.ext,
+				".basename.not_ext",	//  /mypath/.basename.not_ext.ext,
+				".",					//  /mypath/..ext,
+				"basename",				//  /basename,
+				"basename",				//  /basename.ext,
+				"basename.not_ext",		//  /basename.not_ext.ext,
+				".ext",					//  /.ext,
+				"basename",				//  mypath/basename,
+				"basename",				//  mypath/basename.ext,
+				"basename.not_ext",		//  mypath/basename.not_ext.ext,
+				".ext",					//  mypath/.ext,
+				"basename",				//  /mypath/basename,
+				"basename",				//  /mypath/basename.ext,
+				"basename.not_ext",		//  /mypath/basename.not_ext.ext,
+				".ext",					//  /mypath/.ext,
+				"basename",				//  /path/path/basename,
+				"basename",				//  /path/path/basename.ext,
+				"basename",				//  path/path/basename,
+				"basename",				//  path/path/basename.exe,
+				".basename",			//  \mypath\.basename,
+				".basename",			//  \mypath\.basename.ext,
+				".basename.not_ext",	//  \mypath\.basename.not_ext.ext,
+				".",					//  \mypath\..ext,
+				"basename",				//  \basename,
+				"basename.not_ext",		//  \basename.not_ext.ext,
+				".ext",					//  \.ext,
+				"basename",				//  mypath\basename,
+				"basename",				//  mypath\basename.ext,
+				"basename.not_ext",		//  mypath\basename.not_ext.ext,
+				".ext",					//  mypath\.ext,
+				"basename",				//  basename,
+				"basename",				//  basename.ext,
+				"basename.not_ext",		//  basename.not_ext.ext,
+				".ext",					//  .ext,
+				"basename",				//  \path\path\basename,
+				"basename",				//  \path\path\basename.ext,
+				"basename",				//  path\path\basename,
+				"basename"				//  path\path\basename.exe
+			];
+			
+		extResult	:string[43] := 
+			[
+				"",		//  /mypath/basename,
+				"ext",	//  /mypath/basename.ext,
+				"ext",	//  /mypath/basename.not_ext.ext,
+				"",		//  /mypath/.ext,
+				"",		//  /mypath/.basename,
+				"ext",	//  /mypath/.basename.ext,
+				"ext",	//  /mypath/.basename.not_ext.ext,
+				"ext",	//  /mypath/..ext,
+				"",		//  /basename,
+				"ext",	//  /basename.ext,
+				"ext",	//  /basename.not_ext.ext,
+				"",		//  /.ext,
+				"",		//  mypath/basename,
+				"ext",	//  mypath/basename.ext,
+				"ext",	//  mypath/basename.not_ext.ext,
+				"",		//  mypath/.ext,
+				"",		//  /mypath/basename,
+				"ext",	//  /mypath/basename.ext,
+				"ext",	//  /mypath/basename.not_ext.ext,
+				"ext",	//  /mypath/.ext,
+				"",		//  /path/path/basename,
+				"ext",	//  /path/path/basename.ext,
+				"",		//  path/path/basename,
+				"exe",	//  path/path/basename.exe,
+				"",		//  \mypath\.basename,
+				"ext",	//  \mypath\.basename.ext,
+				"ext",	//  \mypath\.basename.not_ext.ext,
+				"ext",	//  \mypath\..ext,
+				"",		//  \basename,
+				"ext",	//  \basename.not_ext.ext,
+				"",		//  \.ext,
+				"",		//  mypath\basename,
+				"ext",	//  mypath\basename.ext,
+				"ext",	//  mypath\basename.not_ext.ext,
+				"",		//  mypath\.ext,
+				"",		//  basename,
+				"ext",	//  basename.ext,
+				"ext",	//  basename.not_ext.ext,
+				"",		//  .ext,
+				"",		//  \path\path\basename,
+				"ext",	//  \path\path\basename.ext,
+				"",		//  path\path\basename,
+				"exe"	//  path\path\basename.exe
+			];
+			
+					
+		
+		unix32path	:string := "/mypath/basename";
+		win32path	:string := "\mypath\basename";
+		
+			
+		
+	const	
+		DL0_c	:string[] :=
+			[
+				"name",
+				"name.ext",
+				"/name.ext",
+				"/path/base.ext",
+				"path/base.ext",
+				"../name.ext",
+				"/path/../name.ext",
+				
+				"\name.ext",
+				"\path\base.ext",
+				"path\base.ext",
+				"..\name.ext",
+				"\path\..\name.ext",
+				
+				"a:name",
+				"b:name.ext",
+				"c:/name.ext",
+				"d:/path/base.ext",
+				"e:path/base.ext",
+				"f:../name.ext",
+				"g:/path/../name.ext",
+				
+				"a://comp/folder/name",
+				"b://comp/folder/name.ext",
+				"c://comp/folder//name.ext",
+				"d://comp/folder/path/base.ext",
+				"e://comp/folder/../name.ext",
+				"f://comp",
+				
+				"c:\name.ext",
+				"d:\path\base.ext",
+				"e:path\base.ext",
+				"f:..\name.ext",
+				"g:\path\..\name.ext",
+				
+				"a:\\comp\folder\name",
+				"b:\\comp\folder\name.ext",
+				"c:\\comp\folder\\name.ext",
+				"d:\\comp\folder\path\base.ext",
+				"e:\\comp\folder\..\name.ext",
+				"f:\\comp"
+				
+			];
+			
+	static
+		DL0	:string[@elements( DL0_c )] := DL0_c;
+		
+		DL0results	:char[@elements( DL0_c )] :=
+			[
+				#0,    //    "name",
+				#0,    //    "name.ext",
+				#0,    //    "/name.ext",
+				#0,    //    "/path/base.ext",
+				#0,    //    "path/base.ext",
+				#0,    //    "../name.ext",
+				#0,    //    "/path/../name.ext",
+				
+				#0,    //    "\name.ext",
+				#0,    //    "\path\base.ext",
+				#0,    //    "path\base.ext",
+				#0,    //    "..\name.ext",
+				#0,    //    "\path\..\name.ext",
+				
+				'A',   //    "a:name",
+				'B',   //    "b:name.ext",
+				'C',   //    "c:/name.ext",
+				'D',   //    "d:/path/base.ext",
+				'E',   //    "e:path/base.ext",
+				'F',   //    "f:../name.ext",
+				'G',   //    "g:/path/../name.ext",
+				
+				#0,    //    "a://comp/folder/name",
+				#0,    //    "b://comp/folder/name.ext",
+				#0,    //    "c://comp/folder//name.ext",
+				#0,    //    "d://comp/folder/path/base.ext",
+				#0,    //    "e://comp/folder/../name.ext",
+				#0,    //    "f://comp"
+				
+				'C',   //    "c:\name.ext",
+				'D',   //    "d:\path\base.ext",
+				'E',   //    "e:path\base.ext",
+				'F',   //    "f:..\name.ext",
+				'G',   //    "g:\path\..\name.ext",
+				
+				#0,    //    "a:\\comp\folder\name",
+				#0,    //    "b:\\comp\folder\name.ext",
+				#0,    //    "c:\\comp\folder\\name.ext",
+				#0,    //    "d:\\comp\folder\path\base.ext",
+				#0,    //    "e:\\comp\folder\..\name.ext",
+				#0     //    "f:\\comp"
+				
+			];
+			
+			
+			
+		
+		HE0results	:uns8[@elements( DL0_c )] :=
+			[
+				0,    //    "name",
+				1,    //    "name.ext",
+				1,    //    "/name.ext",
+				1,    //    "/path/base.ext",
+				1,    //    "path/base.ext",
+				1,    //    "../name.ext",
+				1,    //    "/path/../name.ext",
+				
+				1,    //    "\name.ext",
+				1,    //    "\path\base.ext",
+				1,    //    "path\base.ext",
+				1,    //    "..\name.ext",
+				1,    //    "\path\..\name.ext",
+				
+				0,   //    "a:name",
+				1,   //    "b:name.ext",
+				1,   //    "c:/name.ext",
+				1,   //    "d:/path/base.ext",
+				1,   //    "e:path/base.ext",
+				1,   //    "f:../name.ext",
+				1,   //    "g:/path/../name.ext",
+				
+				0,    //    "a://comp/folder/name",
+				1,    //    "b://comp/folder/name.ext",
+				1,    //    "c://comp/folder//name.ext",
+				1,    //    "d://comp/folder/path/base.ext",
+				1,    //    "e://comp/folder/../name.ext",
+				0,    //    "f://comp"
+				
+				1,   //    "c:\name.ext",
+				1,   //    "d:\path\base.ext",
+				1,   //    "e:path\base.ext",
+				1,   //    "f:..\name.ext",
+				1,   //    "g:\path\..\name.ext",
+				
+				0,    //    "a:\\comp\folder\name",
+				1,    //    "b:\\comp\folder\name.ext",
+				1,    //    "c:\\comp\folder\\name.ext",
+				1,    //    "d:\\comp\folder\path\base.ext",
+				1,    //    "e:\\comp\folder\..\name.ext",
+				0     //    "f:\\comp"
+				
+			];
+			
+			
+			
+		
+		HP0results	:uns8[@elements( DL0_c )] :=
+			[
+				0,    //    "name",
+				0,    //    "name.ext",
+				1,    //    "/name.ext",
+				1,    //    "/path/base.ext",
+				1,    //    "path/base.ext",
+				1,    //    "../name.ext",
+				1,    //    "/path/../name.ext",
+				
+				1,    //    "\name.ext",
+				1,    //    "\path\base.ext",
+				1,    //    "path\base.ext",
+				1,    //    "..\name.ext",
+				1,    //    "\path\..\name.ext",
+				
+				0,   //    "a:name",
+				0,   //    "b:name.ext",
+				1,   //    "c:/name.ext",
+				1,   //    "d:/path/base.ext",
+				1,   //    "e:path/base.ext",
+				1,   //    "f:../name.ext",
+				1,   //    "g:/path/../name.ext",
+				
+				1,    //    "a://comp/folder/name",
+				1,    //    "b://comp/folder/name.ext",
+				1,    //    "c://comp/folder//name.ext",
+				1,    //    "d://comp/folder/path/base.ext",
+				1,    //    "e://comp/folder/../name.ext",
+				1,    //    "f://comp"
+				
+				1,   //    "c:\name.ext",
+				1,   //    "d:\path\base.ext",
+				1,   //    "e:path\base.ext",
+				1,   //    "f:..\name.ext",
+				1,   //    "g:\path\..\name.ext",
+				
+				1,    //    "a:\\comp\folder\name",
+				1,    //    "b:\\comp\folder\name.ext",
+				1,    //    "c:\\comp\folder\\name.ext",
+				1,    //    "d:\\comp\folder\path\base.ext",
+				1,    //    "e:\\comp\folder\..\name.ext",
+				1     //    "f:\\comp"
+				
+			];
+			
+			
+			
+		UNCtest	:string[23] :=
+			[
+				"name",
+				"name.ext",
+				"/name.ext",
+				"/path/base.ext",
+				"path/base.ext",
+				"../name.ext",
+				"/path/../name.ext",
+				"a:name",
+				"b:name.ext",
+				"c:/name.ext",
+				"d:/path/base.ext",
+				"e:path/base.ext",
+				"f:../name.ext",
+				"g:/path/../name.ext",
+				"a://comp/folder/name",
+				"b://comp/folder./name.ext",
+				"c://comp/folder../name.ext",
+				"d://comp/folder.../path/base.ext",
+				"e://comp/folder..../../name.ext",
+				"f://comp/folder",
+				"g://comp",
+				"//comp/folder",
+				"//comp"
+			];
+			
+		
+				
+		UNCresults	:uns32[23] :=
+			[
+				0,    //    "name",
+				0,    //    "name.ext",
+				0,    //    "/name.ext",
+				0,    //    "/path/base.ext",
+				0,    //    "path/base.ext",
+				0,    //    "../name.ext",
+				0,    //    "/path/../name.ext",
+				0,    //    "a:name",
+				0,    //    "b:name.ext",
+				0,    //    "c:/name.ext",
+				0,    //    "d:/path/base.ext",
+				0,    //    "e:path/base.ext",
+				0,    //    "f:../name.ext",
+				0,    //    "g:/path/../name.ext",
+				16,   //    "a://comp/folder/name",
+				17,   //    "b://comp/folder./name.ext",
+				18,   //    "c://comp/folder../name.ext",
+				19,   //    "d://comp/folder.../path/base.ext",
+				20,   //    "e://comp/folder..../../name.ext",
+				0,    //    "f://comp/folder"
+				0,    //    "g://comp"
+				0,    //    "//comp/folder"
+				0     //    "//comp"
+			];
+				
+		UNCcarrys	:uns8[23] :=
+			[
+				1,        //    "name",
+				1,        //    "name.ext",
+				1,        //    "/name.ext",
+				1,        //    "/path/base.ext",
+				1,        //    "path/base.ext",
+				1,        //    "../name.ext",
+				1,        //    "/path/../name.ext",
+				1,        //    "a:name",
+				1,        //    "b:name.ext",
+				1,        //    "c:/name.ext",
+				1,        //    "d:/path/base.ext",
+				1,        //    "e:path/base.ext",
+				1,        //    "f:../name.ext",
+				1,        //    "g:/path/../name.ext",
+				1,        //    "a://comp/folder/name",
+				1,        //    "b://comp/folder/name.ext",
+				1,        //    "c://comp/folder//name.ext",
+				1,        //    "d://comp/folder/path/base.ext",
+				1,        //    "e://comp/folder/../name.ext",
+				0,        //    "f://comp/folder"
+				0,        //    "g://comp"
+				0,        //    "//comp/folder"
+				0         //    "//comp"
+			];
+				
+		
+		
+			
+			
+			
+		normTest	:string[161] :=
+			[
+				"path/../path/../name",
+				"path\..\path\..\name",
+				"/path/../path/../name",
+				"/path\..\path\..\name",
+				"/path/../../name",
+				"/path\..\..\name",
+				"\path/path/../../name",
+				"\path\path\..\..\name",
+				"path/../../name",
+				"path\..\..\name",
+				"path/path/../../name",
+				"path\path\..\..\name",
+				"name",
+				"./name",
+				"../name",
+				"/name",
+				"/./name",
+				"/../name",
+				"path/name",
+				"path/./name",
+				"path/../name",
+				"/path/name",
+				"./path/name",
+				"../path/name",
+				"/path/./name",
+				"/path/../name",
+				"a:name",
+				"b:./name",
+				"c:../name",
+				"d:/name",
+				"e:/./name",
+				"f:/../name",
+				"g:path/name",
+				"h:path/./name",
+				"i:path/../name",
+				"j:/path/name",
+				"k:./path/name",
+				"l:../path/name",
+				"m:/path/./name",
+				"n:/path/../name",
+				"//unc/folder/name",
+				"//unc/folder/./name",
+				"//unc/folder/../name",
+				"//unc/folder/name",
+				"//unc/folder/./name",
+				"//unc/folder/../name",
+				"//unc/folder/path/name",
+				"//unc/folder/path/./name",
+				"//unc/folder/path/../name",
+				"//unc/folder/path/name",
+				"//unc/folder/./path/name",
+				"//unc/folder/../path/name",
+				"//unc/folder/path/./name",
+				"//unc/folder/path/../name",
+				"t://unc/folder/name",
+				"ty://unc/folder/./name",
+				"typ://unc/folder/../name",
+				"type://unc/folder/name",
+				"type://unc/folder/./name",
+				"type://unc/folder/../name",
+				"type://unc/folder/path/name",
+				"type://unc/folder/path/./name",
+				"type://unc/folder/path/../name",
+				"type://unc/folder/path/name",
+				"type://unc/folder/./path/name",
+				"type://unc/folder/../path/name",
+				"type://unc/folder/path/./name",
+				"type://unc/folder/path/../name",
+				"a:",
+				"a:/",
+				"/",
+				"./",
+				"../",
+				"a:./",
+				"a:../",
+				"a:/./",
+				"a:/../",
+				"//unc/folder/",
+				"//unc/folder/./",
+				"//unc/folder/../",
+				"t://unc/folder/",
+				"type://unc/folder/./",
+				"type://unc/folder/../",
+				".\name",
+				"..\name",
+				"\name",
+				"\.\name",
+				"\..\name",
+				"path\name",
+				"path\.\name",
+				"path\..\name",
+				"\path\name",
+				".\path\name",
+				"..\path\name",
+				"\path\.\name",
+				"\path\..\name",
+				"b:.\name",
+				"c:..\name",
+				"d:\name",
+				"e:\.\name",
+				"f:\..\name",
+				"g:path\name",
+				"h:path\.\name",
+				"i:path\..\name",
+				"j:\path\name",
+				"k:.\path\name",
+				"l:..\path\name",
+				"m:\path\.\name",
+				"n:\path\..\name",
+				"\\unc\folder\name",
+				"\\unc\folder\.\name",
+				"\\unc\folder\..\name",
+				"\\unc\folder\name",
+				"\\unc\folder\.\name",
+				"\\unc\folder\..\name",
+				"\\unc\folder\path\name",
+				"\\unc\folder\path\.\name",
+				"\\unc\folder\path\..\name",
+				"\\unc\folder\path\name",
+				"\\unc\folder\.\path\name",
+				"\\unc\folder\..\path\name",
+				"\\unc\folder\path\.\name",
+				"\\unc\folder\path\..\name",
+				"t:\\unc\folder\name",
+				"ty:\\unc\folder\.\name",
+				"typ:\\unc\folder\..\name",
+				"type:\\unc\folder\name",
+				"type:\\unc\folder\.\name",
+				"type:\\unc\folder\..\name",
+				"type:\\unc\folder\path\name",
+				"type:\\unc\folder\path\.\name",
+				"type:\\unc\folder\path\..\name",
+				"type:\\unc\folder\path\name",
+				"type:\\unc\folder\.\path\name",
+				"type:\\unc\folder\..\path\name",
+				"type:\\unc\folder\path\.\name",
+				"type:\\unc\folder\path\..\name",
+				"a:\",
+				"\",
+				".\",
+				"..\",
+				"a:.\",
+				"a:..\",
+				"a:\.\",
+				"a:\..\",
+				"\\unc\folder\",
+				"\\unc\folder\.\",
+				"\\unc\folder\..\",
+				"t:\\unc\folder\",
+				"type:\\unc\folder\.\",
+				"type:\\unc\folder\..\",
+				
+				"//unc",
+				"//unc/folder",
+				"t://",
+				"t://unc",
+				"t://unc/folder",
+				"\\unc",
+				"\\unc\folder",
+				"t:\\",
+				"t:\\unc",
+				"t:\\unc\folder"
+				
+				
+			];
+			
+		
+				
+		normResults	:string[ @elements( normTest ) ] :=
+			[
+			#if( os.win32 )
+				
+				"name",							//  path/../path/../name
+				"name",							//  path\..\path\..\name
+				"\name",						//  \path/../path/../name
+				"\name",						//  \path\..\path\..\name
+				"\..\name",						//  /path/../../name
+				"\..\name",						//  /path\..\..\name
+				"\name",						//  \path/path/../../name
+				"\name",						//  \path\path\..\..\name
+				"..\name",						//  path/../../name
+				"..\name",						//  path\..\..\name
+				"name",							//  path/path/../../name
+				"name",							//  path\path\..\..\name
+				"name",							//  name,
+				"name",							//  ./name,
+				"..\name",						//  ../name,
+				"\name",						//  /name,
+				"\name",						//  /./name,
+				"\..\name",						//  /../name,
+				"path\name",					//  path/name,
+				"path\name",					//  path/./name,
+				"name",							//  path/../name,
+				"\path\name",					//  /path/name,
+				"path\name",					//  ./path/name,
+				"..\path\name",					//  ../path/name,
+				"\path\name",					//  /path/./name,
+				"\name",						//  /path/../name,
+				"a:name",						//  a:name,
+				"b:name",						//  b:./name,
+				"c:..\name",					//  c:../name,
+				"d:\name",						//  d:/name,
+				"e:\name",						//  e:/./name,
+				"f:\..\name",					//  f:/../name,
+				"g:path\name",					//  g:path/name,
+				"h:path\name",					//  h:path/./name,
+				"i:name",						//  i:path/../name,
+				"j:\path\name",					//  j:/path/name,
+				"k:path\name",					//  k:./path/name,
+				"l:..\path\name",				//  l:../path/name,
+				"m:\path\name",					//  m:/path/./name,
+				"n:\name",						//  n:/path/../name,
+				"\\unc\folder\name",			//  //unc/folder/name,
+				"\\unc\folder\name",			//  //unc/folder/./name,
+				"\\unc\folder\..\name",			//  //unc/folder/../name,
+				"\\unc\folder\name",			//  //unc/folder/name,
+				"\\unc\folder\name",			//  //unc/folder/./name,
+				"\\unc\folder\..\name",			//  //unc/folder/../name,
+				"\\unc\folder\path\name",		//  //unc/folder/path/name,
+				"\\unc\folder\path\name",		//  //unc/folder/path/./name,
+				"\\unc\folder\name",			//  //unc/folder/path/../name,
+				"\\unc\folder\path\name",		//  //unc/folder/path/name,
+				"\\unc\folder\path\name",		//  //unc/folder/./path/name,
+				"\\unc\folder\..\path\name",	//  //unc/folder/../path/name,
+				"\\unc\folder\path\name",		//  //unc/folder/path/./name,
+				"\\unc\folder\name",			//  //unc/folder/path/../name,
+				"t:\\unc\folder\name",			//  t://unc/folder/name,
+				"ty:\\unc\folder\name",			//  ty://unc/folder/./name,
+				"typ:\\unc\folder\..\name",		//  typ://unc/folder/../name,
+				"type:\\unc\folder\name",		//  type://unc/folder/name,
+				"type:\\unc\folder\name",		//  type://unc/folder/./name,
+				"type:\\unc\folder\..\name",	//  type://unc/folder/../name,
+				"type:\\unc\folder\path\name",	//  type://unc/folder/path/name,
+				"type:\\unc\folder\path\name",	//  type://unc/folder/path/./name,
+				"type:\\unc\folder\name",		//  type://unc/folder/path/../name,
+				"type:\\unc\folder\path\name",	//  type://unc/folder/path/name,
+				"type:\\unc\folder\path\name",	//  type://unc/folder/./path/name,
+				"type:\\unc\folder\..\path\name",//  type://unc/folder/../path/name,
+				"type:\\unc\folder\path\name",	//  type://unc/folder/path/./name,
+				"type:\\unc\folder\name",		//  type://unc/folder/path/../name,
+				"a:",							//  a:,
+				"a:\",							//  a:/,
+				"\",							//  /,
+				"",								//  ./,
+				"..\",							//  ../,
+				"a:",							//  a:./,
+				"a:..\",						//  a:../,
+				"a:\",							//  a:/./,
+				"a:\..\",						//  a:/../,
+				"\\unc\folder\",				//  //unc/folder/,
+				"\\unc\folder\",				//  //unc/folder/./,
+				"\\unc\folder\..\",				//  //unc/folder/../,
+				"t:\\unc\folder\",				//  t://unc/folder/,
+				"type:\\unc\folder\",			//  type://unc/folder/./,
+				"type:\\unc\folder\..\",		//  type://unc/folder/../,
+				"name",							//  .\name,
+				"..\name",						//  ..\name,
+				"\name",						//  \name,
+				"\name",						//  \.\name,
+				"\..\name",						//  \..\name,
+				"path\name",					//  path\name,
+				"path\name",					//  path\.\name,
+				"name",							//  path\..\name,
+				"\path\name",					//  \path\name,
+				"path\name",					//  .\path\name,
+				"..\path\name",					//  ..\path\name,
+				"\path\name",					//  \path\.\name,
+				"\name",						//  \path\..\name,
+				"b:name",						//  b:.\name,
+				"c:..\name",					//  c:..\name,
+				"d:\name",						//  d:\name,
+				"e:\name",						//  e:\.\name,
+				"f:\..\name",					//  f:\..\name,
+				"g:path\name",					//  g:path\name,
+				"h:path\name",					//  h:path\.\name,
+				"i:name",						//  i:path\..\name,
+				"j:\path\name",					//  j:\path\name,
+				"k:path\name",					//  k:.\path\name,
+				"l:..\path\name",				//  l:..\path\name,
+				"m:\path\name",					//  m:\path\.\name,
+				"n:\name",						//  n:\path\..\name,
+				"\\unc\folder\name",			//  \\unc\folder\name,
+				"\\unc\folder\name",			//  \\unc\folder\.\name,
+				"\\unc\folder\..\name",			//  \\unc\folder\..\name,
+				"\\unc\folder\name",			//  \\unc\folder\name,
+				"\\unc\folder\name",			//  \\unc\folder\.\name,
+				"\\unc\folder\..\name",			//  \\unc\folder\..\name,
+				"\\unc\folder\path\name",		//  \\unc\folder\path\name,
+				"\\unc\folder\path\name",		//  \\unc\folder\path\.\name,
+				"\\unc\folder\name",			//  \\unc\folder\path\..\name,
+				"\\unc\folder\path\name",		//  \\unc\folder\path\name,
+				"\\unc\folder\path\name",		//  \\unc\folder\.\path\name,
+				"\\unc\folder\..\path\name",	//  \\unc\folder\..\path\name,
+				"\\unc\folder\path\name",		//  \\unc\folder\path\.\name,
+				"\\unc\folder\name",			//  \\unc\folder\path\..\name,
+				"t:\\unc\folder\name",			//  t:\\unc\folder\name,
+				"ty:\\unc\folder\name",			//  ty:\\unc\folder\.\name,
+				"typ:\\unc\folder\..\name",		//  typ:\\unc\folder\..\name,
+				"type:\\unc\folder\name",		//  type:\\unc\folder\name,
+				"type:\\unc\folder\name",		//  type:\\unc\folder\.\name,
+				"type:\\unc\folder\..\name",	//  type:\\unc\folder\..\name,
+				"type:\\unc\folder\path\name",	//  type:\\unc\folder\path\name,
+				"type:\\unc\folder\path\name",	//  type:\\unc\folder\path\.\name,
+				"type:\\unc\folder\name",		//  type:\\unc\folder\path\..\name,
+				"type:\\unc\folder\path\name",	//  type:\\unc\folder\path\name,
+				"type:\\unc\folder\path\name",	//  type:\\unc\folder\.\path\name,
+				"type:\\unc\folder\..\path\name",//  type:\\unc\folder\..\path\name,
+				"type:\\unc\folder\path\name",	//  type:\\unc\folder\path\.\name,
+				"type:\\unc\folder\name",		//  type:\\unc\folder\path\..\name,
+				"a:\",							//  a:\,
+				"\",							//  \,
+				"",								//  .\,
+				"..\",							//  ..\,
+				"a:",							//  a:.\,
+				"a:..\",						//  a:..\,
+				"a:\",							//  a:\.\,
+				"a:\..\",						//  a:\..\,
+				"\\unc\folder\",				//  \\unc\folder\,
+				"\\unc\folder\",				//  \\unc\folder\.\,
+				"\\unc\folder\..\",				//  \\unc\folder\..\,
+				"t:\\unc\folder\",				//  t:\\unc\folder\,
+				"type:\\unc\folder\",			//  type:\\unc\folder\.\,
+				"type:\\unc\folder\..\",		//  type:\\unc\folder\..\,
+				
+				"\\unc",						//  //unc,
+				"\\unc\folder",					//  //unc/folder,
+				"t:\\",							//  t://,
+				"t:\\unc",						//  t://unc,
+				"t:\\unc\folder",				//  t://unc/folder,
+				"\\unc",						//  \\unc,
+				"\\unc\folder",					//  \\unc\folder,
+				"t:\\",							//  t:\\,
+				"t:\\unc",						//  t:\\unc,
+				"t:\\unc\folder"				//  t:\\unc\folder
+				
+
+			#else
+						 
+				
+				"name",							//  path/../path/../name
+				"name",							//  path\..\path\..\name
+				"/name",						//  \path/../path/../name
+				"/name",						//  \path\..\path\..\name
+				"/../name",						//  /path/../../name
+				"/../name",						//  /path\..\..\name
+				"/name",						//  \path/path/../../name
+				"/name",						//  \path\path\..\..\name
+				"../name",						//  path/../../name
+				"../name",						//  path\..\..\name
+				"name",							//  path/path/../../name
+				"name",							//  path\path\..\..\name
+				"name",							//  name,
+				"name",							//  ./name,
+				"../name",						//  ../name,
+				"/name",						//  /name,
+				"/name",						//  /./name,
+				"/../name",						//  /../name,
+				"path/name",					//  path/name,
+				"path/name",					//  path/./name,
+				"name",							//  path/../name,
+				"/path/name",					//  /path/name,
+				"path/name",					//  ./path/name,
+				"../path/name",					//  ../path/name,
+				"/path/name",					//  /path/./name,
+				"/name",						//  /path/../name,
+				"a:name",						//  a:name,
+				"b:name",						//  b:./name,
+				"c:../name",					//  c:../name,
+				"d:/name",						//  d:/name,
+				"e:/name",						//  e:/./name,
+				"f:/../name",					//  f:/../name,
+				"g:path/name",					//  g:path/name,
+				"h:path/name",					//  h:path/./name,
+				"i:name",						//  i:path/../name,
+				"j:/path/name",					//  j:/path/name,
+				"k:path/name",					//  k:./path/name,
+				"l:../path/name",				//  l:../path/name,
+				"m:/path/name",					//  m:/path/./name,
+				"n:/name",						//  n:/path/../name,
+				"//unc/folder/name",			//  //unc/folder/name,
+				"//unc/folder/name",			//  //unc/folder/./name,
+				"//unc/folder/../name",			//  //unc/folder/../name,
+				"//unc/folder/name",			//  //unc/folder/name,
+				"//unc/folder/name",			//  //unc/folder/./name,
+				"//unc/folder/../name",			//  //unc/folder/../name,
+				"//unc/folder/path/name",		//  //unc/folder/path/name,
+				"//unc/folder/path/name",		//  //unc/folder/path/./name,
+				"//unc/folder/name",			//  //unc/folder/path/../name,
+				"//unc/folder/path/name",		//  //unc/folder/path/name,
+				"//unc/folder/path/name",		//  //unc/folder/./path/name,
+				"//unc/folder/../path/name",	//  //unc/folder/../path/name,
+				"//unc/folder/path/name",		//  //unc/folder/path/./name,
+				"//unc/folder/name",			//  //unc/folder/path/../name,
+				"t://unc/folder/name",			//  t://unc/folder/name,
+				"ty://unc/folder/name",			//  ty://unc/folder/./name,
+				"typ://unc/folder/../name",		//  typ://unc/folder/../name,
+				"type://unc/folder/name",		//  type://unc/folder/name,
+				"type://unc/folder/name",		//  type://unc/folder/./name,
+				"type://unc/folder/../name",	//  type://unc/folder/../name,
+				"type://unc/folder/path/name",	//  type://unc/folder/path/name,
+				"type://unc/folder/path/name",	//  type://unc/folder/path/./name,
+				"type://unc/folder/name",		//  type://unc/folder/path/../name,
+				"type://unc/folder/path/name",	//  type://unc/folder/path/name,
+				"type://unc/folder/path/name",	//  type://unc/folder/./path/name,
+				"type://unc/folder/../path/name",//  type://unc/folder/../path/name,
+				"type://unc/folder/path/name",	//  type://unc/folder/path/./name,
+				"type://unc/folder/name",		//  type://unc/folder/path/../name,
+				"a:",							//  a:,
+				"a:/",							//  a:/,
+				"/",							//  /,
+				"",								//  ./,
+				"../",							//  ../,
+				"a:",							//  a:./,
+				"a:../",						//  a:../,
+				"a:/",							//  a:/./,
+				"a:/../",						//  a:/../,
+				"//unc/folder/",				//  //unc/folder/,
+				"//unc/folder/",				//  //unc/folder/./,
+				"//unc/folder/../",				//  //unc/folder/../,
+				"t://unc/folder/",				//  t://unc/folder/,
+				"type://unc/folder/",			//  type://unc/folder/./,
+				"type://unc/folder/../",		//  type://unc/folder/../,
+				"name",							//  .\name,
+				"../name",						//  ..\name,
+				"/name",						//  \name,
+				"/name",						//  \.\name,
+				"/../name",						//  \..\name,
+				"path/name",					//  path\name,
+				"path/name",					//  path\.\name,
+				"name",							//  path\..\name,
+				"/path/name",					//  \path\name,
+				"path/name",					//  .\path\name,
+				"../path/name",					//  ..\path\name,
+				"/path/name",					//  \path\.\name,
+				"/name",						//  \path\..\name,
+				"b:name",						//  b:.\name,
+				"c:../name",					//  c:..\name,
+				"d:/name",						//  d:\name,
+				"e:/name",						//  e:\.\name,
+				"f:/../name",					//  f:\..\name,
+				"g:path/name",					//  g:path\name,
+				"h:path/name",					//  h:path\.\name,
+				"i:name",						//  i:path\..\name,
+				"j:/path/name",					//  j:\path\name,
+				"k:path/name",					//  k:.\path\name,
+				"l:../path/name",				//  l:..\path\name,
+				"m:/path/name",					//  m:\path\.\name,
+				"n:/name",						//  n:\path\..\name,
+				"//unc/folder/name",			//  \\unc\folder\name,
+				"//unc/folder/name",			//  \\unc\folder\.\name,
+				"//unc/folder/../name",			//  \\unc\folder\..\name,
+				"//unc/folder/name",			//  \\unc\folder\name,
+				"//unc/folder/name",			//  \\unc\folder\.\name,
+				"//unc/folder/../name",			//  \\unc\folder\..\name,
+				"//unc/folder/path/name",		//  \\unc\folder\path\name,
+				"//unc/folder/path/name",		//  \\unc\folder\path\.\name,
+				"//unc/folder/name",			//  \\unc\folder\path\..\name,
+				"//unc/folder/path/name",		//  \\unc\folder\path\name,
+				"//unc/folder/path/name",		//  \\unc\folder\.\path\name,
+				"//unc/folder/../path/name",	//  \\unc\folder\..\path\name,
+				"//unc/folder/path/name",		//  \\unc\folder\path\.\name,
+				"//unc/folder/name",			//  \\unc\folder\path\..\name,
+				"t://unc/folder/name",			//  t:\\unc\folder\name,
+				"ty://unc/folder/name",			//  ty:\\unc\folder\.\name,
+				"typ://unc/folder/../name",		//  typ:\\unc\folder\..\name,
+				"type://unc/folder/name",		//  type:\\unc\folder\name,
+				"type://unc/folder/name",		//  type:\\unc\folder\.\name,
+				"type://unc/folder/../name",	//  type:\\unc\folder\..\name,
+				"type://unc/folder/path/name",	//  type:\\unc\folder\path\name,
+				"type://unc/folder/path/name",	//  type:\\unc\folder\path\.\name,
+				"type://unc/folder/name",		//  type:\\unc\folder\path\..\name,
+				"type://unc/folder/path/name",	//  type:\\unc\folder\path\name,
+				"type://unc/folder/path/name",	//  type:\\unc\folder\.\path\name,
+				"type://unc/folder/../path/name",//  type:\\unc\folder\..\path\name,
+				"type://unc/folder/path/name",	//  type:\\unc\folder\path\.\name,
+				"type://unc/folder/name",		//  type:\\unc\folder\path\..\name,
+				"a:/",							//  a:\,
+				"/",							//  \,
+				"",								//  .\,
+				"../",							//  ..\,
+				"a:",							//  a:.\,
+				"a:../",						//  a:..\,
+				"a:/",							//  a:\.\,
+				"a:/../",						//  a:\..\,
+				"//unc/folder/",				//  \\unc\folder\,
+				"//unc/folder/",				//  \\unc\folder\.\,
+				"//unc/folder/../",				//  \\unc\folder\..\,
+				"t://unc/folder/",				//  t:\\unc\folder\,
+				"type://unc/folder/",			//  type:\\unc\folder\.\,
+				"type://unc/folder/../",		//  type:\\unc\folder\..\,
+				
+				"//unc",						//  //unc,
+				"//unc/folder",					//  //unc/folder,
+				"t://",							//  t://,
+				"t://unc",						//  t://unc,
+				"t://unc/folder",				//  t://unc/folder,
+				"//unc",						//  \\unc,
+				"//unc/folder",					//  \\unc\folder,
+				"t://",							//  t:\\,
+				"t://unc",						//  t:\\unc,
+				"t://unc/folder"				//  t:\\unc\folder
+				
+
+
+			#endif
+			];
+				
+		normCarrys	:uns8[ @elements( normTest ) ] :=
+			[
+
+				1,	//	path/../path/../name
+				1,	//	path\..\path\..\name	
+				1,	//	/path/../path/../name
+				1,	//	/path\..\path\..\name	
+				1,	//	/path/../../name
+				1,	//	/path\..\..\name	
+				1,	//	\path/path/../../name
+				1,	//	\path\path\..\..\name	
+				1,	//	path/../../name
+				1,	//	path\..\..\name	
+				1,	//	path/path/../../name
+				1,	//	path\path\..\..\name	
+				1,	//  name,
+				1,	//  .\name,
+				1,	//  ..\name,
+
+				1,	//  \name,
+				1,	//  \name,
+				1,	//  \..\name,
+
+				1,	//  path\name,
+				1,	//  path\name,
+				1,	//  name,
+
+				1,	//  \path\name,
+				1,	//  path\name,
+				1,	//  ..\path\name,
+				1,	//  \path\name,
+				1,	//  \name,
+
+				1,	//  a:name,
+				1,	//  b:name,
+				1,	//  c:..\name,
+
+				1,	//  d:\name,
+				1,	//  e:\name,
+				1,	//  f:\..\name,
+
+				1,	//  g:path\name,
+				1,	//  h:path\name,
+				1,	//  i:name,
+
+				1,	//  j:\path\name,
+				1,	//  k:path\name,
+				1,	//  l:..\path\name,
+				1,	//  m:\path\name,
+				1,	//  n:\name,
+
+				1,	//  \\unc\folder\name,
+				1,	//  \\unc\folder\name,
+				1,	//  \\unc\folder\..\name,
+
+				1,	//  \\unc\folder\name,
+				1,	//  \\unc\folder\name,
+				1,	//  \\unc\folder\..\name,
+
+				1,	//  \\unc\folder\path\name,
+				1,	//  \\unc\folder\path\name,
+				1,	//  \\unc\folder\name,
+
+				1,	//  \\unc\folder\path\name,
+				1,	//  \\unc\folder\path\name,
+				1,	//  \\unc\folder\..\path\name,
+				1,	//  \\unc\folder\path\name,
+				1,	//  \\unc\folder\name,
+
+				1,	//  t:\\unc\folder\name,
+				1,	//  ty:\\unc\folder\name,
+				1,	//  typ:\\unc\folder\..\name,
+
+				1,	//  type:\\unc\folder\name,
+				1,	//  type:\\unc\folder\name,
+				1,	//  type:\\unc\folder\..\name,
+
+				1,	//  type:\\unc\folder\path\name,
+				1,	//  type:\\unc\folder\path\name,
+				1,	//  type:\\unc\folder\name,
+
+				1,	//  type:\\unc\folder\path\name,
+				1,	//  type:\\unc\folder\path\name,
+				1,	//  type:\\unc\folder\..\path\name,
+				1,	//  type:\\unc\folder\path\name,
+				1,	//  type:\\unc\folder\name,
+
+				1,	//  a:,
+				1,	//  a:\,
+				1,	//  \,
+				1,	//  ,
+				1,	//  ..\,
+				1,	//  a:,
+				1,	//  a:..\,
+				1,	//  a:\,
+				1,	//  a:\..\,
+
+
+
+				1,	//  .\name,
+				1,	//  ..\name,
+
+				1,	//  \name,
+				1,	//  \name,
+				1,	//  \..\name,
+
+				1,	//  path\name,
+				1,	//  path\name,
+				1,	//  name,
+
+				1,	//  \path\name,
+				1,	//  path\name,
+				1,	//  ..\path\name,
+				1,	//  \path\name,
+				1,	//  \name,
+
+				1,	//  b:name,
+				1,	//  c:..\name,
+
+				1,	//  d:\name,
+				1,	//  e:\name,
+				1,	//  f:\..\name,
+
+				1,	//  g:path\name,
+				1,	//  h:path\name,
+				1,	//  i:name,
+
+				1,	//  j:\path\name,
+				1,	//  k:path\name,
+				1,	//  l:..\path\name,
+				1,	//  m:\path\name,
+				1,	//  n:\name,
+
+				1,	//  \\unc\folder\name,
+				1,	//  \\unc\folder\name,
+				1,	//  \\unc\folder\..\name,
+
+				1,	//  \\unc\folder\name,
+				1,	//  \\unc\folder\name,
+				1,	//  \\unc\folder\..\name,
+
+				1,	//  \\unc\folder\path\name,
+				1,	//  \\unc\folder\path\name,
+				1,	//  \\unc\folder\name,
+
+				1,	//  \\unc\folder\path\name,
+				1,	//  \\unc\folder\path\name,
+				1,	//  \\unc\folder\..\path\name,
+				1,	//  \\unc\folder\path\name,
+				1,	//  \\unc\folder\name,
+
+				1,	//  t:\\unc\folder\name,
+				1,	//  ty:\\unc\folder\name,
+				1,	//  typ:\\unc\folder\..\name,
+
+				1,	//  type:\\unc\folder\name,
+				1,	//  type:\\unc\folder\name,
+				1,	//  type:\\unc\folder\..\name,
+
+				1,	//  type:\\unc\folder\path\name,
+				1,	//  type:\\unc\folder\path\name,
+				1,	//  type:\\unc\folder\name,
+
+				1,	//  type:\\unc\folder\path\name,
+				1,	//  type:\\unc\folder\path\name,
+				1,	//  type:\\unc\folder\..\path\name,
+				1,	//  type:\\unc\folder\path\name,
+				1,	//  type:\\unc\folder\name,
+
+				1,	//  a:\,
+				1,	//  \,
+				1,	//  ,
+				1,	//  ..\,
+				1,	//  a:,
+				1,	//  a:..\,
+				1,	//  a:\,
+				1,	//  a:\..\,
+
+				1,	//  \\unc\folder\,
+				1,	//  \\unc\folder\,
+				1,	//  \\unc\folder\..\,
+
+				1,	//  t:\\unc\folder\,
+				1,	//  type:\\unc\folder\,
+				1,	//  type:\\unc\folder\..\,
+
+
+				1,	//  \\unc\folder\,
+				1,	//  \\unc\folder\,
+				1,	//  \\unc\folder\..\,
+
+				1,	//  t:\\unc\folder\,
+				1,	//  type:\\unc\folder\,
+				1,	//  type:\\unc\folder\..\,
+				
+				0,	//  \\unc,
+				0,	//  \\unc\folder,
+				0,	//  t:\\,
+				0,	//  t:\\unc,
+				0,	//  t:\\unc\folder,
+
+				0,	//  \\unc,
+				0,	//  \\unc\folder,
+				0,	//  t:\\,
+				0,	//  t:\\unc,
+				0	//  t:\\unc\folder
+
+			];
+			
+	const
+		jp0_c	:string[] :=
+			[
+				"",
+				"/",				
+				"path",
+				"/path",
+				"/path/",
+				"path/path",
+				"path/path/",
+				"/path/path",
+				"/path/path/",
+				
+				"\",				
+				"\path",
+				"\path\",
+				"path\path",
+				"path\path\",
+				"\path\path",
+				"\path\path\",
+				
+			];
+		
+		jp1_c	:string[] :=
+			[
+				"",
+				"/",
+				"name",
+				"/name",
+				"path/name",
+				"/path/name",
+					
+				"\",			
+				"\name",
+				"path\name",
+				"\path\name",				
+			];
+			
+		#macro isDirSep( _t_ );
+			((_t_ = '\' ) | (_t_ = '/'))
+		#endmacro
+		
+		#macro lastIsDirSep( _s_ ):_ch_;
+			#if( @length( _s_ ) = 0 )
+				false
+			#else
+				?_ch_ := @substr( _s_, @length(_s_)-1, 1 );
+				((_ch_ = '\' ) | (_ch_ = '/'))
+			#endif
+		#endmacro
+		
+		#macro firstIsDirSep( _s_ ):_ch_;
+			#if( @length( _s_ ) = 0 )
+				false
+			#else
+				?_ch_ := @substr( _s_, 0, 1 );
+				((_ch_ = '\' ) | (_ch_ = '/'))
+			#endif
+		#endmacro
+		
+		jpResults_c	:string[] :=
+			[
+				#for( _i_ in jp0_c )
+					#for( _j_ in jp1_c )
+					
+						#if( lastIsDirSep( _i_ ) & firstIsDirSep( _j_ ))
+						
+							?_k_ := _i_ 
+								#if( @length( _j_ ) > 0 )
+									+ @substr( _j_, 1, @length( _j_ ) - 1 )
+								#endif;
+								
+						#elseif( !lastIsDirSep( _i_ ) & firstIsDirSep( _j_ ))
+						
+							?_k_ := _i_ + _j_;
+								
+						#elseif( lastIsDirSep( _i_ ) & !firstIsDirSep( _j_ ))
+						
+							?_k_ := _i_ + _j_;
+					
+						#else
+						
+							#if( @length( _i_ ) > 0 & @length( _j_ ) > 0 )
+						
+								?_k_ := _i_ 
+									#if( os.win32 )
+										+ '\'
+									#else
+										+ '/'
+									#endif
+										+ _j_;
+										
+							#else
+							
+								?_k_ := _i_ + _j_;
+								
+							#endif
+					
+						#endif
+										
+						#for( _m_ in _k_ )
+							#if( isDirSep( _m_ ) )
+								chars.dir_sep +
+							#else
+								_m_ +
+							#endif
+						#endfor
+						"",
+								
+					#endfor
+					
+				#endfor
+			];
+			
+	static
+		jp0			:string[ @elements( jp0_c ) ] := jp0_c;
+		jp1			:string[ @elements( jp1_c ) ] := jp1_c;
+		jpResults	:string[ @elements( jpResults_c ) ] := jpResults_c;
+		
+		
+		sbuf	:str.strvar( 1000 );
+		
+begin pathstrTest;
+
+
+	stderr.put( "Testing filesys.a_extractBase" nl );
+	for( mov( 0, ecx ); ecx < @elements( s0 ); inc( ecx )) do
+	
+		if( filesys.a_extractBase( s0[ecx*4] ) ) then
+			
+			mov( eax, sptr );
+			if( str.ne( eax, basenameResult[ecx*4] ) ) then
+			
+				stderr.put
+				( 
+					"Error in filesys.a_extractBase, ecx=", (type uns32 ecx), nl
+					"should return  : ", basenameResult[ecx*4], nl
+					"returned       : ", sptr, nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			str.free( sptr ); 
+			
+		else
+			stderr.put 
+			(
+				"Error in filesys.a_extractBase" nl
+				"should return	carry = set" nl
+				"returned		carry = clear" nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif; 
+		
+	endfor;
+	if( filesys.a_extractBase( "\somepath\" ) ) then
+	
+		stderr.put 
+		(
+			"Error in filesys.a_extractBase" nl
+			"should have returned carry clear." nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+			
+	else
+	
+		if( str.ne( eax, "" ) ) then
+		
+			stderr.put
+			( 
+				"Error in filesys.a_extractBase" nl
+				"should have returned the empty string" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif; 
+	
+	endif;
+	
+	
+
+
+	stderr.put( "Testing filesys.extractBase" nl );
+	for( mov( 0, ecx ); ecx < @elements( s0 ); inc( ecx )) do
+	
+		if( filesys.extractBase( s0[ecx*4], sbuf ) ) then
+			
+			if( str.ne( sbuf, basenameResult[ecx*4] ) ) then
+			
+				stderr.put
+				( 
+					"Error in filesys.extractBase, ecx=", (type uns32 ecx), nl
+					"should return  : ", basenameResult[ecx*4], nl
+					"returned       : ", sbuf, nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif; 
+			
+		else
+			stderr.put 
+			(
+				"Error in filesys.extractBase" nl
+				"should return	carry = set" nl
+				"returned		carry = clear" nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif; 
+		
+	endfor;
+	if( filesys.extractBase( "\somepath\", sbuf )) then
+	
+		stderr.put 
+		(
+			"Error in filesys.extractBase" nl
+			"should have returned carry clear." nl
+			"sbuf = '", sbuf, '"' nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+			
+	else
+	
+		if( str.ne( sbuf, "" ) ) then
+		
+			stderr.put
+			( 
+				"Error in filesys.extractBase" nl
+				"should have returned the empty string" nl
+				"instead, returned : '", sbuf, "'" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif; 
+	
+	endif;
+	
+	
+	stderr.put( "Testing filesys.a_extractExt" nl );
+	
+	for( mov( 0, ecx ); ecx < @elements( s0 ); inc( ecx )) do
+	
+		if( filesys.a_extractExt( s0[ecx*4] ) ) then
+
+			mov( eax, sptr );
+			if( str.ne( eax, extResult[ecx*4] ) ) then
+			
+				stderr.put
+				( 
+					"Error in filesys.a_extractExt (", s0[ecx*4], "), ecx=", 
+						(type uns32 ecx), nl
+					"should return  : ", extResult[ecx*4], nl
+					"returned       : ", sptr, nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif; 
+			
+		else
+		
+			mov( eax, sptr );
+			if( str.ne( eax, "" ) ) then
+			
+				stderr.put
+				( 
+					"Error in filesys.a_extractExt" nl
+					"should return empty string" nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			str.free( sptr );
+
+		endif; 
+		
+	endfor;
+	
+	
+	stderr.put( "Testing filesys.extractExt" nl );
+	
+	for( mov( 0, ecx ); ecx < @elements( s0 ); inc( ecx )) do
+	
+		if( filesys.extractExt( s0[ecx*4], sbuf ) ) then
+			
+			if( str.ne( sbuf, extResult[ecx*4] ) ) then
+			
+				stderr.put
+				( 
+					"Error in filesys.extractExt (", s0[ecx*4], "), ecx=", 
+						(type uns32 ecx), nl
+					"should return  : ", extResult[ecx*4], nl
+					"returned       : ", sbuf, nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif; 
+			
+		elseif( str.ne( sbuf, "" )) then
+			
+			stderr.put
+			( 
+				"Error in filesys.extractExt" nl
+				"should return empty string" nl
+				"returned : '", sbuf, "'" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif; 
+		
+	endfor;
+
+
+
+
+	stderr.put( "Testing filesys.a_extractFilename" nl );
+
+	for( mov( 0, ecx ); ecx < @elements( s0 ); inc( ecx )) do
+	
+		if( filesys.a_extractFilename( s0[ecx*4] ) ) then
+			
+			mov( eax, sptr );
+			if( str.ne( eax, fnameResult[ecx*4] ) ) then
+			
+				stderr.put
+				( 
+					"Error in str.a_extractFilename(", s0[ecx*4], "), ECX=",
+						(type uns32 ecx), nl
+					"should return  : ", fnameResult[ecx*4], nl
+					"returned       : ", sptr, nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			str.free( sptr ); 
+			
+		else
+			stderr.put 
+			(
+				"Error in filesys.a_extractFilename" nl
+				"should return	carry = set" nl
+				"returned		carry = clear" nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif; 
+		
+	endfor;
+	if( filesys.a_extractFilename( "\somepath\" )) then
+	
+		str.free( eax );
+		stderr.put 
+		(
+			"Error in filesys.a_extractFilename" nl
+			"should have returned carry clear." nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+			
+	else
+	
+		mov( eax, sptr );
+		if( str.ne( sptr, "" ) ) then
+		
+			stderr.put
+			( 
+				"Error in filesys.extractFilename" nl
+				"should have returned the empty string" nl
+				"instead, returned : '", sbuf, "'" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif; 
+		str.free( sptr );
+	
+	endif;
+
+
+
+
+
+
+	stderr.put( "Testing filesys.extractFilename" nl );
+
+	for( mov( 0, ecx ); ecx < @elements( s0 ); inc( ecx )) do
+	
+		if( filesys.extractFilename( s0[ecx*4], sbuf ) ) then
+			
+			if( str.ne( sbuf, fnameResult[ecx*4] ) ) then
+			
+				stderr.put
+				( 
+					"Error in str.extractFilename(", s0[ecx*4], "), ECX=",
+						(type uns32 ecx), nl
+					"should return  : ", fnameResult[ecx*4], nl
+					"returned       : ", sbuf, nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif; 
+			
+		else
+			stderr.put 
+			(
+				"Error in filesys.extractFilename" nl
+				"should return	carry = set" nl
+				"returned		carry = clear" nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif; 
+		
+	endfor;
+	if( filesys.extractFilename( "\somepath\", sbuf )) then
+	
+		stderr.put 
+		(
+			"Error in filesys.extractFilename" nl
+			"should have returned carry clear." nl
+			"sbuf = '", sbuf, '"' nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+			
+	else
+	
+		if( str.ne( sbuf, "" ) ) then
+		
+			stderr.put
+			( 
+				"Error in filesys.extractFilename" nl
+				"should have returned the empty string" nl
+				"instead, returned : '", sbuf, "'" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif; 
+	
+	endif;
+	
+	
+	
+
+
+
+
+	
+	stderr.put( "Testing filesys.a_extractPath" nl );
+	
+	for( mov( 0, ecx ); ecx < @elements( s0 ); inc( ecx )) do
+
+		if( filesys.a_extractPath( s0[ecx*4] ) ) then
+			
+			mov( eax, sptr );
+			if( str.ne( eax, pathResult[ecx*4] ) ) then
+			
+				stderr.put
+				( 
+					"Error in filesys.a_extractPath, ecx=", (type uns32 ecx), nl
+					"should return  : ", pathResult[ecx*4], nl
+					"returned       : ", sptr, nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			str.free( sptr ); 
+			
+		else
+			
+			mov( eax, sptr );
+			if( str.ne( sbuf, "" )) then
+			
+				stderr.put
+				( 
+					"Error in filesys.a_extractPath, ecx=", (type uns32 ecx), nl
+					"should return empty string" nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			str.free( sptr );
+
+		endif; 
+		
+	endfor;
+	if( filesys.a_extractPath( "nopath.component" )) then
+	
+		stderr.put 
+		(
+			"Error in filesys.a_extractPath" nl
+			"should have returned carry clear." nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+			
+	else
+	
+		mov( eax, sptr );
+		if( str.ne( eax, "" ) ) then
+		
+			stderr.put
+			( 
+				"Error in filesys.a_extractPath" nl
+				"should have returned the empty string" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif; 
+		str.free( sptr );
+		
+	endif;
+	
+	
+	
+
+
+
+
+	
+	stderr.put( "Testing filesys.extractPath" nl );
+	
+	for( mov( 0, ecx ); ecx < @elements( s0 ); inc( ecx )) do
+
+		if( filesys.extractPath( s0[ecx*4], sbuf ) ) then
+			
+			if( str.ne( sbuf, pathResult[ecx*4] ) ) then
+			
+				stderr.put
+				( 
+					"Error in filesys.extractPath, ecx=", (type uns32 ecx), nl
+					"should return  : ", pathResult[ecx*4], nl
+					"returned       : ", sbuf, nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif; 
+			
+		elseif( str.ne( sbuf, "" )) then
+			
+			stderr.put
+			( 
+				"Error in filesys.extractPath, ecx=", (type uns32 ecx), nl
+				"should return empty string" nl
+				"returned : '", sbuf, "'" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif; 
+		
+	endfor;
+	if( filesys.extractPath( "nopath.component", sbuf )) then
+	
+		stderr.put 
+		(
+			"Error in filesys.extractPath" nl
+			"should have returned carry clear." nl
+			"sbuf = '", sbuf, '"' nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+			
+	else
+	
+		if( str.ne( sbuf, "" ) ) then
+		
+			stderr.put
+			( 
+				"Error in filesys.extractPath" nl
+				"should have returned the empty string" nl
+				"instead, returned : '", sbuf, "'" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif; 
+	
+	endif;
+
+
+	
+	
+	
+
+
+
+
+	
+	stderr.put( "Testing filesys.a_joinPaths" nl );
+	
+	for( mov( 0, ecx ); ecx < @elements( jp0 ); inc( ecx )) do
+	
+		for( mov( 0, edx ); edx < @elements( jp1 ); inc( edx )) do
+
+			filesys.a_joinPaths( jp0[ecx*4], jp1[edx*4] );
+			mov( eax, sptr );
+
+			intmul( @elements( jp1 ), ecx, eax );
+			add( edx, eax );
+			if( str.ne( sptr, jpResults[eax*4] ) ) then
+			
+				intmul( @elements( jp1 ), ecx, eax );
+				add( edx, eax );
+				stderr.put
+				( 
+					"Error in filesys.a_joinPaths, ecx=", (type uns32 ecx), 
+					" edx = ", (type uns32 edx), nl
+					"should return  : ", jpResults[eax*4], nl
+					"returned       : ", sptr, nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			str.free( sptr ); 
+				
+			
+		endfor; 
+		
+	endfor;
+
+
+	
+	
+	
+
+
+
+
+	
+	stderr.put( "Testing filesys.joinPaths" nl );
+	
+	for( mov( 0, ecx ); ecx < @elements( jp0 ); inc( ecx )) do
+	
+		for( mov( 0, edx ); edx < @elements( jp1 ); inc( edx )) do
+
+			filesys.joinPaths( jp0[ecx*4], jp1[edx*4], sbuf );
+			intmul( @elements( jp1 ), ecx, eax );
+			add( edx, eax );
+			if( str.ne( sbuf, jpResults[eax*4] ) ) then
+			
+				intmul( @elements( jp1 ), ecx, eax );
+				add( edx, eax );
+				stderr.put
+				( 
+					"Error in filesys.joinPaths, ecx=", (type uns32 ecx), 
+					" edx = ", (type uns32 edx), nl
+					"should return  : ", jpResults[eax*4], nl
+					"returned       : ", sbuf, nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+							
+		endfor; 
+		
+	endfor;
+
+
+
+	
+	
+	stderr.put( "Testing filesys.a_normalize" nl );
+	for( mov( 0, ecx ); ecx < @elements( normTest ); inc( ecx )) do
+
+		filesys.a_normalize( normTest[ecx*4] );
+		mov( eax, sptr );
+		mov( 0, bl );
+		adc( 0, bl );
+		if( str.ne( sptr, normResults[ecx*4] ) || bl <> normCarrys[ecx] ) then
+		
+			stderr.put
+			(
+				"filesys.a_normalize( ", normTest[ecx*4], ") failed! "
+					"ECX=", (type uns32 ecx), nl
+				"was '", sptr, "'" nl 
+				"expected '", normResults[ecx*4], "'" nl
+				"Carry was ", (type uns8 bl), ", expected ", 
+					normCarrys[ecx], nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		str.free( sptr );
+		
+	endfor;
+
+
+
+	
+	
+	stderr.put( "Testing filesys.normalize1" nl );
+	for( mov( 0, ecx ); ecx < @elements( normTest ); inc( ecx )) do
+
+		str.cpy( normTest[ecx*4], sbuf );
+		filesys.normalize1( sbuf );
+		mov( 0, bl );
+		adc( 0, bl );
+		if( str.ne( sbuf, normResults[ecx*4] ) || bl <> normCarrys[ecx] ) then
+		
+			stderr.put
+			(
+				"filesys.normalize1( ", normTest[ecx*4], ") failed! "
+					"ECX=", (type uns32 ecx), nl
+				"was '", sbuf, "'" nl 
+				"expected '", normResults[ecx*4], "'" nl
+				"Carry was ", (type uns8 bl), ", expected ", 
+					normCarrys[ecx], nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		
+	endfor;
+
+
+
+	
+	
+	stderr.put( "Testing filesys.normalize2" nl );
+	for( mov( 0, ecx ); ecx < @elements( normTest ); inc( ecx )) do
+
+		filesys.normalize2( normTest[ecx*4], sbuf );
+		mov( 0, bl );
+		adc( 0, bl );
+		if( str.ne( sbuf, normResults[ecx*4] ) || bl <> normCarrys[ecx] ) then
+		
+			stderr.put
+			(
+				"filesys.normalize2( ", normTest[ecx*4], ") failed! "
+					"ECX=", (type uns32 ecx), nl
+				"was '", sbuf, "'" nl 
+				"expected '", normResults[ecx*4], "'" nl
+				"Carry was ", (type uns8 bl), ", expected ", 
+					normCarrys[ecx], nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		
+	endfor;
+
+
+
+	
+	
+	stderr.put( "Testing filesys.toUnixPath1" nl );
+	str.cpy( win32path, sbuf );
+	filesys.toUnixPath1( sbuf );
+	if( str.ne( sbuf, unix32path ) ) then
+		stderr.put ("Error in filesys.toUnix32Path1" nl
+				"should return	:", unix32path, nl
+				"returned		:", sbuf, nl);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endif;
+
+
+
+	
+	
+	stderr.put( "Testing filesys.toUnixPath2" nl );
+	filesys.toUnixPath2( win32path, sbuf );
+	if( str.ne( sbuf, unix32path ) ) then
+		stderr.put ("Error in filesys.toUnix32Path2" nl
+				"should return	:", unix32path, nl
+				"returned		:", sbuf, nl);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endif;
+
+
+
+	stderr.put( "Testing filesys.toWin32Path1" nl );
+	str.cpy( unix32path, sbuf );
+	filesys.toWin32Path1( sbuf );
+	if( str.ne( sbuf, win32path ) ) then
+		stderr.put ("Error in filesys.toWin32Path1" nl
+				"should return	:", win32path, nl
+				"returned		:", sbuf, nl);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	endif;
+
+
+
+	stderr.put( "Testing filesys.toWin32Path2" nl );
+	filesys.toWin32Path2( unix32path, sbuf );
+	if( str.ne( sbuf, win32path ) ) then
+		stderr.put ("Error in filesys.toWin32Path1" nl
+				"should return	:", win32path, nl
+				"returned		:", sbuf, nl);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	endif;
+	
+	
+	stderr.put( "Testing filesys.hasDriveLetter" nl );
+	for( mov( 0, ecx ); ecx < @elements( DL0 ); inc( ecx )) do
+	
+		filesys.hasDriveLetter( DL0[ecx*4] );
+		if( al <> DL0results[ecx] ) then
+		
+			stderr.put
+			(
+				"filesys.hasDriveLetter( ", DL0[ecx*4], " ) failed!" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		
+	endfor;
+	
+	
+	stderr.put( "Testing filesys.hasExtension" nl );
+	for( mov( 0, ecx ); ecx < @elements( DL0 ); inc( ecx )) do
+	
+		filesys.hasExtension( DL0[ecx*4] );
+		mov( 0, al );
+		adc( 0, al );
+		if( al <> HE0results[ecx] ) then
+		
+			stderr.put
+			(
+				"filesys.hasExtension( ", DL0[ecx*4], " ) failed!" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		
+	endfor;
+	
+	
+	stderr.put( "Testing filesys.hasPath" nl );
+	for( mov( 0, ecx ); ecx < @elements( DL0 ); inc( ecx )) do
+	
+		filesys.hasPath( DL0[ecx*4] );
+		mov( 0, al );
+		adc( 0, al );
+		if( al <> HP0results[ecx] ) then
+		
+			stderr.put
+			(
+				"filesys.hasExtension( ", DL0[ecx*4], " ) failed!" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		
+	endfor;
+	
+	
+	stderr.put( "Testing filesys.hasUncName" nl );
+	for( mov( 0, ecx ); ecx < @elements( UNCtest ); inc( ecx )) do
+	
+		filesys.hasUncName( UNCtest[ecx*4] );
+		mov( 0, bl );
+		adc( 0, bl );
+		if( eax <> UNCresults[ecx*4] || bl <> UNCcarrys[ecx] ) then
+		
+			stderr.put
+			(
+				"filesys.hasUncName( ", UNCtest[ecx*4], " ) failed! "
+					"ECX=", (type uns32 ecx), nl
+				"EAX = ", (type uns32 eax), 
+					", expected ", (type uns32 UNCresults[ecx*4]), nl
+				"Carry was ", (type uns8 bl), ", expected ", 
+					UNCcarrys[ecx], nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		
+	endfor;
+	
+	
+	stderr.put( "tPathStr succeeded!" nl );
+	
+end pathstrTest;

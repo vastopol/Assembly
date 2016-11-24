@@ -1,0 +1,25 @@
+#if( !@defined( prctl_hhf ))
+?prctl_hhf := true;
+
+namespace linux; @fast;
+
+const
+
+	
+	// Process control values
+	
+	pr_set_pdeathsig	:= 1;
+	pr_get_pdeathsig	:= 2;
+	pr_get_dumpable		:= 3;
+	pr_set_dumpable		:= 4;
+	pr_get_unalign		:= 5;
+	pr_set_unalign		:= 6;
+	pr_get_keepcaps		:= 7;
+	pr_set_keepcaps		:= 8;
+	
+	pr_unalign_noprint	:= 1;
+	pr_unalign_sigbus	:= 2;
+	
+
+end linux;
+#endif //prctl_hhf

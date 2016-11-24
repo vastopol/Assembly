@@ -1,0 +1,60 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+#if( ! @defined( randomUnit_hhf ))
+?randomUnit_hhf := true;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeOnce( "rand.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "memory.hhf" )
+#includeOnce( "os.hhf" )
+#includeOnce( "_hla.hhf" )
+
+#if( os.win32 )
+
+	#include( "../include/win32.hhf" );
+	
+#elseif( os.linux )
+
+	#include( "linux.hhf" )
+
+#elseif( os.freeBSD )
+
+	#include( "bsd.hhf" )
+	
+#elseif( os.macOS )
+
+	#include( "mac.hhf" )
+	
+#endif
+
+static
+
+	lcSeed	:dword;	@global:_hla._ext( "RANDOM_LCSEED" );
+
+	j		:dword; @global:_hla._ext( "RANDOM_J" );
+	k		:dword; @global:_hla._ext( "RANDOM_K" );
+
+	// Array of 55 seed elements for the additive pseudorandom number generator.
+	// (Note: element zero of this array is not used.)
+
+	add_array: dword[ 56 ];  @global:_hla._ext( "RANDOM_ADD_ARRAY" );
+
+
+	
+
+
+#endif

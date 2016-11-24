@@ -1,0 +1,140 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "excepts.hhf" )
+
+	
+// subSecs-
+//
+//	This procedure subtracts an arbitrary number of
+// seconds to a time. It raises an invalidTime exception
+// if the result goes negative or is outside the 24-hour range.
+
+procedure time.subSecs( seconds:uns32; var HMS:time.timerec ); 
+	@nodisplay; 
+	@noframe;
+begin subSecs;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ebx );
+	push( edx );
+	
+	mov( HMS, ebx );
+	movzx( (type time.timerec [ebx]).secs, eax );
+	sub( seconds, eax );
+	jns fastComputation;
+	
+		cmp( eax, -60 );
+		jl slowComputation;
+		
+			// More than a minute, but less than two minutes:
+			
+			add( 60, eax );
+			sub( 1, (type time.timerec [ebx]).mins );
+			jns fastComputation;
+			
+				add( 60, (type time.timerec [ebx]).mins );
+				sub( 1, (type time.timerec [ebx]).hours );
+				jns fastComputation;
+				
+					// A day crossing has occurred.
+					// Reset to hour 24 and return 1 in EAX:
+					
+					mov( 23, (type time.timerec [ebx]).hours );
+					mov( 59, (type time.timerec [ebx]).mins );
+					mov( al, (type time.timerec [ebx]).secs	);
+					mov( 1, eax );
+					pop( edx );
+					pop( ebx );
+					pop( ebp );
+					ret( _parms_ );
+		
+	fastComputation:
+		mov( al, (type time.timerec [ebx]).secs	);
+		xor( eax, eax );
+		pop( edx );
+		pop( ebx );
+		pop( ebp );
+		ret( _parms_ );
+	
+	// Down here, we've got more than two minutes. So compute everything
+	// to seconds, do the subtraction, and then convert the result back to
+	// a time.
+	
+	slowComputation:
+		movzx( (type time.timerec [ebx]).hours, edx );
+		intmul( 60, edx );
+		movzx( (type time.timerec [ebx]).mins, eax );
+		add( edx, eax );
+		intmul( 60, eax );
+		movzx( (type time.timerec [ebx]).secs, edx );
+		add( edx, eax );
+		
+		sub( seconds, eax );
+		js dayCrossing; 
+		
+			// Convert time in seconds to time in HH:MM format:
+			
+			xor( edx, edx );
+			div( 60, edx:eax );
+			mov( dl, (type time.timerec [ebx]).secs );
+			
+			xor( edx, edx );
+			div( 60, edx:eax );
+			mov( dl, (type time.timerec [ebx]).mins );
+			mov( ax, (type time.timerec[ebx]).hours );
+			
+			xor( eax, eax );	// No day crossing.
+			pop( edx );
+			pop( ebx );
+			pop( ebp );
+			ret( _parms_ );
+
+		// Down here, we've crossed the 00:00:00 barrier one or more times
+		
+		dayCrossing:
+			neg( eax );
+			xor( edx, edx );
+			div( 24*60*60, edx:eax );
+			push( eax );				// Save day crossings
+			
+			mov( edx, eax );			// Seconds left in remaining day.
+			neg( eax );
+			add( 60*60*24, eax );
+			
+			xor( edx, edx );
+			div( 60, edx:eax );			// Compute seconds
+			mov( dl, (type time.timerec [ebx]).secs );
+			
+			xor( edx, edx );			// Compute the minutes and hours
+			div( 60, edx:eax );
+			mov( dl, (type time.timerec [ebx]).mins );
+			mov( ax, (type time.timerec [ebx]).hours );
+			
+			// Return day count in EAX
+			
+			pop( eax );
+			inc( eax );
+			
+			pop( edx );
+			pop( ebx );
+			pop( ebp );
+			ret( _parms_ );
+					
+end subSecs;
+	
+end DateTime;			

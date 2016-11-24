@@ -1,0 +1,215 @@
+program eoln_test;
+#include( "stdlib.hhf" )
+
+// Input test file:
+//
+//  1st line:  #$0d #$0a
+//  2nd line:  #$20 #$20 #$20 #$0d #$0a
+//  3rd line:  asdf #$0d #$0a
+//  4th line:  #$0d #$0a
+//
+// Note, however, that the stdin routines throw away the carriage return
+// characters that appear immediately before a linefeed character.
+					 
+begin eoln_test;
+
+	try
+
+		// First call should return true because we've not
+		// read any data from the first line yet.
+
+		stdin.eoln();
+		if( !eax ) then
+
+			stderr.put
+			( 
+				"(1) stdin.eoln should return true at BOF" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif;
+
+		stdin.eoln2();
+		if( !eax ) then
+
+			stderr.put
+			( 
+				"(2) stdin.eoln2 should return true at BOF" nl
+			);
+			os.exitProcess( 2 );
+
+		endif;
+
+		// Okay, get the first line from the file:
+
+		stdin.readLn();
+
+		// EOLN should return true as we've eliminated the
+		// CR and LF from the input buffer in readLn.
+
+		stdin.eoln();
+		if( !eax ) then
+
+			stderr.put
+			( 
+				"(3) stdin.eoln should return true after readLn" nl
+			);
+			os.exitProcess( 3 );
+
+		endif;
+
+
+		// EOLN2 should return true as the only thing between
+		// us and the end of the line is a line feed character,
+		// which is a delimiter.
+
+		stdin.eoln2();
+		if( !eax ) then
+
+			stderr.put
+			( 
+				"(4) stdin.eoln2 should return true after reading first char" nl
+			);
+			os.exitProcess( 4 );
+
+		endif;
+
+		// Note that calling EOLN2 flushes the delimiter characters from
+		// the input buffer, so EOLN should now return true:
+
+		stdin.eoln();
+		if( !eax ) then
+
+			stderr.put
+			( 
+				"(5) stdin.eoln should return true after call to EOLN2" nl
+			);
+			os.exitProcess( 5 );
+
+		endif;
+
+
+		// Okay, read the second line into the input buffer:
+
+		stdin.readLn();
+
+		// EOLN should return false as there were some spaces
+		// at the beginning of the line.
+
+		stdin.eoln();
+		if( eax ) then
+
+			stderr.put
+			( 
+				"(6) stdin.eoln should return false after readLn" nl
+			);
+			os.exitProcess( 6 );
+
+		endif;
+
+
+		// EOLN2 should return true as the only thing between
+		// us and the end of the line are spaces, which are
+		// delimiter characters.
+
+		stdin.eoln2();
+		if( !eax ) then
+
+			stderr.put
+			( 
+				"(7) stdin.eoln2 should return true after reading 2nd line" nl
+			);
+			os.exitProcess( 7 );
+
+		endif;
+
+		// Note that calling EOLN2 flushes the delimiter characters from
+		// the input buffer, so EOLN should now return true:
+
+		stdin.eoln();
+		if( !eax ) then
+
+			stderr.put
+			( 
+				"(8) stdin.eoln should return true after call to EOLN2" nl
+			);
+			os.exitProcess( 8 );
+
+		endif;
+
+
+
+		// Okay, read the third line into the input buffer:
+
+		stdin.readLn();
+
+		// EOLN should return false as there are some characters
+		// at the beginning of the line.
+
+		stdin.eoln();
+		if( eax ) then
+
+			stderr.put
+			( 
+				"(9) stdin.eoln should return false after readLn" nl
+			);
+			os.exitProcess( 9 );
+
+		endif;
+
+
+		// EOLN2 should return false because there are non-delimiter
+		// characters at the beginning of the line.
+
+		stdin.eoln2();
+		if( eax ) then
+
+			stderr.put
+			( 
+				"(10) stdin.eoln2 should return false after reading 3rd line" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif;
+
+		// Calling EOLN2 should not flush the buffer, as there are non-
+		// delimiter characters in the buffer, so another call to EOLN
+		// should still return false.
+
+		stdin.eoln();
+		if( eax ) then
+
+			stderr.put
+			( 
+				"(11) stdin.eoln should return false after call to EOLN2" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif;
+
+		
+	  anyexception
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"stdin.eoln/eoln2 failed! Exception = ", eax,  nl
+			"***************************************************" nl
+			nl 
+		);
+		os.exitProcess(3);
+		
+	endtry;
+
+	stderr.put( "EOLN/EOLN2 tests succeeded!" nl );
+			
+end eoln_test;
+
+													

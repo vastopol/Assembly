@@ -1,0 +1,88 @@
+program fromWinFileTime_Test;
+#include( "stdlib.hhf" )
+
+static
+	winTime		:qword;
+	tm			:time.timerec;
+	_tm			:time.timerec;
+	dt			:date.daterec;
+	_dt			:date.daterec;	
+	
+begin fromWinFileTime_Test;
+
+
+	date.setFormat( date.mmddyyyy );
+	mov( 0, (type dword winTime[0]) );
+	mov( 0, (type dword winTime[4]) );
+	date.pack( 1, 1, 1601, dt );
+	time.pack( 0, 0, 0, tm );
+			 
+	while( mov( dt, eax ) < ((2200 << 16) + (12 << 8 ) + 31) ) do
+	
+		time.fromWinFileTime( winTime, _tm, _dt );
+		mov( _tm, ebx );
+		mov( _dt, ecx );
+		if( ebx <> (type dword tm) || ecx <> (type dword dt) ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"time.fromWinFileTime failed!", nl,
+				"ebx=", ebx, " tm=", (type dword tm), nl
+				"ecx=", ecx, " dt.date=", (type dword dt), nl
+				"fromWinFileTime = ", (type dword winTime), nl,
+				"date="
+			);
+			date.a_toString( dt );
+			stderr.puts( eax );
+			str.free( eax );
+			stderr.put( " <> " );
+			date.a_toString( _dt );
+			stderr.puts( eax );
+			str.free( eax );
+			stderr.put
+			(
+				nl
+				"time="
+			);
+			time.a_toString( tm );
+			stderr.puts( eax );
+			str.free( eax );
+			stderr.put( " <> " );
+			time.a_toString( tm );
+			stderr.puts( eax );
+			str.free( eax );			
+			stderr.put
+			(	nl
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		if( (type dword winTime[4]) < $4000 ) then
+		
+			add( 10_000_000, (type dword winTime ) );
+			adc( 0, (type dword winTime[4]));
+			time.addSecs( 1, tm );
+			date.addDays( eax, dt );
+			
+		else
+		
+			add( 10_000_000*256, (type dword winTime));
+			adc( 0, (type dword winTime[4]));
+			time.addSecs( 256, tm );
+			date.addDays( eax, dt );
+				 			
+		endif;
+						
+	endwhile;
+	stderr.put( "time.fromWinFileTime succeeded!" nl );
+	os.exitProcess(0);
+		
+end fromWinFileTime_Test;
+
+													

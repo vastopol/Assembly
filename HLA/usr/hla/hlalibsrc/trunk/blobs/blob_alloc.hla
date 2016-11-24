@@ -1,0 +1,106 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+
+
+#include( "blobs.hhf" )
+#include( "memory.hhf" )
+#include( "threads.hhf" )
+
+
+// blob.alloc:
+//
+//	Allocate storage for an HLA blob object.
+//	The size parameter specifies the number of bytes.
+//	Must call malloc with size+16+? since we need to reserve space
+//	for the rcursor, wcursor, maxlen, and length fields.
+//  Note that HLA blobs must always be dword
+//	aligned;  this code depends upon the fact that malloc always
+//	returns a pointer that is aligned on an 8-byte boundary in order
+//	to accomplish this.  HLA blobs are always at least
+//	16 bytes long. Hence the extra logic that *may* extend the size 
+//  of the allocated storage.
+//	This code also guarantees that the data area of a blob is aligned
+// 	on a 16-byte boundary (that is, the address returned by this function
+//	in EAX always has zeros in the L.O. four bits).
+
+procedure blob.alloc( size:dword ); 
+	@nodisplay;
+	@noframe;
+begin alloc;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ebx );
+	
+	// Compute allocation size for blob (note that we always add a
+	// 16-byte buffer to blobs and we always round up to a multiple
+	// of 16 bytes from that point).
+	
+	mov( size, ebx );
+	add( blob.blobHeaderSize+31, ebx );	// Extra bytes for allocPtr, rcursor,  
+	and( !$F, ebx );					//  wcursor, maxlen, length, +16 and 
+										//  round up to multiple of 16 bytes. 
+	
+	// Allocate storage for the blob:
+	
+	mem.alloc( ebx );
+	mov( eax, ebx );
+	add( blob.blobHeaderSize+15, eax );	// Return pointer to start of data.
+	and( $FFFF_FFF0, eax );				// Data address is a multiple of 16.
+	
+	// Save pointer to start of allocation so we can free this
+	// storage later (needed because aligned blobs might not start
+	// at a fixed offset from the start of the allocated storage):
+	
+	mov( ebx, (type blob.blobRec [eax]).allocPtr );
+
+	mov( size, ebx );					// Get maxlen value.
+	mov( ebx, (type blob.blobRec [eax]).maxlen );
+	
+	// Set the rcursor, wcursor, and length fields all to zero:
+	
+	xor( ebx, ebx );
+	mov( ebx, (type blob.blobRec [eax]).rcursor );
+	mov( ebx, (type blob.blobRec [eax]).wcursor );
+	mov( ebx, (type blob.blobRec [eax]).length );
+	#if( @thread )
+	
+		mov( eax, ebx );
+		thread.createCriticalSection();
+		mov( eax, (type blob.blobRec [ebx]).criticalSection );
+		mov( ebx, eax );
+		
+	#else
+	
+		mov( 0, (type blob.blobRec [eax]).criticalSection );
+	 
+	#endif
+	pop( ebx );
+	pop( ebp );
+	ret( _parms_ );
+
+end alloc;
+
+
+
+
+end blobUnit;
+
+
+
+
+	
+

@@ -1,0 +1,44 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit mathUnit;
+
+#include( "math.hhf" )
+
+/*****************************************************************/
+/*                                                               */
+/* atan32-                                                       */
+/*                                                               */
+/* Computes the arctangent of the real32 object passed as a      */
+/* parameter. Leaves the atan on TOS (FPU).                      */
+/*                                                               */
+/*****************************************************************/
+
+
+procedure math.atan32( r:real32 ); @nodisplay; @noframe;
+begin atan32;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	fld( r );
+	math._atan();
+	
+	pop( ebp );
+	ret( _parms_ );
+
+end atan32;
+
+
+end mathUnit;

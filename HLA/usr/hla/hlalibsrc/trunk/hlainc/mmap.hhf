@@ -1,0 +1,75 @@
+#if( ! @defined( mmap_hhf ))
+?mmap_hhf := true;
+
+#includeOnce( "fileio.hhf" )
+#includeOnce( "_hla.hhf" )
+
+
+// mmap-
+//		This class defines a memory-mapped file object.
+
+#if( !@defined( _deprecate_old_mmap_types_ ))
+
+	const
+		mmap	:text	:= "mmap_t";	// Deprecated type
+		
+#endif
+
+type
+	mmap_t:
+		class
+			const
+				private: text := "";
+				public:  text := "";
+
+			public var
+				filePtr			:dword;
+				endFilePtr		:dword;
+				fileSize		:dword;
+
+			private var
+				_handle_		:dword;
+				_filename_		:string;
+				_malloc_		:boolean;
+				_open_			:boolean;
+				_opennew_		:boolean;
+
+				_padding_		:byte;		// Make vars a multiple of 4 bytes
+		  
+		  	proc
+				create:
+					procedure {@returns( "esi" )};	
+					_hla._ext( "MMAP_CREATE" );
+
+				openNew:
+					method( filename:string; maxSize:dword );
+					_hla._ext( "MMAP_OPENNEW" );
+
+				open:
+					method( filename:string; Access:fileio.accessMode );
+					_hla._ext( "MMAP_OPEN" );
+
+				close:
+					method;
+					_hla._ext( "MMAP_CLOSE" );
+
+				destroy:
+					method;
+					_hla._ext( "MMAP_DESTROY" );
+
+				getFileName:
+					method {@returns( "eax" )};
+					_hla._ext( "MMAP_GETFILENAME" );
+
+				getOpen:
+					method {@returns( "al" )};
+					_hla._ext( "MMAP_GETOPEN" );
+
+				getMalloc:
+					method {@returns( "al" )};
+					_hla._ext( "MMAP_GETMALLOC" );
+			
+		endclass;
+
+
+#endif

@@ -1,0 +1,91 @@
+unit wEditBox_u;
+?@NoDisplay := true;				 
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly		
+	align( 4 );
+	vmt( wEditBox_t );
+
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wEditBox objects here:
+
+
+
+procedure wEditBox_t.create_wEditBox
+(
+	webName		:string;
+	initialTxt	:string;
+	parent		:dword; 									
+	x			:dword; 
+	y			:dword; 
+	width		:dword; 
+	height		:dword;
+	style		:dword;
+	onChange	:widgetProc  
+);;
+	
+_begin( wEditBox_t, create_wEditBox );
+
+	push( eax );
+	push( ecx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wEditBox_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+
+	// Generic initialization for all Edit Box objects:
+	
+	mov
+	(
+		w.WS_CHILD | w.WS_VISIBLE | w.WS_TABSTOP | 
+			w.WS_GROUP | w.WS_BORDER | w.ES_AUTOHSCROLL,
+		eax
+	);
+	or( style, eax );
+	(type wabsEditBox_t [esi]).create_wabsEditBox
+	(
+		webName,
+		initialTxt,
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height,
+		eax,
+		onChange
+	);
+	mov( cl, this.wBase_private.onHeap );		
+
+	
+	// Initialize the type string field:
+		
+	howl.setType( wEditBox_c );
+	mov( &wEditBox_t._VMT_, this._pVMT_ );
+		
+	pop( ecx );		   
+	pop( eax );
+	
+_end( wEditBox_t, create_wEditBox );
+
+
+end	wEditBox_u;

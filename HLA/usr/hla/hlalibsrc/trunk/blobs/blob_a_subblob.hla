@@ -1,0 +1,168 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeOnce( "memory.hhf" )
+#includeOnce( "blobs.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "x86.hhf" )
+#includeOnce( "threads.hhf" );
+
+
+// a_subBlob-                                                    
+//                                                            
+// Extracts a subBLOB from a blob specified.  Stores      
+// the resulting subBLOB into a blob variable           
+// allocated on the heap. Returns a pointer to the
+// new blob in EAX. 
+//
+// Returns carry set if the full subblob was copied,
+// returns carry clear if only part of the subblob was copied.                            
+
+
+
+ 
+procedure blob.a_subBlob
+(
+	src:	blob.blob; 
+	start:	dword; 
+	len:	dword 
+); @noframe;
+var
+	blobAdrs	:dword;
+	saveECX		:dword;
+	saveESI		:dword;
+	saveEDI		:dword;
+	saveFlags	:dword;
+	
+begin a_subBlob;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_ - 4), esp );	// Don't include "saveFlags"
+	pushfd();		// Reserves and initializes saveFlags
+	
+	mov( edi, saveEDI );
+	mov( esi, saveESI );
+	mov( ecx, saveECX );
+	cld();
+	
+	mov( src, esi );
+	test( esi, esi );
+	jz attemptToDerefNULL;	
+	
+	#if( @thread )
+	try
+	
+		thread.enterCriticalSection( (type blob.blobRec [esi]).criticalSection );
+			
+	#endif
+
+		// Make sure the starting index is within the limits of
+		// the source blob.
+		
+		mov( (type blob.blobRec [esi]).length, ecx );
+		cmp( ecx, start );
+		jnb noValueOutOfRange;
+		
+			raise( ex.ValueOutOfRange );
+		 	
+		noValueOutOfRange:
+
+		// Compute the number of bytes to copy.  This is either
+		// "len" if (start+len) is less than or equal to src.len, or
+		// it is len - (start+len-src.len) if (start+len) is greater
+		// than src.len.
+		 
+		mov( len, ecx );
+		mov( start, eax );
+		add( ecx, eax );
+
+		cmp( eax, (type blob.blobRec [esi]).length );
+		jna fullLength;
+		
+			// Truncate at the end of the actual blob.
+			
+			sub( (type blob.blobRec [esi]).length, eax );
+			sub( eax, ecx );
+
+			// Return carry clear if the len value is not zero.
+			
+			cmp( len, 0 );
+			je fullLength;
+			
+				and( !x86.flag_carry, saveFlags );
+								
+		fullLength:
+
+		
+		// Allocate sufficient storage to hold the result.
+
+		blob.alloc( ecx );
+		mov( eax, blobAdrs );	// Save for use as the return value.
+		mov( eax, edi );		// Use as the destination string address.
+		
+		
+		// Store away the destination length; also save as write cursor position.
+		
+		mov( ecx, (type blob.blobRec [edi]).length );
+		mov( ecx, (type blob.blobRec [edi]).wcursor );
+		
+		// Okay, copy the bytes.
+		
+		add( start, esi );
+		rep.movsb();
+
+	#if( @thread )
+	
+	  anyexception
+	  
+	  	mov( src, edx );
+		thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		push( saveFlags );
+		popfd();
+		reraise( eax );
+		
+	endtry;
+  	mov( src, esi );
+	thread.leaveCriticalSection( (type blob.blobRec [esi]).criticalSection );
+	
+	#endif
+
+	// Clean up and leave.
+	
+	mov( blobAdrs, eax );		// Retrieve address of new blob.
+	mov( 0, (type blob.blobRec [eax]).rcursor );
+	popfd();		// Get carry flag result.
+	mov( saveEDI, edi );
+	mov( saveESI, esi );
+	mov( saveECX, ecx );
+	leave();
+	ret( _parms_ );
+	
+attemptToDerefNULL:	
+	raise( ex.AttemptToDerefNULL );
+			
+end a_subBlob;
+
+end blobUnit;
+
+
+
+
+	
+

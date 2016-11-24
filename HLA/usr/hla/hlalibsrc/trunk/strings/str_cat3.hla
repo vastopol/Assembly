@@ -1,0 +1,121 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+/****************************************************************/
+/*                                                              */
+/* cat2-                                                        */
+/* cat3-                                                        */
+/*                                                              */
+/* Concatenates the source string to the end of the destination */
+/* string.   												    */
+/*                                                              */
+/* Note: the destination string's maximum length must be large  */
+/* enough to hold the concatenated result, or this routine      */
+/* will raise an exception.                                     */
+/*                                                              */
+/****************************************************************/
+
+procedure str.cat3( src1:string; src2:string; dest:string ); 
+	@noframe; 
+	@nodisplay;
+begin cat3;
+
+	push( ebp );
+	mov( esp, ebp );
+	pushfd();
+	cld();
+	push( eax );
+	push( ecx );
+	push( esi );
+	push( edi );
+	
+	mov( dest, edi );
+	test( edi, edi );
+	jz attemptToDerefNULL;
+	
+	// Compute the length of the new string and allocate storage for it.
+	
+	mov( src2, esi );
+	test( esi, esi );
+	jz attemptToDerefNULL;
+	mov( (type str.strRec [esi]).length, ecx );
+	
+	mov( src1, esi );
+	test( esi, esi );
+	jz attemptToDerefNULL;
+	
+	add( (type str.strRec [esi]).length, ecx );
+	cmp( ecx, (type str.strRec [edi]).maxlen );
+	ja StringOverflow;
+	
+	mov( ecx, (type str.strRec[edi]).length );	// Set the string length.
+	mov( edi, eax );							// Save for later.
+	
+	// Copy the first string into the storage area:
+	
+	mov( (type str.strRec [esi]).length, ecx );
+	add( 3, ecx );		// Round length up to next even dword multiple
+	shr( 2, ecx );		// Compute # of dwords to move.
+	jz NoMove;
+	
+		rep.movsd();		// Copy the first source string.
+		
+	NoMove:
+	
+	// Since we copied dwords, we may have moved too many bytes.
+	// So recompute the starting address for the second source string here.
+	
+	mov( src1, esi );
+	mov( eax, edi );
+	add( (type str.strRec [esi]).length, edi );
+	
+	// Okay, now copy the second source string to the end of the
+	// first one.  The same efficency comments noted in "cat" apply here.
+	
+	mov( src2, esi );
+	mov( (type str.strRec [esi]).length, ecx );
+	inc( ecx ); 	// Copy the zero byte, too!
+	rep.movsb();
+	
+	pop( edi );
+	pop( esi );
+	pop( ecx );
+	pop( eax );
+	popfd();
+	pop( ebp );
+	ret( _parms_ );
+	
+attemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+StringOverflow:
+	raise( ex.StringOverflow );
+
+end cat3;
+
+end stringUnit;
+
+
+
+
+	
+

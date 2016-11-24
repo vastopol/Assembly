@@ -1,0 +1,97 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+	  
+unit FileIOUnit;
+		
+
+#include( "../include/fileiounit.hhf" )
+
+
+procedure fileio.putcset( Handle:dword; cs: cset ); @noframe; @nodisplay;
+
+	/*
+	** Put32CS- Outputs the 32 characters appearing
+	** in the EDX register (one bit per character).
+	** ECX contains the ASCII code for the character
+	** in bit zero.
+	*/
+	
+	procedure Put32CS; @noframe;
+	begin Put32CS;
+	
+		mov( ecx, ebx );
+		add( 32, ebx );
+		repeatUntilECXeqEBX:
+		
+			shr( 1, edx );
+			jnc noOverflow;
+			
+				mov( cl, al );
+				cmp( al, ' ' );
+				ja isGraphic;
+				
+					fileio.puts( ebp::Handle, "#$" );
+					fileio.putb( ebp::Handle, al );
+					fileio.putc( ebp::Handle, ' ' );
+					jmp wasNonGraphic;
+
+				isGraphic:
+					
+					fileio.putc( ebp::Handle, al );
+
+				wasNonGraphic:
+									
+			noOverflow:
+				add( 1, ecx );
+				cmp( ecx, ebx );
+				jne repeatUntilECXeqEBX;
+			
+		ret();
+		
+	end Put32CS;
+	
+	
+begin putcset;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	
+	mov( 0, ecx );
+	mov( (type dword cs), edx );
+	Put32CS();
+	
+	mov( (type dword cs[4]), edx );
+	Put32CS();
+	
+	mov( (type dword cs[8]), edx );
+	Put32CS();
+	
+	mov( (type dword cs[12]), edx );
+	Put32CS();
+
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+end putcset;
+	
+end FileIOUnit;
+

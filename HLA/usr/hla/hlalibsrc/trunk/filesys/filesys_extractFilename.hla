@@ -1,0 +1,166 @@
+unit filesys_fileName_unit;
+	
+// synopsis
+//
+//	str.fileName:
+//
+//	given a path name, separate the base filename from
+//	the path and return the filename
+//
+//	Note:
+//                                    extension
+//                                      ---
+//                         basename
+//                     ----------------
+//		..../pathstuff/basename.not_ext.ext
+//                     --------------------
+//                          filename
+//
+//  basename  = "basename.not_ext"
+//  filename  = "basename.not_ext.ext"
+//	extension = "ext"
+//
+//
+//	Version History:
+//
+//	Revision:	1
+//	Author:		Randall Hyde
+//	Date:		1/30/2008
+//	Note:		1st release created by modifying Sevag's str.baseName
+//				source code.
+//
+//
+//	Revision:	0
+//	Author:		Sevag Krikorian
+//	Date:		
+//	Note:		1st release of str.baseName
+//
+	
+	#includeOnce( "filesys.hhf" )
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "chars.hhf" )
+	#includeOnce( "excepts.hhf" )
+	
+	
+	// Returns carry set if a filename was copied.
+	// Returns carry clear if there was no filename to copy
+	// (failure occurs if either the path ends with "/" or 
+	// the path is the empty string).
+		
+	procedure filesys.extractFilename( pathname:string; fName:string );
+		@nodisplay; @noalignstack; @noframe;
+
+		var
+			saveEAX	:dword;
+			saveEBX	:dword;
+			saveECX	:dword;
+			saveEDX	:dword;
+			saveESI	:dword;
+			saveEDI	:dword;
+			
+	begin extractFilename;
+		
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( eax, saveEAX );
+		mov( ebx, saveEBX );
+		mov( ecx, saveECX );
+		mov( edx, saveEDX );
+		mov( esi, saveESI );
+		mov( edi, saveEDI );
+		
+		// Sanity checks:
+		
+		mov( pathname, ebx );
+		test( ebx, ebx );
+		jz radn;
+		
+		mov( fName, edi );
+		test( edi, edi );
+		jz radn;
+		
+		
+		// Search backward from the end of the string for the
+		// first directory separator. Note that we allow either
+		// Windows or Unix path separator characters here.
+		// This means that Unix filenames cannot have '\' characters
+		// in them (which is probably a good idea, anyway).
+		
+		mov( ebx, esi );
+		add( (type str.strRec[esi]).length, ebx );
+		
+		mov( ebx, edx );		// Point edx at zero-terminating byte.
+		cmp( ebx, esi );
+		je returnFalse;			// Return failure if it's an empty string.
+		
+		rscan:
+			sub( 1, ebx );
+			mov( [ebx], al );
+			cmp( al, '/' );
+			je doneScan;
+			cmp( al, '\' );
+			je doneScan;
+			
+			cmp( ebx, esi );
+			jae rscan;
+			
+		doneScan:
+			add( 1, ebx );	// Skip past '\', '/', or to start of filename.
+		
+		cmp( ebx, edx );	// See if the filename ends with '/' or '\'
+		je returnFalse;		// and return failure if this is the case.		
+		
+		
+		// return filename
+		
+		mov( edx, ecx );
+		sub( ebx, ecx );
+		cmp( ecx, (type str.strRec[edi]).maxlen );	// filename too big?
+		ja rso;
+		
+		mov( ecx, (type str.strRec[edi]).length );
+		
+		// copy string
+		
+		mov( ebx, esi );
+		pushfd();
+		cld();
+		rep.movsb();
+		popfd();
+		mov( #0, (type byte[edi]) );	// Zero-terminate the string
+		stc();							// Return success in carry flag.
+		jmp done;
+		 
+		returnFalse:
+		
+			// Return an empty string if the path ends with
+			// a "/" or "\" or if the path is the empty string.
+			
+			mov( 0, (type str.strRec [edi]).length );
+			mov( #0, (type char [edi] ));
+			clc();
+		
+		done:
+			mov( saveEAX, eax );
+			mov( saveEBX, ebx );
+			mov( saveECX, ecx );
+			mov( saveEDX, edx );
+			mov( saveESI, esi );
+			mov( saveEDI, edi );
+			
+			mov( ebp, esp );
+			pop( ebp );
+			ret( _parms_ );
+		
+		radn:
+			raise( ex.AttemptToDerefNULL );
+			
+		rso:
+			raise( ex.StringOverflow );
+		
+	end extractFilename;
+
+	
+end filesys_fileName_unit;

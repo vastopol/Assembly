@@ -1,0 +1,86 @@
+program catcset_test;
+#include( "stdlib.hhf" )
+
+static
+	handle	:str.strvar(128 * 1024);
+	c		:cset := {};
+	
+begin catcset_test;
+
+	str.cpy( "", handle );
+	
+	
+	str.catcset( handle, c );
+	str.cats( handle, nl );
+
+	or( 1, (type dword c) );
+	str.catcset( handle, c );
+	str.cats( handle, nl );
+
+	for( mov( 0, ecx ); ecx < 31; inc( ecx )) do
+
+		shl( 1, (type dword c) );
+		str.catcset( handle, c );
+		str.cats( handle, nl );
+
+	endfor;
+	mov( 0, (type dword c) );
+
+	or( 1, (type dword c[4]) );
+	str.catcset( handle, c );
+	str.cats( handle, nl );
+	for( mov( 0, ecx ); ecx < 31; inc( ecx )) do
+
+		shl( 1, (type dword c[4]) );
+		str.catcset( handle, c );
+		str.cats( handle, nl );
+
+	endfor;
+	mov( 0, (type dword c[4]) );
+
+
+
+	or( 1, (type dword c[8]) );
+	str.catcset( handle, c );
+	str.cats( handle, nl );
+	for( mov( 0, ecx ); ecx < 31; inc( ecx )) do
+
+		shl( 1, (type dword c[8]) );
+		str.catcset( handle, c );
+		str.cats( handle, nl );
+
+	endfor;
+	mov( 0, (type dword c[8]) );
+
+
+
+	or( 1, (type dword c[12]) );
+	str.catcset( handle, c );
+	str.cats( handle, nl );
+	for( mov( 0, ecx ); ecx < 31; inc( ecx )) do
+
+		shl( 1, (type dword c[12]) );
+		str.catcset( handle, c );
+		str.cats( handle, nl );
+
+	endfor;
+	mov( 0, (type dword c[12]) );
+
+	or( 1, (type dword c[4]));
+	str.catcset( handle, c );
+	str.cats( handle, nl );
+	for( mov( 1, ecx ); ecx < 96; inc( ecx )) do
+
+		shl( 1, (type dword c[4]) );
+		rcl( 1, (type dword c[8]) );
+		rcl( 1, (type dword c[12]) );
+		or( 1, (type dword c[4]) );
+		str.catcset( handle, c );
+		str.cats( handle, nl );
+
+	endfor;
+	stdout.put( handle );
+
+end catcset_test;
+
+													

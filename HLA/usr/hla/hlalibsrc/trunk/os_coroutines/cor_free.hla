@@ -1,0 +1,48 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit coroutines;
+
+#include( "coroutines.hhf" )
+#include( "memory.hhf" )
+
+
+	/******************************************************************/
+	/* 	                                                              */
+	/* 	coroutine_t.cofree-                                           */
+	/* 	                                                              */
+	/* 	The main purpose of this routine is to free up the            */
+	/* 	stack space allocated for a coroutine in the coroutine.create */
+	/* 	call.  The user must not free the space associated with the   */
+	/* 	currently executing coroutine.  Nor must the user attempt     */
+	/* 	to free the space associated with the "MainPgm" coroutine.    */
+	/* 	                                                              */
+	/******************************************************************/
+
+	method coroutine_t.cofree; @nodisplay; @noframe;
+	begin cofree;
+	
+		// Okay, free the storage for the coroutine's stack.
+		
+		mov( this.Stack, edi );
+		free( edi );
+		mov( 0, this.CurrentSP );
+		
+		ret();
+		
+	end cofree;
+
+			
+
+end coroutines;

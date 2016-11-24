@@ -1,0 +1,55 @@
+unit filesys_toUnixpath_unit;
+
+// synopsis
+//	Converts all "\" to "/"
+
+	#includeOnce( "filesys.hhf" )
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "excepts.hhf" )
+
+	procedure filesys.toUnixPath1( pathname:string );
+		@nodisplay; @noframe; @noalignstack;
+
+		// converts any Win32 path separator ('\') to
+		// unix path separator ('/')
+		
+	begin toUnixPath1;
+		
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( eax );
+		push( esi );
+		
+		mov( pathname, esi );
+		test( esi, esi );
+		jz radn;
+		
+		mov( '/', ah );
+		sub( 1, esi );
+		scan:
+			add( 1, esi );
+			mov( [esi], al );
+			test( al, al );
+			jz done;
+			cmp( al, '\');
+			jnz scan;
+			mov( ah, [esi] );
+			jmp scan;
+			
+		done:
+		
+		pop( esi );
+		pop( eax );
+		
+		pop( ebp );
+		ret( _parms_ );
+		
+		radn:
+			raise( ex.AttemptToDerefNULL );	
+		
+	end toUnixPath1;
+
+
+
+end filesys_toUnixpath_unit;

@@ -1,0 +1,489 @@
+program bBinaryIO_test;
+#include( "stdlib.hhf" )
+
+const
+	bufData_c : char[] :=
+				[
+					'a', #$d, #$a,
+					'b', 'c',  #$d, #$a,
+					'd', ' ', 'e', 'f', #$d, #$a,
+					#$d, #$a,
+					'1', '0', '0', #$d, #$a
+				];
+	
+
+var
+	b			:blob.blob;
+	bcmp		:blob.blob;
+	bufCmp		:char[ @elements( bufData_c )];
+	r80			:real80;
+	result80	:real80;
+	lw			:lword;
+	lwResult	:lword;
+	
+readonly
+	bufData		:byte[ @elements( bufData_c )] := bufData_c;
+					 
+begin bBinaryIO_test;
+
+	cld();
+	try
+	
+		blob.alloc( 8192 );
+		mov( eax, b );
+		blob.a_bufToBlob( &bufData, &bufData[@elements( bufData_c )] );
+		mov( eax, bcmp );
+		
+		////////////////////////////////////////////////////////////
+		//
+		// blob.read
+		
+		stderr.put( "Testing blob.read" nl );
+		blob.bufToBlob( &bufData, &bufData[@elements( bufData_c )], b );
+		blob.read( b, bufCmp, @elements( bufData_c ) );
+		lea( esi, bufCmp );
+		lea( edi, bufData );
+		mov( @elements( bufData_c ), ecx );
+		repe.cmpsb();
+		if( @ne ) then
+
+			stderr.put
+			(
+				"Read failed to match data" nl
+			);
+			raise( 1000 );
+			
+		endif;
+		
+		////////////////////////////////////////////////////////////
+		//
+		// blob.readAt
+		
+		stderr.put( "Testing blob.readAt" nl );
+		blob.bufToBlob( &bufData, &bufData[@elements( bufData_c )], b );
+		for( mov( 0, edx ); edx < @elements( bufData_c ); inc( edx )) do
+		
+			mov( @elements( bufData_c ), ebx );
+			sub( edx, ebx );
+			blob.readAt( b, bufCmp, edx, ebx );
+			lea( esi, bufCmp );
+			lea( edi, bufData[edx] );
+			mov( ebx, ecx );
+			repe.cmpsb();
+			if( @ne ) then
+			
+				mov( [edi-1], dl );
+				mov( [esi-1], dh );
+				lea( eax, bufCmp );
+				neg( eax );
+				add( esi, eax );
+				stderr.put
+				(
+					"ReadAt failed to match data" nl
+					"offset:", (type uns32 eax), nl
+					"ecx:   ", (type uns32 ecx), nl,
+					dl, "<>", dh, nl 
+				);
+				raise( 1001 );
+				
+			endif;
+			
+		endfor;
+		
+		////////////////////////////////////////////////////////////
+		//
+		// blob.write
+		
+		stderr.put( "Testing blob.write" nl );
+		blob.fillb( 0, @elements( bufData_c ), b );
+		blob.reset( b );
+		blob.write( b, bufData, @elements( bufData_c ) );
+		mov( b, esi );
+		lea( edi, bufData );
+		mov( @elements( bufData_c ), ecx );
+		repe.cmpsb();
+		if( @ne ) then
+		
+			stderr.put
+			(
+				"Write failed to match data" nl
+			);
+			raise( 1002 );
+			
+		endif;
+		
+		 
+		
+		////////////////////////////////////////////////////////////
+		//
+		// blob.writeAt
+		
+		stderr.put( "Testing blob.writeAt" nl );
+		blob.fillb( 0, @elements( bufData_c ), b );
+		blob.reset( b );
+		
+		blob.writeAt( b, bufData, 0, @elements( bufData_c ) );
+		if( blob.ne( b, bcmp )) then
+		
+			stderr.put
+			(
+				"WriteAt (1) failed to match data" nl
+			);
+			raise( 1003 );
+			
+		endif;
+		
+		for( mov( 0, edx ); edx < @elements( bufData_c ); inc( edx )) do
+		
+			blob.fillb( 0, @elements( bufData_c ), b );
+			blob.reset( b );
+			for( mov( 0, ecx ); ecx < edx; inc( ecx )) do
+			
+				mov( bufData[ecx], al );
+				blob.putByte( b, al );
+				
+			endfor;
+			mov( @elements( bufData_c ), eax );
+			sub( edx, eax ); 
+			blob.writeAt( b, bufData[edx], edx, eax );
+			if( blob.ne( b, bcmp )) then
+			
+				stderr.put
+				(
+					"WriteAt failed to match data" nl
+					"edx:", (type uns32 edx), nl
+					"ecx:   ", (type uns32 ecx), nl 
+				);
+				raise( 1004 );
+				
+			endif;
+		
+		endfor; 
+		
+		 
+		
+		
+		 
+		
+		////////////////////////////////////////////////////////////
+		//
+		// blob.getByte/blob.putByte
+		
+		stderr.put( "Testing blob.getByte and blob.putByte" nl );
+		blob.fillb( 0, @elements( bufData_c ), b );
+		blob.reset( b );
+		
+		for( mov( 0, edx ); edx < @elements( bufData_c ); inc( edx )) do
+		
+			mov( bufData[edx], al );
+			blob.putByte( b, al );
+			mov( 0, al );
+			blob.getByte( b );
+			if( al <> bufData[edx] ) then
+			
+				stderr.put
+				(
+					"blob.putByte/blob.getByte failed to match data" nl
+					"edx:", (type uns32 edx), nl
+					"al = ", al, " expected ", bufData[edx], nl 
+				);
+				raise( 1005 );
+				
+			endif;
+		
+		endfor; 
+		
+		blob.setrCursor( b, 0 ); 
+		for( mov( 0, edx ); edx < @elements( bufData_c ); inc( edx )) do
+		
+			blob.getByte( b );
+			if( al <> bufData[edx] ) then
+			
+				stderr.put
+				(
+					"blob.getByte failed to match data" nl
+					"edx:", (type uns32 edx), nl
+					"al = ", al, " expected ", (type byte bufData[edx]), nl 
+				);
+				raise( 1006 );
+				
+			endif;
+		
+		endfor; 
+		
+		 
+		
+		
+		////////////////////////////////////////////////////////////
+		//
+		// blob.getWord/blob.putWord
+		
+		stderr.put( "Testing blob.getWord and blob.putWord" nl );
+		blob.fillb( 0, 8192, b );
+		blob.reset( b );
+		
+		for( mov( 0, edx ); edx < 4096; inc( edx )) do
+		
+			blob.putWord( b, dx );
+			xor( eax, eax );
+			blob.getWord( b );
+			if( ax <> dx ) then
+			
+				stderr.put
+				(
+					"blob.putWord/blob.getWord failed to match data" nl
+					"edx:", (type uns32 edx), nl
+					"ax = ", ax, " expected ", dx, nl 
+				);
+				raise( 1007 );
+				
+			endif;
+		
+		endfor; 
+		
+		blob.setrCursor( b, 0 ); 
+		for( mov( 0, edx ); edx < 4096; inc( edx )) do
+		
+			blob.getWord( b );
+			if( ax <> dx ) then
+			
+				stderr.put
+				(
+					"blob.getWord failed to match data" nl
+					"edx:", (type uns32 edx), nl
+					"ax = ", ax, " expected ", dx, nl 
+				);
+				raise( 1008 );
+				
+			endif;
+		
+		endfor; 
+		
+		 
+		
+		
+		////////////////////////////////////////////////////////////
+		//
+		// blob.getDword/blob.putDword
+		
+		stderr.put( "Testing blob.getDword and blob.putDword" nl );
+		blob.fillb( 0, 8192, b );
+		blob.reset( b );
+		
+		for( mov( 0, edx ); edx < 2048; inc( edx )) do
+		
+			blob.putDword( b, edx );
+			xor( eax, eax );
+			blob.getDword( b );
+			if( eax <> edx ) then
+			
+				stderr.put
+				(
+					"blob.putDword/blob.getDword failed to match data" nl
+					"edx:", (type uns32 edx), nl
+					"eax = ", eax, " expected ", edx, nl 
+				);
+				raise( 1009 );
+				
+			endif;
+		
+		endfor; 
+		
+		blob.setrCursor( b, 0 ); 
+		for( mov( 0, edx ); edx < 2048; inc( edx )) do
+		
+			blob.getDword( b );
+			if( eax <> edx ) then
+			
+				stderr.put
+				(
+					"blob.getDword failed to match data" nl
+					"edx:", (type uns32 edx), nl
+					"eax = ", eax, " expected ", edx, nl 
+				);
+				raise( 1010 );
+				
+			endif;
+		
+		endfor; 
+		
+		 
+		
+		
+		 
+		
+		
+		////////////////////////////////////////////////////////////
+		//
+		// blob.getQword/blob.putQword
+		
+		stderr.put( "Testing blob.getQword and blob.putQword" nl );
+		blob.fillb( 0, 8192, b );
+		blob.reset( b );
+		
+		for( mov( 0, ecx ); ecx < 1024; inc( ecx )) do
+		
+			mov( ecx, eax );
+			mov( ecx, edx );
+			inc( edx );
+			blob.putQword( b, edx:eax );
+			xor( eax, eax );
+			xor( edx, edx );
+			blob.getQword( b );
+			dec( edx );
+			if( eax <> ecx || edx <> ecx  ) then
+			
+				inc( edx );
+				stderr.put
+				(
+					"blob.putQword/blob.getQword failed to match data" nl
+					"edx:", edx, nl
+					"eax = ", eax, " expected ", ecx, nl 
+				);
+				raise( 1011 );
+				
+			endif;
+		
+		endfor; 
+		
+		blob.setrCursor( b, 0 ); 
+		for( mov( 0, ecx ); ecx < 1024; inc( ecx )) do
+		
+			blob.getQword( b );
+			dec( edx );
+			if( eax <> ecx || edx <> ecx ) then
+			
+				inc( edx );
+				stderr.put
+				(
+					"blob.getQword failed to match data" nl
+					"edx:", edx, nl
+					"eax = ", eax, " expected ", ecx, nl 
+				);
+				raise( 1012 );
+				
+			endif;
+		
+		endfor; 
+		
+		 
+		
+		////////////////////////////////////////////////////////////
+		//
+		// blob.getTbyte/blob.putTbyte
+		
+		stderr.put( "Testing blob.getTbyte and blob.putTbyte" nl );
+		blob.fillb( 0, 8192, b );
+		blob.reset( b );
+		
+		fldz();
+		fstp( r80 );
+		for( mov( 0, ecx ); ecx < 512; inc( ecx )) do
+		
+			mov( ecx, eax );
+			mov( ecx, edx );
+			blob.putTbyte( b, (type tbyte r80) );
+			xor( eax, eax );
+			xor( edx, edx );
+			blob.getTbyte( b, (type tbyte result80) );
+			fld( r80 );
+			fld( result80 );
+			fcomip( st0, st1 );
+			fstp( st0 );
+			if( @ne ) then
+			
+				stderr.put
+				(
+					"blob.putTbyte/blob.getTbyte failed to match data" nl
+					"edx:", edx, nl
+					"r80 = ", r80, " expected ", result80, nl 
+				);
+				raise( 1013 );
+				
+			endif;
+		
+		endfor; 
+		
+		 
+		
+		
+		 
+		
+		////////////////////////////////////////////////////////////
+		//
+		// blob.getLword/blob.putLword
+		
+		stderr.put( "Testing blob.getLword and blob.putLword" nl );
+		blob.fillb( 0, 8192, b );
+		blob.reset( b );
+		
+		xor( eax, eax );
+		mov( eax, (type dword lw[0] ));
+		mov( eax, (type dword lw[4] ));
+		mov( eax, (type dword lw[8] ));
+		mov( eax, (type dword lw[12] ));
+		
+		for( mov( 0, ecx ); ecx < 512; inc( ecx )) do
+		
+			mov( ecx, eax );
+			mov( eax, (type dword lw[0] ));
+			inc( eax );
+			mov( eax, (type dword lw[4] ));
+			inc( eax );
+			mov( eax, (type dword lw[8] ));
+			inc( eax );
+			mov( eax, (type dword lw[12] ));
+			
+			blob.putLword( b, lw );
+			xor( eax, eax );
+			xor( edx, edx );
+			blob.getLword( b, lwResult );
+			mov( (type dword lw[0]), eax );
+			cmp( eax, (type dword lwResult[0]));
+			jne failed;
+			mov( (type dword lw[4]), eax );
+			cmp( eax, (type dword lwResult[4]));
+			jne failed;
+			mov( (type dword lw[8]), eax );
+			cmp( eax, (type dword lwResult[8]));
+			jne failed;
+			mov( (type dword lw[12]), eax );
+			cmp( eax, (type dword lwResult[12]));
+			if( @ne ) then
+			
+			failed:
+						
+				stderr.put
+				(
+					"blob.putLword/blob.getLword failed to match data" nl
+					"edx:", edx, nl
+					"lwResult = ", lwResult, " expected ", lw, nl 
+				);
+				raise( 1014 );
+				
+			endif;
+		
+		endfor; 
+		
+		 
+		
+	  anyexception
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"bBinaryIO_test failed!" nl
+			"Exception = ", (type uns32 eax), nl
+			"***************************************************" nl
+			nl 
+		);
+		os.exitProcess(3);
+		
+	endtry;
+	stderr.put( "bBinaryIO_test succeeded!" nl );
+	os.exitProcess(0);
+		
+end bBinaryIO_test;
+
+													

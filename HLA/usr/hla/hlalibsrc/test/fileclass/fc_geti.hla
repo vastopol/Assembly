@@ -1,0 +1,324 @@
+program fgeti_test;
+#include( "stdlib.hhf" )
+
+var
+	f			:file;
+	inputF		:real80;
+	
+begin fgeti_test;
+
+
+	// Testing fileio.geti32
+	
+	try
+	
+		f.create();
+		f.open( "fc_geti32.data", fileio.r );
+
+
+		f.geti32( );
+		if( eax <> 1 ) then
+		
+			raise($1011);
+		
+		endif;	
+		
+		f.geti32( );
+		if( eax <> -2 ) then
+		
+			raise($1012);
+		
+		endif;	
+		
+		f.geti32( );
+		if( eax <> -2147483648 ) then
+		
+			raise($1013);
+		
+		endif;	
+		
+		f.geti32( );
+		if( eax <> 2147483647 ) then
+		
+			raise($1014);
+		
+		endif;
+
+
+		
+		try
+		
+			f.geti32( );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise a conversion error.
+			
+		  	raise($1005 );
+			
+		  exception( ex.ConversionError )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	raise($1006 );
+			
+		endtry;
+		f.readLn( );	// Clean up after ourselves.
+		
+		
+		try
+		
+			f.geti32( );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	raise($1015 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	raise($1016 );
+			
+		endtry;
+		f.readLn( );
+		
+		
+		// Better be at end of file.
+		
+		if( !f.eof( )) then
+		
+			raise($1010);
+			
+		endif;
+		stderr.put( "f.geti32 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"f.geti32 failed! eax=", eax, nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+
+
+
+	// Testing f.geti16
+	
+	try
+	
+		f.open( "fc_geti16.data", fileio.r );
+
+
+		f.geti16( );
+		if( ax <> 0 ) then
+		
+			raise($1021);
+		
+		endif;	
+		
+		f.geti16( );
+		if( ax <> 1 ) then
+		
+			raise($1022);
+		
+		endif;	
+		
+		f.geti16( );
+		if( ax <> -1 ) then
+		
+			raise($1023);
+		
+		endif;	
+		
+		f.geti16( );
+		if( ax <> -32768 ) then
+		
+			raise($1024);
+		
+		endif;	
+		
+		f.geti16( );
+		if( ax <> 32767 ) then
+		
+			raise($1025);
+		
+		endif;
+		
+		try
+		
+			f.geti16( );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	raise($1026 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	raise($1027 );
+			
+		endtry;
+		f.readLn( );
+		
+		
+		// Better be at end of file.
+		
+		if( !f.eof( )) then
+		
+			raise($1020);
+			
+		endif;
+		stderr.put( "f.geti16 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"f.geti16 failed! eax=", eax, nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+	// Testing f.geti8
+	
+	try
+	
+		f.open( "fc_geti8.data", fileio.r );
+
+
+		f.geti8( );
+		if( al <> 0 ) then
+		
+			raise($1031);
+		
+		endif;	
+		
+		f.geti8( );
+		if( al <> 1 ) then
+		
+			raise($1032);
+		
+		endif;	
+		
+		f.geti8( );
+		if( al <> -1 ) then
+		
+			raise($1033);
+		
+		endif;	
+		
+		f.geti8( );
+		if( (type int8 al) <> -128 ) then
+		
+			raise($1034);
+		
+		endif;
+		
+		f.geti8( );
+		if( al <> 127 ) then
+		
+			raise($1035);
+		
+		endif;
+		
+		try
+		
+			f.geti8( );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	raise($1036 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	raise($1037 );
+			
+		endtry;
+		f.readLn( );
+		
+		
+		// Better be at end of file.
+		
+		if( !f.eof( )) then
+		
+			raise($1030);
+			
+		endif;
+		stderr.put( "f.geti8 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"f.geti8 failed! eax=", eax, nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+			
+end fgeti_test;
+
+													

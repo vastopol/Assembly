@@ -1,0 +1,117 @@
+unit filePath_unit;
+
+//	filesys.hasPath
+//
+//	Scans from the end of the pathname provided for a directory separator
+//	character. 
+//
+// returns:
+//	carry set = success, path component exists, 
+//		EAX =	index into pathname where the last directory separator
+//				character (right before the base name) is found.
+//
+//	carry clear = failure, no path component, 
+//		EAX = 	0 (though this value has no meaning, zero is a legitimate
+//				return value on success).
+
+	#includeOnce( "filesys.hhf" )
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "excepts.hhf" )
+	#includeOnce( "chars.hhf" ) 
+
+	
+	procedure filesys.hasPath( pathname:string );
+		@nodisplay; @noframe; @noalignstack;
+		
+		
+		var
+			saveEBX	:dword;
+			saveECX	:dword;
+			saveEDI	:dword;
+			
+	begin hasPath;
+		
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( ebx, saveEBX );
+		mov( ecx, saveECX );
+		mov( edi, saveEDI );
+		
+		// Sanity check:
+		
+		mov( pathname, ecx );
+		test( ecx, ecx );
+		jz radn;
+		
+		// Check for an empty string (fail if empty):
+		
+		mov( (type str.strRec[ecx]).length, ebx );
+		test( ebx, ebx );
+		jz returnFalse;
+		
+		// Point EBX just beyond the end of the string:
+
+		add( ecx, ebx );
+		
+		// Scan backward in the string looking for a path
+		// separator character.
+		
+		rscan:
+			sub( 1, ebx );
+			mov( [ebx], al );
+			cmp( al, '/' );
+			je doneScan;
+			cmp( al, '\' );
+			je doneScan;
+			cmp( ebx, ecx );
+			ja rscan;
+			jmp returnFalse;	// No separator character present!
+			
+			
+		// If we found a directory separator character, it's possible
+		// that there is a UNC prefix. We don't count that as a pathname
+		// component.
+		
+		doneScan:
+		
+			filesys.hasUncName( pathname );
+			jc havePath;
+			
+			// If there is a UNC prefix, we could still have
+			// a path prefix.  We have to check the index returned
+			// by hasUncName to see if it's the same position as
+			// the directory separator we found earlier.
+			
+			add( pathname, eax );
+			cmp( eax, ebx );
+			jae returnFalse;
+
+		// return pointer to end of pathname:
+			
+		havePath:
+			sub( pathname, ebx );
+			mov( ebx, eax );
+			stc();
+			jmp done;
+	
+		returnFalse:
+			xor( eax, eax );	// Clears carry flag.
+		
+		done:
+			
+			mov( saveEBX, ebx );
+			mov( saveECX, ecx );
+			mov( saveEDI, edi );
+			
+			mov( ebp, esp );
+			pop( ebp );
+			ret( _parms_ );
+			
+		radn:
+			raise( ex.AttemptToDerefNULL );	
+		
+	end hasPath;
+
+end filePath_unit;

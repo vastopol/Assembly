@@ -1,0 +1,86 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" )
+#include( "excepts.hhf" )
+#include( "memory.hhf" )
+#include( "stdio.hhf" )
+
+
+
+/*************************************************************/
+/*                                                           */
+/* tokenize-                                                 */
+/*                                                           */
+/* dest points at an array of strings (that is, an array     */
+/* of pointers to strings).  src points at a single string.  */
+/* This routine scans the strings and extracts "words" from  */
+/* the string.  Each extracted string is allocated storage   */
+/* via stralloc and a pointer to that string is stored in    */
+/* successive locations of the dest array.                   */
+/*                                                           */
+/* This routine defines a word as any sequence of characters */
+/* surrounded by the following:                              */
+/*                                                           */
+/* (1) the beginning of the src string,                      */
+/* (2) the end of the src string,                            */
+/* (3) any of the delimiters: space, tab, comma, "<", ">",   */
+/*     "|", "/", "\", or "-".                                */
+/* 	                                                         */
+/* This routine is typically used to prepare the "ARGV"      */
+/* array in preparation for parsing a command line parameter */
+/* set.                                                      */
+/*															 */
+/* Returns:													 */
+/*															 */
+/* Set of zero or more string pointers in the dest array.	 */
+/* Number of words found in EAX.							 */
+/*															 */
+/*                                                           */
+/*************************************************************/
+
+
+procedure str.tokenize
+(
+		src		:string;
+	var	dest	:var;
+		maxStrs	:dword
+);  @noframe;
+
+begin tokenize;
+
+	push( ebp );
+	mov( esp, ebp );
+
+	str.tokenize4( src, str.CmdLnDelimiters, dest, maxStrs );
+	
+	pop( ebp );
+	ret( _parms_ );
+	
+	
+end tokenize;
+
+
+
+end stringUnit;
+
+
+
+
+	
+

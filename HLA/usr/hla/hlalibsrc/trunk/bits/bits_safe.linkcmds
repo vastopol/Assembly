@@ -1,0 +1,12 @@
+bit_merge16_safe.o
+bit_merge32_safe.o
+bit_merge8_safe.o
+bit_distribute_safe.o
+bit_reverse16_safe.o
+bit_nibbles8_safe.o
+bit_reverse32_safe.o
+bit_reverse8_safe.o
+bit_nibbles16_safe.o
+bit_nibbles32_safe.o
+bit_coalesce_safe.o
+bit_cnt_safe.o

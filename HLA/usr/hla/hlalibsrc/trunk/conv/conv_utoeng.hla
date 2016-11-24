@@ -1,0 +1,81 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "strings.hhf" )
+
+/************************************************/
+/*                                              */
+/* 	utoEng-                                     */
+/* 	                                            */
+/* 	Converts an unsigned number to a string     */
+/* 	containing the English equivalent of that   */
+/* 	number.  E.g., 25 becomes "twenty-five".    */
+/* 	                                            */
+/* 	Inputs:                                     */
+/* 	                                            */
+/* 		u:		Number to convert.              */
+/* 		dest:	String to store result into.    */
+/* 		                                        */
+/* 	Note: the destination string must be large  */
+/* 	enough to hold the result.  The largest     */
+/* 	possible string probably needs no more than */
+/* 	about 128 characters (3,777,777,777).       */
+/* 	                                            */
+/************************************************/
+
+procedure conv.utoEng( u:dword; dest:string );
+	 @nodisplay; 
+	 @noframe;
+	 @noalignstack;		
+begin utoEng;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	push( edx );
+	push( edi );
+	
+	// Create an empty string.
+	
+	mov( dest, edi );
+	test( edi, edi );
+	jz refNULL;
+
+	mov( 0, (type str.strRec [edi]).length );
+	
+	// Recursively generate the string:
+	
+	mov( u, eax );
+	_utoEng();
+	
+	pop( edi );
+	pop( edx );
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+
+refNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end utoEng;	
+
+
+end ConvUnit;

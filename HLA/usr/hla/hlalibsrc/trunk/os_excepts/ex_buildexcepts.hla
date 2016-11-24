@@ -1,0 +1,452 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ExceptionStuff;
+?@noframe := true;
+
+#includeOnce( "os.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "hla.hhf" )
+#includeOnce( "coroutines.hhf" )
+
+#if( @thread )
+
+	#includeOnce( "threads.hhf" )
+	#includeOnce( "../include/thread_private.hhf" )
+	
+	static
+		align( 4 );
+		mainPgm_coroutine	:dword;
+		
+
+#else
+
+	static
+		align( 4 );
+		MainPgmCoroutine	:hla.coroutineDataStructure; 
+			@external( "MainPgmCoroutine__hla_" );
+			
+		MainPgmCoroutine	:hla.coroutineDataStructure;
+		
+		procedure quitProgram; @external( "QuitMain__hla_" );
+		
+#endif
+
+
+procedure HWexcept;					external( "HWexcept__hla_" );
+procedure BuildExcepts;				external( "BuildExcepts__hla_" );
+procedure shortDfltExcept;			external( "shortDfltExcept__hla_" );
+procedure DfltExHandlr;				external( "DfltExHndlr__hla_" );
+procedure defaultExceptionHandler;	external( "DefaultExceptionHandler__hla_" );
+	
+
+
+readonly
+	align( 4 );
+	MainPgmCoroutineVMT	:dword := &quitProgram;
+	Delimiters_ro	:cset :=
+					{
+						#0, #9, #10, #13, 
+						' ', 
+						',',
+						';',
+						':'
+					};
+		 
+		
+	
+const
+	tlsEDI	:text := "(type _hla.stdlib_tls_t [edi])";
+	
+
+#if( os.win32 )
+#include( "w.hhf" )
+
+	// If an exception is not caught,
+	// kill the whole program.
+
+	procedure BuildExcepts;	
+	begin BuildExcepts;
+	
+		#if( @thread )
+		
+			pop( ebx );		// grab return address.
+			
+			// Allocate storage for the thread record:
+			
+			sub( @size( _hla.stdlib_tls_t ), esp );
+			mov( esp, edi );	// Pointer to thread record
+			
+			// In theory, we shouldn't have to protect the haveTLShandle
+			// variable that the following code modifies because this
+			// function is normally only called by the main program during
+			// startup (i.e., no multiple threads at that point). However, it
+			// is, in theory, possible for some programmer to call BuildExcepts
+			// from their code (e.g., to set up some stand-alone thread of their
+			// own), so it's best to use a critical section to protect this code.
+			
+			_hla.enterCSthread();		
+			
+			// If this is the first time thread.create has been called by this
+			// process, then create a thread local storage handle:
+			
+			cmp( _hla.haveTLShandle, false );
+			jne AlreadyHaveTLShandle;
+			
+				// Okay, create a thread-local-storage handle for
+				// use by all the threads in this process.
+				
+				w.TlsAlloc();
+				
+				// If we get an exception, that's going to stop
+				// the program at this point (exception handling is
+				// not yet initialized):
+				
+				cmp( eax, $FFFF_FFFF );
+				jne GotTLShandle;
+				
+					raise( ex.ThreadError );
+					
+				GotTLShandle:
+				mov( eax, thread.threadContext );
+				mov( true, _hla.haveTLShandle );
+					
+			AlreadyHaveTLShandle:
+			mov( thread.threadContext, eax );
+			
+			// Okay, set the pointer to this thread's (main program's)
+			// thread local storage area (that we just allocated on the
+			// stack).
+			
+			w.TlsSetValue( eax, edi );
+			
+			// Okay, now we have to initialize all the fields of the
+			// stdlib_tls_t record we just allocated on the stack:
+			
+			// Fill in the initial values for our thread local storage.
+			// Note that this is initialization data that will be copied by
+			// the thread, this isn't the actual data structure.
+			//
+			// Begin by filling in the bogus fields of the MainPgmCoroutine
+			// data structure. This is not a real coroutine, so we can put NULLs 
+			// (and zeros) in most of the fields of the pds.MainPgmCoroutine data 
+			// structure:
+			
+			lea( eax, MainPgmCoroutineVMT );
+			mov( eax, tlsEDI.MainPgmCoroutine.theCoroutineVMT );
+			mov( 0, tlsEDI.MainPgmCoroutine.currentESP );
+			mov( 0, tlsEDI.MainPgmCoroutine.stackPointer );
+			mov( 0, tlsEDI.MainPgmCoroutine.pointerToLastCaller );
+			
+			
+			// Initialize the conv_Delimiters field with the standard
+			// delimiters:
+			
+			mov( (type dword Delimiters_ro[0]), eax );
+			mov( eax, (type dword tlsEDI.conv_Delimiters[0]));
+			mov( (type dword Delimiters_ro[4]), eax );
+			mov( eax, (type dword tlsEDI.conv_Delimiters[4]));
+			mov( (type dword Delimiters_ro[8]), eax );
+			mov( eax, (type dword tlsEDI.conv_Delimiters[8]));
+			mov( (type dword Delimiters_ro[12]), eax );
+			mov( eax, (type dword tlsEDI.conv_Delimiters[12]));
+			
+			
+			// Initialize OutputUnderscores with false:
+			
+			mov( _hla.OutputUnderscores_c, tlsEDI.conv_OutputUnderscores );
+			
+			// Initialize the command-line arguments variables:
+			
+			mov( NULL, tlsEDI.cl_CommandLine );
+			mov( 0, tlsEDI.cl_argc );
+			mov( _hla.NeedsCmdLn_c, tlsEDI.cl_NeedsCmdLn );
+			
+			// The new thread inherits the current thread's date and time
+			// formats and separator character:
+			
+			mov( _hla.DateFormat_c, tlsEDI.dt_DateFormat );
+			mov( _hla.DateSeparator_c, tlsEDI.dt_DateSeparator );
+			mov( _hla.TimeFormat_c, tlsEDI.dt_TimeFormat );		
+				
+			// Build an structured exception handler frame on the stack:
+			
+			pushd( &DfltExHandlr );
+			push( ebp );
+			lea( eax, tlsEDI.MainPgmCoroutine );
+			pushd( eax );
+			pushd( &HWexcept );
+			
+			// push( fs:[0] );
+			
+			xor( eax, eax );
+			fseg:push( (type dword [eax]) );
+			
+			// mov( esp, fs:[0] );						
+
+			fseg:mov( esp, [eax] );
+			
+			// We need to initialize the main program's coroutine object
+			// with the pointer to the exception record we just created.
+			// Note that we must initialize the ExceptionContext field
+			// with this address:
+			 
+			mov( esp, tlsEDI.MainPgmCoroutine.exceptionContext );
+
+			// We need to release the mutex we're holding:
+			
+			_hla.leaveCSthread();
+			
+			// Return to the caller:
+					
+			jmp( ebx );
+						
+		
+		#else // non-thread-safe code
+		
+			pop( eax );
+			
+			// Fill in the MainPgmCoroutine data structure:
+			
+			lea( ebx, MainPgmCoroutineVMT );
+			mov( ebx, MainPgmCoroutine.theCoroutineVMT );
+			mov( 0, MainPgmCoroutine.currentESP );
+			mov( 0, MainPgmCoroutine.stackPointer );
+			mov( 0, MainPgmCoroutine.pointerToLastCaller );
+			
+			// Build an structured exception handler frame on the stack:
+			
+			pushd( &DfltExHandlr );
+			push( ebp );
+			pushd( &MainPgmCoroutine );
+			pushd( &HWexcept );
+			
+			// push( fs:[0] );
+			
+			xor( ebx, ebx );
+			fseg:push( (type dword [ebx]) );
+			
+			// mov( esp, fs:[0] );						
+
+			fseg:mov( esp, [ebx] );
+			
+			// We need to initialize the main program's coroutine object
+			// with the pointer to the exception record we just created.
+			// Note that we must initialize the ExceptionContext field
+			// with this address:
+			 
+			mov( esp, MainPgmCoroutine.exceptionContext );
+					
+			jmp( eax );
+			
+		#endif
+
+	end BuildExcepts;
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+#elseif( os.linux | os.freeBSD | os.macOS  )
+
+
+	const
+		ExceptSignature	:= $e8ce972;	// Exception Record Signature
+
+	#if( !@thread )
+	
+		static
+			ExceptionPtr		:dword; @external( "ExceptionPtr__hla_" );
+			ExceptionPtr		:dword := 0;
+			
+	#endif
+
+
+	 
+	// BuildExcepts-
+	//
+	//	This procedure gets called by the main HLA program
+	// to build an exception record on the stack.  An exception
+	// record takes the following form:
+	//
+	//	esp+16:		Pointer to EXCEPTION handler code
+	//	esp+12:		Saved context (EBP)
+	//	esp+8:		Pointer to last active coroutine
+	//	esp+4:		Signature value ($e8ce972)
+	//	esp+0:		Pointer to previous exception frame.
+	//
+	//	Note: the funny signature dword ($e8ce972) is an approximate
+	//	spelling of "excepts" using only hexadecimal characters.
+	//
+	//	This gets call immediately upon entry into the main program,
+	// so we don't have to preserve any registers.  Note, though, that
+	// we have to remove the return address from the stack so we can
+	// push the exception record onto the stack.
+
+	procedure InstallSignals__hla_; @external;
+
+	procedure BuildExcepts;
+	begin BuildExcepts;
+
+		#if( @thread )
+		
+			call InstallSignals__hla_;		// Install *NIX Signal handlers.
+			pop( ebx );		// grab return address.
+			
+			// Allocate storage for the thread record:
+			
+			sub( @size( _hla.stdlib_tls_t ), esp );
+			mov( esp, edi );	// Pointer to thread record
+			
+			// In theory, we shouldn't have to protect the haveTLShandle
+			// variable that the following code modifies because this
+			// function is normally only called by the main program during
+			// startup (i.e., no multiple threads at that point). However, it
+			// is, in theory, possible for some programmer to call BuildExcepts
+			// from their code (e.g., to set up some stand-alone thread of their
+			// own), so it's best to use a critical section to protect this code.
+			
+			_hla.enterCSthread();		
+			
+			// If this is the first time thread.create has been called by this
+			// process, then create a thread local storage handle:
+			
+			cmp( _hla.haveTLShandle, false );
+			jne AlreadyHaveTLShandle;
+			
+				// Okay, create a thread-local-storage handle for
+				// use by all the threads in this process.
+				
+				pthread_key_create( &thread.threadContext, NULL );
+				test( eax, eax );
+				jz GotTLShandle;
+
+					raise( ex.ThreadError );
+					
+				GotTLShandle:
+				mov( true, _hla.haveTLShandle );
+					
+			AlreadyHaveTLShandle:
+			
+			// Okay, set the pointer to this thread's (main program's)
+			// thread local storage area (that we just allocated on the
+			// stack).
+			
+			pthread_setspecific( thread.threadContext, edi );
+			
+			// Okay, now we have to initialize all the fields of the
+			// stdlib_tls_t record we just allocated on the stack:
+			
+			// Fill in the initial values for our thread local storage.
+			// Note that this is initialization data that will be copied by
+			// the thread, this isn't the actual data structure.
+			//
+			// Begin by filling in the bogus fields of the MainPgmCoroutine
+			// data structure. This is not a real coroutine, so we can put NULLs 
+			// (and zeros) in most of the fields of the pds.MainPgmCoroutine data 
+			// structure:
+			
+			lea( eax, MainPgmCoroutineVMT );
+			mov( eax, tlsEDI.MainPgmCoroutine.theCoroutineVMT );
+			mov( 0, tlsEDI.MainPgmCoroutine.currentESP );
+			mov( 0, tlsEDI.MainPgmCoroutine.stackPointer );
+			mov( 0, tlsEDI.MainPgmCoroutine.pointerToLastCaller );
+			
+			
+			// Initialize the conv_Delimiters field with the standard
+			// delimiters:
+			
+			mov( (type dword Delimiters_ro[0]), eax );
+			mov( eax, (type dword tlsEDI.conv_Delimiters[0]));
+			mov( (type dword Delimiters_ro[4]), eax );
+			mov( eax, (type dword tlsEDI.conv_Delimiters[4]));
+			mov( (type dword Delimiters_ro[8]), eax );
+			mov( eax, (type dword tlsEDI.conv_Delimiters[8]));
+			mov( (type dword Delimiters_ro[12]), eax );
+			mov( eax, (type dword tlsEDI.conv_Delimiters[12]));
+			
+			
+			// Initialize OutputUnderscores with false:
+			
+			mov( _hla.OutputUnderscores_c, tlsEDI.conv_OutputUnderscores );
+			
+			// Initialize the command-line arguments variables:
+			
+			mov( NULL, tlsEDI.cl_CommandLine );
+			mov( 0, tlsEDI.cl_argc );
+			mov( _hla.NeedsCmdLn_c, tlsEDI.cl_NeedsCmdLn );
+			
+			// The new thread inherits the current thread's date and time
+			// formats and separator character:
+			
+			mov( _hla.DateFormat_c, tlsEDI.dt_DateFormat );
+			mov( _hla.DateSeparator_c, tlsEDI.dt_DateSeparator );
+			mov( _hla.TimeFormat_c, tlsEDI.dt_TimeFormat );		
+				
+			// Build an structured exception handler frame on the stack:
+			
+			pushd( &DfltExHandlr );
+			push( ebp );
+			lea( eax, tlsEDI.MainPgmCoroutine );
+			pushd( eax );
+			pushd( ExceptSignature );
+			pushd( esp );					// No previous handler so fake it.
+			
+			mov( esp, tlsEDI.ExceptionPtr );			
+			
+			// We need to initialize the main program's coroutine object
+			// with the pointer to the exception record we just created.
+			// Note that we must initialize the ExceptionContext field
+			// with this address:
+			 
+			mov( esp, tlsEDI.MainPgmCoroutine.exceptionContext );
+			
+			// We need to release the critical section:
+			
+			_hla.leaveCSthread();
+			
+			// Return to the caller:
+					
+			jmp( ebx );
+						
+		#else
+		
+			call InstallSignals__hla_;		// Install *NIX Signal handlers.
+			
+			pop( eax );						// Remove return address.
+			pushd( &DfltExHandlr );			// Exception handler address.
+			push( ebp );					// Context for main program.
+			pushd( &MainPgmCoroutine );		// Address of current coroutine.
+			pushd( ExceptSignature );		// Magic Value.
+			pushd( esp );					// No previous handler so fake it.
+			
+			mov( esp, ExceptionPtr );		// Save ptr to exception record.
+			mov								// Set up coroutine exception
+			( 								//  record pointer to point at
+				esp,	 					//  this exception record.
+				MainPgmCoroutine.exceptionContext 
+			);
+			jmp( eax );						// Return to main pgm.
+			
+		#endif
+		
+	end BuildExcepts;
+
+#endif
+
+end ExceptionStuff;
+
+

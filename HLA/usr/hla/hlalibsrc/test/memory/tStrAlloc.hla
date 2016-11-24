@@ -1,0 +1,140 @@
+// tStrAlloc-
+//
+// Tests the stralloc, strfree, strgetref, strisinheap,
+// strnewref, and strrealloc functions.
+//
+// Because the current implementations of these functions just turn
+// around and call the mem.* functions, this test file is rather lame--
+// it just makes sure the calls work and leaves it up to the other
+// test files to do an in-depth test.
+
+
+program testStrAlloc;
+#include( "stdlib.hhf" )
+#include( "../../trunk/include/mem.hhf" )	
+
+const
+	listSize	:= 1024;
+		
+static
+	notInHeap	:string := "Not In Heap";
+	strPtrs		:string[listSize];
+	
+begin testStrAlloc;
+
+	// Allocate a bunch of strings:
+	
+	for( mov( 0, edx ); edx < listSize; inc( edx )) do
+	
+		str.alloc( 256 );
+		mov( eax, strPtrs[edx*4] );
+		rand.range( 1, 255 );
+		str.setstr( '*', eax, strPtrs[edx*4] );
+		  
+	endfor;
+	
+	// Bump up the ref counts on all of them:
+	
+	for( mov( 0, edx ); edx < listSize; inc( edx )) do
+	
+		str.newref( strPtrs[edx*4] );
+		  
+	endfor;
+	
+	
+	for( mov( 0, edx ); edx < listSize; inc( edx )) do
+	
+		str.getref( strPtrs[edx*4] );
+		if( eax <> 2 ) then
+		
+			stderr.put
+			(
+				"Error! str.getref should have returned 2!" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		  
+	endfor;
+	
+	// Free the strings, to reduce the ref count:
+	
+	
+	
+	for( mov( 0, edx ); edx < listSize; inc( edx )) do
+	
+		str.free( strPtrs[edx*4] );
+		  
+	endfor;
+	
+	
+	for( mov( 0, edx ); edx < listSize; inc( edx )) do
+	
+		str.getref( strPtrs[edx*4] );
+		if( eax <> 1 ) then
+		
+			stderr.put
+			(
+				"Error! str.getref should have returned 1!" nl
+			);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+			
+		endif;
+		  
+	endfor;
+	
+	// Make sure str.isInHeap returns valid values:
+	
+	str.isInHeap( notInHeap );
+	if( eax <> NULL ) then
+		
+		stderr.put
+		(
+			"Error! str.isInHeap should have returned NULL!" nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+			
+	endif;
+		  
+	for( mov( 0, edx ); edx < listSize; inc( edx )) do
+	
+		str.isInHeap( strPtrs[edx*4] );
+		if( eax = NULL ) then
+		
+			stderr.put
+			(
+				"Error! str.isInHeap should not have returned NULL!" nl
+			);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+			
+		endif;
+		  
+	endfor;
+	
+	
+	// Quick test of realloc to make sure it doesn't fail:
+	
+	
+	for( mov( 0, edx ); edx < listSize; inc( edx )) do
+	
+		str.realloc( strPtrs[edx*4], 128 );
+		mov( eax, strPtrs[edx*4] );
+		rand.range( 1, 127 );
+		str.setstr( '*', eax, strPtrs[edx*4] );
+		  
+	endfor;
+	
+	 
+	
+	stderr.put( "tStrAlloc succeeded!" nl );
+	
+	
+end testStrAlloc;	

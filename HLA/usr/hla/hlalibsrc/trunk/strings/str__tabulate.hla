@@ -1,0 +1,264 @@
+unit str__tabulate_unit;
+
+	// utility procedure called by entab and detab routines
+	//
+	//	s			=	source string
+	//	tabCols		=	number by which to expand each space
+	//				=	number of tabs in tabCols_a
+	//	tabCols_a	=	array of tabCols, or NULL to use tabCols
+	//	dest		=	storage for conversion
+	//				=	NULL = allocate storage
+	//	tabChar		=	magic character, usually a space for entab
+	//				=	and stdio.tab for detab.
+	//	returns:
+	//		EAX = allocates string on HEAP, if applicable
+	//				or pointer to dest
+
+	#includeonce( "strings.hhf" )
+	#includeonce( "memory.hhf" )
+	#includeonce( "excepts.hhf" )
+
+	procedure str._tabulate (
+			s				:string;
+			tabCols			:dword;
+			var tabCols_a	:var;
+			dest			:string;
+			tabChar			:char
+		);
+		@nodisplay; @noframe; @noalignstack;
+
+		var
+			saveEBX	:dword;
+			saveECX	:dword;
+			saveEDX	:dword;
+			saveESI	:dword;
+			saveEDI	:dword;
+			dst		:string;
+
+	begin _tabulate;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( ebx, saveEBX );
+		mov( ecx, saveECX );
+		mov( edx, saveEDX );
+		mov( esi, saveESI );
+		mov( edi, saveEDI );
+		
+		mov( s, esi );
+		test( esi, esi );
+		jz radn;
+		
+		mov( tabCols_a, edx );
+		test( edx, edx );
+		jnz doArrayTabs;
+		
+		
+		// do normal tabs
+		
+		// count the number of tabChars in source
+		xor( ecx, ecx );
+		sub( 1, esi );
+		mov( tabChar, ah );
+		count_tabChar:
+			add( 1, esi );
+			mov( [esi], al );
+			test( al, al );
+			jz doneCount;
+			cmp( al, ah);
+			jne count_tabChar;
+			add( 1, ecx );
+			jmp count_tabChar;
+			
+		doneCount:
+
+		// determine how big a string we need to store
+		// tabbed characters 
+		mov( s, esi );
+		mov( tabCols, eax );
+		mul( ecx );
+		add( (type str.strRec[esi]).length, eax );
+		
+		// see if we have enough room in dest
+		mov( dest, edi );
+		test( edi, edi );
+		jz allocate1;
+		
+		// check test string with eax
+		cmp( eax, ( type str.strRec[edi]).maxlen );
+		ja rso;
+		jmp l0;
+		
+		allocate1:
+		str.alloc( eax );
+		mov( eax, edi );
+		
+		l0:
+		mov( edi, dst );
+		sub( 1, esi );
+		mov( tabCols, edx );
+		mov( tabChar, ah );
+		copyLoop:
+			
+			add( 1, esi );
+			mov( [esi], al );
+			test( al, al );
+			jz doneCopy;
+			cmp( al, ah );
+			jne next;
+			
+			// found the tabulation character
+			or( -1, ecx );
+			tabulate:
+				add( 1, ecx );
+				cmp( ecx, edx );
+				jz copyLoop;
+				mov( ' ', (type byte [edi]) );
+				add( 1, edi );
+				jmp tabulate;
+			
+			next:
+			mov( al, [edi]);
+			add( 1, edi );
+			jmp copyLoop;
+			
+			
+		
+		doArrayTabs:
+
+		
+		// count the number of space characters in source
+		// up to numTabs
+		// ecx will keep track of actual number of bytes
+		// needed to fill all encountered space characters.
+		or( -1, edi );
+		xor( ecx, ecx );
+		
+		sub( 1, esi );
+		mov( tabChar, ah );
+		count_tabChars2:
+			add( 1, esi );
+			mov( [esi], al );
+			test( al, al );
+			jz doneCount2;
+			cmp( al, ah);
+			jne count_tabChars2;
+			
+			// found a tabChar
+			// increment space counter
+			add( 1, edi );
+			cmp( edi, tabCols );
+			je doneCount2;
+			
+			// add appropriate value to ecx
+			add( [edx + edi*4], ecx );
+			
+			jmp count_tabChars2;
+			
+		doneCount2:
+		
+		mov( s, esi );
+		add( (type str.strRec[esi]).length, ecx );
+		
+		mov( dest, edi );
+		test( edi, edi );
+		jz allocate2;
+		
+		cmp( ecx, (type str.strRec[edi]).maxlen );
+		ja rso;
+		jmp l1;
+		
+		allocate2:
+		str.alloc( ecx );
+		mov( eax, edi );
+		
+		l1:
+		mov( edi, dst );
+		// ebx will keep track of current space pos
+		sub( 1, esi );
+		or( -1, ebx );
+		copyLoop2:
+			add( 1, esi );
+			mov( [esi], al );
+			test( al, al );
+			jz doneCopy;
+			cmp( al, tabChar );
+			jne next2;
+			
+			// found a space, tabulate it
+			add( 1, ebx );
+			cmp( ebx, tabCols );
+			je copyRest;
+			
+			// get the next tabCol
+			mov( [edx + ebx*4], eax ); 
+			or( -1, ecx );
+			tabulate2:
+				
+				// if we are done with the tabs
+				// continue copying
+				// note: this will remove a space if  the current
+				// value of tabCol = 0 (zero)
+				
+				add( 1, ecx );
+				cmp( ecx, eax );
+				jz copyLoop2;
+				mov( ' ', (type byte [edi]) );
+				add( 1, edi );
+				jmp tabulate2;
+			
+			next2:
+			mov( al, [edi]);
+			add( 1, edi );
+			jmp copyLoop2;
+
+
+			// done with the tabulation,
+			// just copy the rest of the string as-is
+			// but also add the last space encountered
+			// before getting here
+			copyRest:
+			sub( 1, esi );
+			
+			copyRestLoop:
+				add( 1, esi );
+				mov( [esi], al );
+				test( al, al );
+				jz doneCopy;
+				mov( al, (type byte[edi]) );
+				add( 1, edi );
+				jmp copyRestLoop;
+
+
+		doneCopy:
+
+		// finalize the string
+		
+		mov ( #0, (type byte[edi]) );
+		mov( dst, eax );
+		sub( eax, edi );
+		mov( edi, (type str.strRec[eax]).length );
+		
+		done:
+		
+			mov( saveEBX, ebx );
+			mov( saveECX, ecx );
+			mov( saveEDX, edx );
+			mov( saveEDI, edi );
+			mov( saveESI, esi );
+			
+			mov( ebp, esp );
+			pop( ebp );
+			ret( _parms_ );
+		
+		rso:
+			raise( ex.StringOverflow );
+		
+		radn:
+			raise( ex.AttemptToDerefNULL );
+			
+	end _tabulate;
+	
+end str__tabulate_unit;

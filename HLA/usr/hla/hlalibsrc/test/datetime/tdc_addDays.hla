@@ -1,0 +1,108 @@
+program DatePlusDays_test;
+#include( "stdlib.hhf" )
+#include( "dtClass.hhf" )
+
+static
+	baseDate	:date.daterec;
+	incDate		:date.daterec;
+	sumDate		:date.daterec;
+	
+	tmp			:date.daterec;
+	
+	baseJul		:dword;
+	incJul		:dword;
+	finalJul	:dword;
+	
+	days		:dword;
+	
+	dc			:dateClass;
+	vdc			:virtualDateClass;
+	
+	
+begin DatePlusDays_test;
+
+	 
+	date.setFormat( date.mmddyyyy );
+	dc.create();
+	vdc.create();
+
+	date.toJulian( 1, 1, date.minYear );
+	mov( eax, baseJul );
+	mov( eax, incJul );
+	
+	date.toJulian( 12, 31, date.maxYear-1 );
+	mov( eax, finalJul );
+	
+	date.pack( 1, 1, date.minYear, baseDate );
+	mov( (type dword baseDate), eax );
+	mov( eax, (type dword incDate));
+	mov( eax, (type dword sumDate));
+	mov( eax, dc.theDate );
+	mov( eax, dc.theDate );
+	
+	mov( 0, days );
+	while( mov( incJul, eax ) <= finalJul ) do
+	
+		inc( days );
+		inc( incJul );
+		mov( (type dword baseDate), eax );
+		mov( eax, sumDate );
+		
+		dc.addDays( 1 );
+		vdc.addDays( 1 );
+		date.addDays( days, sumDate ); 
+		date.addDays( 1, incDate );
+		
+		dc.toJulian();
+		mov( eax, ecx );
+		vdc.toJulian();
+		mov( eax, edx );
+		date.toJulian( incDate );
+		mov( eax, ebx );
+		date.toJulian( sumDate ); 
+		if
+		( 
+				eax <> ebx
+			||	eax <> ecx 
+			||	eax <> edx 
+			||	eax <> incJul 
+		) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"dateClass.addDays failed!", nl,
+				"incDate= '"
+			);
+			date.a_toString( incDate );
+			stderr.put
+			(
+				(type string eax), "'" nl
+				"incJul=  '"
+			);
+			str.free( eax );
+			date.fromJulian( incJul, tmp );
+			date.a_toString( tmp );
+			stderr.put
+			(
+				(type string eax), "'" nl
+				"dc = '", dc,  "'" nl
+				"vdc= '", vdc, "'" nl
+				"***************************************************" nl
+				nl 
+			);
+			str.free( eax );
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		
+	endwhile;
+	stderr.put( "dateClass.addDays succeeded!" nl );
+	os.exitProcess(0);
+		
+end DatePlusDays_test;
+
+													

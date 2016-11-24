@@ -1,0 +1,62 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+
+unit argsUnit;
+
+#includeOnce( "../include/osargs.hhf" )
+#includeOnce( "excepts.hhf" )
+
+?@nodisplay := true;
+
+
+/******************************************************/
+/*                                                    */
+/* arg.v-                                             */
+/*                                                    */
+/* This function returns a pointer to a string        */
+/* that corresponds to the specified command          */
+/* line parameter (specified by the index parameter). */
+/* The index value must be between 0 and argc-1       */
+/* or this routine generates an exception.            */
+/*                                                    */
+/******************************************************/
+
+procedure arg.v( index:uns32 ); 
+	@nodisplay;
+	@noframe; 
+begin v;
+
+	push( ebp );
+	mov( esp, ebp );
+	_hla.get_NeedsCmdLn();
+	cmp( al, false );
+	je hasCmdLn;
+	
+		arg.cmdLn();
+		
+	hasCmdLn:
+	_hla.get_argc();
+	cmp( eax, index );
+	jbe ValueOutOfRange;
+	_hla.get_argv( index );
+	pop( ebp );
+	ret( _parms_ );
+
+ValueOutOfRange:
+	raise( ex.ValueOutOfRange );
+	
+end v;
+
+end argsUnit;

@@ -1,0 +1,182 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+procedure str.translate4
+( 
+	src:string; 
+	from:string; 
+	toStr:string; 
+	dest:string 
+);	
+	@noframe;
+
+var
+	FromSet:cset;
+	ToChars:char[128];
+	
+begin translate4;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( esi );
+	push( edi );
+
+	xor( eax, eax );
+	mov( eax, (type dword FromSet[0]) );
+	mov( eax, (type dword FromSet[4]) );
+	mov( eax, (type dword FromSet[8]) );
+	mov( eax, (type dword FromSet[12]));
+	
+
+	mov( from, esi );
+	mov( toStr, edi );
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+	mov( eax, edx );
+	cmp( edx, (type str.strRec [esi]).length );
+	jnb whileDone;
+	whileEDXltLen:
+	
+		// Fetch each character from the "from" string.
+		
+		mov( [esi+edx], al );
+		
+		// Add that character to the "FromSet" cset:
+		
+		bts( eax, FromSet );
+		
+		// If the index to the character is less than the
+		// length of the "to" string, then insert the
+		// translation character into the ToChars table
+		// at the index specified by the corresponding
+		// character in the "toStr" string.
+		//
+		// If the "toStr" string is shorter than than the "from"
+		// string, then store zeros in the remaining spots
+		// in the translation array (zeros mean "remove"
+		// the character during translation).
+		
+		
+		mov( 0, cl );	// Assume not less than length
+		cmp( edx, (type str.strRec [edi]).length );
+		jnb notLTlen;
+		
+			mov( [edi+edx], cl );			// Get replacement char.
+			
+		notLTlen:
+		mov( cl, ToChars[ eax ] );		// Put at index of from char.
+			
+		
+		// On to the next character in the source string.
+		
+		inc( edx );
+		cmp( edx, (type str.strRec [esi]).length );
+		jb whileEDXltLen;
+		
+	whileDone:
+	
+	
+	// Okay, now process the input string, producing the output string.
+	
+	mov( src, esi );
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+	mov( dest, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+	// First, check to make sure that the output string
+	// is at least as big as the input string (technically,
+	// this may not be required if we wind up deleting characters,
+	// but this is the most efficient check to make).
+	
+	mov( (type str.strRec [esi]).length, eax );
+	cmp( eax, (type str.strRec[edi]).maxlen );
+	ja StringOverflow;
+	
+	// Now copy the characters one at a time from the source
+	// string to the destination string, making any necessary
+	// replacements or deletions.
+	
+	xor( eax, eax );
+	jmp testCondition;
+	foreverLoop:
+	
+		add( 1, esi );		// Move on to next source char
+		bt( eax, FromSet );
+		jnc notInFromSet;
+		
+			mov( ToChars[ eax ], al );
+			
+		notInFromSet:
+		cmp( al, 0 );
+		je dontDelete;			// At this point, zero means delete.
+		
+			mov( al, [edi] );	// If not deleting, save char.
+			add( 1, edi );		// Next dest char position.
+			
+		dontDelete:
+		
+	testCondition:
+		mov( [esi], al );
+		cmp( al, 0 );
+		jne foreverLoop;	// Done if at End Of String.
+		
+	mov( dest, esi );
+	mov( 0, (type char [edi] ));
+	sub( esi, edi );
+	mov( edi, (type str.strRec [esi]).length );
+
+	pop( edi );
+	pop( esi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+				
+StringOverflow:
+	raise( ex.StringOverflow );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end translate4;
+
+
+
+end stringUnit;
+
+
+
+
+	
+

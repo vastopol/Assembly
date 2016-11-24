@@ -1,0 +1,80 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit mathUnit;
+
+#include( "math.hhf" )
+
+
+/***************************************************************/
+/*                                                             */
+/*  TwoToX(x)- Computes 2**x.                                  */
+/*             It does this by using the algebraic identity:   */
+/*                                                             */
+/*             2**x = 2**int(x) * 2**frac(x).                  */
+/*             We can easily compute 2**int(x) with fscale and */
+/*             2**frac(x) using f2xm1.                         */
+/*                                                             */
+/*             This routine requires three free registers.     */
+/*                                                             */
+/***************************************************************/
+
+
+
+
+
+procedure math.twoToX80( r:real80 ); @nodisplay; @noframe;
+var
+	SaveCW: 	word;
+	MaskedCW:	word;
+
+begin twoToX80;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		fstcw( SaveCW );
+
+		// Modify the control word to truncate when rounding.
+
+		fstcw( MaskedCW );
+		or( %1100, (type byte MaskedCW[1]));
+		fldcw( MaskedCW );
+
+	
+		fld( r );			// Push r onto tos.
+		fld( st0 );			// Duplicate tos.
+		frndint();			// Compute integer portion.
+
+		fxch();				// Swap whole and int values.
+		fsub( st1, st0 );	// Compute fractional part.
+
+		f2xm1();			// Compute 2**frac(x)-1.
+		fld1();
+		faddp();			// Compute 2**frac(x).
+
+		fxch();				// Get integer portion.
+		fld1();				// Compute 1*2**int(x).
+		fscale();
+		fstp( st1 );		// Remove st(1) (which is 1).
+				  
+		fmulp();			// Compute 2**int(x) * 2**frac(x).
+
+		fldcw( SaveCW );	// Restore rounding mode.
+		leave();
+		ret( _parms_ );
+
+end twoToX80;
+
+end mathUnit;

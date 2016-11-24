@@ -1,0 +1,99 @@
+unit str_rmvchar_unit;
+
+
+// synopsis
+//	remove first or last character from a string
+//	return result in EAX.
+//	zero length strings return zero in EAX.
+
+
+//	Version History:
+//
+//	Revision:	3
+//	Author:		Sevag Krikorian
+//	Date:		Oct 09, 2007
+//	Note:		changed to library format, code improvement
+//
+//	Revision:	2
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 06, 2007
+//	Note:		updated with renamed cpyzn
+//
+//	Revision:	1
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 06, 2007
+//	Note:		1st release
+
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "zstrings.hhf" )
+	#includeOnce( "excepts.hhf" )
+
+
+	procedure str.rmv1stChar2( s:string; remainder:string );
+		@nodisplay; @noframe; @noalignstack;
+
+
+		//	remove 1st char of string and store remainder
+		//	in 'remainder'
+		var
+			saveEBX	:dword;
+			saveEDX	:dword;
+			
+
+	begin rmv1stChar2;
+		
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( ebx, saveEBX );
+		mov( edx, saveEDX );
+
+		mov( s, ebx );
+		test( ebx, ebx );
+		jz raiseDerefNULL;
+		
+		mov( remainder, edx );
+		test( edx, edx );
+		jz raiseDerefNULL;
+		
+		movzx( (type byte[ebx]), eax );
+		push( eax );
+		
+		test( al, al );
+		jz done;
+		
+		// test space in remainder
+		mov( (type str.strRec[ebx]).length, eax );
+		sub( 1, eax );
+		cmp( eax, (type str.strRec[edx]).maxlen );
+		ja raiseStringOverflow;
+		
+		mov( eax, (type str.strRec[edx]).length );
+		
+		// copy the string to remainder
+		add( 1, ebx );
+		zstr.cpyn( ebx, eax, edx );
+		
+		done:
+		pop( eax );	// character return or zero
+		
+		mov( saveEBX, ebx );
+		mov( saveEDX, edx );
+		
+		mov( ebp, esp );
+		pop( ebp );
+		ret( _parms_ );
+
+
+		raiseDerefNULL:
+			raise( ex.AttemptToDerefNULL );
+			
+		raiseStringOverflow:
+			raise( ex.StringOverflow );
+			
+			
+	end rmv1stChar2;
+
+
+end str_rmvchar_unit;

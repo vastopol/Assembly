@@ -1,0 +1,139 @@
+program bgetu64_test;
+#include( "stdlib.hhf" )
+
+var
+	b			:blob.blob;
+	input64		:int64;
+	
+	procedure cmp64( right:uns64 );
+	begin cmp64;
+	
+		cmp( edx, (type dword right[4]));
+		jne notEqual;
+		cmp( eax, (type dword right));
+	  notEqual:
+		
+	end cmp64;
+	
+begin bgetu64_test;
+
+	// Testing blob.getu64
+	
+	try
+	
+		blob.a_load( "bgetu64.data" );
+		mov( eax, b );
+
+		blob.getu64( b );
+		cmp64( 0 );
+		if( @ne ) then
+		
+			raise(1011);
+		
+		endif;	
+		
+		blob.getu64( b );
+		cmp64( 1 );
+		if( @ne ) then
+		
+			raise(1012);
+		
+		endif;	
+		
+		blob.getu64( b );
+		cmp64( 18446744073709551615 );
+		if( @ne ) then
+		
+			raise(1013);
+		
+		endif;	
+
+		blob.getu64( b );
+		cmp64( 9223372036854775807 );
+		if( @ne ) then
+		
+			raise(1014);
+		
+		endif;
+
+
+		try
+		
+			blob.getu64( b );
+
+		  unprotected
+
+		  	// We we got to this point, we failed to raise a conversion error.
+			
+		  	Raise( 1016 );
+			
+		  exception( ex.ConversionError )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( 1017 );
+			
+		endtry;
+		blob.readLn( b );	// Clean up after ourselves.
+		
+		
+		try
+		
+			blob.getu64( b );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	Raise( 1018 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( 1019 );
+			
+		endtry;
+		blob.readLn( b );
+		
+		
+		// Better be at end of file.
+		
+		if( !blob.eof( b )) then
+		
+			raise(1010);
+			
+		endif;
+		stderr.put( "blob.getu64 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"blob.getu64 failed! eax=", (type uns32 eax), nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+			
+end bgetu64_test;
+
+													

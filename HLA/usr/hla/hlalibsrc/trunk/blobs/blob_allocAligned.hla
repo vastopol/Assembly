@@ -1,0 +1,140 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+
+
+#include( "blobs.hhf" )
+#include( "memory.hhf" )
+#include( "excepts.hhf" )
+#include( "threads.hhf" )
+
+// blob.alloc:
+//
+//	Allocate storage for an HLA blob object.
+//	The size parameter specifies the number of bytes.
+//	Must call malloc with size+16+? since we need to reserve space
+//	for the rcursor, wcursor, maxlen, and length fields.
+//  Note that HLA blobs must always be dword
+//	aligned;  this code depends upon the fact that malloc always
+//	returns a pointer that is aligned on an 8-byte boundary in order
+//	to accomplish this.  HLA blobs are always at least
+//	16 bytes long. Hence the extra logic that *may* extend the size 
+//  of the allocated storage.
+
+procedure blob.allocAligned( size:dword; alignment:dword ); 
+	@nodisplay;
+	@noframe;
+begin allocAligned;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ebx );
+	push( ecx );
+	
+	// Alignment must be a power of two that is 16 or less.
+	
+	mov( alignment, ecx );
+	cmp( ecx, 16 );
+	ja ValueOutOfRange;
+	
+	cmp( cl, 4 );
+	ja doAlignedAlloc;
+	
+		// If the alignment is 0..4, then just do a
+		// straight blob.alloc call (which always aligns
+		// the blob to an address that is a multiple of
+		// 16 bytes).
+		
+		blob.alloc( size );
+		jmp allDone;
+		
+	doAlignedAlloc:
+	
+	// Compute the alignment value in bytes:
+	
+	mov( 1, eax );
+	shl( cl, eax );
+	
+	// Compute allocation size for blob. Note that we always add
+	// a 16-byte buffer at the end of the blob.
+	
+	mov( size, ebx );
+	add( eax, ebx );					// Reserve 2^aligned extra bytes.
+	add( blob.blobHeaderSize+31, ebx );	// Space for allocPtr, rcursor,   
+	and( !$F, ebx );					//  wcursor, maxlen, length, and round 
+										//  up to multiple of 16 bytes. 
+	mov( eax, ecx );					// Save alignment for later.
+	
+	// Allocate storage for the blob:
+	
+	mem.alloc( ebx );
+	mov( eax, ebx );					// Save alloc pointer (for use by free)
+	add( blob.blobHeaderSize, eax );	// Skip over header information
+										//  (point at start of data).
+	
+	// Compute aligned address:
+	
+	add( ecx, eax );					// Add in total alignment.
+	sub( 1, ecx );						// Create mask
+	not( ecx );
+	and( ecx, eax );					// Data is aligned here.
+	
+	// Save pointer to start of allocation so we can free this
+	// storage later (needed because aligned blobs might not start
+	// at a fixed offset from the start of the allocated storage):
+	
+	mov( ebx, (type blob.blobRec [eax]).allocPtr );
+
+	mov( size, ebx );					// Get maxlen value.
+	mov( ebx, (type blob.blobRec [eax]).maxlen );
+	
+	// Set the rcursor, wcursor, and length fields all to zero:
+	
+	xor( ebx, ebx );
+	mov( ebx, (type blob.blobRec [eax]).rcursor );
+	mov( ebx, (type blob.blobRec [eax]).wcursor );
+	mov( ebx, (type blob.blobRec [eax]).length );
+	 
+	#if( @thread )
+	
+		mov( eax, ebx );
+		thread.createCriticalSection();
+		mov( eax, (type blob.blobRec [ebx]).criticalSection );
+		mov( ebx, eax );
+		
+	#else
+	
+		mov( 0, (type blob.blobRec [eax]).criticalSection );
+	 
+	#endif
+	 
+allDone:
+	pop( ecx );
+	pop( ebx );
+	pop( ebp );
+	ret( _parms_ );
+		
+ValueOutOfRange:
+	raise( ex.ValueOutOfRange );
+
+end allocAligned;
+
+end blobUnit;
+
+
+
+
+	
+

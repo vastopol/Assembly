@@ -1,0 +1,18 @@
+program cattbool_test;
+#include( "stdlib.hhf" )
+
+static
+	s	:str.strvar(4096);
+	
+begin cattbool_test;
+
+
+	str.catbool( s,true );
+	str.cats( s, nl  );
+	str.catbool( s, false );
+	str.cats( s, nl );
+	stdout.put( s );
+	
+end cattbool_test;
+
+													

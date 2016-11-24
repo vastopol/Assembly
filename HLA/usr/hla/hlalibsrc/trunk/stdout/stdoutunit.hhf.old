@@ -1,0 +1,299 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+#if( ! @defined( stdoutUnit_hhf ))
+?stdoutUnit_hhf := true;
+?@nodisplay := true;
+?@nostackalign := true;
+
+	#include( "hla.hhf" )
+	#include( "stdio.hhf" )
+	#include( "stdout.hhf" )
+	#include( "fileio.hhf" )
+	#include( "strings.hhf" )
+	#include( "conv.hhf" )
+	#include( "memory.hhf" )
+	#include( "excepts.hhf" )
+	#include( "os.hhf" )
+
+	#if( os.linux )
+
+		#macro ChkStdOut;
+		
+			// Expand to nothing for Linux
+			// because we always know the stdout handle.
+			
+		#endmacro
+			
+
+	
+	#elseif( os.win32 )
+		
+		#macro ChkStdOut;
+			
+			if( HasStdOutHandle = false ) then
+			
+				pushad();
+				pushfd();
+				cld();
+				GetStdHandle( -11 );
+				mov( eax, StdOutHandle );
+				popfd();
+				popad();
+				
+			endif;
+			
+		#endmacro;
+		
+	#endif
+
+
+	static
+
+		align(4);
+		StdOutHandle: dword;		@external( "STDOUTUNIT_STDOUTHANDLE" );
+		HasStdOutHandle: boolean;	@external( "STDOUTUNIT_HASSTDOUTHANDLE" );
+
+		#if( os.win32 )
+			
+			/*
+			** Links to the Win32 API:
+			*/
+
+			WriteFile:procedure
+			(
+					overlapped:		dword;
+				var	bytesWritten:	dword;
+					len:			dword;
+				var buffer:			byte;
+					Handle:			dword
+			); 
+				@external( "__imp__WriteFile@20" );
+
+
+			GetStdHandle:procedure
+			( 
+				WhichHandle:int32 
+			); 
+				@external( "__imp__GetStdHandle@4" );
+
+
+		#endif
+
+
+
+	procedure GetStdOutHandle; returns( "eax" );  
+		@external( "STDOUT_GETSTDOUTHANDLE" );
+
+
+	procedure putc( c:char );	 							
+		@external( "STDOUT_PUTC" );
+
+	procedure putcSize( c:char; width:int32; fill:char );	
+		@external( "STDOUT_PUTCSIZE" );
+
+	procedure puts( s:string  ); 
+		@external( "STDOUT_PUTS" );
+
+	procedure putsSize( s:string; width:int32; fill:char ); 
+		@external( "STDOUT_PUTSSIZE" );
+
+	procedure newln; 
+		@external( "STDOUT_NEWLN" );
+
+	procedure putb( h:byte    );		
+		@external( "STDOUT_PUTB" );
+
+	procedure putw( w:word 	  ); 		
+		@external( "STDOUT_PUTW" );
+
+	procedure putd( dw:dword ); 		
+		@external( "STDOUT_PUTD" );
+
+	procedure putq( qw:qword ); 		
+		@external( "STDOUT_PUTQ" );
+
+	procedure puttb( tb:tbyte ); 		
+		@external( "STDOUT_PUTTB" );
+
+	procedure putl( l:lword ); 		
+		@external( "STDOUT_PUTL" );
+
+	procedure putbSize( b:byte; size:dword; fill:char );		
+		@external( "STDOUT_PUTBSIZE" );
+
+	procedure putwSize( w:word; size:dword; fill:char ); 		
+		@external( "STDOUT_PUTWSIZE" );
+
+	procedure putdSize( dw:dword; size:dword; fill:char ); 		
+		@external( "STDOUT_PUTDSIZE" );
+
+	procedure putqSize( qw:qword; size:dword; fill:char ); 		
+		@external( "STDOUT_PUTQSIZE" );
+
+	procedure putlSize( l:lword; size:dword; fill:char ); 		
+		@external( "STDOUT_PUTLSIZE" );
+
+
+
+	procedure puti8Size ( b:byte;  width:int32;	fill:char ); 
+		@external( "STDOUT_PUTI8SIZE" );
+
+	procedure puti16Size( w:word;  width:int32;	fill:char ); 
+		@external( "STDOUT_PUTI16SIZE" );
+
+	procedure puti32Size( d:dword; width:int32;	fill:char ); 
+		@external( "STDOUT_PUTI32SIZE" );
+
+	procedure puti64Size( q:qword; width:int32; fill:char ); 
+		@external( "STDOUT_PUTI64SIZE" );
+
+	procedure puti128Size( l:lword; width:int32; fill:char ); 
+		@external( "STDOUT_PUTI128SIZE" );
+
+	procedure puti8 ( b:byte  ); 		
+		@external( "STDOUT_PUTI8" );
+
+	procedure puti16( w:word  ); 		
+		@external( "STDOUT_PUTI16" );
+
+	procedure puti32( d:dword ); 		
+		@external( "STDOUT_PUTI32" );
+
+	procedure puti64( q:qword ); 		
+		@external( "STDOUT_PUTI64" );
+
+	procedure puti128( l:lword ); 		
+		@external( "STDOUT_PUTI128" );
+
+
+
+	procedure putu8Size ( b:byte;  width:int32;	fill:char ); 
+		@external( "STDOUT_PUTU8SIZE" );
+
+	procedure putu16Size( w:word;  width:int32;	fill:char ); 
+		@external( "STDOUT_PUTU16SIZE" );
+
+	procedure putu32Size( d:dword; width:int32;	fill:char ); 
+		@external( "STDOUT_PUTU32SIZE" );
+
+	procedure putu64Size( q:qword; width:int32;	fill:char ); 
+		@external( "STDOUT_PUTU64SIZE" );
+
+	procedure putu128Size( l:lword; width:int32;	fill:char ); 
+		@external( "STDOUT_PUTU128SIZE" );
+
+
+
+	procedure putu8 ( b:byte  ); 
+		@external( "STDOUT_PUTU8" );
+
+	procedure putu16( w:word  ); 
+		@external( "STDOUT_PUTU16" );
+
+	procedure putu32( d:dword ); 
+		@external( "STDOUT_PUTU32" );
+
+	procedure putu64( q:qword ); 
+		@external( "STDOUT_PUTU64" );
+
+	procedure putu128( l:lword ); 
+		@external( "STDOUT_PUTU128" );
+
+
+
+	procedure putr80pad
+	( 
+		r:real80; 
+		width:uns32; 
+		decpts:uns32; 
+		pad:char 
+	); 
+		@external( "STDOUT_PUTR80PAD" );
+
+
+	procedure pute80pad
+	( 
+		r:real80; 
+		width:uns32; 
+		pad:char 
+	); 
+		@external( "STDOUT_PUTE80PAD" );
+
+
+	procedure putr64pad
+	( 
+		r:real64; 
+		width:uns32; 
+		decpts:uns32; 
+		pad:char 
+	); 
+		@external( "STDOUT_PUTR64PAD" );
+
+
+	procedure putr32pad
+	( 
+		r:real32; 
+		width:uns32; 
+		decpts:uns32; 
+		pad:char 
+	); 
+		@external( "STDOUT_PUTR32PAD" );
+
+	procedure pute64pad
+	( 
+		r:real64; 
+		width:uns32; 
+		pad:char 
+	); 
+		@external( "STDOUT_PUTE64PAD" );
+
+
+	procedure pute32pad
+	( 
+		r:real32; 
+		width:uns32; 
+		pad:char 
+	); 
+		@external( "STDOUT_PUTE32PAD" );
+
+
+
+	procedure putr80( r:real80; width:uns32; decpts:uns32 ); 
+		@external( "STDOUT_PUTR80" );
+
+	procedure putr64( r:real64; width:uns32; decpts:uns32 ); 
+		@external( "STDOUT_PUTR64" );
+
+	procedure putr32( r:real32; width:uns32; decpts:uns32 ); 
+		@external( "STDOUT_PUTR32" );
+
+
+	procedure pute80( r:real80; width:uns32 ); 
+		@external( "STDOUT_PUTE80" );
+
+	procedure pute64( r:real64; width:uns32 ); 
+		@external( "STDOUT_PUTE64" );
+
+	procedure pute32( r:real32; width:uns32 ); 
+		@external( "STDOUT_PUTE32" );
+
+	procedure putbool( b:boolean ); 	
+		@external( "STDOUT_PUTBOOL" );
+
+	procedure putcset( cs:cset   ); 	
+		@external( "STDOUT_PUTCSET_" );
+
+
+#endif

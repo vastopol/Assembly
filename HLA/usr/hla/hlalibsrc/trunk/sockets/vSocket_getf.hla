@@ -1,0 +1,131 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit socketUnit;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "sockets.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "hla.hhf" )
+
+
+
+// The following dummy procedure (no code) exists only to shut
+// up the linker because (under Windows) the default state is to
+// compile the program with all symbols being public (for debugging
+// purposes).
+ 
+procedure justToPreventDuplicate_getfThunk_symbol;
+begin justToPreventDuplicate_getfThunk_symbol;
+end justToPreventDuplicate_getfThunk_symbol;
+	
+
+// baseSocketClass_t.getf
+//
+//	Read a floating-point value from a socket.
+
+method vBaseSocketClass_t.getf; 
+var
+	eaxSave		:dword;
+	ebxSave		:dword;
+	ecxSave		:dword;
+	edxSave		:dword;
+	ediSave		:dword;
+	obj			:pointer to baseSocketClass_t;
+	Delimiters	:cset;
+	
+	// Low-level implementation of a thunk procedure:
+	//
+	// Thunk must return a single char in AL from the socket (with carry
+	// flag clear) or return carry flag set if there was an EOF.
+	
+	procedure getfThunk( thunksEBPval:dword );
+	begin getfThunk;
+	
+ 		push( ebp );			// Thunks always do this.
+		mov( [esp+8], ebp );	// Retrieve EBP value passed as parameter
+
+		push( ebx );		// Must save these registers because
+		push( ecx );		// EOF exception could wipe them out.
+		push( edx );
+		push( esi );
+		push( edi );
+		try
+		
+			mov( ebp::obj, esi );
+			(type vBaseSocketClass_t [esi]).getc();
+				
+		  unprotected
+			clc();			// Return EOF=false.		  
+		  	
+		  exception( ex.EndOfFile )
+		  
+		  	xor( eax, eax );
+			stc();			// Return EOF error. 
+						
+		  anyexception
+		  	
+			raise( eax );
+				
+		endtry;
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+
+		pop( ebp );				// Restore caller's EBP value
+        ret( _parms_ );			// Return, removing local EBP parm value.
+
+	end getfThunk;
+	
+
+begin getf;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( eax, eaxSave );		// Need to preserve all registers
+	mov( ebx, ebxSave );		// because an exception in getcThunk
+	mov( ecx, ecxSave );		// could wipe them all out.
+	mov( edx, edxSave );
+	mov( edi, ediSave );
+	mov( esi, obj );
+	
+	// Set up the thunk parameter and call hla.getf:
+	//	L.O. Dword:	local EBP value
+	//	H.O. Dword:	address of thunk code to call 
+	
+	pushd( &getfThunk );
+	push( ebp );
+	call hla.getf;
+	
+	
+	mov( eaxSave, eax );
+	mov( ebxSave, ebx );
+	mov( ecxSave, ecx );
+	mov( edxSave, edx );
+	mov( ediSave, edi );
+	mov( obj,     esi );
+	leave();
+	ret( _parms_ );
+
+end getf;
+
+
+	
+end socketUnit;
+

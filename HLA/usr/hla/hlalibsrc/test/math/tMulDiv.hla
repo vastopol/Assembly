@@ -1,0 +1,333 @@
+// tArithmetic-
+//
+//	Tests the following MATH module functions:
+//
+//	addq, addl, divq, divl, idivq, idivl, imodq, imodl, imulq, imull,
+//	modq, modl, mulq, mull, negq, negl, subq, subl.
+
+program tArithmetic;
+#include( "stdlib.hhf" )
+
+val
+	
+	pwrsOf2_64_c	:uns64[] :=
+		[
+			#for( i := 0 to 63 )
+				1 << i,
+			#endfor
+		];
+	
+		
+	
+	pwrsOf2_128_c	:uns128[] :=
+		[
+			#for( i := 0 to 127 )
+				1 << i,
+			#endfor
+		];
+	
+		
+		
+	
+	
+static
+	u64				:uns64;
+	u64a			:uns64;
+	result64		:uns64;
+	result64a		:uns64;
+		
+	u128			:uns128;
+	result128		:uns128;
+	u128a			:uns128;
+	result128a		:uns128;
+	
+readonly
+	
+	pwrsOf2_64		:uns64[ @elements( pwrsOf2_64_c ) ] := pwrsOf2_64_c;
+	
+	pwrsOf2_128		:uns128[ @elements( pwrsOf2_128_c ) ] := pwrsOf2_128_c;
+	
+	
+	
+procedure cmp64( index:uns32; testVal1:qword; testVal2:qword; msg:string );
+begin cmp64;
+
+	push( edx );
+	mov( (type dword testVal1), eax );
+	mov( (type dword testVal1[4]), edx );
+	cmp( eax, (type dword testVal2));
+	jne failed;
+	cmp( edx, (type dword testVal2[4]));
+	je succeeded;
+	failed:
+	
+		stderr.put
+		( 
+			"Error: ", msg, nl
+			"testVal1: ", testVal1, nl
+			"testVal2: ", testVal2, nl
+		);
+		conv.setUnderscores( true );
+		stderr.put
+		(
+			"index:    ", index, nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	succeeded:
+	pop( edx );
+	
+end cmp64;
+
+	
+procedure cmp128( index:uns32; testVal1:lword; testVal2:lword; msg:string );
+begin cmp128;
+
+	mov( (type dword testVal1), eax );
+	cmp( eax, (type dword testVal2));
+	jne failed;
+	mov( (type dword testVal1[4]), eax );
+	cmp( eax, (type dword testVal2[4]));
+	jne failed;
+	mov( (type dword testVal1[8]), eax );
+	cmp( eax, (type dword testVal2[8]));
+	jne failed;
+	mov( (type dword testVal1[12]), eax );
+	cmp( eax, (type dword testVal2[12]));
+	je succeeded;
+	failed:
+	
+		stderr.put
+		( 
+			"Error: ", msg, nl
+			"testVal1: ", testVal1, nl
+			"testVal2: ", testVal2, nl
+		);
+		conv.setUnderscores( true );
+		stderr.put
+		(
+			"index:    ", index, nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	succeeded:
+	
+end cmp128;
+
+begin tArithmetic;
+	
+	// MULQ tests:
+	
+	mov( 1, (type dword u64));
+	mov( 0, (type dword u64[4]));
+	for( mov( 0, edx ); edx < 64; inc( edx )) do
+	
+		math.mulq( u64, pwrsOf2_64[ edx*8 ], result64 );
+		cmp64( edx, result64, pwrsOf2_64[ edx*8 ], "mulq(1) failed!" );
+		
+	endfor;
+	
+	mov( 2, (type dword u64));
+	mov( 0, (type dword u64[4]));
+	for( mov( 0, edx ); edx < 63; inc( edx )) do
+	
+		math.mulq( u64, pwrsOf2_64[ edx*8 ], result64 );
+		cmp64( edx, result64, pwrsOf2_64[ edx*8 + 8 ], "mulq(2) failed!" );
+		
+	endfor;
+	stderr.put( "mulq tests succeeded!" nl );
+	
+	for( mov( 0, edx ); edx < 65536; add( 7, edx )) do
+	
+		mov( edx, (type dword u64 ));
+		mov( 0, (type dword u64[4]));
+		for( mov( 1, ecx ); ecx < 65536; add( 13, ecx )) do
+		
+			mov( ecx, (type dword u64a));
+			mov( 0, (type dword u64a[4]));
+			math.mulq( u64, u64a, result64 );
+			math.divq( result64, u64a, result64a );
+			
+			mov( edx, eax );
+			shl( 16, eax );
+			mov( cx, ax );
+			cmp64( eax, u64, result64a, "mulq(3) failed!" );
+
+		endfor;
+		
+	endfor;
+	stderr.put( "mulq/divq test succeeded!" nl );
+	
+	
+	
+	// IMULQ tests:
+	
+	mov( 1, (type dword u64));
+	mov( 0, (type dword u64[4]));
+	for( mov( 0, edx ); edx < 64; inc( edx )) do
+	
+		math.imulq( u64, pwrsOf2_64[ edx*8 ], result64 );
+		cmp64( edx, result64, pwrsOf2_64[ edx*8 ], "imulq(1) failed!" );
+		
+	endfor;
+	
+	mov( 2, (type dword u64));
+	mov( 0, (type dword u64[4]));
+	for( mov( 0, edx ); edx < 63; inc( edx )) do
+	
+		math.imulq( u64, pwrsOf2_64[ edx*8 ], result64 );
+		cmp64( edx, result64, pwrsOf2_64[ edx*8 + 8 ], "imulq(2) failed!" );
+		
+	endfor;
+	stderr.put( "imulq tests succeeded!" nl );
+	
+	for( mov( 0, edx ); edx < 65536; add( 7, edx )) do
+	
+		mov( edx, (type dword u64 ));
+		mov( 0, (type dword u64[4]));
+		for( mov( 1, ecx ); ecx < 65536; add( 13, ecx )) do
+		
+			mov( ecx, (type dword u64a));
+			mov( 0, (type dword u64a[4]));
+			math.imulq( u64, u64a, result64 );
+			math.idivq( result64, u64a, result64a );
+			
+			mov( edx, eax );
+			shl( 16, eax );
+			mov( cx, ax );
+			cmp64( eax, u64, result64a, "imulq(3) failed!" );
+
+		endfor;
+		
+		for( mov( -1, ecx ); (type int32 ecx) > -65536; sub( 13, ecx )) do
+		
+			mov( ecx, (type dword u64a));
+			mov( 0, (type dword u64a[4]));
+			math.imulq( u64, u64a, result64 );
+			math.idivq( result64, u64a, result64a );
+			
+			mov( edx, eax );
+			shl( 16, eax );
+			mov( cx, ax );
+			cmp64( eax, u64, result64a, "imulq(3) failed!" );
+
+		endfor;
+		
+	endfor;
+	stderr.put( "imulq/idivq test succeeded!" nl );
+	
+	
+	
+	
+	// MULL tests:
+	
+	mov( 1, (type dword u128));
+	mov( 0, (type dword u128[4]));
+	for( mov( 0, edx ); edx < 128; inc( edx )) do
+	
+		lea( ecx, [edx*2] );
+		math.mull( u128, pwrsOf2_128[ ecx*8 ], result128 );
+		cmp128( edx, result128, pwrsOf2_128[ ecx*8 ], "mull(1) failed!" );
+		
+	endfor;
+	
+	mov( 2, (type dword u128));
+	mov( 0, (type dword u128[4]));
+	for( mov( 0, edx ); edx < 63; inc( edx )) do
+	
+		lea( ecx, [edx*2] );
+		math.mull( u128, pwrsOf2_128[ ecx*8 ], result128 );
+		cmp128( edx, result128, pwrsOf2_128[ ecx*8 + 16 ], "mull(2) failed!" );
+		
+	endfor;
+	stderr.put( "mull tests succeeded!" nl );
+	
+	for( mov( 0, edx ); edx < 65536; add( 7, edx )) do
+	
+		mov( edx, (type dword u128 ));
+		mov( 0, (type dword u128[4]));
+		for( mov( 1, ecx ); ecx < 65536; add( 13, ecx )) do
+		
+			mov( ecx, (type dword u128a));
+			mov( 0, (type dword u128a[4]));
+			math.mull( u128, u128a, result128 );
+			math.divl( result128, u128a, result128a );
+			
+			mov( edx, eax );
+			shl( 16, eax );
+			mov( cx, ax );
+			cmp128( eax, u128, result128a, "mull(3) failed!" );
+
+		endfor;
+		
+	endfor;
+	stderr.put( "mull/divl test succeeded!" nl );
+	
+	
+	
+	// IMULL tests:
+	
+	mov( 1, (type dword u128));
+	mov( 0, (type dword u128[4]));
+	for( mov( 0, edx ); edx < 128; inc( edx )) do
+	
+		lea( ecx, [edx*2] );
+		math.imull( u128, pwrsOf2_128[ ecx*8 ], result128 );
+		cmp128( edx, result128, pwrsOf2_128[ ecx*8 ], "imull(1) failed!" );
+		
+	endfor;
+	
+	mov( 2, (type dword u128));
+	mov( 0, (type dword u128[4]));
+	for( mov( 0, edx ); edx < 63; inc( edx )) do
+	
+		lea( ecx, [edx*2] );
+		math.imull( u128, pwrsOf2_128[ ecx*8 ], result128 );
+		cmp128( edx, result128, pwrsOf2_128[ ecx*8 + 16 ], "imull(2) failed!" );
+		
+	endfor;
+	stderr.put( "imull tests succeeded!" nl );
+	
+	for( mov( 0, edx ); edx < 65536; add( 7, edx )) do
+	
+		mov( edx, (type dword u128 ));
+		mov( 0, (type dword u128[4]));
+		for( mov( 1, ecx ); ecx < 65536; add( 13, ecx )) do
+		
+			mov( ecx, (type dword u128a));
+			mov( 0, (type dword u128a[4]));
+			math.imull( u128, u128a, result128 );
+			math.idivl( result128, u128a, result128a );
+			
+			mov( edx, eax );
+			shl( 16, eax );
+			mov( cx, ax );
+			cmp128( eax, u128, result128a, "imull(3) failed!" );
+
+		endfor;
+		
+		for( mov( -1, ecx ); (type int32 ecx) > -65536; sub( 13, ecx )) do
+		
+			mov( ecx, (type dword u128a));
+			mov( 0, (type dword u128a[4]));
+			math.imull( u128, u128a, result128 );
+			math.idivl( result128, u128a, result128a );
+			
+			mov( edx, eax );
+			shl( 16, eax );
+			mov( cx, ax );
+			cmp128( eax, u128, result128a, "imull(3) failed!" );
+
+		endfor;
+		
+	endfor;
+	stderr.put( "imull/idivl test succeeded!" nl );
+	
+	
+	
+	
+end tArithmetic;	

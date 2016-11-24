@@ -1,0 +1,83 @@
+#if( ! @defined( chars_hhf ))
+?chars_hhf := true;
+
+#includeOnce( "os.hhf" )
+#includeOnce( "_hla.hhf" )
+
+namespace chars; @fast;
+
+const
+	#if( @global:os.win32 )
+		dir_sep	:= '\';
+	#else
+		dir_sep := '/';
+	#endif
+
+
+readonly
+	AlphaChars		:cset; external( "CHARS_ALPHACHARS" );
+	Alphanum		:cset; external( "CHARS_ALPHANUM" );
+	CtrlCset		:cset; external( "CHARS_CTRLCSET" );
+	DigitsCset		:cset; external( "CHARS_DIGITSCSET" );
+	GraphicCset		:cset; external( "CHARS_GRAPHICCSET" );
+	LowerCaseCset	:cset; external( "CHARS_LOWERCASECSET" );
+	WhiteSpaceCset	:cset; external( "CHARS_WHITESPACECSET" );
+	UpperCaseCset	:cset; external( "CHARS_UPPERCASECSET" );
+	HexDigitsCset	:cset; external( "CHARS_HEXDIGITSCSET" );
+
+proc	
+		
+	toUpper:
+		procedure( c:byte in al ) {@use eax @returns( "AL" )}; 
+		@global:_hla._ext( "CHARS_TOUPPER" );
+
+	toLower:
+		procedure( c:byte in al ) {@use eax @returns( "AL" )};
+		@global:_hla._ext( "CHARS_TOLOWER" );
+
+	isAlpha:
+		procedure( c:byte in al ) {@use eax @returns( "AL" )};
+		@global:_hla._ext( "CHARS_ISALPHA" );
+
+	isUpper:
+		procedure( c:byte in al ) {@use eax @returns( "AL" )};
+		@global:_hla._ext( "CHARS_ISUPPER" );
+
+	isLower:
+		procedure( c:byte in al ) {@use eax @returns( "AL" )};
+		@global:_hla._ext( "CHARS_ISLOWER" );
+
+	isAlphaNum:
+		procedure( c:byte in al ) {@use eax @returns( "AL" )};
+		@global:_hla._ext( "CHARS_ISALPHANUM" );
+
+	isDigit:
+		procedure( c:byte in al ) {@use eax @returns( "AL" )};
+		@global:_hla._ext( "CHARS_ISDIGIT" );
+
+	isXDigit:
+		procedure( c:byte in al ) {@use eax @returns( "AL" )};
+		@global:_hla._ext( "CHARS_ISXDIGIT" );
+
+	isGraphic:
+		procedure( c:byte in AL ) {@use eax @returns( "AL" )};
+		@global:_hla._ext( "CHARS_ISGRAPHIC" );
+
+	isSpace:
+		procedure( c:byte in al ) {@use eax @returns( "AL" )};
+		@global:_hla._ext( "CHARS_ISSPACE" );
+
+	isASCII:
+		procedure( c:byte in al ) {@use eax @returns( "AL" )};
+		@global:_hla._ext( "CHARS_ISASCII" );
+
+	isCtrl:
+		procedure( c:byte in al ) {@use eax @returns( "AL" )};
+		@global:_hla._ext( "CHARS_ISCTRL" );
+
+end chars;
+
+
+
+
+#endif

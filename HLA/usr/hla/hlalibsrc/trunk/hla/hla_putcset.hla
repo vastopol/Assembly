@@ -1,0 +1,147 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit hlaUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "hla.hhf" );
+#include( "strings.hhf" );
+#include( "conv.hhf" );
+
+
+// hla.catc-                                               
+//                                                         
+// Generates a string representation of the c argument and then
+// calls the putstr thunk to emit it.
+
+procedure hla.putcset( putstr:thunk; c:cset ); 
+	@noframe;
+	
+var
+	s		:string;
+	sbuf	:byte[1024];
+	
+
+	// AppendChar-	adds the character in CH to the
+	//				end of the blob pointed at by EBX.
+	
+	procedure AppendChar; @noframe;
+	begin AppendChar;
+	
+		// Bump up the length by one.  Note that
+		// there is no possibility of an overflow here
+		// because the string buffer is sufficiently large
+		// to handle any cset to string conversion.
+		
+		mov( (type str.strRec [ebx]).length, eax );
+		inc( eax );
+		mov( eax, (type str.strRec [ebx]).length );
+
+		// Add the character to the end of the string.
+		
+		mov( ch, [ebx+eax-1] );
+		ret();
+	
+	end AppendChar;
+	
+	/*
+	** Put32CS- Outputs the 32 characters appearing
+	** in the EDX register (one bit per character).
+	** CH contains the ASCII code for the character
+	** in bit zero.
+	*/
+	
+	procedure Put32CS; @noframe;
+	begin Put32CS;
+	
+		mov( ch, cl );
+		add( 32, cl );
+		repeatUntilCHeqCL:
+		
+			shr( 1, edx );
+			jnc noChar;
+			
+				cmp( ch, ' ' );
+				jg justAppend;
+				
+					str.cats( ebx, "#$" );
+					str.catb( ebx, ch );
+					mov( ' ', ch );
+					
+				justAppend:
+					AppendChar();
+										
+				
+			noChar:
+			inc( ch );
+			
+		cmp( ch, cl );
+		jne repeatUntilCHeqCL;
+		ret();
+		
+	end Put32CS;
+	
+	
+begin putcset;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( esi );
+	push( edi );
+	
+	str.init( sbuf, 1024 );
+	mov( eax, s );
+	mov( eax, ebx );
+	
+	mov( 0, ch );
+	mov( (type dword c), edx );
+	Put32CS();
+	
+	mov( (type dword c[4]), edx );
+	Put32CS();
+	
+	mov( (type dword c[8]), edx );
+	Put32CS();
+	
+	mov( (type dword c[12]), edx );
+	Put32CS();
+	
+	mov( s, eax );
+	putstr();
+
+	pop( esi );
+	pop( edi );
+	pop( edx );
+	pop( ecx );	
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+end putcset;
+
+
+
+end hlaUnit;
+
+
+
+
+	
+

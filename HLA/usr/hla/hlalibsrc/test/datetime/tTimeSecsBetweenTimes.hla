@@ -1,0 +1,58 @@
+program secsBetweenTimes_test;
+#include( "stdlib.hhf" )
+
+static
+	time1		:time.timerec;
+	time2		:time.timerec;
+	seconds1	:dword;
+	seconds2	:dword;
+	
+	difference	:dword;
+	
+begin secsBetweenTimes_test;
+
+
+	for( mov( 0, seconds1); seconds1 < 60*60*24; add( 17, seconds1 )) do
+	
+		time.fromSecs( seconds1, time1 );	
+		for( mov( 0, seconds2 ); seconds2 < 60*60*24; inc( seconds2 )) do
+		
+			time.fromSecs( seconds2, time2 );
+			time.secsBetweenTimes( time1, time2 );
+			mov( eax, ebx );
+			time.secsBetweenTimes( time2, time1 );
+			mov( seconds2, ecx );
+			sub( seconds1, ecx );
+			if( @s ) then
+			
+				neg( ecx );
+				
+			endif;
+				
+			if( eax <> ebx || ebx <> ecx ) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"time.secsBetweenTimes failed!", nl,
+					"seconds1   = ", seconds1, nl
+					"seconds2   = ", seconds2, nl
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			
+		endfor;
+
+	endfor;
+	stderr.put( "time.secsBetweenTimes succeeded!" nl );
+	os.exitProcess(0);
+		
+end secsBetweenTimes_test;
+
+													

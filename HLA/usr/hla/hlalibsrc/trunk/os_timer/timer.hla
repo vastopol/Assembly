@@ -1,0 +1,643 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit TimerUnit;
+#include( "timer.hhf" )
+#include( "datetime.hhf" )
+#include( "memory.hhf" )
+#include( "stdout.hhf" )
+
+
+/*
+		timer_t:	class
+
+					var
+						Accumulated:	qword;
+
+						DateStarted:	date.daterec;
+						TimeStarted:	time.timerec;
+						msStarted:		uns32;
+
+						DateStopped:	date.daterec;
+						TimeStopped:	time.timerec;
+						msStopped:		uns32;
+
+						Running:	boolean;
+						Valid:		boolean;
+
+					procedure create;	external;
+
+					method start;		external;
+					method restart;		external;
+					method stop; returns( "edx:eax" );	external;
+					method checkPoint; returns( "edx:eax" ); external;
+
+				endclass;
+*/
+
+
+/*
+** Emit the VMT for the timer_t class.
+*/
+
+readonly
+
+	vmt( timer_t );
+	
+	
+
+// Create-
+//
+//	Constructor for this class.  If necessary, allocates memory.
+//	Initializes fields in the current instance of a timer_t object.
+
+procedure timer_t.create; @nodisplay; @noframe;
+begin create;
+
+	push( eax );
+	test( esi, esi );
+	jnz haveObj;
+	
+		mov( malloc( @size( timer_t )), esi );
+		
+	haveObj:
+	mov( &timer_t._VMT_, (type dword [esi] ));
+
+	// Clear accumulated time and set Running and Valid to false.
+
+	mov( 0, (type dword this.Accumulated)[0] );
+	mov( 0, (type dword this.Accumulated)[4] );
+	mov( false, this.Running );
+	mov( false, this.Valid );
+	pop( eax );
+	ret();
+	
+end create;
+
+
+// checkPoint-
+//
+// Very similar to stop, except this routine does not
+// set Running to false.
+
+method timer_t.checkPoint; @nodisplay; @noframe;
+begin checkPoint;
+
+	cmp( this.Running, false );
+	je notRunning;
+	
+		this.stop(); //(type timer_t [esi]).stop();
+		mov( true, this.Running );
+		ret();
+		
+	notRunning:
+	
+		this.start();
+		xor( eax, eax );
+		xor( edx, edx );
+		ret();
+	
+end checkPoint;
+
+
+
+
+#if( os.win32 )
+
+#include( "../include/win32.hhf" )
+
+	// Start-
+	//
+	// This method grabs the current time and sets the
+	// Running flag to true. Call this method to begin
+	// measuring a new time period.
+
+	method timer_t.start; @nodisplay; @noframe;
+	var
+		systime: win.SystemTime;
+
+	begin start;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( eax );
+		push( ecx );
+		push( edx );
+
+		win.GetLocalTime( systime );
+
+		movzx( systime.Milliseconds, eax );
+		mov( eax, this.msStarted );
+
+		mov( (type byte systime.Second), al );
+		mov( al, this.TimeStarted.secs );
+
+		mov( (type byte systime.Minute), al );
+		mov( al, this.TimeStarted.mins );
+
+		mov( systime.Hour, ax );
+		mov( ax, this.TimeStarted.hours );
+
+		mov( (type byte systime.Day), al );
+		mov( al, this.DateStarted.day );
+
+		mov( (type byte systime.Month), al );
+		mov( al, this.DateStarted.month );
+
+		mov( systime.Year, ax );
+		mov( ax, this.DateStarted.year );
+
+		mov( true, this.Running );
+		mov( false, this.Valid );
+		mov( 0, (type dword this.Accumulated)[0] );
+		mov( 0, (type dword this.Accumulated)[4] );
+
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		leave();
+		ret();
+
+	end start;
+
+
+
+
+
+
+	// Restart-
+	//
+	// This method restarts a timer_t that was
+	// previously started and stopped.  This
+	// routine does not clear the accumulated
+	// result.
+
+	method timer_t.restart; @nodisplay; @noframe;
+	var
+		systime: win.SystemTime;
+
+	begin restart;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( eax );
+		push( ecx );
+		push( edx );
+
+		win.GetLocalTime( systime );
+
+		movzx( systime.Milliseconds, eax );
+		mov( eax, this.msStarted );
+
+		mov( (type byte systime.Second), al );
+		mov( al, this.TimeStarted.secs );
+
+		mov( (type byte systime.Minute), al );
+		mov( al, this.TimeStarted.mins );
+
+		mov( systime.Hour, ax );
+		mov( ax, this.TimeStarted.hours );
+
+		mov( (type byte systime.Day), al );
+		mov( al, this.DateStarted.day );
+
+		mov( (type byte systime.Month), al );
+		mov( al, this.DateStarted.month );
+
+		mov( systime.Year, ax );
+		mov( ax, this.DateStarted.year );
+
+		mov( true, this.Running );
+		mov( false, this.Valid );
+
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		leave();
+		ret();
+
+	end restart;
+
+
+
+
+
+
+
+
+	// Stop-
+	//
+	//	This routine stops the running timer.
+	// 	It computes the running time since the
+	//	last start operation and returns this
+	//	time (in milliseconds) in the EDX:EAX
+	//	register pair.
+
+	method timer_t.stop;  @nodisplay; @noframe;
+	var
+		systime: win.SystemTime;
+
+	begin stop;
+
+		cmp( this.Running, false );
+		jne isRunning;
+		
+			// If the timer wasn't running, then just return zero.
+			
+			xor( edx, edx );
+			xor( eax, eax );
+			ret();
+		
+		isRunning:
+			push( ebp );
+			mov( esp, ebp );
+			sub( _vars_, esp );
+			
+			push( ebx );
+			push( ecx );
+
+			win.GetLocalTime( systime );
+
+			movzx( systime.Milliseconds, eax );
+			mov( eax, this.msStopped );
+
+			mov( (type byte systime.Second), al );
+			mov( al, this.TimeStopped.secs );
+
+			mov( (type byte systime.Minute), al );
+			mov( al, this.TimeStopped.mins );
+
+			mov( systime.Hour, ax );
+			mov( ax, this.TimeStopped.hours );
+
+			mov( (type byte systime.Day), al );
+			mov( al, this.DateStopped.day );
+
+			mov( (type byte systime.Month), al );
+			mov( al, this.DateStopped.month );
+
+			mov( systime.Year, ax );
+			mov( ax, this.DateStopped.year );
+
+			// Compute the running time:
+			//
+			// First, compute the number of days in the
+			// time sequence and multiply this by the
+			// number of milliseconds in a day.
+
+			date._daysBetween
+			( 
+				this.DateStarted, 
+				this.DateStopped 
+			);
+			mov( 24*60*60*1000, edx );
+			mul( edx );
+
+			// Next, compute the number of milliseconds up
+			// to the point of the starting date.  Subtract
+			// this from our total.
+
+			movzx( this.TimeStarted.hours, ebx );
+			intmul( 60, ebx );
+			movzx( this.TimeStarted.mins, ecx );
+			add( ecx, ebx );
+			intmul( 60, ebx );
+			movzx( this.TimeStarted.secs, ecx );
+			add( ecx, ebx );
+			intmul( 1000, ebx );
+			add( this.msStarted, ebx );
+			sub( ebx, eax );
+			sbb( 0, edx );
+			
+			// Now compute the number of milliseconds after
+			// the stopping time (to the end of that day)
+			// and subtract this from our total.
+
+
+			movzx( this.TimeStopped.hours, ebx );
+			intmul( 60, ebx );
+			movzx( this.TimeStopped.mins, ecx );
+			add( ecx, ebx );
+			intmul( 60, ebx );
+			movzx( this.TimeStopped.secs, ecx );
+			add( ecx, ebx );
+			intmul( 1000, ebx );
+			add( this.msStopped, ebx );
+			add( ebx, eax );
+			adc( 0, edx );
+
+			// Okay, EDX:EAX contains our total number of milliseconds,
+			// store this into the accumulator value and return the value
+			// in EDX:EAX.
+
+			mov( eax, (type dword this.Accumulated)[0] );
+			mov( edx, (type dword this.Accumulated)[4] );
+
+			mov( false, this.Running );
+			mov( true, this.Valid );
+
+			pop( ecx );
+			pop( ebx );
+			leave();
+			ret();		
+
+	end stop;
+	
+#elseif( os.linux | os.freeBSD | os.macOS )
+
+	#if( os.linux )
+	
+		#include( "linux.hhf")
+		const
+			timeval 		:text := "linux.timeval";
+			gettimeofday	:text := "linux.gettimeofday";
+		
+	#elseif( os.freeBSD )
+	
+		#include( "bsd.hhf")
+		const
+			timeval 		:text := "bsd.timeval";
+			gettimeofday	:text := "bsd.gettimeofday";
+		
+	#elseif( os.macOS )
+	
+		#include( "mac.hhf")
+		const
+			timeval 		:text := "mac.timeval";
+			gettimeofday	:text := "mac.gettimeofday";
+		
+	#endif
+
+	// Start-
+	//
+	// This method grabs the current time and sets the
+	// Running flag to true. Call this method to begin
+	// measuring a new time period.
+	//
+	//	timeval: record
+	//		tv_sec	:time_t;
+	//		tv_usec	:suseconds_t;
+	//	endrecord;
+	
+
+	method timer_t.start; @nodisplay; @noframe;
+	var
+		systime		:timeval;
+		HMS			:time.timerec;
+		DMY			:date.daterec;
+		unixTime	:qword;
+		
+	begin start;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( eax );
+		push( ecx );
+		push( edx );
+
+		lea( eax, systime );
+		gettimeofday( [eax], NULL );
+
+		mov( systime.tv_usec, eax );
+		xor( edx, edx );
+		div( 1000, edx:eax );
+		mov( eax, this.msStarted );
+		
+		mov( systime.tv_sec, eax );
+		mov( eax, (type dword unixTime));
+		mov( 0, (type dword unixTime[4]));
+		
+		lea( eax, HMS );
+		lea( ecx, DMY );
+		time.fromUnixTime( unixTime, [eax], [ecx] );
+		
+		mov( HMS, eax );
+		mov( eax, this.TimeStarted );
+
+		mov( DMY, eax );
+		mov( eax, this.DateStarted );
+
+		mov( true, this.Running );
+		mov( false, this.Valid );
+		mov( 0, (type dword this.Accumulated)[0] );
+		mov( 0, (type dword this.Accumulated)[4] );
+
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		leave();
+		ret();
+
+	end start;
+
+
+
+
+
+
+	// Restart-
+	//
+	// This method restarts a timer that was
+	// previously started and stopped.  This
+	// routine does not clear the accumulated
+	// result.
+
+	method timer_t.restart; @nodisplay; @noframe;
+	var
+		systime		:timeval;
+		HMS			:time.timerec;
+		DMY			:date.daterec;
+		unixTime	:qword;
+
+	begin restart;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( eax );
+		push( ecx );
+		push( edx );
+
+		lea( eax, systime );
+		gettimeofday( [eax], NULL );
+
+		mov( systime.tv_usec, eax );
+		xor( edx, edx );
+		div( 1000, edx:eax );
+		mov( eax, this.msStarted );
+		
+		mov( systime.tv_sec, eax );
+		mov( eax, (type dword unixTime));
+		mov( 0, (type dword unixTime[4]));
+		
+		lea( eax, HMS );
+		lea( ecx, DMY );
+		time.fromUnixTime( unixTime, [eax], [ecx] );
+		mov( HMS, eax );
+		mov( eax, this.TimeStarted );
+		mov( DMY, eax );
+		mov( eax, this.DateStarted );
+
+		mov( true, this.Running );
+		mov( false, this.Valid );
+
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		leave();
+		ret();
+
+	end restart;
+
+
+
+
+
+
+
+
+	// Stop-
+	//
+	//	This routine stops the running timer.
+	// 	It computes the running time since the
+	//	last start operation and returns this
+	//	time (in milliseconds) in the EDX:EAX
+	//	register pair.
+
+	method timer_t.stop;  @nodisplay; @noframe;
+	var
+		systime		:timeval;
+		HMS			:time.timerec;
+		DMY			:date.daterec;
+		unixTime	:qword;
+
+	begin stop;
+
+		cmp( this.Running, false );
+		jne isRunning;
+		
+			// If the timer wasn't running, then just return zero.
+			
+			xor( edx, edx );
+			xor( eax, eax );
+			ret();
+		
+		isRunning:
+			push( ebp );
+			mov( esp, ebp );
+			sub( _vars_, esp );
+			
+			push( ebx );
+			push( ecx );
+
+			lea( eax, systime );
+			gettimeofday( [eax], NULL );
+
+			mov( systime.tv_usec, eax );
+			xor( edx, edx );
+			div( 1000, edx:eax );
+			mov( eax, this.msStarted );
+			
+			mov( systime.tv_sec, eax );
+			mov( eax, (type dword unixTime));
+			mov( 0, (type dword unixTime[4]));
+			
+			lea( eax, HMS );
+			lea( ecx, DMY );
+			time.fromUnixTime( unixTime, [eax], [ecx] );
+			mov( HMS, eax );
+			mov( eax, this.TimeStopped );
+			mov( DMY, eax );
+			mov( eax, this.DateStopped );
+
+			// Compute the running time:
+			//
+			// First, compute the number of days in the
+			// time sequence and multiply this by the
+			// number of milliseconds in a day.
+
+			date._daysBetween
+			( 
+				this.DateStarted, 
+				this.DateStopped 
+			);
+			mov( 24*60*60*1000, edx );
+			mul( edx );
+
+			// Next, compute the number of milliseconds up
+			// to the point of the starting date.  Subtract
+			// this from our total.
+
+			movzx( this.TimeStarted.hours, ebx );
+			intmul( 60, ebx );
+			movzx( this.TimeStarted.mins, ecx );
+			add( ecx, ebx );
+			intmul( 60, ebx );
+			movzx( this.TimeStarted.secs, ecx );
+			add( ecx, ebx );
+			intmul( 1000, ebx );
+			add( this.msStarted, ebx );
+			sub( ebx, eax );
+			sbb( 0, edx );
+			
+			// Now compute the number of milliseconds after
+			// the stopping time (to the end of that day)
+			// and subtract this from our total.
+
+
+			movzx( this.TimeStopped.hours, ebx );
+			intmul( 60, ebx );
+			movzx( this.TimeStopped.mins, ecx );
+			add( ecx, ebx );
+			intmul( 60, ebx );
+			movzx( this.TimeStopped.secs, ecx );
+			add( ecx, ebx );
+			intmul( 1000, ebx );
+			add( this.msStopped, ebx );
+			add( ebx, eax );
+			adc( 0, edx );
+
+			// Okay, EDX:EAX contains our total number of milliseconds,
+			// store this into the accumulator value and return the value
+			// in EDX:EAX.
+
+			mov( eax, (type dword this.Accumulated)[0] );
+			mov( edx, (type dword this.Accumulated)[4] );
+
+			mov( false, this.Running );
+			mov( true, this.Valid );
+
+			pop( ecx );
+			pop( ebx );
+			leave();
+			ret();		
+
+	end stop;
+
+
+#else
+
+	#error( "Need timer_t code for this OS!" )
+
+#endif
+
+
+end TimerUnit;

@@ -1,0 +1,68 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit StdInput;
+#include( "../include/stdinunit.hhf" )
+
+
+/************************************************/
+/*                                              */
+/* eoln-                                        */
+/*                                              */
+/* This function returns true if the next       */
+/* input is at the end of the line.             */
+/*                                              */
+/* Since getc and gets can read delimiter       */
+/* characters, eoln does not return true if     */
+/* there are nothing but delimiter characters   */
+/* before the end of the line.                  */
+/*                                              */
+/************************************************/
+
+
+
+
+procedure eoln; @noframe;
+begin eoln;
+
+
+	// If the input buffer is empty, we're definitely
+	// at the end of a line.
+	
+	movzx( NeedsInput, eax );
+	test( eax, eax );
+	jnz eolnTrue;
+	
+		// Check to see if we're at the end of the input buffer.
+		
+		push( eax );
+		mov( InputIndex, eax );
+		cmp( InputBuffer[ eax ], #0 );
+		pop( eax );
+		sete( al );
+		
+	eolnTrue:
+	ret();
+	
+end eoln;
+
+
+
+end StdInput;
+
+
+
+
+	
+

@@ -1,0 +1,43 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" );
+
+	readonly
+	
+		align(4);
+		
+		// DaysFromMonth- Number of days from the end of the
+		// month (i.e., the first of the next month) to the
+		// end of the year.
+			
+		date.DaysFromMonth: uns32[13] :=
+			[
+				365,	// 365 days starting with Jan 1.
+				334,	// 334 days left after Jan (doesn't count leap days)
+				306,	// 306 days left after Feb
+				275,	// 275 days left after Mar
+				245,	// 245 days left after Apr
+				214,	// 214 days left after May
+				184,	// 184 days left after Jun
+				153,	// 153 days left after Jul
+				122,	// 122 days left after Aug
+				 92,	// 92 days left after Sep
+				 61,	// 61 days left after Oct
+				 31,	// 31 days left after Nov
+				 0		// 0 days left after Dec
+			];
+		
+end DateTime;			

@@ -1,0 +1,88 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit mathUnit;
+
+#include( "math.hhf" )
+
+
+/****************************************************/
+/*                                                  */
+/* subl( left, right, dest ) -                      */
+/*                                                  */
+/* Computes dest := left - right where the operands */
+/* are all 128-bit operands.                        */
+/*                                                  */
+/****************************************************/
+
+
+procedure math.subl( left:lword; right:lword; var dest:lword );
+	@nodisplay;
+	@noalignstack;
+	@noframe;
+begin subl;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	
+	// Standard 128-bit addition.
+	
+	mov( dest, ebx );
+	mov( (type dword left), eax );
+	sub( (type dword right), eax );
+	mov( eax, [ebx] );
+	
+	mov( (type dword left[4]), eax );
+	sbb( (type dword right[4]), eax );
+	mov( eax, [ebx+4] );
+	
+	mov( (type dword left[8]), eax );
+	sbb( (type dword right[8]), eax );
+	mov( eax, [ebx+8] );
+	
+	mov( (type dword left[12]), eax );
+	sbb( (type dword right[12]), eax );
+	mov( eax, [ebx+12] );
+	
+	// Carry, sign, and overflow flags are set properly, but zero flag
+	// is not.  The following gymnastics set the zero flag appropriately.
+	
+	pushfd();						// Save carry, sign, and overflow.
+	and( $bf, (type byte [esp]));	// Clears ZF on stack.
+	or( [ebx], eax );	   			// Check for a zero result.
+	or( [ebx+4], eax );
+	or( [ebx+8], eax );
+	setz( al );
+	shl( 6, al );					// Put ZF in Bit #6 of al.
+	or( al, [esp] );				// Merge with flags on stack.
+	popfd();
+	
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+end subl;
+	
+                      
+
+
+
+
+
+
+
+end mathUnit;

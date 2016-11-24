@@ -1,0 +1,71 @@
+program fromSecs_test;
+#include( "stdlib.hhf" )
+
+static
+	incTime		:time.timerec;
+	resultTime	:timeClass;
+	
+	seconds		:dword;
+	endSeconds	:dword;
+	days		:dword;		
+	
+begin fromSecs_test;
+
+
+	mov( 0, seconds );
+	mov( 4*60*60*24, endSeconds );
+	mov( 0, incTime );
+	mov( 0, days );
+	resultTime.create();	 
+	while( mov( endSeconds, eax ) >= seconds ) do
+	
+		resultTime.fromSecs( seconds );
+		if
+		( 
+				mov( resultTime.theTime, ebx ) <> (type dword incTime)
+			||	eax <> days 
+		) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"timeClass.FromSecs failed!", nl,
+				"seconds   = ", seconds, nl
+				"hmsToSecs = ", ebx, nl
+				"days      = ", days, nl
+				"eax       = ", eax, nl
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		inc( seconds );
+		inc( incTime.secs );
+		if( incTime.secs >= 60 ) then
+		
+			add( 256-60, incTime );	// sub 60 from secs, add 1 to mins
+			if( incTime.mins >= 60 ) then
+			
+				add( (256-60)*256, incTime );	// sub 60 from mins, add 1 to hrs
+				if( incTime.hours >= 24 ) then
+				
+					mov( 0, incTime.hours );
+					inc( days );
+					
+				endif;
+				
+			endif;
+			
+		endif;
+		
+	endwhile;
+	stderr.put( "timeClass.FromSecs succeeded!" nl );
+	os.exitProcess(0);
+		
+end fromSecs_test;
+
+													

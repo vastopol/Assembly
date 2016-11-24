@@ -1,0 +1,42 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+
+#include( "../include/fileiounit.hhf" )
+
+// putu32-
+// Outputs a 32-bit unsigned integer to the specified file.
+//
+// Grungy, difficult to maintain code ahead!
+//
+// This function converts its stack frame to one compatible with
+// putu32Size and then passes control to putu32Size to do the real work.
+
+
+
+procedure fileio.putu32( Handle:dword; d:dword ); @noframe; @nodisplay;  
+begin putu32;
+
+	sub( 4, esp );					// Make room for width
+	push( (type dword [esp+4]) );	// Copy return address, make room for fill
+	mov( 0, (type dword [esp+8]));	// Width = 0
+	mov( ' ', (type dword [esp+4]));// fill = ' '
+	jmp fileio.putu32Size;
+	
+end putu32;
+	
+end FileIOUnit;
+

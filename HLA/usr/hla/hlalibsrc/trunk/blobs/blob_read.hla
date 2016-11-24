@@ -1,0 +1,131 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobClass;
+?@NoStackAlign := true;
+?@NoDisplay := true;
+?@NoFrame := true;		
+
+#includeOnce( "excepts.hhf" )
+#includeOnce( "hla.hhf" )
+#includeOnce( "blobs.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "stdio.hhf" )
+#includeOnce( "threads.hhf" )
+
+
+procedure blob.read( b:blob.blob; var dest:var; len:dword );
+var
+	saveEBX		:dword;
+	saveECX		:dword;
+	saveESI		:dword;
+	saveEDI		:dword;
+	saveFlags	:dword;
+	 
+begin read;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_-4), esp );
+	pushfd();		// Allocate and initialize saveFlags
+	cld();
+	
+	mov( ebx, saveEBX );
+	mov( ecx, saveECX );
+	mov( esi, saveESI );
+	mov( edi, saveEDI );
+	
+	mov( b, ebx );
+	test( ebx, ebx );
+	jz AttemptToDerefNULL;
+	
+	mov( dest, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+		
+	#if( @thread )
+	try
+	
+		thread.enterCriticalSection
+		( 
+			(type blob.blobRec [ebx]).criticalSection 
+		);
+	
+	#endif
+		
+		// Compute the start of the data transfer:
+		
+		mov( (type blob.blobRec [ebx]).rcursor, esi );
+		add( ebx, esi );
+		
+		// Compute the number of bytes to transfer.  This is "len" if there
+		// are more than "len" bytes left in the blob; it is "length"-"rcursor"
+		// if there are fewer than len bytes left in the blob.
+		
+		mov( (type blob.blobRec [ebx]).length, ecx );		// Compute bytes left in
+		sub( (type blob.blobRec [ebx]).rcursor, ecx );		//  blob.
+		cmp( ecx, len );
+		jbe useRemainderOfBlob;
+		
+			mov( len, ecx );
+			
+		useRemainderOfBlob:
+		mov( ecx, eax );		// Bytes transferred is returned in EAX.
+		jecxz noBytesCopied;	 
+		
+			
+			// Okay, copy ECX characters from the blob to the
+			// destination buffer.
+			
+			mov( (type blob.blobRec [ebx]).rcursor, esi );
+			add( ebx, esi );
+			rep.movsb();
+			
+			// Set rcursor to the next position in the blob.
+			
+			mov( (type blob.blobRec [ebx]).rcursor, esi );
+			add( eax, esi );
+			mov( esi, (type blob.blobRec [ebx]).rcursor );
+			
+		noBytesCopied:
+		
+	#if( @thread )
+	
+	  anyexception
+	
+		mov( b, edx );
+		thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		push( saveFlags );
+		popfd();
+		reraise( eax );
+		
+	endtry;
+	thread.leaveCriticalSection( (type blob.blobRec [ebx]).criticalSection );
+		
+	#endif
+	
+	mov( saveEBX, ebx );
+	mov( saveECX, ecx );
+	mov( saveESI, esi );
+	mov( saveEDI, edi );
+	popfd();
+	leave();
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end read;
+
+end blobClass;

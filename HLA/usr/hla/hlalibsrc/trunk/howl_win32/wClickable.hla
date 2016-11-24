@@ -1,0 +1,380 @@
+unit wClickable_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly		
+	align( 4 );
+	vmt( wClickable_t );
+
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wClickable objects here:
+
+procedure wClickable_t.create_wClickable
+(
+	wcName		:string;
+	parent		:dword; 									
+	x			:dword; 
+	y			:dword;
+	width		:dword;
+	height		:dword;
+	onClick		:widgetProc 
+);;
+	
+_begin( wClickable_t, create_wClickable );
+
+	push( eax );
+
+	// wClickable_t is an abstract class and ESI must contain the address
+	// of a derived object when this constructor is called.
+	
+	assert( esi <> NULL );
+	
+	
+	// Generic initialization for all objects:
+	
+	(type wVisual_t [esi]).create_wVisual
+	(
+		wcName,
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height
+	);
+	
+	mov( onClick, eax );
+	mov( eax, this.wClickable_private.onClick );
+	xor( eax, eax );
+	mov( eax, this.wClickable_private.onLPress );
+	mov( eax, this.wClickable_private.onMPress );
+	mov( eax, this.wClickable_private.onRPress );
+	mov( eax, this.wClickable_private.onRelease );
+	mov( eax, this.wClickable_private.onLRelease );
+	mov( eax, this.wClickable_private.onMRelease );
+	mov( eax, this.wClickable_private.onRRelease );
+	
+	
+	// Because wClickable_t is an abstract class, the following assignments
+	// are for naught; however, best to initialize these fields with something
+	// just to be on the safe side.
+	
+	howl.setType( wClickable_c );
+	mov( &wClickable_t._VMT_, this._pVMT_ );
+				   
+	pop( eax );
+	
+_end( wClickable_t, create_wClickable );
+
+
+
+
+
+// Accessor/mutator functions:
+
+
+method wClickable_t.get_onClick; @noframe;;
+_begin( wClickable_t, get_onClick );
+
+	mov( this.wClickable_private.onClick, eax );
+	ret();
+	 
+_end( wClickable_t, get_onClick );
+
+
+method wClickable_t.get_onDblClick; @noframe;;
+_begin( wClickable_t, get_onDblClick );
+
+	mov( this.wClickable_private.onDblClick, eax );
+	ret();
+	 
+_end( wClickable_t, get_onDblClick );
+
+
+method wClickable_t.get_onRelease; @noframe;;
+_begin( wClickable_t, get_onRelease );
+
+	mov( this.wClickable_private.onRelease, eax );
+	ret();
+	 
+_end( wClickable_t, get_onRelease );
+
+
+method wClickable_t.get_onLRelease; @noframe;;
+_begin( wClickable_t, get_onLRelease );
+
+	mov( this.wClickable_private.onLRelease, eax );
+	ret();
+	 
+_end( wClickable_t, get_onLRelease );
+
+
+method wClickable_t.get_onMRelease; @noframe;;
+_begin( wClickable_t, get_onMRelease );
+
+	mov( this.wClickable_private.onMRelease, eax );
+	ret();
+	 
+_end( wClickable_t, get_onMRelease );
+
+
+method wClickable_t.get_onRRelease; @noframe;;
+_begin( wClickable_t, get_onRRelease );
+
+	mov( this.wClickable_private.onRRelease, eax );
+	ret();
+	 
+_end( wClickable_t, get_onRRelease );
+
+
+method wClickable_t.get_onLPress; @noframe;;
+_begin( wClickable_t, get_onLPress );
+
+	mov( this.wClickable_private.onLPress, eax );
+	ret();
+	 
+_end( wClickable_t, get_onLPress );
+
+
+method wClickable_t.get_onMPress; @noframe;;
+_begin( wClickable_t, get_onMPress );
+
+	mov( this.wClickable_private.onMPress, eax );
+	ret();
+	 
+_end( wClickable_t, get_onMPress );
+
+
+method wClickable_t.get_onRPress; @noframe;;
+_begin( wClickable_t, get_onRPress );
+
+	mov( this.wClickable_private.onRPress, eax );
+	ret();
+	 
+_end( wClickable_t, get_onRPress );
+
+
+
+
+// Mutator functions:
+
+
+method wClickable_t.set_onClick( onClick:widgetProc );;
+_begin( wClickable_t, set_onClick );
+
+	push( eax );
+	mov( onClick, eax );
+	mov( eax, this.wClickable_private.onClick );
+	pop( eax );
+	
+_end( wClickable_t, set_onClick );
+
+
+
+method wClickable_t.set_onDblClick( onDblClick:widgetProc );;
+_begin( wClickable_t, set_onDblClick );
+
+	push( eax );
+	mov( onDblClick, eax );
+	mov( eax, this.wClickable_private.onDblClick );
+	pop( eax );
+	
+_end( wClickable_t, set_onDblClick );
+
+
+
+method wClickable_t.set_onLPress( onLPress:widgetProc );;
+_begin( wClickable_t, set_onLPress );
+
+	push( eax );
+	mov( onLPress, eax );
+	mov( eax, this.wClickable_private.onLPress );
+	pop( eax );
+	
+_end( wClickable_t, set_onLPress );
+
+
+
+method wClickable_t.set_onMPress( onMPress:widgetProc );;
+_begin( wClickable_t, set_onMPress );
+
+	push( eax );
+	mov( onMPress, eax );
+	mov( eax, this.wClickable_private.onMPress );
+	pop( eax );
+	
+_end( wClickable_t, set_onMPress );
+
+
+
+method wClickable_t.set_onRPress( onRPress:widgetProc );;
+_begin( wClickable_t, set_onRPress );
+
+	push( eax );
+	mov( onRPress, eax );
+	mov( eax, this.wClickable_private.onRPress );
+	pop( eax );
+	
+_end( wClickable_t, set_onRPress );
+
+
+
+method wClickable_t.set_onRelease( onRelease:widgetProc );;
+_begin( wClickable_t, set_onRelease );
+
+	push( eax );
+	mov( onRelease, eax );
+	mov( eax, this.wClickable_private.onRelease );
+	pop( eax );
+	
+_end( wClickable_t, set_onRelease );
+
+
+
+method wClickable_t.set_onLRelease( onLRelease:widgetProc );;
+_begin( wClickable_t, set_onLRelease );
+
+	push( eax );
+	mov( onLRelease, eax );
+	mov( eax, this.wClickable_private.onLRelease );
+	pop( eax );
+	
+_end( wClickable_t, set_onLRelease );
+
+
+
+method wClickable_t.set_onMRelease( onMRelease:widgetProc );;
+_begin( wClickable_t, set_onMRelease );
+
+	push( eax );
+	mov( onMRelease, eax );
+	mov( eax, this.wClickable_private.onMRelease );
+	pop( eax );
+	
+_end( wClickable_t, set_onMRelease );
+
+
+
+method wClickable_t.set_onRRelease( onRRelease:widgetProc );;
+_begin( wClickable_t, set_onRRelease );
+
+	push( eax );
+	mov( onRRelease, eax );
+	mov( eax, this.wClickable_private.onRRelease );
+	pop( eax );
+	
+_end( wClickable_t, set_onRRelease );
+
+
+
+// wClickable_t.click-
+//
+//	Simulates clicking on the button.
+
+method wClickable_t.click;;
+_begin( wClickable_t, click );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	w.SendMessage( this.handle, w.BM_CLICK, 0, 0 );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wClickable_t, click );
+
+
+
+// processMessage draws the actual rectangle
+// when a WM_PAINT message comes along
+
+method wClickable_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);;
+	
+	#macro testOnClick( dummy[] );
+	
+		if( this.wClickable_private.onClick <> NULL ) then
+		
+			this.wClickable_private.onClick( esi, wParam, lParam );
+			
+		endif;
+	
+	#endmacro
+	#macro testRelease( dummy[] );
+	
+		if( this.wClickable_private.onRelease <> NULL ) then
+		
+			this.wClickable_private.onRelease( esi, wParam, lParam );
+			
+		endif;
+	
+	#endmacro
+	#macro testClick( _who_ );
+	
+		if( this.wClickable_private._who_ <> NULL ) then
+		
+			this.wClickable_private._who_( esi, wParam, lParam );
+			
+		endif;
+		
+	#endmacro
+
+_begin( wClickable_t, processMessage );
+
+	mov( uMsg, eax );
+	switch( eax )
+	
+		case( w.WM_LBUTTONDOWN )
+		
+			testOnClick();
+			testClick( onLPress );
+			
+		case( w.WM_MBUTTONDOWN )
+		
+			testOnClick();
+			testClick( onMPress );
+			
+		case( w.WM_RBUTTONDOWN )
+		
+			testOnClick();
+			testClick( onRPress );
+
+		case( w.WM_LBUTTONUP )
+	
+			testRelease();
+			testClick( onLRelease );
+	
+		case( w.WM_MBUTTONUP )
+	
+			testRelease();
+			testClick( onMRelease );
+	
+		case( w.WM_RBUTTONUP )
+	
+			testRelease();
+			testClick( onRRelease );
+	
+	endswitch;
+	super.processMessage( hwnd, uMsg, wParam, lParam );
+	
+_end( wClickable_t, processMessage );
+
+
+end	wClickable_u;

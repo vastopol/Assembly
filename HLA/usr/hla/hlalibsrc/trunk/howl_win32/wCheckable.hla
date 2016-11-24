@@ -1,0 +1,143 @@
+unit wCheckable_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly		
+	align( 4 );
+	vmt( wCheckable_t );
+
+
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+//
+// Handle wCheckable_t objects here:
+
+
+procedure wCheckable_t.create_wCheckable
+(
+	wchkName	:string;
+	caption		:string;
+	style		:dword;
+	parent		:dword; 									
+	x			:dword; 
+	y			:dword; 
+	width		:dword; 
+	height		:dword;
+	onClick		:widgetProc  
+);;
+	
+_begin( wCheckable_t, create_wCheckable );
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wCheckable_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+
+	// We need to create a window that will hold this object.
+
+	(type wButton_t [esi]).create_wButton
+	(
+		wchkName,
+		parent,									
+		x,		
+		y,		
+		width,	
+		height,	
+		onClick	  
+	);	
+	mov( cl, this.wBase_private.onHeap );
+	mov( style, eax );
+	or
+	(
+		w.WS_CHILD | w.WS_VISIBLE | w.BS_NOTIFY | w.WS_TABSTOP | w.WS_GROUP,
+		eax
+	);
+	mov( eax, this.wVisual_private.style );
+	w.CreateWindowEx
+	(
+		0,
+		"button",							// Button class name
+		caption,							// Button caption
+		eax,
+		x,
+		y,
+		width,
+		height,
+		parent,
+		this.wBase_private.objectID,
+		howl.howlInstance,
+		NULL
+	);
+	mov( eax, this.handle );
+	w.SetWindowLong( eax, w.GWL_USERDATA, esi );
+	
+	// Initialize the type string field:
+		
+	howl.setType( wCheckable_c );
+	
+	// Initialize the VMT pointer:
+	
+	mov( &wCheckable_t._VMT_, this._pVMT_ );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wCheckable_t, create_wCheckable );
+
+
+method wCheckable_t.set_check( state:dword );;
+_begin( wCheckable_t, set_check );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.BM_SETCHECK, state, 0 );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wCheckable_t, set_check );
+
+
+
+method wCheckable_t.get_check;;
+_begin( wCheckable_t, get_check );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.BM_GETCHECK, 0, 0 );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wCheckable_t, get_check );
+
+
+
+end	wCheckable_u;

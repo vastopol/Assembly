@@ -1,0 +1,60 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+
+
+/************************************************************/
+/*                                                          */
+/* u128ToBuf-                                               */
+/*                                                          */
+/* This routine converts 128-bit integers to a sequence of  */
+/* characters.  the 128-bit value is passed on the stack.   */
+/* This routines store the resulting character sequence     */
+/* into the buffer pointed at by edi.  This routine         */
+/* leaves edi pointing at the first byte beyond the         */
+/* converted character sequence.                            */
+/*                                                          */
+/************************************************************/
+
+
+procedure conv.u128ToBuf( l:lword; var buf:var in edi );  
+	@nodisplay;
+	@noframe; 
+	@noalignstack;
+	
+begin u128ToBuf;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+
+	conv.u128Size( l );
+	add( eax, edi );
+	push( edi );
+	mov( eax, ecx );
+	sub( 1, edi );
+	conv._unsToBuf128( l, ecx, [edi] );
+
+	pop( edi );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+
+end u128ToBuf;
+
+end ConvUnit;

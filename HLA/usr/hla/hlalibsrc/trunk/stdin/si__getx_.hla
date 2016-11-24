@@ -1,0 +1,123 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit StdInput;
+#includeOnce( "../include/stdinunit.hhf" )
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "stdlibdata.hhf" )
+
+
+procedure _getx_; 
+	@noframe;
+	@nodisplay;
+	@noalignstack;
+
+begin _getx_;
+
+	push( ebx );
+	push( ecx );
+	push( esi );
+
+	// If the input buffer is empty, read a new line from the
+	// standard input device.
+	
+	cmp( NeedsInput, false );
+	je noNewInput;
+	
+		ReadLn();
+		
+	noNewInput:
+
+	mov( _hla.get_Delimiters(), edx );
+	mov( InputIndex, ebx );
+	mov( CharsInBuf, ecx );
+	SkipDelimsLoop:
+	
+		movzx( InputBuffer[ ebx ], eax );
+		cmp( eax, '_' );
+		je isDelim;
+		
+			bt( eax, (type dword [edx] ));	// Delimiters
+			jnc NoMoreDelims;
+			
+		isDelim:
+		inc( ebx );
+		cmp( ebx, ecx );
+		jb SkipDelimsLoop;
+		
+		// We are at the end of the line, so read a new line from the user.
+		
+		ReadLn();
+		mov( InputIndex, ebx );
+		mov( CharsInBuf, ecx );
+		jmp SkipDelimsLoop;
+		
+	NoMoreDelims:
+
+	// Point esi at the start of the text and call atoh to
+	// convert this text to an integer.
+	
+	lea( esi, InputBuffer[ebx] );	
+	
+	try
+	
+		conv.atoh64( [esi] );	// Convert to a number.
+
+		// On return, we have to verify that the terminating character
+		// is a valid delimiter:
+
+		movzx( (type byte [esi]), ecx );
+		cmp( ecx, $80 );
+		jb legalChar;
+		
+			raise( ex.IllegalChar );
+			
+		legalChar:
+		push( eax );
+		mov( _hla.get_Delimiters(), ebx );
+		pop( eax );
+		bt( ecx, (type dword [ebx]) );
+		jc goodDelim;
+
+			raise( ex.ConversionError );
+
+		goodDelim:
+
+	  anyexception
+	
+		mov( true, NeedsInput);
+		reraise( eax );
+		
+	endtry;
+	
+	// Compute new InputIndex value.
+	
+	sub( &InputBuffer, esi );
+	mov( esi, InputIndex );
+	
+	pop( esi );
+	pop( ecx );
+	pop( ebx );
+	ret();
+	
+end _getx_;
+
+
+end StdInput;
+
+
+
+
+	
+

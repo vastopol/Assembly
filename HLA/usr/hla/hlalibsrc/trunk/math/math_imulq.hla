@@ -1,0 +1,159 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit mathUnit;
+
+#include( "math.hhf" )
+
+/*****************************************************/
+/*                                                   */
+/* imulq( left, right, dest ) -                      */
+/*                                                   */
+/* Computes dest := left * right where the operands  */
+/* are all 64-bit operands.                          */
+/*                                                   */
+/* Sets the carry and overflow flags if there was    */
+/* a signed overflow during the multiplication.      */
+/*                                                   */
+/*****************************************************/
+
+
+procedure math.imulq( left:qword; right:qword; var dest:qword );
+	@nodisplay;
+	@noalignstack;
+	@noframe;
+	
+var
+	sign	:boolean;
+	
+begin imulq;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	mov( dest, ecx );
+	
+	// Determine the sign of the result:
+	
+	mov( false, sign );
+	cmp( (type int8 left[7]), 0 );
+	jnl noNeg1;
+	
+		mov( true, sign );
+		xor( eax, eax );
+		sub( (type dword left[0]), eax );
+		mov( eax, (type dword left[0]) );
+		
+		mov( 0, eax );
+		sbb( (type dword left[4]), eax );
+		mov( eax, (type dword left[4]) );
+		
+	noNeg1:
+	
+	cmp( (type int8 right[7]), 0 );
+	jnl noNeg2;
+	
+		xor( true, sign );
+		xor( eax, eax );
+		sub( (type dword right[0]), eax );
+		mov( eax, (type dword right[0]) );
+		
+		mov( 0, eax );
+		sbb( (type dword right[4]), eax );
+		mov( eax, (type dword right[4]) );
+		
+	noNeg2:
+	
+	// 64-bit unsigned multiplication algorithm:
+	
+	mov( (type dword left), eax );
+	mul( (type dword right) );
+	mov( eax, [ecx] );
+	mov( edx, [ecx+4] );
+	
+	mov( (type dword left), eax );
+	mul( (type dword right[4]) );
+	add( eax, [ecx+4] );
+	adc( 0, edx );
+	mov( edx, ebx );		// Save to determine if overflow
+	
+	
+	mov( (type dword left[4]), eax );
+	mul( (type dword right) );
+	add( eax, [ecx+4] );
+	adc( 0, edx );
+	or( edx, ebx );			// Save to determine if overflow
+	
+	mov( (type dword left[4]), eax );
+	mul( (type dword right[4]) );
+	or( ebx, eax );
+	or( edx, eax );
+	jz noOvfl;
+	
+		// We've got overflow.  Set the carry flag and
+		// the overflow flag to indicate this.
+		
+		mov( $7f, al );
+		add( 1, al );		// Set overflow flag.
+		stc();				// Set the carry flag.
+		jmp allDone;
+	
+	
+	noOvfl:
+	cmp( sign, true );
+	jne allDone;
+	
+		// If the result is supposed to be negative, negate the result.
+		// Note that overflow flag value from negation tells us if
+		// there's a problem.
+	
+		xor( eax, eax );
+		sub( [ecx], eax );
+		mov( eax, [ecx] );
+		
+		mov( 0, eax );
+		sbb( [ecx+4], eax );
+		mov( eax, [ecx+4] );
+		jns hadOverflow;
+		jno noOverflow;
+		hadOverflow:
+		
+			// If negating produced a non-negative result, then
+			// we've got overflow. Note that overflow would have
+			// been set if we negated the most negative value,
+			// which is also an overflow condition.
+			
+			mov( $7f, al );
+			add( 1, al );		// Set overflow flag.
+			stc();				// Set the carry flag.
+			
+		noOverflow:
+			
+		
+	allDone:
+	pop( edx );
+	pop( ecx );	
+	pop( ebx );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+end imulq;
+
+end mathUnit;

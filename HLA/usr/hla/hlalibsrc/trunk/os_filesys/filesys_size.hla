@@ -1,0 +1,233 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+
+#include( "os.hhf" )		
+#include( "excepts.hhf" )
+#include( "../include/fileiounit.hhf" )
+
+/**************************************/
+/*                                    */
+/* fSize-                             */
+/*                                    */
+/* Returns the size of a file in      */
+/* EDX:EAX                            */
+/*                                    */
+/**************************************/
+
+#if( os.linux )
+
+	procedure filesys._sizeh_( handle:dword ); @nodisplay; @noframe;
+	var
+		fstat	: linux.stat64_t;
+
+	begin _sizeh_;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		linux.fstat( handle, fstat );
+		cmp( eax, -1 );
+		je FileReadError;
+		mov( (type dword fstat.st_size), eax );
+		mov( (type dword fstat.st_size[4]), edx );
+		leave();
+		ret( _parms_ );
+		
+	FileReadError:
+		raise( ex.FileReadError );
+	
+		
+	end _sizeh_;
+
+	procedure filesys._sizen_( filename:string ); @nodisplay; @noframe;
+	var
+		fstat	: linux.stat64_t;
+	begin _sizen_;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		linux.stat( filename, fstat );
+		cmp( eax, -1 );
+		je FileReadError;
+		
+		mov( (type dword fstat.st_size), eax );
+		mov( (type dword fstat.st_size[4]), edx );
+		leave();
+		ret( _parms_ );
+		
+	FileReadError:
+		raise( ex.FileReadError );
+
+	end _sizen_;
+
+#elseif( os.freeBSD )
+
+	procedure filesys._sizeh_( handle:dword ); @nodisplay; @noframe;
+	var
+		fstat	: bsd.stat_t;
+
+	begin _sizeh_;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		bsd.fstat( handle, fstat );
+		jc FileReadError;
+		mov( (type dword fstat.st_size), eax );
+		mov( (type dword fstat.st_size[4]), edx );
+		leave();
+		ret( _parms_ );
+		
+	FileReadError:
+		raise( ex.FileReadError );
+	
+		
+	end _sizeh_;
+
+	procedure filesys._sizen_( filename:string ); @nodisplay; @noframe;
+	var
+		fstat	: bsd.stat_t;
+	begin _sizen_;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		bsd.stat( filename, fstat );
+		jc FileReadError;
+		
+		mov( (type dword fstat.st_size), eax );
+		mov( (type dword fstat.st_size[4]), edx );
+		leave();
+		ret( _parms_ );
+		
+	FileReadError:
+		raise( ex.FileReadError );
+
+	end _sizen_;
+
+#elseif( os.macOS )
+
+	procedure filesys._sizeh_( handle:dword ); @nodisplay; @noframe;
+	var
+		fstat	: mac.stat_t;
+
+	begin _sizeh_;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mac.fstat( handle, fstat );
+		jc FileReadError;
+		mov( (type dword fstat.st_size), eax );
+		mov( (type dword fstat.st_size[4]), edx );
+		leave();
+		ret( _parms_ );
+		
+	FileReadError:
+		raise( ex.FileReadError );
+	
+		
+	end _sizeh_;
+
+	procedure filesys._sizen_( filename:string ); @nodisplay; @noframe;
+	var
+		fstat	: mac.stat_t;
+	begin _sizen_;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mac.stat( filename, fstat );
+		jc FileReadError;
+		
+		mov( (type dword fstat.st_size), eax );
+		mov( (type dword fstat.st_size[4]), edx );
+		leave();
+		ret( _parms_ );
+		
+	FileReadError:
+		raise( ex.FileReadError );
+
+	end _sizen_;
+
+#elseif( os.win32 )
+#include( "../include/win32.hhf" )
+
+	procedure filesys._sizeh_( handle:dword ); @nodisplay; @noframe;
+	var
+		HOsize:dword;
+
+	begin _sizeh_;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( ecx );
+		pushfd();
+		cld();
+		lea( eax, HOsize );
+		GetFileSize( eax, handle );
+		cmp( eax, -1 );
+		jne success;
+		cmp( HOsize, 0 );
+		jne success;
+		
+			raise( ex.FileReadError );
+			
+		success:
+		popfd();
+		pop( ecx );
+		mov( HOsize, edx );
+		leave();
+		ret( _parms_ );
+		
+	end _sizeh_;
+
+	procedure filesys._sizen_( filename:string ); @nodisplay; @noframe;
+	var
+		handle	:dword;		
+	begin _sizen_;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		fileio.open( filename, fileio.r );
+		mov( eax, handle );
+		filesys._sizeh_( handle );
+		fileio.close( handle );
+
+		leave();
+		ret( _parms_ );
+
+	end _sizen_;
+
+#else
+
+	#print( "Unknown OS!" )
+	
+#endif		
+	
+end FileIOUnit;
+

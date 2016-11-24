@@ -1,0 +1,409 @@
+unit wUpDown_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( wUpDownEditBox_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wUpDown objects here:
+
+
+
+procedure wUpDownEditBox_t.create_wUpDownEditBox
+(
+    wudName     :string;
+	initialTxt	:string;
+    parent      :dword;
+    style       :dword;
+	upDownStyle	:dword;                                     
+    x           :dword; 
+    y           :dword;
+    width       :dword;
+    height      :dword;
+    lowerRange  :dword;
+    upperRange  :dword;
+    initialPosn :dword;
+    onChange    :widgetProc;
+	onUpDown	:widgetProc 
+);;
+	
+_begin( wUpDownEditBox_t, create_wUpDownEditBox );
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wUpDownEditBox_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	
+	// Create the edit box window:
+	
+	mov
+	(
+		w.WS_CHILD | w.WS_VISIBLE | w.WS_TABSTOP | 
+			w.WS_GROUP | w.WS_BORDER | w.ES_AUTOHSCROLL |
+			w.ES_NUMBER,
+		eax
+	);
+	or( style, eax );
+	(type wabsEditBox_t [esi]).create_wabsEditBox
+	(
+		wudName,
+		initialTxt,
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height,
+		eax,
+		onChange
+	);
+	mov( cl, this.wBase_private.onHeap );
+	
+	mov( upperRange, eax );
+	mov( eax, this.wUpDownEditBox_private.upperRange );
+	
+	mov( lowerRange, eax );
+	mov( eax, this.wUpDownEditBox_private.lowerRange );
+	
+	mov( onUpDown, eax );
+	mov( eax, this.wUpDownEditBox_private.onUpDown );
+	
+	// Initialize the type string field:
+		
+	howl.setType( wUpDownEditBox_c );
+	
+	// Initialize the VMT pointer:
+	
+	mov( &wUpDownEditBox_t._VMT_, this._pVMT_ );
+			   
+	
+	
+	inc( this.objectID_g );
+
+	mov( w.WS_CHILD | w.WS_BORDER | w.WS_VISIBLE, eax );
+	or( upDownStyle, eax );
+	mov( eax, this.wUpDownEditBox_private.upDownStyle );
+	w.CreateUpDownControl
+	(
+		eax,
+		x,
+		y,
+		width,
+		height,
+		parent,
+		this.objectID_g,
+		howl.howlInstance,
+		this.handle,
+		upperRange,
+		lowerRange,
+		initialPosn
+	);
+	mov( eax, this.wUpDownEditBox_private.upDownHandle );
+	w.SetWindowLong( eax, w.GWL_USERDATA, esi );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wUpDownEditBox_t, create_wUpDownEditBox );
+
+
+
+
+
+
+
+
+method wUpDownEditBox_t.show;;
+_begin( wUpDownEditBox_t, show );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.ShowWindow( this.handle, w.SW_SHOW );
+	w.ShowWindow( this.wUpDownEditBox_private.upDownHandle, w.SW_SHOW );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wUpDownEditBox_t, show );
+
+
+
+method wUpDownEditBox_t.hide;;
+_begin( wUpDownEditBox_t, hide );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.ShowWindow( this.handle, w.SW_HIDE );
+	w.ShowWindow( this.wUpDownEditBox_private.upDownHandle, w.SW_HIDE );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wUpDownEditBox_t, hide );
+
+
+
+method wUpDownEditBox_t.enable;;
+_begin( wUpDownEditBox_t, enable );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.EnableWindow( this.handle, true );
+	w.EnableWindow( this.wUpDownEditBox_private.upDownHandle, true );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wUpDownEditBox_t, enable );
+
+
+
+method wUpDownEditBox_t.disable;;
+_begin( wUpDownEditBox_t, disable );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.EnableWindow( this.handle, false );
+	w.EnableWindow( this.wUpDownEditBox_private.upDownHandle, false );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wUpDownEditBox_t, disable );
+
+
+
+method wUpDownEditBox_t.get_lowerRange;;
+_begin( wUpDownEditBox_t, get_lowerRange );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage
+	( 
+		this.wUpDownEditBox_private.upDownHandle, 
+		w.UDM_GETRANGE, 
+		0, 
+		0 
+	);
+	shr( 16, eax );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wUpDownEditBox_t, get_lowerRange );
+
+
+
+method wUpDownEditBox_t.get_upperRange;;
+_begin( wUpDownEditBox_t, get_upperRange );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage
+	( 
+		this.wUpDownEditBox_private.upDownHandle, 
+		w.UDM_GETRANGE, 
+		0, 
+		0 
+	);
+	and( $FFFF, eax );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wUpDownEditBox_t, get_upperRange );
+
+
+
+
+method wUpDownEditBox_t.get_position;;
+_begin( wUpDownEditBox_t, get_position );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage
+	( 
+		this.wUpDownEditBox_private.upDownHandle, 
+		w.UDM_GETPOS, 
+		0, 
+		0 
+	);
+	and( $FFFF, eax );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wUpDownEditBox_t, get_position );
+
+
+
+
+method wUpDownEditBox_t.set_lowerRange( lowerRange:word );;
+_begin( wUpDownEditBox_t, set_lowerRange );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage
+	( 
+		this.wUpDownEditBox_private.upDownHandle, 
+		w.UDM_GETRANGE, 
+		0, 
+		0 
+	);
+	movzx( lowerRange, ecx );
+	shl( 16, ecx );
+	or( ecx, eax );
+	w.SendMessage
+	( 
+		this.wUpDownEditBox_private.upDownHandle, 
+		w.UDM_SETRANGE, 
+		0, 
+		eax 
+	);
+		
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wUpDownEditBox_t, set_lowerRange );
+
+
+
+method wUpDownEditBox_t.set_upperRange( upperRange:word );;
+_begin( wUpDownEditBox_t, set_upperRange );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage
+	( 
+		this.wUpDownEditBox_private.upDownHandle, 
+		w.UDM_GETRANGE, 
+		0, 
+		0 
+	);
+	movzx( upperRange, ecx );
+	and( $FFFF_0000, eax );
+	or( ecx, eax );
+	w.SendMessage
+	( 
+		this.wUpDownEditBox_private.upDownHandle, 
+		w.UDM_SETRANGE, 
+		0, 
+		eax 
+	);
+		
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wUpDownEditBox_t, set_upperRange );
+
+
+
+method wUpDownEditBox_t.set_position( position:word );;
+_begin( wUpDownEditBox_t, set_position );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	movzx( position, eax );
+	w.SendMessage
+	( 
+		this.wUpDownEditBox_private.upDownHandle, 
+		w.UDM_SETPOS, 
+		0, 
+		eax 
+	);
+		
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wUpDownEditBox_t, set_position );
+
+
+
+method wUpDownEditBox_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);;
+_begin( wUpDownEditBox_t, processMessage );
+
+	mov( uMsg, eax );
+	if( eax = w.WM_NOTIFY ) then
+	
+		mov( lParam, ebx );
+		mov( (type w.NMHDR [ebx]).code, ecx );
+		
+		// See if they clicked on a TAB in the window:
+		
+		if( ecx = w.UDN_DELTAPOS ) then
+		
+			// Get a pointer to the corresponding wUpDownEditBox_t object:
+			
+			mov( lParam, ebx );
+			w.GetWindowLong( (type w.NMHDR [ebx]).hwndFrom, w.GWL_USERDATA );
+			mov( eax, esi );
+			if( this.wUpDownEditBox_private.onUpDown <> NULL ) then
+
+				this.wUpDownEditBox_private.onUpDown( esi, wParam, lParam );
+				exit processMessage;
+				
+			endif;
+			
+		endif;
+		
+	endif;
+	super.processMessage( hwnd, uMsg, wParam, lParam );
+
+_end( wUpDownEditBox_t, processMessage );
+
+
+end	wUpDown_u;

@@ -1,0 +1,57 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit StdInput;
+#include( "../include/stdinunit.hhf" )
+
+
+
+procedure geth8; @noframe;
+begin geth8;
+
+	push( ebx );
+	push( edx );
+	push( eax );
+	
+	_getx_();
+	
+	// Range check the result.
+	// (Must be in the range 0..$FF.)
+	
+	mov( edx, ebx );		// Save H.O. dword for range check.
+	test( edx, edx );
+	jnz voor;
+	cmp( eax, $ff );
+	ja voor;
+
+		mov( al, [esp] );
+		pop( eax );
+		pop( edx );
+		pop( ebx );
+		ret();
+		
+	voor:
+		mov( true, NeedsInput);
+		raise( ex.ValueOutOfRange );	
+
+end geth8;
+
+
+end StdInput;
+
+
+
+
+	
+

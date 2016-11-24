@@ -1,0 +1,87 @@
+unit filesys_extName_unit;
+
+// synopsis
+//	These functions return an extension of a filename
+//	Extensions are the characters that follow the '.' in
+//	the filename.  If there is no extension, an empty string
+//	is returned.
+
+	#includeOnce( "filesys.hhf" )
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "excepts.hhf" )
+
+
+
+	procedure filesys.extractExt( pathname:string; dest:string );
+		@nodisplay; @noalignstack; @noframe;
+	
+	begin extractExt;
+		
+		push( ebp );
+		mov( esp, ebp );
+		push( ebx );
+		push( eax );
+		push( ecx );
+		push( edx );
+		
+		mov( dest, ebx );
+		test( ebx, ebx );
+		jz radn;
+		
+		filesys.hasExtension( pathname );
+		jnc returnFalse;
+		
+		// eax = index to extension in pathname. 
+				  
+		mov( pathname, ebx );
+		mov( (type str.strRec[ebx]).length, ebx );
+		sub( eax, ebx );
+		
+		// ebx = space we need in dest
+
+		mov( dest, ecx );
+		cmp( ebx, (type str.strRec[ecx]).maxlen );
+		ja rso;
+		
+		mov( ebx, (type str.strRec[ecx]).length );
+		
+		add( pathname, eax );		// Pointer to extension.
+		sub( 1, eax );
+		sub( 1, ecx );
+		copyToDest:
+			add( 1, eax );
+			add( 1, ecx );
+			mov( [eax], dl );
+			test( dl, dl );
+			jz doneCopy;
+			mov( dl, [ecx] );
+			jmp copyToDest;
+			
+		doneCopy:
+			mov( #0, ( type byte[ecx] ) );
+			stc();
+			jmp done;
+		
+		returnFalse:
+			xor( eax, eax );	// Also clears carry.
+			mov( eax, ( type str.strRec[ebx]).length );
+			mov( al, ( type byte[ebx] ) );
+		
+		done:
+			pop( edx );
+			pop( ecx );
+			pop( eax );
+			pop( ebx );
+			pop( ebp );
+			ret( _parms_ );
+		
+		radn:
+			raise( ex.AttemptToDerefNULL );
+			 
+		rso:
+			raise( ex.StringOverflow );
+			 
+	end extractExt;
+
+		
+end filesys_extName_unit;

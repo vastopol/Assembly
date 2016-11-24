@@ -1,0 +1,192 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit StdInput;
+#includeOnce( "../include/stdinunit.hhf" )
+#includeOnce( "../include/conversions.hhf" )
+
+/*********************************************************/
+/*                                                       */
+/* geti128-                                              */
+/*                                                       */
+/* This routine reads a 128-bit integer and returns the  */
+/* value in the specified destination location.          */
+/*                                                       */
+/* This routine will generate an appropriate exception   */
+/* if there is a conversion error, overflow, or other    */
+/* problem with reading the integer from the standard    */
+/* input device.                                         */
+/*                                                       */
+/* Note that this routine will skip over any leading     */
+/* delimiter characters (see the Delimiters cset in      */
+/* conv.hla).  Furthermore, the value must end with      */
+/* a valid delimiter character or an exception occurs.   */
+/*                                                       */
+/*********************************************************/
+
+
+procedure geti128( var dest:lword ); 
+	@noframe;
+	@nodisplay;
+	@nostackalign;
+	
+begin geti128;
+
+	push( ebp );
+	mov( esp, ebp );
+
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( edi );
+	push( esi );
+
+	// If the input buffer is empty, read a new line from the
+	// standard input device.
+	
+	cmp( NeedsInput, false );
+	je dontNeedInput;
+	
+		ReadLn();
+		
+	dontNeedInput:
+
+	mov( _hla.get_Delimiters(), edx );
+	xor( eax, eax );
+	mov( InputIndex, ebx );
+	mov( CharsInBuf, ecx );
+	SkipDelimsLoop:
+	
+		mov( InputBuffer[ ebx ], al );
+		cmp( al, '_' );
+		je wasADelim;
+
+			bt( eax, (type dword [edx] ));	// Delimiters
+			jnc NoMoreDelims;
+
+		wasADelim:
+		inc( ebx );
+		cmp( ebx, ecx );
+		jb SkipDelimsLoop;
+		
+		// We are at the end of the line, so read a new line from the user.
+		
+		ReadLn();
+		mov( InputIndex, ebx );
+		mov( CharsInBuf, ecx );
+		jmp SkipDelimsLoop;
+		
+	NoMoreDelims:
+
+	// Point esi at the start of the text and call _atou128 to
+	// convert this text to an integer.
+	
+	lea( esi, InputBuffer[ebx] );
+	cmp( (type char [esi]), '-' );
+	jne positiveOrZero;
+	
+		// If this number has a leading minus sign, then skip over it,
+		// convert the number to an unsigned integer, check for overflow,
+		// and then negate the result.
+		
+		inc( esi );
+		_atou128();
+
+		// Overflow occurs if EDX:ECX:EBX:EAX is greater than
+		// $8000_0000_0000_0000_0000_0000_0000_0000:
+
+		cmp( edx, $8000_0000 );
+		jb inRange;
+		ja voor;
+		   
+			test( ecx, ecx );
+			jnz voor;
+			test( ebx, ebx );
+			jnz voor;
+			test( eax, eax );
+			jnz voor;		
+			
+		inRange:
+		
+		// 128-bit negation:
+		
+		xor( edi, edi );
+		sub( eax, edi );
+		
+		mov( 0, eax );
+		sbb( ebx, eax );
+		
+		mov( 0, ebx );
+		sbb( ecx, ebx );
+		
+		mov( 0, ecx );
+		sbb( edx, ecx );
+		
+		mov( dest, edx );
+		mov( edi, [edx] );
+		mov( eax, [edx+4] );
+		mov( ebx, [edx+8] );
+		mov( ecx, [edx+12] );
+		jmp geti128Cleanup;
+		
+	positiveOrZero:
+	
+		// If the number does not have a leading "-" character, then
+		// treat it like an unsigned integer.  Note, however, that
+		// the H.O. bit of the result must be clear or we have an
+		// overflow.
+		
+		_atou128();
+		test( edx, edx );
+		js voor;
+
+		mov( dest, edi );
+		mov( eax, [edi] );
+		mov( ebx, [edi+4] );
+		mov( ecx, [edi+8] );
+		mov( edx, [edi+12] );
+		
+		
+	geti128Cleanup:
+	
+	// Compute new InputIndex value.
+	
+	sub( &InputBuffer, esi );
+	mov( esi, InputIndex );
+
+	pop( esi );
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+
+
+voor:
+	mov( true, NeedsInput );
+	raise( ex.ValueOutOfRange );
+
+end geti128;
+
+
+end StdInput;
+
+
+
+
+	
+

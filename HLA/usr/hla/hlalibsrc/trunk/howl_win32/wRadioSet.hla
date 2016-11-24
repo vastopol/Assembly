@@ -1,0 +1,440 @@
+unit wRadioButtonLT_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+
+readonly
+	align( 4 );		
+	vmt( wRadioSet_t );
+	vmt( wRadioSetButton_t );
+	vmt( wRadioSetButtonLT_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+//
+// Handle wRadioSet_t objects here:
+
+
+
+procedure wRadioSet_t.create_wRadioSet
+(
+	wrsName		:string;
+	caption		:string;
+	parent		:dword; 									
+	x			:dword; 
+	y			:dword; 
+	width		:dword; 
+	height		:dword;
+	bkgColor	:dword  
+);;
+	
+_begin( wRadioSet_t, create_wRadioSet );
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wRadioSet_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+
+	// We need to create a window that will hold this object.
+
+	(type wContainer_t [esi]).create_wContainer
+	(
+		wrsName,
+		parent,									
+		x,		
+		y,		
+		width,	
+		height	  
+	);	
+	mov( cl, this.wBase_private.onHeap );
+	this.set_bkgColor( bkgColor );
+	
+	
+	// Create a surface to draw everything on:
+	
+	w.CreateWindowEx
+	( 
+		0, 
+		howl.Window_t_ClassName, 
+		NULL, 
+		w.WS_CHILD,
+		x,
+		y,
+		width,
+		height,
+		parent,
+		NULL,
+		howl.howlInstance,
+		NULL
+	);
+	mov( eax, this.handle );
+	w.SetWindowLong( eax, w.GWL_USERDATA, esi );
+	
+	
+	w.CreateWindowEx
+	(
+		0,
+		"button",							// Button class name
+		caption,							// Button caption
+		w.WS_CHILD | w.WS_VISIBLE | w.BS_GROUPBOX,
+		0,
+		0,
+		width,
+		height,
+		this.handle,
+		this.wBase_private.objectID,
+		howl.howlInstance,
+		NULL
+	);
+	mov( eax, this.wRadioSet_private.groupBoxHndl );
+	
+	// Initialize the type string field:
+		
+	howl.setType( wRadioSet_c );
+	
+	// Initialize the VMT pointer:
+	
+	mov( &wRadioSet_t._VMT_, this._pVMT_ );
+	
+	// Display the window and group box:
+	
+	this.show();	
+			   
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wRadioSet_t, create_wRadioSet );
+
+
+
+// destroy-
+//
+//	Deallocates storage for the window and all the windows on
+// the widgets on the window.
+
+method wRadioSet_t.destroy;;
+_begin( wRadioSet_t, destroy );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	// Delete the container objects and the storage
+	// associated with this wRadioSet_t object:
+	
+	super.destroy();
+	
+	w.DestroyWindow( this.handle );
+	w.DestroyWindow( this.wRadioSet_private.groupBoxHndl );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wRadioSet_t, destroy );
+
+
+
+
+// Generic wRadioSet_t processMessage method.
+//
+//	Handles the following messages:
+//
+//	w.WM_ERASEBKGND:
+//		Draws the background of a window.
+//
+//	Any Other Message-
+//		Calls the default message handler for the wContainer_t class (which
+//		probably means we're calling the default Windows message handler).			
+
+method wRadioSet_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);
+var
+	r			:w.RECT;
+
+_begin( wRadioSet_t, processMessage );
+
+	mov( uMsg, eax );
+	mov( w.WM_ERASEBKGND, ecx );
+	if( eax = w.WM_ERASEBKGND ) then
+
+		w.GetClientRect( hwnd, r );
+		w.FillRect( wParam, r, this.wVisual_private.bkgBrush );
+		mov( true, eax );
+		exit processMessage;
+		
+	endif;
+	
+	// Some generic message that the default handler must
+	// process.
+	
+	super.processMessage( hwnd, uMsg, wParam, lParam );
+		
+_end( wRadioSet_t, processMessage );
+
+
+
+
+// Set the width field of the object. Also sends
+// a size message the the handle of the visual object
+// so it will be redrawn on the screen (if it is visible).
+
+method wRadioSet_t.set_width( width:dword );;
+_begin( wRadioSet_t, set_width );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( width, eax );
+	mov( eax, this.wVisual_private.width );
+	
+	w.MoveWindow( this.handle, this.wVisual_private.x, this.wVisual_private.y, this.wVisual_private.width, this.wVisual_private.height, true );
+	w.MoveWindow( this.wRadioSet_private.groupBoxHndl, 0, 0, this.wVisual_private.width, this.wVisual_private.height, true );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wRadioSet_t, set_width );
+
+
+// Set the height field of the object. Also sends
+// a size message the the handle of the visual object
+// so it will be redrawn on the screen (if it is visible).
+
+method wRadioSet_t.set_height( height:dword );;
+_begin( wRadioSet_t, set_height );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( height, eax );
+	mov( eax, this.wVisual_private.height );
+	w.MoveWindow( this.handle, this.wVisual_private.x, this.wVisual_private.y, this.wVisual_private.width, this.wVisual_private.height, true );
+	w.MoveWindow( this.wRadioSet_private.groupBoxHndl, 0, 0, this.wVisual_private.width, this.wVisual_private.height, true );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wRadioSet_t, set_height );
+
+
+
+// Resize the RadioSet group box. 
+// Sets both the width and height values at the same time.
+
+method wRadioSet_t.resize( width:dword; height:dword );;
+_begin( wRadioSet_t, resize );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( width, eax );
+	mov( eax, this.wVisual_private.width );
+	mov( height, eax );
+	mov( eax, this.wVisual_private.height );
+	w.MoveWindow( this.handle, this.wVisual_private.x, this.wVisual_private.y, this.wVisual_private.width, this.wVisual_private.height, true );
+	w.MoveWindow( this.wRadioSet_private.groupBoxHndl, 0, 0, this.wVisual_private.width, this.wVisual_private.height, true );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wRadioSet_t, resize );
+
+
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+//
+// Handle wRadioSetButton_t objects here:
+
+
+
+procedure wRadioSetButton_t.create_wRadioSetButton
+(
+	wrbName	:string;
+	caption	:string;
+	style	:dword;
+	parent	:dword; 									
+	x		:dword; 
+	y		:dword; 
+	width	:dword; 
+	height	:dword;
+	onClick	:widgetProc  
+);;
+	
+_begin( wRadioSetButton_t, create_wRadioSetButton );	
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wRadioSetButton_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	
+	mov
+	( 
+		w.WS_CHILD | w.WS_VISIBLE | w.BS_AUTORADIOBUTTON | w.BS_NOTIFY, 
+		eax 
+	);
+	or( style, eax );
+	push( eax );
+	(type wCheckable_t [esi]).create_wCheckable
+	(
+		wrbName,
+		caption,
+		eax,  
+		parent, 								
+		x,	   
+		y,	   
+		width,  
+		height, 
+		onClick  
+	);
+	mov( cl, this.wBase_private.onHeap );
+	pop( this.wVisual_private.style );
+	
+	// Initialize the type string field:
+		
+	howl.setType( wRadioSetButton_c );
+	
+	// Initialize the VMT pointer:
+	
+	mov( &wRadioSetButton_t._VMT_, this._pVMT_ );
+			   
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+	
+	
+_end( wRadioSetButton_t, create_wRadioSetButton );
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+//
+// Handle wRadioSetButtonLT_t objects here:
+
+
+
+procedure wRadioSetButtonLT_t.create_wRadioSetButtonLT
+(
+	wrbltName	:string;
+	caption		:string;
+	style		:dword;
+	parent		:dword; 									
+	x			:dword; 
+	y			:dword; 
+	width		:dword; 
+	height		:dword;
+	onClick		:widgetProc  
+);;
+	
+_begin( wRadioSetButtonLT_t, create_wRadioSetButtonLT );	
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wRadioSetButtonLT_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	
+	mov
+	( 
+		w.WS_CHILD | w.WS_VISIBLE | w.BS_AUTORADIOBUTTON | w.BS_NOTIFY |
+			w.BS_LEFTTEXT, 
+		eax 
+	);
+	or( style, eax );
+	push( eax );
+	(type wCheckable_t [esi]).create_wCheckable
+	(
+		wrbltName,
+		caption,
+		eax,  
+		parent, 								
+		x,	   
+		y,	   
+		width,  
+		height, 
+		onClick  
+	);
+	mov( cl, this.wBase_private.onHeap );
+	pop( this.wVisual_private.style );
+	
+	
+	// Initialize the type string field:
+		
+	howl.setType( wRadioSetButtonLT_c );
+	
+	// Initialize the VMT pointer:
+	
+	mov( &wRadioSetButtonLT_t._VMT_, this._pVMT_ );
+			   
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+	
+	
+_end( wRadioSetButtonLT_t, create_wRadioSetButtonLT );
+
+
+
+
+end	wRadioButtonLT_u;

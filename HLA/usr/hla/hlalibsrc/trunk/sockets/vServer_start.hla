@@ -1,0 +1,141 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit sockets;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "excepts.hhf" )
+#includeOnce( "fileio.hhf" )
+#includeOnce( "sockets.hhf" )
+
+// server_t.start
+//
+// Sit in a loop accepting connections from clients.
+// The timeout thunk controls when this function returns.
+
+method vServer_t.start
+( 
+	adrs				:dword; 
+	port				:word; 
+	timeoutCallback		:thunk;
+	connectionCallback	:connectionCallback_t;
+	parm				:dword 
+);
+var
+	adrsSize		:dword;
+	timeout			:hla.timeval;
+	net_fdset		:hla.fd_set_t;
+	
+begin start;
+
+	push( ebp );			// Need to do this for stack trace purposes.
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( eax );
+	
+	// Initialize local address to all zeros:
+	
+	sock.zeroSockAddr( this.IPadrs );
+	
+
+	// Set up the remote IP address:
+	
+	sock.zeroSockAddr( this.IPadrs );
+	mov( sock.AF_INET, this.IPadrs.sa_family );
+	
+	mov( adrs, eax );
+	bswap( eax );
+	mov( eax, this.IPadrs.sin_addr );
+	
+	mov( port, ax );
+	xchg( al, ah );
+	mov( ax, this.IPadrs.sin_port );
+	
+	mov( hla.server_c, this.mode );
+	
+	
+	sock.socket( sock.AF_INET, sock.SOCK_STREAM, 0 );
+	mov( eax, this.serverSockDescr );
+	sock.bind( this.serverSockDescr, this.IPadrs, @size( hla.sockaddr ));
+	
+	// Listen on the port until we get a connection:
+	
+	sock.listen( this.serverSockDescr, 1 );
+	
+	// Sit in a loop accepting connections from clients:
+	
+	foreverLoop:
+	
+		// Initialize the timeout to infinite (0 sec):
+		
+		mov( 0, timeout.tv_sec );
+		mov( 0, timeout.tv_usec );
+			
+		wait4Connect:
+		
+			// On each iteration, including the first time through,
+			// call the callback thunk. Must pass the address of
+			// the timeout object in EAX in case the thunk wants to
+			// change this:
+			
+			lea( eax, timeout );
+			timeoutCallback();
+			
+			// On return from the timeoutCallback thunk, EAX <> 0 if
+			// this function should quit.
+			
+			test( eax, eax );
+			jnz allDone;
+			
+		
+			// Create a singleton set containing {serverSockDescr}:
+			
+			mov( 1, net_fdset.fd_count );
+			mov( this.serverSockDescr, eax );
+			mov( eax, net_fdset.fd_array[0] );
+		   
+			inc( eax );		// Max set item is serverSockDescr.
+			
+			sock.select( eax, net_fdset, NULL, NULL, timeout );
+			test( eax, eax );
+			jz wait4Connect;
+			
+			
+		// Fall down here when we've got a client connection and
+		// accept that connection:
+		
+		sock.zeroSockAddr( this.connectedAdrs );
+		mov( @size( hla.sockaddr ), adrsSize );
+		sock.accept( this.serverSockDescr, this.connectedAdrs, adrsSize );
+		mov( eax, this.handle );
+		
+		// Because we have a connection, we need to call the
+		// connectionCallback procedure:
+		
+		connectionCallback( parm ); 
+		jmp foreverLoop;
+		
+	// If the timeout callback thunk told us to quit, then close
+	// the handle associated with the server's socket.
+	
+	allDone:
+		fileio.close( this.serverSockDescr );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+			
+end start;
+
+
+end sockets;

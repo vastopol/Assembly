@@ -1,0 +1,64 @@
+#if( ! @defined( timerclass_hhf ))
+?timerclass_hhf := true;
+
+	#includeOnce( "datetime.hhf" )
+	#includeOnce( "stdio.hhf" )
+	#includeOnce( "_hla.hhf" )
+
+/****************************************************/
+/*                                                  */
+/* 	The TIMER class:                                */
+/*                                                  */
+/****************************************************/
+
+
+#if( !@defined( _deprecate_old_timer_types_ ))
+
+	const
+		timer	:text := "timer_t";		// Deprecated type
+		
+#endif
+
+type
+
+	timer_t:	
+		class
+
+			var
+				Accumulated:	qword;
+
+				DateStarted:	date.daterec;
+				TimeStarted:	time.timerec;
+				msStarted:		uns32;
+
+				DateStopped:	date.daterec;
+				TimeStopped:	time.timerec;
+				msStopped:		uns32;
+
+				Running:	boolean;
+				Valid:		boolean;
+
+			proc
+			create: procedure;
+			@global:_hla._ext( "TIMER_CREATE" );
+
+			start:
+				method;
+				@global:_hla._ext( "TIMER_START" );
+				
+			restart:
+				method;
+				@global:_hla._ext( "TIMER_RESTART" );
+				
+			stop:
+				method {@returns( "edx:eax" )};	
+				@global:_hla._ext( "TIMER_STOP" );
+				
+			checkPoint:
+				method {@returns( "edx:eax" )}; 
+				@global:_hla._ext( "TIMER_CHECKPOINT" );
+
+		endclass;
+
+
+#endif

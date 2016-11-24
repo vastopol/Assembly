@@ -1,0 +1,129 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ThreadUnit;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "../include/datetime_private.hhf" )
+#if( @thread )
+
+	#includeOnce( "../include/thread_private.hhf" )
+	#includeOnce( "threads.hhf" )
+	#includeOnce( "excepts.hhf" )
+	
+#endif
+
+static
+	DateSeparator	:char := '/';
+
+#if( @thread )
+
+	procedure _hla.get_DateSeparator;
+	begin get_DateSeparator;
+
+		#if( os.win32 )
+		
+			push( ecx );
+			push( edx );
+			TlsGetValue( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			pop( edx );
+			pop( ecx );
+			
+		#elseif( os.linux | os.freeBSD | os.macOS )
+		
+			pthread_getspecific( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			
+		#else
+		
+			#error( "Unknown OS!" )
+			
+		#endif
+		movzx( (type _hla.stdlib_tls_t [eax]).dt_DateSeparator, eax );
+		ret();
+		
+	ThreadError:
+		raise( ex.ThreadError ); 
+		
+	end get_DateSeparator;
+
+	procedure _hla.set_DateSeparator( dsep:char );
+	begin set_DateSeparator;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( eax );
+		push( ecx );
+		#if( os.win32 )
+		
+			push( edx );
+			TlsGetValue( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			pop( edx );
+			
+		#elseif( os.linux | os.freeBSD | os.macOS )
+		
+			pthread_getspecific( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			
+		#else
+		
+			#error( "Unknown OS!" )
+			
+		#endif
+		mov( dsep, cl );
+		mov( cl, (type _hla.stdlib_tls_t [eax]).dt_DateSeparator );
+		pop( ecx );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ ); 
+		
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end set_DateSeparator;
+
+#else
+
+	procedure _hla.get_DateSeparator;
+	begin get_DateSeparator;
+
+		movzx( DateSeparator, eax );
+		ret();
+		
+	end get_DateSeparator;
+
+	procedure _hla.set_DateSeparator( dsep:char );
+	begin set_DateSeparator;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( eax );
+		mov( dsep, al );
+		mov( al, DateSeparator );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ );
+		
+	end set_DateSeparator;
+
+#endif
+
+end ThreadUnit;

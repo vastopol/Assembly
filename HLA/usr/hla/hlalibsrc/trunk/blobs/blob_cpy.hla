@@ -1,0 +1,94 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" );
+#include( "excepts.hhf" );
+#includeOnce( "threads.hhf" );
+
+
+// blob.cpy-                                                     
+//                                                          
+// Copies the source blob to the destination blob (including
+// a zero terminating byte).                                
+
+
+procedure blob.cpy( src:blob.blob; dest:blob.blob ); @noframe;
+begin cpy;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	#if( @thread )
+	try
+	
+		mov( src, eax );
+		thread.enterCriticalSection( (type blob.blobRec [eax]).criticalSection );
+		cmp( eax, dest );
+		je noEnter;
+		
+			mov( dest, eax );
+			thread.enterCriticalSection( (type blob.blobRec [eax]).criticalSection );
+			
+		noEnter:
+			
+	#endif
+	
+		blob._cpy( src, dest );
+		
+	#if( @thread )
+
+	  anyexception
+	  
+		mov( dest, ecx );
+		thread.enterCriticalSection( (type blob.blobRec [ecx]).criticalSection );
+		cmp( ecx, src );
+		je noLeave1;
+		
+			mov( src, ecx );
+			thread.enterCriticalSection( (type blob.blobRec [ecx]).criticalSection );
+			
+		noLeave1:
+		raise( eax );
+		
+	endtry;
+	mov( dest, eax );
+	thread.leaveCriticalSection( (type blob.blobRec [eax]).criticalSection );
+	cmp( eax, src );
+	je noLeave2;
+	
+		mov( src, eax );
+		thread.leaveCriticalSection( (type blob.blobRec [eax]).criticalSection );
+	
+	noLeave2:
+		
+	#endif
+
+	mov( dest, eax );	// Must return pointer to dest in eax.
+	pop( ebp );
+	ret( _parms_ );
+
+end cpy;
+
+
+end blobUnit;
+
+
+
+
+	
+

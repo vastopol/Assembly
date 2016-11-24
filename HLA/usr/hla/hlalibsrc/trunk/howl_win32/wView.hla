@@ -1,0 +1,90 @@
+unit wView_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( wView_t );
+
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// wView_t objects:
+//
+//	Note that wView_t is a concrete implementation of wSurface_t.
+
+
+procedure wView_t.create_wView
+(
+	wsName		:string;
+	exStyle		:dword;
+	style		:dword; 
+	parent		:dword; 									
+	x			:dword; 
+	y			:dword;
+	width		:dword;
+	height		:dword;
+	bkgColor	:dword;
+	visible		:boolean 
+);;
+	
+_begin( wView_t, create_wView );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	// This is a concrete class.
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wSurface_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	
+	// Create the underlying HOWL object:
+	
+	(type wSurface_t [esi]).create_wSurface
+	(
+		wsName, 
+		exStyle,
+		style,  
+		parent, 									
+		x,	   
+		y,	   
+		width,  
+		height, 
+		bkgColor,
+		visible 
+	);
+	mov( cl, this.wBase_private.onHeap );
+	howl.setType( wView_c );
+	mov( &wView_t._VMT_, this._pVMT_ );
+		
+	pop( edx );
+	pop( ecx );
+	pop( eax );	
+	
+
+_end( wView_t, create_wView );
+
+
+
+
+end	wView_u;

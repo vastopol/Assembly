@@ -1,0 +1,63 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit hlaUnit;
+#include( "hla.hhf" )
+#include( "conv.hhf" )
+#include( "strings.hhf" )
+
+// hla.putb-
+//
+//	Converts b to a string of hex digits (via conv.bToStr)
+// and then calls the putstr thunk to emit the string to
+// the output stream.
+//
+// Returns EAX containing whatever result the thunk leaves in EAX.
+
+procedure hla.putb( putstr:thunk; b:byte ); 
+	@noframe;
+	@nodisplay;
+	@noalignstack;
+	
+var
+	eaxSave		:dword;
+	edxSave		:dword;
+	esiSave		:dword;
+	resultStr	:string;
+	buffer		:byte[ 32 ];
+		
+begin putb;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	lea( eax, buffer );
+	str.init( [eax], 32 );
+	mov( eax, resultStr );
+
+	// Convert the byte to a string of hex digits and 
+	// print the string.
+
+	push( (type dword b) );
+	push( eax ); 
+	call( conv.bToStr );
+	putstr();
+	
+	leave();
+	ret( _parms_ );
+	
+end putb;
+end hlaUnit;
+

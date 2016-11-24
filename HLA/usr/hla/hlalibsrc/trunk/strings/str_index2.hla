@@ -1,0 +1,137 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+
+/*********************************************************/
+/*                                                       */
+/* index-                                                */
+/*                                                       */
+/* This functions searches for the first occurrence of   */
+/* str2 within str1.  It returns the numerical index     */
+/* (0..len(str1)-1) if the string is found.              */
+/* It returns -1 if str2 does not appear within str1.    */
+/*                                                       */
+/* Efficiency note: This brute force way probably isn't  */
+/* the best algorithm.  It works great for short strings */
+/* (especially if str2 is short), but better algorithms  */
+/* exist for string matching if str1 and str2 are long.  */
+/* Perhaps this should be fixed in a future version.     */
+/*                                                       */
+/*********************************************************/
+
+
+procedure str.index2( src1:string; src2:string ); @noframe;
+begin index2;
+
+	push( ebp );
+	mov( esp, ebp );
+	pushfd();
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( esi );
+	push( edi );
+	cld();
+	
+	mov( src2, edi );
+	mov( src1, esi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+
+	mov( (type str.strRec [edi]).length, ebx );
+	mov( (type str.strRec [esi]).length, edx );
+	
+		test( ebx, ebx );
+		jnz notZero;
+		
+			// If the length of src2 is zero, return failure.
+			
+			mov( -1, eax );
+			jmp FoundMatch;
+			
+		notZero:
+		cmp( edx, ebx );
+		jb notSubstr;
+
+			sub( ebx, edx );
+			mov( edi, eax );	// Save ptr to src2 so we can reset on failure.
+			repeatUntilEDXlt0:
+				
+				mov( ebx, ecx );
+				mov( eax, edi );
+				push( esi );
+				repe.cmpsb();
+				jne NotFound;
+				
+					// We found the string, so compute the
+					// index and exit the loop.
+						
+					pop( eax );			// Retrieve ptr into src1.				
+					sub( src1, eax );	// Compute index.
+					jmp FoundMatch;
+					
+				NotFound:
+				
+				// Okay, src2 didn't match at the current position,
+				// try the next character position in src1.
+				
+				pop( esi );			// Retrieve ptr into src1.
+				inc( esi );			// Bump up by one character position.
+				dec( edx );	// Are we done yet?
+				jns repeatUntilEDXlt0;
+				
+		notSubstr:
+		
+		// If we get down here, then src2 is not a substring of src1.
+		
+		mov( -1, eax );		// Deprecated!
+			
+		
+	FoundMatch:
+	pop( edi );
+	pop( esi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	popfd();
+	pop( ebp );
+	cmp( eax, -1 );		// Set carry on success, clear on failure
+	ret( _parms_ );
+		
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+StringIndexError:
+	raise( ex.StringIndexError );
+
+end index2;
+
+
+end stringUnit;
+
+
+
+
+	
+

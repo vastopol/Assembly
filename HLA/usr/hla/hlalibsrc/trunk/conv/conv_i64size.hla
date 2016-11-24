@@ -1,0 +1,83 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+
+/********************************************************/
+/*                                                      */
+/* i8Size,	u8Size,                                     */
+/* i16Size,	u16Size,                                    */
+/* i32Size,	u32Size,                                    */
+/* i64Size,	u64Size-                                    */
+/*                                                      */
+/* This routines compute the minimum number of print    */
+/* positions needed to display a value of the specified */
+/* bit size.  The size, in digits, is returned in the   */
+/* EAX register.                                        */
+/*                                                      */
+/* Input for the -8, -16, and -32 bit calls is passed   */
+/* in the al, ax, or eax register (respectively).  For  */
+/* the 64-bit values, the qword parameter is passed on  */
+/* the stack.                                           */
+/*                                                      */
+/********************************************************/
+
+
+
+procedure conv.i64Size( q:qword );  
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+begin i64Size;
+
+	push( ebp );
+	mov( esp, ebp );
+
+	cmp( (type int32 q[4]), 0 );
+	jnl use_u64Size;
+	
+		// Comute abs(q) by negating it.
+		
+		xor( eax, eax );
+		sub( (type int32 q[0]), eax );
+		mov( eax, (type int32 q[0]) );
+		mov( 0, eax );
+		sbb( (type int32 q[4]), eax );
+		mov( eax, (type int32 q[4]));
+		
+		// It's negative.  So use u64Size to compute size then add one.
+		
+		conv.u64Size( q );
+		add( 1, eax );		// Make room for the sign.
+		pop( ebp );
+		ret( _parms_ );
+
+
+	use_u64Size:
+	
+		// If the number wasn't negative, just use u64Size to compute its size.
+		
+		conv.u64Size( q );
+		pop( ebp );
+		ret( _parms_ );
+	
+end i64Size;
+
+
+
+
+end ConvUnit;

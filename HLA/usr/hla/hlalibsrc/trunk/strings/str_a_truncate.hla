@@ -1,0 +1,82 @@
+unit stringUnit;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+
+/***************************************************************/
+/*                                                             */
+/* truncate2,                                                  */
+/* truncate3,                                                  */
+/* a_truncate-                                                 */
+/*                                                             */
+/* These routines remove characters from the end of a string.  */
+/* The truncate routine destructively removes characters       */
+/* from a specified string variable.  The a_truncate routine   */
+/* allocates storage for a new string and copies the string,   */
+/* minus the deleted portion, to the newly allocated storage.  */
+/* The original string is left unchanged by a_truncate.        */
+/*                                                             */
+/* Inputs-                                                     */
+/*                                                             */
+/* src -   Pointer to string to remove characters from.        */
+/* length- Number of characters to delete from the end         */
+/*         of the string.                                      */
+/*                                                             */
+/***************************************************************/
+
+
+
+
+// str.a_truncate - returns pointer to newly allocated string in EAX.
+
+procedure str.a_truncate
+(
+      src		:string;
+      rmvlen	:dword
+); 
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+begin a_truncate;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	mov( src, eax );
+	test( eax, eax );
+	jz AttemptToDerefNULL;
+
+	mov( (type str.strRec [eax]).length, eax );
+	cmp( eax, rmvlen );
+	ja doTruncate;
+	
+		// Just return an empty string if we've deleted
+		// more characters than exist in the string.
+		
+		stralloc(1);
+		clc();
+		jmp allDone;
+		
+	doTruncate:
+	
+		sub( rmvlen, eax );
+		str.a_substr( src, 0, eax );
+		
+	allDone:
+	pop( ebp );
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise(ex.AttemptToDerefNULL);
+
+end a_truncate;
+ 
+
+end stringUnit;
+
+
+
+
+	
+

@@ -1,0 +1,565 @@
+unit wTrackBar_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+																  
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( wTrackBar_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wTrackBar objects here:
+
+				
+procedure wTrackBar_t.create_wTrackBar
+(
+	wtbName		:string;
+	parent		:dword; 									
+	x			:dword; 
+	y			:dword;
+	width		:dword;
+	height		:dword;
+	style		:dword;
+	onChange	:widgetProc 
+);;
+	
+_begin( wTrackBar_t, create_wTrackBar );
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wTrackBar_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+
+	// We need to create a window that will hold this object.
+
+	(type wVisual_t [esi]).create_wVisual
+	(
+		wtbName,
+		parent,									
+		x,		
+		y,		
+		width,	
+		height	  
+	);	
+	mov( cl, this.wBase_private.onHeap );
+	mov( style, eax );
+	if( eax = 0 ) then
+	
+		mov( w.WS_CHILD | w.WS_VISIBLE | w.TBS_AUTOTICKS, eax );
+		
+	else
+	
+		or( w.WS_CHILD | w.WS_VISIBLE, eax );
+		
+	endif;
+	mov( eax, this.wVisual_private.style );
+	
+	w.CreateWindowEx
+	(
+		0,
+		w.TRACKBAR_CLASS,					// TrackBar class name
+		NULL,								// TrackBar caption
+		eax,
+		x,
+		y,
+		width,
+		height,
+		parent,
+		this.wBase_private.objectID,
+		howl.howlInstance,
+		NULL
+	);
+	mov( eax, this.handle );
+	w.SetWindowLong( eax, w.GWL_USERDATA, esi );
+	
+	// Initialize the type string field:
+		
+	howl.setType( wTrackBar_c );
+	
+	// Initialize the VMT pointer:
+	
+	mov( &wTrackBar_t._VMT_, this._pVMT_ );
+	
+	
+	// Initialize the range to the Windows default (0..100);
+	
+	this.set_range( 0, 100 );
+	this.set_position( 0 );
+	w.SendMessage( this.handle, w.TBM_SETTICFREQ, 5, 1 ); 	
+	
+	// Initialize the widgetProc fields:
+	
+	mov( onChange, eax );
+	mov( eax, this.wTrackBar_private.onChange );
+	xor( eax, eax );
+	mov( eax, this.wTrackBar_private.onThumbPosn );
+	mov( eax, this.wTrackBar_private.onThumbTrack );  
+	mov( eax, this.wTrackBar_private.onBottom );	  
+	mov( eax, this.wTrackBar_private.onLineDown );	  
+	mov( eax, this.wTrackBar_private.onLineUp );	  
+	mov( eax, this.wTrackBar_private.onTop );		  
+	mov( eax, this.wTrackBar_private.onEndtrack );	  
+	mov( eax, this.wTrackBar_private.onPageDown );	  
+	mov( eax, this.wTrackBar_private.onPageUp );	  
+			   
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wTrackBar_t, create_wTrackBar );
+	
+	
+	
+			
+method wTrackBar_t.get_position;;
+_begin( wTrackBar_t, get_position );
+
+	push( ecx );
+	push( edx );
+	w.SendMessage( this.handle, w.TBM_GETPOS, 0, 0 );
+	pop( edx );
+	pop( ecx );
+
+_end( wTrackBar_t, get_position );
+
+	   
+method wTrackBar_t.set_position( position:dword );;
+_begin( wTrackBar_t, set_position );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	w.SendMessage( this.handle, w.TBM_SETPOS, true, position );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wTrackBar_t, set_position );
+
+	   
+
+method wTrackBar_t.get_lowRange;;
+_begin( wTrackBar_t, get_lowRange );
+
+	push( ecx );
+	push( edx );
+	w.SendMessage( this.handle, w.TBM_GETRANGEMIN, 0, 0 );
+	pop( edx );
+	pop( ecx );
+	
+_end( wTrackBar_t, get_lowRange );
+
+
+   
+method wTrackBar_t.get_hiRange;;
+_begin( wTrackBar_t, get_hiRange );
+
+	push( ecx );
+	push( edx );
+	w.SendMessage( this.handle, w.TBM_GETRANGEMAX, 0, 0 );
+	pop( edx );
+	pop( ecx );
+	
+_end( wTrackBar_t, get_hiRange );
+
+    
+method wTrackBar_t.set_range( low:dword; high:dword );;
+_begin( wTrackBar_t, set_range );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	w.SendMessage( this.handle, w.TBM_SETRANGEMIN, false, low );
+	w.SendMessage( this.handle, w.TBM_SETRANGEMAX, true, high );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wTrackBar_t, set_range ); 
+
+
+
+// Accessor/Mutator functions
+
+method wTrackBar_t.get_onThumbPosn; @noframe;;		
+_begin( wTrackBar_t, get_onThumbPosn );
+
+	mov( this.wTrackBar_private.onThumbPosn, eax );
+	ret();
+	
+_end( wTrackBar_t, get_onThumbPosn );
+
+method wTrackBar_t.get_onThumbTrack; @noframe;;		
+_begin( wTrackBar_t, get_onThumbTrack );
+
+	mov( this.wTrackBar_private.onThumbTrack, eax );
+	ret();
+	
+_end( wTrackBar_t, get_onThumbTrack );
+
+
+method wTrackBar_t.get_onChange; @noframe;;	
+_begin( wTrackBar_t, get_onChange );
+
+	mov( this.wTrackBar_private.onChange, eax );
+	ret();
+	
+_end( wTrackBar_t, get_onChange );
+
+
+method wTrackBar_t.get_onBottom; @noframe;;	
+_begin( wTrackBar_t, get_onBottom );
+
+	mov( this.wTrackBar_private.onBottom, eax );
+	ret();
+	
+_end( wTrackBar_t, get_onBottom );
+
+
+method wTrackBar_t.get_onLineDown; @noframe;;	
+_begin( wTrackBar_t, get_onLineDown );
+
+	mov( this.wTrackBar_private.onLineDown, eax );
+	ret();
+	
+_end( wTrackBar_t, get_onLineDown );
+
+
+method wTrackBar_t.get_onLineUp; @noframe;;	
+_begin( wTrackBar_t, get_onLineUp );
+
+	mov( this.wTrackBar_private.onLineUp, eax );
+	ret();
+	
+_end( wTrackBar_t, get_onLineUp );
+
+
+method wTrackBar_t.get_onTop; @noframe;;		
+_begin( wTrackBar_t, get_onTop );
+
+	mov( this.wTrackBar_private.onTop, eax );
+	ret();
+	
+_end( wTrackBar_t, get_onTop );
+
+
+method wTrackBar_t.get_onEndtrack; @noframe;;	
+_begin( wTrackBar_t, get_onEndtrack );
+
+	mov( this.wTrackBar_private.onEndtrack, eax );
+	ret();
+	
+_end( wTrackBar_t, get_onEndtrack );
+
+
+method wTrackBar_t.get_onPageDown; @noframe;;	
+_begin( wTrackBar_t, get_onPageDown );
+
+	mov( this.wTrackBar_private.onPageDown, eax );
+	ret();
+	
+_end( wTrackBar_t, get_onPageDown );
+
+
+method wTrackBar_t.get_onPageUp; @noframe;;	
+_begin( wTrackBar_t, get_onPageUp );
+
+	mov( this.wTrackBar_private.onPageUp, eax );
+	ret();
+	
+_end( wTrackBar_t, get_onPageUp );
+
+
+
+method wTrackBar_t.set_onThumbTrack( onThumbTrack:widgetProc );;	  
+_begin( wTrackBar_t, set_onThumbTrack );
+
+	push( eax );
+	mov( onThumbTrack, eax );
+	mov( eax, this.wTrackBar_private.onThumbTrack );
+	pop( eax );
+	
+_end( wTrackBar_t, set_onThumbTrack );
+
+
+
+method wTrackBar_t.set_onThumbPosn( onThumbPosn:widgetProc );;	  
+_begin( wTrackBar_t, set_onThumbPosn );
+
+	push( eax );
+	mov( onThumbPosn, eax );
+	mov( eax, this.wTrackBar_private.onThumbPosn );
+	pop( eax );
+	
+_end( wTrackBar_t, set_onThumbPosn );
+
+
+
+method wTrackBar_t.set_onChange( onChange:widgetProc );;
+_begin( wTrackBar_t, set_onChange );
+
+	push( eax );
+	mov( onChange, eax );
+	mov( eax, this.wTrackBar_private.onChange );
+	pop( eax );
+	
+_end( wTrackBar_t, set_onChange );
+
+
+
+method wTrackBar_t.set_onBottom( onBottom:widgetProc );;	  
+_begin( wTrackBar_t, set_onBottom );
+
+	push( eax );
+	mov( onBottom, eax );
+	mov( eax, this.wTrackBar_private.onBottom );
+	pop( eax );
+	
+_end( wTrackBar_t, set_onBottom );
+
+
+
+method wTrackBar_t.set_onLineDown( onLineDown:widgetProc );;
+_begin( wTrackBar_t, set_onLineDown );					   
+
+	push( eax );
+	mov( onLineDown, eax );
+	mov( eax, this.wTrackBar_private.onLineDown );
+	pop( eax );
+	
+_end( wTrackBar_t, set_onLineDown );
+
+
+
+method wTrackBar_t.set_onLineUp( onLineUp:widgetProc );;	  
+_begin( wTrackBar_t, set_onLineUp );
+
+	push( eax );
+	mov( onLineUp, eax );
+	mov( eax, this.wTrackBar_private.onLineUp );
+	pop( eax );
+	
+_end( wTrackBar_t, set_onLineUp );
+
+
+
+method wTrackBar_t.set_onTop( onTop:widgetProc );;		  
+_begin( wTrackBar_t, set_onTop );
+
+	push( eax );
+	mov( onTop, eax );
+	mov( eax, this.wTrackBar_private.onTop );
+	pop( eax );
+	
+_end( wTrackBar_t, set_onTop );
+
+
+
+method wTrackBar_t.set_onEndtrack( onEndtrack:widgetProc );;
+_begin( wTrackBar_t, set_onEndtrack );
+
+	push( eax );
+	mov( onEndtrack, eax );
+	mov( eax, this.wTrackBar_private.onEndtrack );
+	pop( eax );
+	
+_end( wTrackBar_t, set_onEndtrack );
+
+
+
+method wTrackBar_t.set_onPageDown( onPageDown:widgetProc );;
+_begin( wTrackBar_t, set_onPageDown );
+
+	push( eax );
+	mov( onPageDown, eax );
+	mov( eax, this.wTrackBar_private.onPageDown );
+	pop( eax );
+	
+_end( wTrackBar_t, set_onPageDown );
+
+
+
+method wTrackBar_t.set_onPageUp( onPageUp:widgetProc );;	  
+_begin( wTrackBar_t, set_onPageUp );
+
+	push( eax );
+	mov( onPageUp, eax );
+	mov( eax, this.wTrackBar_private.onPageUp );
+	pop( eax );
+	
+_end( wTrackBar_t, set_onPageUp );
+
+
+
+
+
+// Handle TrackBar notification messages:
+
+method wTrackBar_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);
+
+			
+	// Whenever anything causes the thumb position to change,
+	// call the onChange event handler if one is installed.
+
+	procedure doOnChange; @noframe; @nodisplay;
+	begin doOnChange;
+
+		if( (type wTrackBar_t [esi]).wTrackBar_private.onChange <> NULL ) then
+		
+			(type wTrackBar_t [esi]).wTrackBar_private.onChange
+			( 
+				esi, 
+				ebp::wParam, 
+				ebp::lParam 
+			);
+			
+		endif;
+		ret();
+		
+	end doOnChange;
+
+_begin( wTrackBar_t, processMessage );
+
+	mov( uMsg, eax );	 
+	if( eax = w.WM_HSCROLL || eax = w.WM_VSCROLL ) then
+	
+		// Get a pointer to the corresponding wTrackBar_ object:
+
+		w.GetWindowLong( lParam, w.GWL_USERDATA );
+		mov( eax, esi );
+		if( eax <> NULL ) then
+		
+			movzx( (type word wParam), eax );
+			
+			switch( eax  )
+			
+				case( w.TB_THUMBPOSITION )
+			
+					if( this.wTrackBar_private.onThumbPosn <> NULL ) then
+
+						this.wTrackBar_private.onThumbPosn( esi, wParam, lParam );
+						
+					endif;
+			
+					// Whenever anything causes the thumb position to change,
+					// call the onChange event handler.
+								
+					doOnChange();
+				
+				case( w.TB_THUMBTRACK )
+				
+					if( this.wTrackBar_private.onThumbTrack <> NULL ) then
+
+						this.wTrackBar_private.onThumbTrack( esi, wParam, lParam );
+						
+					endif;
+					doOnChange();
+				
+				case( w.TB_BOTTOM )
+				
+					if( this.wTrackBar_private.onBottom <> NULL ) then
+
+						this.wTrackBar_private.onBottom( esi, wParam, lParam );
+						
+					endif;
+					doOnChange();
+				
+				case( w.TB_ENDTRACK )
+				
+					if( this.wTrackBar_private.onEndtrack <> NULL ) then
+
+						this.wTrackBar_private.onEndtrack( esi, wParam, lParam );
+						
+					endif;
+				
+				case( w.TB_LINEDOWN )
+				
+					if( this.wTrackBar_private.onLineDown <> NULL ) then
+
+						this.wTrackBar_private.onLineDown( esi, wParam, lParam );
+						
+					endif;
+					doOnChange();
+				
+				case( w.TB_LINEUP )
+				
+					if( this.wTrackBar_private.onLineUp <> NULL ) then
+
+						this.wTrackBar_private.onLineUp( esi, wParam, lParam );
+						
+					endif;
+					doOnChange();
+				
+				case( w.TB_PAGEDOWN )
+				
+					if( this.wTrackBar_private.onPageDown <> NULL ) then
+
+						this.wTrackBar_private.onPageDown( esi, wParam, lParam );
+						
+					endif;
+					doOnChange();
+				
+				case( w.TB_PAGEUP )
+				
+					if( this.wTrackBar_private.onPageUp <> NULL ) then
+
+						this.wTrackBar_private.onPageUp( esi, wParam, lParam );
+						
+					endif;
+					doOnChange();
+				
+				case( w.TB_TOP )
+				
+					if( this.wTrackBar_private.onTop <> NULL ) then
+
+						this.wTrackBar_private.onTop( esi, wParam, lParam );
+						
+					endif;
+					doOnChange();
+					
+				default
+					w.DefWindowProc( hwnd, uMsg, wParam, lParam );
+					exit processMessage;
+				
+			endswitch;
+			
+		endif;
+		
+	else
+	
+		w.DefWindowProc( hwnd, uMsg, wParam, lParam );
+		
+	endif;
+
+_end( wTrackBar_t, processMessage );
+
+
+end	wTrackBar_u;

@@ -1,0 +1,11 @@
+
+unit t; 
+
+
+
+procedure dummy_HOWL_procedure_for_macOS; external;
+procedure dummy_HOWL_procedure_for_macOS;
+begin dummy_HOWL_procedure_for_macOS;
+end dummy_HOWL_procedure_for_macOS;
+
+end t;

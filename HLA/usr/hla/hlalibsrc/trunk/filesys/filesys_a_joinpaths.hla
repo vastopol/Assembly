@@ -1,0 +1,58 @@
+unit filesys_joinpaths_unit;
+
+// synopsis
+//	Given two strings, this will concatenate them and put an 
+//	appropriate OS-dependent file separator character between
+//  them. E.g., joinPaths( "abc", "def" ) will produce "abc/def" 
+//	or "abc\def" (depending on the OS).
+//	If a file separator character already appears at the end of
+//	leftPath, this code will not add another one,
+//	i.e., joinPaths( "abc/", "def" ) should produce "abc/def",
+//	not "abc//def".
+//	Also, this function should translate any errant path characters
+//	to the form appropriate to the current OS, e.g., under Windows,
+//	joinPaths( "abc/", "def") should be converted to "abc\def".
+
+
+	#includeOnce( "filesys.hhf" )
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "excepts.hhf" )
+	#includeOnce( "memory.hhf" )
+
+
+	procedure filesys.a_joinPaths( leftPath:string; rightPath:string );
+		@noframe; @nodisplay; @noalignstack;
+		
+	begin a_joinPaths;
+		
+		push( ebp );
+		mov( esp, ebp );
+		push( ecx );
+		
+		mov( leftPath, eax );
+		test( eax, eax );
+		jz radn;
+		
+		mov( (type str.strRec[eax]).length, ecx );
+		mov( rightPath, eax );
+		test( eax, eax );
+		jz radn;
+		
+		add( (type str.strRec[eax]).length, ecx );
+		add( 1, ecx );
+		str.alloc( ecx );
+		
+		filesys.joinPaths( leftPath, rightPath, (type string eax) );
+		
+		pop( ecx );
+		pop( ebp );
+		ret( _parms_ );
+		
+		radn:
+			raise( ex.AttemptToDerefNULL );
+			
+	end a_joinPaths;
+
+
+
+end filesys_joinpaths_unit;

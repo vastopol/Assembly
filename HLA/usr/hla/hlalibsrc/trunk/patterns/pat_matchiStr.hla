@@ -1,0 +1,105 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit patterns;
+#includeOnce( "../include/pat.hhf" )
+#includeOnce( "patterns.hhf" )
+
+	
+	
+
+/**********************************************************************/
+/*                                                                    */
+/* MatchiStr-                                                         */
+/*                                                                    */
+/* Matches a single string (case insensitive)                         */
+/*                                                                    */
+/* Disposition:	Eager/lazy abivalent                                  */
+/* BackTrackable:	No.                                               */
+/*                                                                    */
+/* Entry Parameters:                                                  */
+/*                                                                    */
+/* 	ESI:	Pointer to sequence of characters to match.               */
+/* 	EDI:	Pointer to byte beyond last char to match.                */
+/* 	s:		String to match.                                          */
+/*                                                                    */
+/* Exit Parameters (if success):                                      */
+/*                                                                    */
+/*  EBX:	Points at the start of the sequence that was matched. 	  */
+/* 	ESI:	Points at char beyond last matched character in s.        */
+/* 	EDI:	Unchanged from entry value.                               */
+/*                                                                    */
+/* Exit Parameters (if failure):                                      */
+/* 														              */
+/* EDI:	Unchanged from original entry value.			              */
+/* ESI:	Unchanged from original entry value.			              */
+/*                                                                    */
+/*                                                                    */
+/* Unless noted, assume all other registers can be modified           */
+/* by this code.                                                      */
+/*                                                                    */
+/**********************************************************************/
+
+
+
+
+procedure pat.matchiStr( s:string ); @nodisplay; @noframe;
+begin matchiStr;
+
+	push( ebp );		// must do this ourselves since noframe
+	mov( esp, ebp );	// is specified as an option.
+	mov( esi, ebx );
+	
+	mov( s, edx );
+	mov( (type str.strRec [edx]).length, ecx );
+	mov( edi, eax );
+	sub( esi, eax );
+
+	// At this point, see if there are enough characters left
+	// in the sequence to match s.
+
+	cmp( ecx, eax );
+	ja fail1;
+	test( ecx, ecx );
+	jz whileDone;
+	whileLoop:
+		mov( [esi], al );
+		UCase( al );
+		mov( [edx], ah );
+		UCase( ah );
+		cmp( al, ah );
+		jne fail2;
+		inc( esi );
+		inc( edx );
+		dec( ecx );
+		jnz whileLoop;
+
+	whileDone:
+		
+	// Since this routine doesn't have to handle backtracking,
+	// a simple return indicates success.
+
+	pop( ebp );
+	ret( _parms_ );
+		
+	
+fail2:	
+	mov( ebx, esi );
+fail1:
+	pat._fail_( pat.FailTo );
+
+end matchiStr;
+
+
+end patterns;

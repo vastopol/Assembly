@@ -1,0 +1,82 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+
+// delTrailingSpaces1-
+// delTrailingSpaces2-
+//
+//	Remove trailing spaces from a string.
+
+procedure str.delTrailingSpaces1( s: string ); @noframe;
+begin delTrailingSpaces1;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( edi );
+	push( esi );
+	
+	mov( s, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+			
+	// Locate the last non-blank character in the string.
+	
+	mov( edi, esi );
+	add( (type str.strRec [edi]).length, esi );
+	skipWS:
+	
+		dec( esi );
+		cmp( esi, edi );
+		jb endSkipWS;
+		cmp((type char [esi]), ' ' );
+		je skipWS;
+		cmp( (type char [esi]), stdio.tab );
+		je skipWS;
+		
+	endSkipWS:
+	
+	sub( edi, esi );	// Compute length of resulting string.
+	inc( esi );			// Because esi points at last non-blank char.
+	
+	// Save away the length and zero terminate this string.
+	
+	mov( esi, (type str.strRec [edi]).length );
+	mov( 0, (type byte [edi + esi]));
+		
+	allDone:
+	pop( esi );
+	pop( edi );
+	pop( ebp );
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+		 
+end delTrailingSpaces1;
+
+end stringUnit;
+
+
+
+
+	
+

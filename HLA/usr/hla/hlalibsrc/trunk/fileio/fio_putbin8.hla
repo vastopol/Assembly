@@ -1,0 +1,59 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+
+#include( "../include/fileiounit.hhf" )
+#include( "../include/conversions.hhf" )
+#include( "stdlibdata.hhf" )
+
+
+// fileio.putbin-
+//
+//	Emits a byte value as a binary string to the file.
+
+procedure fileio.putbin8( Handle:dword; b:byte ); @noframe; @nodisplay;
+var
+	eaxSave		:dword;
+	ediSave		:dword;
+	buffer		:char[10];
+
+begin putbin8;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( eax, eaxSave );
+	mov( edi, ediSave );
+
+
+	conv.bin8ToBuf( b, buffer );
+	lea( eax, buffer );
+	sub( eax, edi );
+	
+	fileio.write( Handle, [eax], edi );
+	
+	mov( eaxSave, eax );
+	mov( ediSave, edi );
+	leave();
+	ret( _parms_ );
+		
+end putbin8;
+		
+		
+
+	
+end FileIOUnit;
+

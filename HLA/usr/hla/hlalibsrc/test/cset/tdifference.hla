@@ -1,0 +1,106 @@
+program csdifference_test;
+#include( "stdlib.hhf" )
+
+val
+	j := 0;
+	k := 0;
+		
+const
+	cs1_c :cset[ 128 ] :=
+		[
+			#for( i := 0 to 126 )
+				?j := @random(j) & $7f;
+				?k := @random(k) & $7f;
+				#if( j > k )
+					?l := j;
+					?j := k;
+					?k := j;
+				#endif
+				{char(j)..char(k)},
+			#endfor
+			{}
+		];
+		
+	cs2_c :cset[ 128 ] :=
+		[
+			#for( i := 0 to 126 )
+				?j := @random(j) & $7f;
+				?k := @random(k) & $7f;
+				#if( j > k )
+					?l := j;
+					?j := k;
+					?k := j;
+				#endif
+				{char(j)..char(k)},
+			#endfor
+			{}
+		];
+		
+	csdiff_c :cset[ 128 ] :=
+		[
+			#for( i := 0 to 126 )
+				cs1_c[i] - cs2_c[i],
+			#endfor
+			cs1_c[127] - cs2_c[127]
+		];
+		
+		
+		
+static
+	csresult	:cset;
+	cs1 		:cset[ @elements( cs1_c ) ] := cs1_c;
+	cs2 		:cset[ @elements( cs2_c ) ] := cs2_c;
+	csdiff		:cset[ @elements( csdiff_c ) ] := csdiff_c;
+	
+begin csdifference_test;
+
+	
+		for( mov( 0, ecx ); ecx<128; inc(ecx) )do
+
+			intmul( @size( cset ), ecx, edx );
+		
+			cs.cpy( cs1[edx], csresult );
+			cs.difference( cs2[edx], csresult );
+			if( cs.ne( csresult, csdiff[edx]) ) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"cs.difference failed!  ecx=", ecx, nl,
+					(type dword csresult[12]), '_',
+					(type dword csresult[8]), '_',
+					(type dword csresult[4]), '_',
+					(type dword csresult), nl,
+					
+					(type dword cs1[edx+12]), '_',
+					(type dword cs1[edx+8]), '_',
+					(type dword cs1[edx+4]), '_',
+					(type dword cs1[edx]), nl,
+					
+					(type dword cs2[edx+12]), '_',
+					(type dword cs2[edx+8]), '_',
+					(type dword cs2[edx+4]), '_',
+					(type dword cs2[edx]), nl,
+					
+					(type dword csdiff[edx+12]), '_',
+					(type dword csdiff[edx+8]), '_',
+					(type dword csdiff[edx+4]), '_',
+					(type dword csdiff[edx]), nl,
+										
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+
+			endif;
+			
+		endfor;
+		stderr.put( "cs.difference succeeded!" nl );
+		os.exitProcess(0);
+		
+end csdifference_test;
+
+													

@@ -1,0 +1,125 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "excepts.hhf" )
+
+
+/*****************************************************/
+/*                                                   */
+/* atou32-                                           */
+/*                                                   */
+/* ASCII to unsigned.                                */
+/*                                                   */
+/* ESI points at a string containing decimal digits. */
+/* This function converts that string to a 32-bit    */
+/* unsigned integer.                                 */
+/*                                                   */
+/* On return, EAX contains the converted value.      */
+/* ESI points at the first non-digit in the string.  */
+/*                                                   */
+/* On entry, ESI must point at at least one legal    */
+/* decimal digit character.                          */
+/*                                                   */
+/* A legal delimiter character (see the Delimiters   */
+/* cset above) must terminate the string of digits,  */
+/* otherwise this routine raises an exception.       */
+/*                                                   */
+/* If the string of digits corresponds to a value    */
+/* too large for 32 bits, this routine raises an     */
+/* exception.                                        */
+/*                                                   */
+/* If any character in the string of digits has its  */
+/* H.O. bit set, this routine raises an exception.   */
+/*                                                   */
+/* This routine is primarily intended for use by the */
+/* atoi and StrToXXX routines.						 */
+/*                                                   */
+/*****************************************************/
+
+
+procedure _atou32; 
+	@nodisplay; 
+	@noframe;
+		
+begin _atou32;
+
+	push( edi );
+	mov( _hla.get_Delimiters(), edi );
+	
+	xor( eax, eax );	// Init H.O. three bytes of EAX to zero.
+	mov( eax, edx );	// Initialize EDX:ECX with zero.
+	mov( eax, ecx );
+
+	
+	// The first character *must* be a legal digit.
+	
+	mov( [esi], al );
+			
+	// For each legal character that ESI points at, repeat
+	// the following until we encounter a delimiter or
+	// illegal character.
+	
+	whileNotADelimiter:
+
+		cmp( al, '0' );
+		jb convError;
+		cmp( al, '9' );
+		ja convError;
+		
+		// Okay, we've got a digit, so add it into EDX:ECX.
+		
+		xchg( eax, ecx );
+		mov( 10, edx );
+		mul( edx );
+		and( $f, ecx );
+		add( eax, ecx );
+		jc Overflow;
+		test( edx, edx );
+		jnz Overflow;
+		
+		
+		// Move on to the next character:
+		
+		NextChar;
+		
+		// repeat until we hit a delimiter:
+
+		cmp( eax, $80 );
+		jae IllegalChar;
+		bt( eax, (type dword [edi] ));	// Delimiters
+		jnc whileNotADelimiter;
+		
+		
+	// Return 32-bit result in EAX:
+	
+	mov( ecx, eax );
+	pop( edi );
+	ret();
+
+convError:
+	raise( ex.ConversionError );
+
+Overflow:
+		raise( ex.ValueOutOfRange );
+	
+IllegalChar:
+	raise( ex.IllegalChar );
+
+end _atou32;
+
+
+end ConvUnit;

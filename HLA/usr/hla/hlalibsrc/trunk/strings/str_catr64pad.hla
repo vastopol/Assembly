@@ -1,0 +1,66 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+#include( "conv.hhf" );
+
+
+/*************************************************************/
+/*                                                           */
+/* str.catr64-                                               */
+/*                                                           */
+/* Converts the "r" parameter from real64 format to a string */
+/* (using the format options) and concatenates this to the   */
+/* end of "dest".                                            */
+/*                                                           */
+/*************************************************************/
+
+
+procedure str.catr64pad
+( 
+	dest:string; 
+	r:real64; 
+	width:int32; 
+	decpts:uns32; 
+	pad:char
+);  @noframe;
+var
+	r80:real80;
+	
+begin catr64pad;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	fld( r );
+	fstp( r80 );
+	str.catr80pad( dest, r80, width, decpts, pad );
+	leave();
+	ret( _parms_ );
+	
+end catr64pad;
+
+end stringUnit;
+
+
+
+
+	
+

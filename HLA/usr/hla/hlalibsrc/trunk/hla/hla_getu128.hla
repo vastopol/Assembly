@@ -1,0 +1,171 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit hlaUnit;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#include( "hla.hhf" )
+#include( "conv.hhf" )
+#include( "excepts.hhf" )
+
+
+
+// hla.getu128
+//
+//	Reads an unsigned 128-bit integer from a stream.
+
+procedure hla.getu128( var l:lword; getc:thunk ); 
+var
+	eaxSave		:dword;
+	ebxSave		:dword;
+	ecxSave		:dword;
+	edxSave		:dword;
+	ediSave		:dword;
+	Delimiters	:cset;
+	IsNeg		:boolean;
+	
+begin getu128;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	mov( eax, eaxSave );
+	mov( ebx, ebxSave );
+	mov( ecx, ecxSave );
+	mov( edx, edxSave );
+	mov( edi, ediSave );
+
+	conv.getDelimiters( Delimiters );
+
+	xor( eax, eax );
+	xor( edi, edi );
+	xor( edx, edx );
+	xor( ecx, ecx );
+	xor( ebx, ebx );
+	
+	// Skip over any leading delimiters:
+	
+	skipDelims:
+	
+		getc();
+		jc convErr;
+		cmp( al, $80 );
+		jae illegalChar;
+		bt( eax, (type dword Delimiters ));
+		jc skipDelims;
+	
+		
+	// Okay, input the digits and convert to a number:
+	
+	
+	whileADigit:
+	
+		// The character must be a numeric digit.
+		
+		cmp( al, '0' );
+		jb convErr;
+		cmp( al, '9' );
+		ja convErr;			
+
+
+		shl( 1, ebx );	// Multiply edi:edx:ecx:ebx by 10.
+		rcl( 1, ecx );
+		rcl( 1, edx );
+		rcl( 1, edi );
+		jc Overflow;
+			
+		push( edi );
+		push( edx );	// Save *2.
+		push( ecx );
+		push( ebx );
+		
+		shl( 1, ebx );	// Compute *4
+		rcl( 1, ecx );
+		rcl( 1, edx );
+		rcl( 1, edi );
+		jc Overflow;
+		
+		shl( 1, ebx );	// Compute *8
+		rcl( 1, ecx );
+		rcl( 1, edx );
+		rcl( 1, edi );
+		jc Overflow;
+		
+		and( $f, eax );	// Add in current digit.
+		add( eax, ebx );
+		adc( 0, ecx );
+		adc( 0, edx );
+		adc( 0, edi );
+		jc Overflow;
+		
+		add( [esp], ebx );
+		adc( [esp+4], ecx );
+		adc( [esp+8], edx );
+		adc( [esp+12], edi );
+		jc Overflow;
+		
+		add( 16, esp );		// Remove *2 from stack.
+		
+		// Skip any underscores in the middle of the number.
+		// (Technically, this allows underscores at the end
+		// of the number too, but we'll ignore this issue).
+		
+		
+		repeatUntilALne_:
+		
+			getc();
+			jc EOF;
+			cmp( al, '_' );
+			je repeatUntilALne_;
+			
+			cmp( al, $80 );
+			jae illegalChar;
+			movzx( al, eax );
+			bt( eax, (type dword Delimiters ));
+			jnc whileADigit;
+	  	
+	
+	// Store away the result:
+	
+	EOF:
+	mov( l, eax );
+	mov( ebx, [eax] );
+	mov( ecx, [eax+4] );
+	mov( edx, [eax+8] );
+	mov( edi, [eax+12] );
+		
+	mov( eaxSave, eax );
+	mov( ebxSave, ebx );
+	mov( ecxSave, ecx );
+	mov( edxSave, edx );
+	mov( ediSave, edi );
+	leave();
+	ret( _parms_ );
+
+convErr:
+	raise( ex.ConversionError );
+
+Overflow:
+	raise( ex.ValueOutOfRange );
+		
+illegalChar:
+	raise( ex.IllegalChar );
+	
+end getu128;
+	
+end hlaUnit;
+

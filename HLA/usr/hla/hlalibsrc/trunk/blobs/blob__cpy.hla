@@ -1,0 +1,104 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeOnce( "blobs.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "stdout.hhf" )
+#includeOnce( "stdio.hhf" )
+
+
+
+// blob._cpy-                                                     
+//                                                          
+// Copies the source blob to the destination blob. This is a utility
+// version that doesn't lock down any critical sections.
+
+
+procedure blob._cpy( src:blob.blob; dest:blob.blob ); @noframe;
+begin _cpy;
+
+	push( ebp );
+	mov( esp, ebp );
+	pushfd();
+	cld();
+	
+	push( ecx );
+	push( esi );
+	push( edi );
+
+	mov( dest, edi );
+	mov( src, esi );
+			
+	// Simple check to make sure both pointers are non-NULL.
+	
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+	// Copy the cursor values from the source to the dest:
+	
+	mov( (type blob.blobRec [esi]).rcursor, ecx );
+	mov( ecx, (type blob.blobRec [edi]).rcursor );
+	mov( (type blob.blobRec [esi]).wcursor, ecx );
+	mov( ecx, (type blob.blobRec [edi]).wcursor );
+	
+	// Get the length of the source string and make sure
+	// that the source string will fit in the destination string.
+	
+	mov( (type blob.blobRec [esi]).length, ecx );
+	cmp( ecx, (type blob.blobRec [edi]).maxlen );
+	ja BlobOverflow;
+
+	
+	// Save as the length of the destination blob.
+	
+	mov( ecx, (type blob.blobRec [edi]).length );
+
+	
+	// Compute the number of dwords to copy (rather than bytes).
+	// Then copy the data.
+	
+	add( 3, ecx );
+	shr( 2, ecx );
+	rep.movsd();
+	
+	pop( edi );
+	pop( esi );
+	pop( ecx );
+	popfd();
+	mov( dest, eax );	// Must return pointer to dest in eax.
+	pop( ebp );
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+BlobOverflow:
+	raise( ex.BlobOverflow );
+
+end _cpy;
+
+
+end blobUnit;
+
+
+
+
+	
+

@@ -1,0 +1,217 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" );
+#include( "excepts.hhf" );
+#includeOnce( "threads.hhf" )
+
+
+
+// rindex3-                                                  
+//                                                           
+// Similar to the rindex2 function except this one has an     
+// extra parameter that specifies the starting scan location 
+// in the src1 blob.  The rindex3 function scans from the  
+// specified position *backwards* towards the start of the   
+// blob.                                                   
+
+
+
+
+
+
+
+
+procedure blob.rindex3( src1:blob.blob; offs:dword; src2:blob.blob ); 
+	@noframe;
+const
+	src1ESI	:text := "(type blob.blobRec [esi])";
+	src2EDI	:text := "(type blob.blobRec [edi])";
+	
+var
+	ebxSave		:dword;
+	ecxSave		:dword;
+	edxSave		:dword;
+	ediSave		:dword;
+	esiSave		:dword;
+	startCmp	:dword;
+	saveFlags	:dword;
+	
+begin rindex3;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_-4), esp );
+	pushfd();	// Allocate and initialize saveFlags
+	
+	mov( esi, esiSave );
+	mov( edi, ediSave );
+	mov( edx, edxSave );
+	mov( ecx, ecxSave );
+	mov( ebx, ebxSave );
+	cld();
+	
+	mov( src2, edi );
+	mov( src1, esi );
+	
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+		
+	#if( @thread )
+	
+	try
+	
+		thread.enterCriticalSection( (type blob.blobRec [esi]).criticalSection );
+		cmp( esi, edi );
+		je noEnter;
+		
+			thread.enterCriticalSection( (type blob.blobRec [edi]).criticalSection );
+	
+		noEnter:
+		
+	#endif
+	
+
+		// Ensure that offs does not exceed the blob
+		// length.  If not, set "edx" to the offs
+		// value since we're shortening the blob by that
+		// amount.
+
+		mov( src1ESI.length, eax );
+		mov( offs, edx );
+		cmp( edx, eax );
+		jbe valueInRange;
+		
+			raise( ex.ValueOutOfRange );
+
+		valueInRange:
+			add( esi, edx );		// Compute last address to compare at
+			mov( edx, startCmp );
+			
+			// If the length of src2 is zero, return failure.
+
+			mov( src2EDI.length, ebx );
+			test( ebx, ebx );
+			jz notFound;
+			
+			// If src2's length is greater than src1's length, return failure
+			
+			cmp( ebx, eax );
+			ja notFound;
+
+			// Compute the last possible position we can compare
+			// src2 against src1 at in src1 and verify that this
+			// is greater than offs:
+			
+			sub( ebx, eax );
+			cmp( eax, offs );
+			jnae notFound; 
+
+				lea( esi, [esi+eax] );	// Start comparing src1 here.
+				mov( edi, eax );		// Save ptr to src2 so we can reset.
+				repeatUntilEDXlt0:
+					
+					mov( ebx, ecx );	// Reset src2 length in ECX
+					mov( eax, edi );	// Restore edi to src2 for comparison.
+					push( esi );		// Save ptr into src1.
+					repe.cmpsb();		// See if the blob is at the current
+					jne notAtCurPosn;	// position.
+					
+						// We found the blob, so compute the
+						// index and exit the loop.
+							
+						pop( eax );			// Retrieve ptr into src1.				
+						sub( src1, eax );	// Compute index.
+						jmp FoundMatch;
+						
+					notAtCurPosn:
+					
+					// Okay, src2 didn't match at the current position,
+					// try the previous character position in src1.
+					
+					pop( esi );			// Retrieve ptr into src1.
+					dec( esi );			// Bump down by one character position.
+					cmp( esi, startCmp );
+					jae repeatUntilEDXlt0;
+					
+				
+			notFound:
+			
+			// If we get down here, then src2 is not a subblob of src1.
+			
+			mov( -1, eax );		// Deprecated!
+				
+			
+		FoundMatch:
+		
+	#if( @thread )
+	
+	  anyexception
+	
+		mov( src2, edx );
+		thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		cmp( edx, src1 );
+		je noLeave1;
+		
+			mov( src1, edx );
+			thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		
+		noLeave1:
+		push( saveFlags );
+		popfd();
+		reraise( eax );
+		
+	endtry;
+	mov( src2, ecx );
+	thread.leaveCriticalSection( (type blob.blobRec [ecx]).criticalSection );
+	cmp( ecx, src1 );
+	je noLeave2;
+	
+		mov( src1, ecx );
+		thread.leaveCriticalSection( (type blob.blobRec [ecx]).criticalSection );
+	
+	noLeave2:
+		
+	#endif
+
+	mov( esiSave, esi );
+	mov( ediSave, edi );
+	mov( edxSave, edx );
+	mov( ecxSave, ecx );
+	mov( ebxSave, ebx );
+	popfd();
+	leave();
+	cmp( eax, -1 );		// Set carry on success, clear if no match.
+	ret( _parms_ );
+		
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end rindex3;
+
+end blobUnit;
+
+
+
+
+	
+

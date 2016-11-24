@@ -1,0 +1,74 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileClass;
+
+#include( "fileclass.hhf" )
+#include( "hla.hhf" )
+
+?@NoStackAlign := true;
+?@NoDisplay := true;
+?@NoFrame := true;		
+		
+
+
+method virtualFile_t.getu128( var l:lword ); @noframe; 
+var
+	obj		:dword;
+	c		:char;
+	
+	
+	// Low-level implementation of a thunk procedure:
+	//
+	// Thunk must return a single char in AL from the socket (with carry
+	// flag clear) or return carry flag set if there was an EOF.
+	
+	procedure vfgetu128Thunk( thunksEBPval:dword );
+	begin vfgetu128Thunk;
+	
+		push( ebp );			// Thunks always do this.
+		mov( [esp+8], ebp );	// Retrieve EBP value passed as parameter
+		push( edi );
+
+			mov( ebp::obj, esi );
+			(type virtualFile_t [esi]).read( ebp::c, 1 );
+			cmp( eax, 1 );		// C=1 if EOF (eax=0), 0 if not EOF
+			movzx( ebp::c, eax );
+
+		pop( edi );
+		pop( ebp );				// Restore caller's EBP value
+        ret( _parms_ );			// Return, removing local EBP parm value.
+
+	end vfgetu128Thunk;
+	
+begin getu128;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( esi, obj );
+	
+	push( l );
+	pushd( &vfgetu128Thunk );
+	push( ebp );
+	call hla.getu128;
+	
+	mov( obj, esi );
+	leave();
+	ret( _parms_ );
+
+end getu128;
+
+
+end FileClass;

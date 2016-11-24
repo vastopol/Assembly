@@ -1,0 +1,520 @@
+program fgethex_test;
+#include( "stdlib.hhf" )
+
+var
+	Handle		:dword;
+	inputL		:lword;
+	
+	procedure cmp128( left:int128; right:int128 ); @returns( "@ne" );
+	begin cmp128;
+	
+		cld();
+		lea( esi, left );
+		lea( edi, right );
+		mov( 4, ecx );
+		repe.cmpsd();
+		
+	end cmp128;
+	
+	
+begin fgethex_test;
+
+	// Testing fileio.geth128
+	
+	try
+	
+		fileio.open( "fgeth128.data", fileio.r );
+		mov( eax, Handle );
+
+		fileio.geth128( Handle, inputL );
+		if( cmp128( inputL, 1 ) ) then
+		
+			raise(2001);
+		
+		endif;	
+		
+		fileio.geth128( Handle, inputL );
+		if( cmp128( inputL, 2 ) ) then
+		
+			raise(2002);
+		
+		endif;	
+		
+		fileio.geth128( Handle, inputL );
+		if( cmp128( inputL, $FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF ) ) then
+		
+			raise(2003);
+		
+		endif;	
+		
+		fileio.geth128( Handle, inputL );
+		if( cmp128( inputL, 0 ) ) then
+		
+			raise(2004);
+		
+		endif;
+		
+		try
+		
+			fileio.geth128( Handle, inputL );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise a conversion error.
+			
+		  	Raise( 2005 );
+			
+		  exception( ex.ConversionError )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( 2006 );
+			
+		endtry;
+		fileio.readLn( Handle );	// Clean up after ourselves.
+		  		
+		
+		try
+		
+			fileio.geth128( Handle, inputL );
+
+		  unprotected
+		  
+		  	// If we got to this point, we failed to raise an overflow error.
+			
+		  	Raise( 2007 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( 2008 );
+			
+		endtry;
+		fileio.readLn( Handle );
+		
+		
+		// Better be at end of file.
+		
+		if( !fileio.eof( Handle )) then
+		
+			raise(2000);
+			
+		endif;
+		stderr.put( "fileio.geth128 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"fileio.geth128 failed! eax=", (type uns32 eax), nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+	// Testing fileio.geth64
+	
+	try
+	
+		fileio.open( "fgeth64.data", fileio.r );
+		mov( eax, Handle );
+
+		fileio.geth64( Handle );
+		if( eax <> 1 && edx <> 0 ) then
+		
+			raise(1001);
+		
+		endif;	
+		
+		fileio.geth64( Handle );
+		if( eax <> 2 && edx <> 0 ) then
+		
+			raise(1002);
+		
+		endif;	
+		
+		fileio.geth64( Handle );
+		if( eax<> $30 && edx <> 0 ) then
+		
+			raise(1003);
+		
+		endif;	
+		
+		fileio.geth64( Handle );
+		if( eax<> $4a && edx <> 0 ) then
+		
+			raise(1004);
+		
+		endif;
+		
+		try
+		
+			fileio.geth64( Handle );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise a conversion error.
+			
+		  	Raise( 1005 );
+			
+		  exception( ex.ConversionError )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( 1006 );
+			
+		endtry;
+		fileio.readLn( Handle );	// Clean up after ourselves.
+		  		
+		
+		try
+		
+			fileio.geth64( Handle );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	Raise( 1007 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( 1008 );
+			
+		endtry;
+		fileio.readLn( Handle );
+		
+		
+		// Better be at end of file.
+		
+		if( !fileio.eof( Handle )) then
+		
+			raise(1000);
+			
+		endif;
+		stderr.put( "fgeth64 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"fgeth64 failed! eax=", (type uns32 eax), nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+	// Testing fileio.geth32
+	
+	try
+	
+		fileio.open( "fgeth32.data", fileio.r );
+		mov( eax, Handle );
+
+		fileio.geth32( Handle );
+		if( eax <> $A ) then
+		
+			raise(1011);
+		
+		endif;	
+		
+		fileio.geth32( Handle );
+		if( eax <> $B ) then
+		
+			raise(1012);
+		
+		endif;	
+		
+		fileio.geth32( Handle );
+		if( eax <> $C0 ) then
+		
+			raise(1013);
+		
+		endif;	
+		
+		fileio.geth32( Handle );
+		if( eax <> -1 ) then
+		
+			raise(1014);
+		
+		endif;
+		
+		try
+		
+			fileio.geth32( Handle );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	Raise( 1015 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( 1016 );
+			
+		endtry;
+		fileio.readLn( Handle );
+		
+		
+		// Better be at end of file.
+		
+		if( !fileio.eof( Handle )) then
+		
+			raise(1010);
+			
+		endif;
+		stderr.put( "fgeth32 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"fgeth32 failed! eax=", (type uns32 eax), nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+
+
+
+	// Testing fileio.geth16
+	
+	try
+	
+		fileio.open( "fgeth16.data", fileio.r );
+		mov( eax, Handle );
+
+		fileio.geth16( Handle );
+		if( eax <> $1000 ) then
+		
+			raise(1021);
+		
+		endif;	
+		
+		fileio.geth16( Handle );
+		if( eax <> $FFFF ) then
+		
+			raise(1022);
+		
+		endif;	
+		
+		fileio.geth16( Handle );
+		if( eax <> $0C ) then
+		
+			raise(1023);
+		
+		endif;	
+		
+		fileio.geth16( Handle );
+		if( eax <> $ff ) then
+		
+			raise(1024);
+		
+		endif;
+		
+		try
+		
+			fileio.geth16( Handle );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	Raise( 1025 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( 1026 );
+			
+		endtry;
+		fileio.readLn( Handle );
+		
+		
+		// Better be at end of file.
+		
+		if( !fileio.eof( Handle )) then
+		
+			raise(1020);
+			
+		endif;
+		stderr.put( "fgeth16 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"fgeth16 failed! eax=", (type uns32 eax), nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+	// Testing fileio.geth8
+	
+	try
+	
+		fileio.open( "fgeth8.data", fileio.r );
+		mov( eax, Handle );
+
+		fileio.geth8( Handle );
+		if( eax <> $b ) then
+		
+			raise(1031);
+		
+		endif;	
+		
+		fileio.geth8( Handle );
+		if( eax <> $bb ) then
+		
+			raise(1032);
+		
+		endif;	
+		
+		fileio.geth8( Handle );
+		if( eax <> $0 ) then
+		
+			raise(1033);
+		
+		endif;	
+		
+		fileio.geth8( Handle );
+		if( eax <> $ff ) then
+		
+			raise(1034);
+		
+		endif;
+		
+		try
+		
+			fileio.geth8( Handle );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	Raise( 1035 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( 1036 );
+			
+		endtry;
+		fileio.readLn( Handle );
+		
+		
+		// Better be at end of file.
+		
+		if( !fileio.eof( Handle )) then
+		
+			raise(1030);
+			
+		endif;
+		stderr.put( "fgeth8 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"fgeth8 failed! eax=", (type uns32 eax), nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+			
+end fgethex_test;
+
+													

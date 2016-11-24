@@ -1,0 +1,100 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )		
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+
+
+/*****************************************************/
+/*                                                   */
+/* atou8-                                            */
+/*                                                   */
+/* ASCII to unsigned.                                */
+/*                                                   */
+/* ESI points at a string containing decimal digits. */
+/* This function converts that string to an 8-bit    */
+/* unsigned integer.                                 */
+/*                                                   */
+/* On return, AL contains the converted value.       */
+/* ESI points at the first non-digit in the string.  */
+/*                                                   */
+/* On entry, ESI must point at at least one legal    */
+/* decimal digit character.                          */
+/*                                                   */
+/* A legal delimiter character (see the Delimiters   */
+/* cset above) must terminate the string of digits,  */
+/* otherwise this routine raises an exception.       */
+/*                                                   */
+/* If the string of digits corresponds to a value    */
+/* too large for 16 bits, this routine raises an     */
+/* exception.                                        */
+/*                                                   */
+/* If any character in the string of digits has its  */
+/* H.O. bit set, this routine raises an exception.   */
+/*                                                   */
+/*****************************************************/
+
+
+procedure conv.atou8( var buffer:var in esi ); 
+	@nodisplay; 
+	@noframe;
+begin atou8;
+
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( edi );
+
+	test( esi, esi );
+	jz refNULL;
+	
+	// Skip leading delimiters:
+	
+	mov( _hla.get_Delimiters(), ebx );	
+	sub( 1, esi );
+	whileDelimLoop:
+	
+		NextChar;
+		cmp( eax, $80 );
+		jae IllegalChar;
+		bt( eax, (type dword [ebx] ));
+		jc whileDelimLoop;
+		
+	_atou32();
+	cmp( eax, 255 );
+	ja voor;
+	
+
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	ret();
+
+refNULL:
+	raise( ex.AttemptToDerefNULL );
+
+voor:
+	raise( ex.ValueOutOfRange );
+
+IllegalChar:
+	raise( ex.IllegalChar );
+
+end atou8;
+
+
+end ConvUnit;

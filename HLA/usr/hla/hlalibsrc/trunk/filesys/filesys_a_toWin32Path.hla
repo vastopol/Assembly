@@ -1,0 +1,33 @@
+unit filesys_towin32path_unit;
+
+// synopsis
+//	Converts all "/" to "\"
+
+	#includeOnce( "filesys.hhf" )
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "memory.hhf" )
+
+	procedure filesys.a_toWin32Path( pathname:string );
+		@nodisplay; @noframe; @noalignstack;
+		
+		// duplicates pathname on the HEAP and converts
+		// any unix32 path separator ('/') to win32 path
+		// separator ('\')
+		// always returns a string in EAX
+
+	
+	begin a_toWin32Path;
+		
+		push( ebp );
+		mov( esp, ebp );
+		
+		str.a_cpy( pathname );
+		filesys.toWin32Path1( (type string eax) );
+		
+		pop( ebp );
+		ret( _parms_ );
+		
+	end a_toWin32Path;
+
+
+end filesys_towin32path_unit;

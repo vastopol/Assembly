@@ -1,0 +1,460 @@
+// tAllocFree-
+//
+// Tests the mem.alloc and mem.free functions:
+
+program tAllocFree;
+#include( "stdlib.hhf" )
+#include( "../../trunk/include/mem.hhf" )	
+	
+type
+	memStat	:record
+	
+		totalHeapSpace	:dword;
+		freeSpace		:dword;
+		largestBlock	:dword;
+		numBlocks		:dword;
+		freeBlocks		:dword;
+			
+	endrecord;
+	
+static
+	oneByte				:dword;
+	allocSize			:dword;
+	blkAllocationSize	:dword;
+	initialStats		:memStat;
+	allocStats			:memStat;
+	freeStats			:memStat;
+	bigPtr				:dword;
+	ptrs				:dword[16384];
+	
+	
+	
+	
+	
+	
+	
+	
+#macro doStats( dst );
+
+	mem.stat();
+	mov( eax, dst.totalHeapSpace );
+	mov( ebx, dst.freeSpace );
+	mov( ecx, dst.largestBlock );
+	mov( edx, dst.numBlocks );
+	mov( edi, dst.freeBlocks );
+	
+#endmacro
+		
+
+procedure checkStats
+( 
+	msg			:string;
+	numAllocs	:dword; 
+	before		:memStat; 
+	during		:memStat; 
+	after		:memStat 
+);
+begin checkStats;
+
+	// Check the statistics.
+
+
+	// See if we allocated the expected amount of memory:
+	
+	intmul( 24, numAllocs, edx );
+	mov( blkAllocationSize, eax );
+	sub( 32, eax );				// The initial one-byte allocation.
+	sub( edx, eax );			// Each allocation has 24 bytes of overhead
+	sub( allocSize, eax );		// This should leave us with the total free space
+	if( eax <> during.freeSpace ) then
+	
+		stderr.put
+		(
+			"Error (checkStats/alloc): ", msg, nl 
+			"Free space amount (after alloc) is incorrect!" nl
+			"Expected $", eax, " bytes" nl
+			"Found    $", during.freeSpace, " bytes. " nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endif;
+	
+	// Next, see if we properly freed up the memory:
+	
+	mov( blkAllocationSize, eax );
+	sub( 32, eax );
+	if( eax <> after.freeSpace ) then
+	
+		stderr.put
+		( 
+			"Error (checkStats/after): ", msg, nl 
+			"Free space amount (after free) is incorrect!" nl
+			"Expected $", eax, " bytes" nl
+			"Found    $", after.freeSpace, " bytes. " nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endif;
+
+
+	// Verify that the final stats were equal to the initial stats:
+	
+	if( mov( before.totalHeapSpace, eax ) <> after.totalHeapSpace ) then
+	
+		stderr.put
+		( 
+			"Error (checkStats/total): ", msg, nl 
+			"Total free space amount is incorrect!" nl
+			"Expected $", eax, " bytes" nl
+			"Found    $", after.freeSpace, " bytes. " nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endif;
+	
+	
+	if( mov( before.freeSpace, eax ) <> after.freeSpace ) then
+	
+		stderr.put
+		( 
+			"Error (checkStats/before): ", msg, nl 
+			"Free space amount is incorrect!" nl
+			"Expected $", eax, " bytes" nl
+			"Found    $", after.freeSpace, " bytes. " nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endif;
+	
+	
+	if( mov( before.largestBlock, eax ) <> after.largestBlock ) then
+	
+		stderr.put
+		( 
+			"Error (checkStats/largest): ", msg, nl 
+			"Largest block value is incorrect!" nl
+			"Expected $", eax, " bytes" nl
+			"Found    $", after.largestBlock, " bytes. " nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endif;
+	
+	
+	if( mov( before.numBlocks, eax ) <> after.numBlocks ) then
+	
+		stderr.put
+		( 
+			"Error (checkStats/numBlocks): ", msg, nl 
+			"Number of blocks is incorrect!" nl
+			"Expected $", eax, " bytes" nl
+			"Found    $", after.numBlocks, " bytes. " nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endif;
+	
+	
+	if( mov( before.freeBlocks, eax ) <> after.freeBlocks ) then
+	
+		stderr.put
+		( 
+			"Error (checkStats/freeBlocks): ", msg, nl 
+			"Number of free blocks is incorrect!" nl
+			"Expected $", eax, " bytes" nl
+			"Found    $", after.freeBlocks, " bytes. " nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endif;
+	
+end checkStats;
+
+
+
+begin tAllocFree;
+
+	mov( allocChunk, blkAllocationSize );
+	
+	// Verify that we get into trouble if we try to allocate more than 1GB:
+	
+	try
+		mem.alloc( 4*1024*1024*1024-1 );
+		stderr.put( "Expected an ex.MemoryAllocationFailure exception!" nl );
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	  exception( ex.MemoryAllocationFailure )
+	  
+	  	// This is the expected condition
+		
+	  anyexception
+	  
+	  	stderr.put( "Unexpected exception in mem.alloc(1), eax=$", eax, nl );
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endtry;
+	
+	// Allocate 1,024 random-sized chucks (max 1K each, as the memory
+	// allocation chunk size is 1MB and we want to keep this within one
+	// chunk for the time being:
+	
+	mem.alloc( 1 );	// Force allocation of system memory.
+	mov( eax, oneByte );
+	doStats( initialStats );
+
+	mov( 0, allocSize );
+	for( mov( 0, edx); edx < 1024; inc( edx )) do
+	
+		rand.range( 1, 1024 );
+		
+		// Allocations are always a multiple of 8 bytes, so
+		// adjust the allocation value we add to allocSize
+		// accordingly.
+		
+		push( eax );
+		add( 7, eax );
+		and( $FFFF_FFF8, eax );
+		add( eax, allocSize );
+		pop( eax );
+		
+		mem.alloc( eax );
+		mov( eax, ptrs[edx*4] );
+		
+	endfor;
+	doStats( allocStats );
+	
+	// Free the storage just allocated:
+	
+	for( mov( 0, edx); edx < 1024; inc( edx )) do
+	
+		mem.free( ptrs[edx*4] );
+		
+	endfor;
+	doStats( freeStats );
+	
+	checkStats
+	( 
+		"Random allocation and in-order-of-allocation free",
+		1024, 
+		initialStats, 
+		allocStats, 
+		freeStats 
+	);
+	
+	
+	// Allocate random blocks (as above) and free in the
+	// reverse order the blocks were allocated:
+	
+	mov( 0, allocSize );
+	for( mov( 0, edx); edx < 1024; inc( edx )) do
+	
+		rand.range( 1, 1024 );
+		
+		// Allocations are always a multiple of 8 bytes, so
+		// adjust the allocation value we add to allocSize
+		// accordingly.
+		
+		push( eax );
+		add( 7, eax );
+		and( $FFFF_FFF8, eax );
+		add( eax, allocSize );
+		pop( eax );
+		
+		mem.alloc( eax );
+		mov( eax, ptrs[edx*4] );
+		
+	endfor;
+	doStats( allocStats );
+	
+	// Free the storage in the reverse order it was allocated:
+	
+	for( mov( 1024, edx); edx > 0; dec( edx )) do
+	
+		mem.free( ptrs[edx*4-4] );
+		
+	endfor;
+	doStats( freeStats );
+	
+	checkStats
+	( 
+		"Random allocation and reverse-order-of-allocation free",
+		1024, 
+		initialStats, 
+		allocStats, 
+		freeStats 
+	);
+	
+	
+	// Random allocations (as above) and then free in a random fashion.	
+	
+	mov( 0, allocSize );
+	for( mov( 0, edx); edx < 1024; inc( edx )) do
+	
+		rand.range( 1, 1024 );
+		
+		// Allocations are always a multiple of 8 bytes, so
+		// adjust the allocation value we add to allocSize
+		// accordingly.
+		
+		push( eax );
+		add( 7, eax );
+		and( $FFFF_FFF8, eax );
+		add( eax, allocSize );
+		pop( eax );
+		
+		mem.alloc( eax );
+		mov( eax, ptrs[edx*4] );
+		
+	endfor;
+	doStats( allocStats );
+	
+	// Free the storage just allocated, in a random order:
+	
+	foreach rand.deal( 1024 ) do
+	
+		mem.free( ptrs[eax*4] );
+		
+	endfor; 
+	doStats( freeStats );
+	
+	
+	checkStats
+	( 
+		"Random allocation and random free",
+		1024, 
+		initialStats, 
+		allocStats, 
+		freeStats 
+	);
+	
+	
+		
+	
+	// Allocate 1,000  1,000-byte chucks (total 1024 bytes when
+	// considering the header info):
+	
+	mov( 0, allocSize );
+	for( mov( 0, edx); edx < 1000; inc( edx )) do
+	
+		
+		mem.alloc( 1000 );
+		add( 1000, allocSize );
+		mov( eax, ptrs[edx*4] );
+		
+	endfor;
+	doStats( allocStats );
+	
+	// Free the storage just allocated, in the order it was allocated:
+	
+	for( mov( 0, edx); edx < 1000; inc( edx )) do
+	
+		mem.free( ptrs[edx*4] );
+		
+	endfor;
+	doStats( freeStats );
+	
+	
+	checkStats
+	( 
+		"Fixed allocation and free",
+		1000, 
+		initialStats, 
+		allocStats, 
+		freeStats 
+	);
+	
+	
+		
+	
+	// Allocate 1,000  1,000-byte chucks and then deallocate them
+	// in the reverse order:
+	
+	mov( 0, allocSize );
+	for( mov( 0, edx); edx < 1000; inc( edx )) do
+	
+		
+		mem.alloc( 1000 );
+		add( 1000, allocSize );
+		mov( eax, ptrs[edx*4] );
+		
+	endfor;
+	doStats( allocStats );
+	
+	// Free the storage just allocated, in the reverse order it was allocated:
+	
+	for( mov( 1000, edx); edx > 0; dec( edx )) do
+	
+		mem.free( ptrs[edx*4-4] );
+		
+	endfor;
+	doStats( freeStats );
+	
+	
+	checkStats
+	( 
+		"Fixed allocation and reverse free",
+		1000, 
+		initialStats, 
+		allocStats, 
+		freeStats 
+	);
+	
+	
+		
+	
+	// Allocate 1,000  1,000-byte chucks and then deallocate them
+	// in a random order:
+	
+	mov( 0, allocSize );
+	for( mov( 0, edx); edx < 1000; inc( edx )) do
+	
+		
+		mem.alloc( 1000 );
+		add( 1000, allocSize );
+		mov( eax, ptrs[edx*4] );
+		
+	endfor;
+	doStats( allocStats );
+	
+	// Free the storage just allocated, in a random order:
+	
+	foreach rand.deal( 1000 ) do
+	
+		mem.free( ptrs[eax*4] );
+		
+	endfor; 
+	doStats( freeStats );
+	
+	
+	checkStats
+	( 
+		"Fixed allocation and random free",
+		1000, 
+		initialStats, 
+		allocStats, 
+		freeStats 
+	);
+	
+	
+	stderr.put( "mem.alloc/mem.free succeeded!" nl );
+	
+	
+end tAllocFree;	

@@ -1,0 +1,27 @@
+program tRand;
+#include( "stdlib.hhf" )
+
+begin tRand;
+
+	// Not much we can do other than call these guys and make sure they
+	// don't crash.
+	
+
+	rand.randomize();
+	rand.uniform();
+	stdout.put( "uniform=", eax, nl );
+	rand.random();
+	stdout.put( "random=", eax, nl );
+	rand.range( 1,10 );
+	stdout.put( "range=", eax, nl );
+	rand.urange( 1,20 );
+	stdout.put( "urange=", eax, nl );
+	foreach rand.deal( 10 ) do
+	
+		stdout.put( "deal=", eax, nl );
+
+	endfor;
+	
+	stderr.put( "tRand test suite succeeded!" nl );
+	
+end tRand;

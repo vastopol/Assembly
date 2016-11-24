@@ -1,0 +1,92 @@
+unit filesys_unit;
+
+// filesys.hasDriveLetter( pathname:string );
+//
+//	Returns the drive letter in AL if the pathname is prefixed by 
+//	a Windows drive letter. Returns zero in AL if there is no
+//	drive letter present at the beginning of the pathname.
+//
+//	i.e., for the following pathname string:
+//
+//		"x:pathname"
+//
+//	where 'x' = 'A'..'Z', this function returns 'x' in AL.
+//
+// Note that this function returns false if "//" or "\\"
+// (or any pair of '/' or '\' chars) immediately follows
+// the ':'. In this case, this function assumes that the
+// pathname is a UNC name where 'x' specifies the resource.
+ 
+#includeOnce( "filesys.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "chars.hhf" )
+
+procedure filesys.hasDriveLetter( pathname:string );
+	@nodisplay; @noframe; @noalignstack;
+
+		
+begin hasDriveLetter;
+	
+	push( ebp );
+	mov( esp, ebp );
+	push( ebx );
+	
+	// Sanity check:
+	
+	mov( pathname, ebx );
+	test( ebx, ebx );
+	jz AttemptToDerefNull;
+	
+	mov( [ebx], al );
+	and( $5f, al );		// lc-> UC conversion
+	cmp( al, 'A' );
+	jb noDriveLetter;
+	cmp( al, 'Z' );
+	ja noDriveLetter;
+	cmp( (type char [ebx+1]), ':' );
+	jne noDriveLetter;
+	
+		// Okay, we have a possible drive letter.
+		// Check to make sure that "//" does't follow
+		// the ':' (which would imply that we have a
+		// UNC name like smb://computer/folder/path
+		
+		mov( [ebx+2], al );
+		cmp( al, '/' );
+		je possibleUNC;
+		
+			cmp( al, '\' );
+			jne driveLetterPresent;
+			
+		possibleUNC:
+			mov( [ebx+3], al );
+			cmp( al, '\' );
+			je noDriveLetter;
+			cmp( al, '/' );
+			je noDriveLetter;
+		
+		driveLetterPresent:
+			mov( [ebx], al );
+			and( $5f, al );
+			pop( ebx );
+			pop( ebp );
+			stc();
+			ret( _parms_ );
+			
+	noDriveLetter:
+	xor( eax, eax );	// Also clears the carry flag.
+	pop( ebx );
+	pop( ebp );
+	ret( _parms_ );
+			
+	
+	
+AttemptToDerefNull:
+	raise( ex.AttemptToDerefNULL );
+	
+end hasDriveLetter;
+
+
+
+end filesys_unit;

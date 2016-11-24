@@ -1,0 +1,91 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+
+
+
+// bufToStr-
+//
+//	Copies the data from startBuf..endBuf to the dest string.
+
+procedure str.bufToStr3( startBuf:dword; endBuf:dword; dest:string ); 
+	@noframe;
+begin bufToStr3;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ecx );
+	push( esi );
+	push( edi );
+	pushfd();
+	cld();
+	
+	mov( dest, edi );
+	test( edi, edi );
+	jz attemptToDerefNULL;
+	
+	// Compute the length of the new string:
+	
+	mov( startBuf, esi );
+	test( esi, esi );
+	jz attemptToDerefNULL;
+	
+	mov( endBuf, ecx );
+	test( ecx, ecx );
+	jz attemptToDerefNULL;
+	
+	sub( esi, ecx );
+	cmp( ecx, (type str.strRec [edi]).maxlen );
+	ja StringOverflow;
+	
+	mov( ecx, (type str.strRec [edi]).length );	// Save final length.
+	
+	// Copy the string data:
+	
+	rep.movsb();
+	
+	// Zero terminate the string:
+	
+	mov( 0, (type byte [edi]) );
+	
+	popfd();
+	pop( edi );
+	pop( esi );
+	pop( ecx );
+	pop( ebp );
+	ret( _parms_ );
+	
+attemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+StringOverflow:
+	raise( ex.StringOverflow );
+	
+end bufToStr3;
+
+
+end stringUnit;
+
+
+
+
+	
+

@@ -1,0 +1,322 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+
+/*************************************************************/
+/*                                                           */
+/* eToBuf-                                                   */
+/*                                                           */
+/* Converts a REAL80 IEEE floating point number to the       */
+/* corresponding string of digits.  Note that this           */
+/* function always emits the string using scientific 		 */
+/* notation, use the r80ToBuf routine for decimal notation.	 */
+/*                                                           */
+/* On Entry:                                                 */
+/*                                                           */
+/*    e80-		Real80 value to convert.                     */
+/*                                                           */
+/*    width-	Field width for the number (note that this   */
+/*    			is an *exact* field width, not a minimum     */
+/*    			field width).                                */
+/*                                                           */
+/*    buffer-	e80ToBuf stores the resulting characters in  */
+/* 			    this buffer (passed in EDI).                 */
+/*                                                           */
+/*    expDigs-  Number of exponent digits (2 for real32,     */
+/*              3 for real64, and 4 for real80).             */
+/* 			                                                 */
+/* On Exit:                                                  */
+/*                                                           */
+/*    Buffer contains the newly formatted string.  If the    */
+/*    formatted value does not fit in the width specified,   */
+/*    e80ToStr will store "#" characters into this string.   */
+/*                                                           */
+/*    EDI points at the first byte beyond the end of the     */
+/*    converted string.                                      */
+/*                                                           */
+/*-----------------------------------------------------------*/
+/*                                                           */
+/* Unlike the integer output routines, this function does    */
+/* not allow width to contain a negative value. This is      */
+/* because real output in scientific notation always fills   */
+/* the entire width -- there are no padding characters.      */
+/*                                                           */
+/*************************************************************/
+
+procedure conv.eToBuf
+(
+		e80		:real80;
+		width	:uns32;
+	var	buffer	:var in edi;
+		expDigs	:uns32
+);  
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+
+var
+	eaxSave		:dword;
+	ebxSave		:dword;
+	ecxSave		:dword;
+	edxSave		:dword;
+	esiSave		:dword;
+	bufPtr		:dword;
+
+	Exponent	:int32;
+	MantSize	:uns32;
+
+	Sign		:char;
+	Digits		:byte[ 32 ];
+
+begin eToBuf;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	pushfd();
+	cld();
+	mov( edi, bufPtr );
+	mov( esi, esiSave );
+	mov( edx, edxSave );
+	mov( ecx, ecxSave );
+	mov( ebx, ebxSave );
+	mov( eax, eaxSave );
+	
+	// First, make sure the width isn't zero.
+	
+	mov( width, eax );
+	test( eax, eax );
+	jz voor;
+
+	// Just to be on the safe side, don't allow widths greater than 1024:
+
+	cmp( eax, 1024 );
+	ja badWidth;
+	
+
+	
+	// Okay, do the conversion.
+
+	fld( e80 );					// Put FP number of FPU stack.
+	lea( edi, Digits );			// Store result string here.
+	call( FPDigits );			// Convert e80 to digit string.
+	mov( eax, Exponent );		// Save away exponent result.
+	mov( bl, Sign );			// Save mantissa sign character.
+
+	
+	// Verify that there is sufficient room for the mantissa's sign,
+	// the decimal point, two mantissa digits, the "E", 
+	// and the exponent's sign.  Also add in the number of digits
+	// required by the exponent (2 for real32, 3 for real64, 4 for real80).
+	//
+	// -1.2e+00    :real32
+	// -1.2e+000   :real64
+	// -1.2e+0000  :real80
+	
+	
+	mov( 6, ecx );				// Char positions to hold above characters.
+	add( expDigs, ecx );		// # of digits set aside for the exponent.
+	cmp( ecx, width );
+	jbe goodWidth;
+	
+		// Output a sequence of "#...#" chars (to the specified width) if
+		// the width value is not large enough to hold the conversion:
+
+		mov( width, ecx );
+		mov( '#', al );
+		mov( bufPtr, edi );
+		rep.stosb();
+		jmp exit_eToBuf;
+
+
+	// Okay, the width is sufficient to hold the number, do the
+	// conversion and output the string here:
+
+	goodWidth:
+		
+		mov( width, ebx );	// Compute the number of mantissa digits
+		sub( ecx, ebx );	// that we need to display.
+		add( 2, ebx );		// Don't forget, ecx allows for 2 mant digits.
+		mov( ebx, MantSize );
+			
+		
+		// Round the number to the specified number of print positions.
+		// (Note: since there are a maximum of 18 significant digits,
+		//	don't bother with the rounding if the field width is greater
+		//	than 18 digits.)
+		
+		
+		cmp( ebx, 18 );
+		jae noNeedToRound;
+			
+			// To round the value to the number of significant digits,
+			// go to the digit just beyond the last one we are considering
+			// (ebx currently contains the number of decimal positions)
+			// and add 5 to that digit.  Propogate any overflow into the
+			// remaining digit positions.
+			
+			mov( Digits[ebx], al );			// Get least sig digit + 1.
+			add( 5, al );					// Decimal round (e.g., +0.5 ).
+			cmp( al, '9' );
+			jbe noNeedToRound;
+			mov( $3a, Digits[ebx] );
+			jmp whileDigitGT9Test;
+			whileDigitGT9:			
+			
+				sub( 10, Digits[ ebx ] );	// Subtract out overflow and add
+				dec( ebx );					// the carry into the previous
+				cmp( ebx, 0 ); 				// digit (unless we hit the
+				jl firstDigitInNumber;		// first digit in the number).
+											
+					inc( Digits[ebx] );
+					jmp whileDigitGT9Test;
+
+				firstDigitInNumber:
+					
+					// If we get to this point, then we've hit the first
+					// digit in the number.  So we've got to shift all
+					// the characters down one position in the string of
+					// bytes and put a "1" in the first character position.
+					
+					mov( 17, ebx );
+					repeatUntilEBXeq0:
+					
+						mov( Digits[ebx], al );
+						mov( al, Digits[ebx+1] );
+						dec( ebx );
+						jnz repeatUntilEBXeq0;
+						
+					mov( '1', Digits );
+					inc( Exponent );		// Because we just added a digit.
+					jmp noNeedToRound;
+				
+					
+			whileDigitGT9Test:
+				cmp( Digits[ebx], '9' );	// Overflow occurs if char > '9'.
+				ja whileDigitGT9; 
+			
+		noNeedToRound:
+		
+		
+		// Okay, emit the string at this point.  This is pretty easy
+		// since all we really need to do is copy data from the
+		// digits array and add an exponent (plus a few other simple chars).
+		
+		xor( ecx, ecx );		// Count output mantissa digits here.
+		mov( bufPtr, edi );
+		xor( edx, edx );		// Count output chars here.
+		mov( Sign, al );
+		cmp( al, '-' );
+		je noMinus;
+		
+			mov( ' ', al );
+			
+		noMinus:
+			stosb();
+			inc( edx );
+		
+		// Output the first character and a following decimal point
+		// if there are more than two mantissa digits to output.
+		
+		mov( Digits, al );
+		stosb();
+		inc( edx );
+		inc( ecx );
+		cmp( ecx, MantSize );
+		je noDecPt;
+		
+			mov( '.', al );
+			stosb();
+			inc( edx );
+						
+		noDecPt:
+		
+		// Output any remaining mantissa digits here.
+		// Note that if the caller requests the output of
+		// more than 18 digits, this routine will output zeros
+		// for the additional digits.
+		
+		jmp whileECXltMantSizeTest;
+		whileECXltMantSize:
+		
+			mov( '0', al );
+			cmp( ecx, 18 );
+			jae justPut0;
+
+				mov( Digits[ ecx ], al );
+				
+			justPut0:
+				stosb();
+				inc( ecx );
+				inc( edx );
+			
+		whileECXltMantSizeTest:
+			cmp( ecx, MantSize );
+			jb whileECXltMantSize;
+
+
+
+		// Output the exponent:
+		
+		mov( 'e', al );
+		stosb();
+		inc( edx );
+		mov( '+', al );
+		cmp( Exponent, 0 );
+		jge noNegExp;
+		
+			mov( '-', al );
+			neg( Exponent );
+						
+		noNegExp:
+		stosb();
+		inc( edx );
+		
+		_hla.get_OutputUnderscores();
+		push( eax );
+		_hla.set_OutputUnderscores( false );
+		add( expDigs, edi );
+		push( edi );
+		dec( edi );
+		conv._unsToBuf32( (type uns32 Exponent), expDigs, [edi] );
+		pop( edi );
+		pop( eax );
+		_hla.set_OutputUnderscores( al ); 
+		
+exit_eToBuf:
+	mov( esiSave, esi );
+	mov( edxSave, edx );
+	mov( ecxSave, ecx );
+	mov( ebxSave, ebx );
+	mov( eaxSave, eax );
+	popfd();
+	leave();
+	ret( _parms_ );
+
+
+voor:
+	raise( ex.ValueOutOfRange );
+	
+badWidth:
+	raise( ex.WidthTooBig );		  	
+
+end eToBuf;
+
+
+end ConvUnit;

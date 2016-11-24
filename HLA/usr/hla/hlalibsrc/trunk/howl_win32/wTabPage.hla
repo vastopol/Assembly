@@ -1,0 +1,198 @@
+unit wTabPage_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( wTabPage_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wTabPage objects here.
+//
+// wTabPage objects are borderless windows that hold other UI elements.
+// These could be pages associated with tabs or individual UI elements.
+
+
+procedure wTabPage_t.create_wTabPage
+(
+	wpName				:string;
+	parentWindowHandle	:dword;
+	handler				:widgetProc;
+	x					:dword;
+	y					:dword;
+	width				:dword;
+	height				:dword;
+	fillColor			:dword 									
+);
+var
+	rcClient	:w.RECT;
+
+_begin( wTabPage_t, create_wTabPage );
+
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wTabPage_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	w.GetClientRect( parentWindowHandle, rcClient );
+	mov( rcClient.bottom, eax );
+	if( eax > 25 ) then
+	
+		sub( 25, eax );
+		
+	endif;
+	(type window_t [esi]).create_window
+	(
+		wpName,								// View name
+		NULL,								// Caption
+		0,									// Extended style
+		w.WS_CHILD | w.WS_CLIPSIBLINGS,		// style
+		parentWindowHandle,					// Parent handle 									
+		x,									// x 
+		y,									// y
+		rcClient.right,						// width
+		eax,								// height
+		fillColor,							// fillColor
+		false								// visible 
+	);
+	mov( cl, this.wBase_private.onHeap );
+	
+	mov( handler, eax );
+	mov( eax, this.wTabPage_private.pageHandler );
+								
+	howl.setType( wTabPage_c );
+	mov( &wTabPage_t._VMT_, this._pVMT_ );
+		
+	pop( ecx );
+	pop( eax );
+
+_end( wTabPage_t, create_wTabPage );
+
+
+procedure wTabPage_t.create_wTabPage2
+(
+    wpName              :string;
+	exStyle				:dword;
+	style				:dword;
+    parentWindowHandle  :dword;
+    handler             :widgetProc;
+    x                   :dword;
+    y                   :dword;
+    width               :dword;
+    height              :dword;
+    fillColor           :dword                                  
+);
+var
+	rcClient	:w.RECT;
+
+_begin( wTabPage_t, create_wTabPage2 );
+
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wTabPage_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	w.GetClientRect( parentWindowHandle, rcClient );
+	mov( rcClient.bottom, eax );
+	if( eax > 25 ) then
+	
+		sub( 25, eax );
+		
+	endif;
+	mov( style, ecx );
+	or( w.WS_CHILD | w.WS_CLIPSIBLINGS, ecx );
+	(type window_t [esi]).create_window
+	(
+		wpName,								// View name
+		NULL,								// Caption
+		exStyle,							// Extended style
+		ecx,								// style
+		parentWindowHandle,					// Parent handle 									
+		x,									// x 
+		y,									// y
+		rcClient.right,						// width
+		eax,								// height
+		fillColor,							// fillColor
+		false								// visible 
+	);
+	mov( cl, this.wBase_private.onHeap );
+	
+	mov( handler, eax );
+	mov( eax, this.wTabPage_private.pageHandler );
+								
+	howl.setType( wTabPage_c );
+	mov( &wTabPage_t._VMT_, this._pVMT_ );
+		
+	pop( ecx );
+	pop( eax );
+
+_end( wTabPage_t, create_wTabPage2 );
+
+
+
+
+
+// Generic wTabPage_t processMessage method.
+//
+// If the pageHander pointer is NULL, then this message handler
+// function calls the parent's message processor (window_t). If
+// pageHandler is non-NULL, then this function calls that widgetProc
+// with the EAX register containing the uMsg value.
+
+method wTabPage_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);
+var
+	r			:w.RECT;
+
+_begin( wTabPage_t, processMessage );
+
+	if( this.wTabPage_private.pageHandler <> NULL ) then
+	
+		mov( uMsg, eax );
+		this.wTabPage_private.pageHandler( esi, wParam, lParam );
+		
+	endif;
+	super.processMessage( hwnd, uMsg, wParam, lParam );
+		
+_end( wTabPage_t, processMessage );
+
+
+end	wTabPage_u;

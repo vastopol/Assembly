@@ -1,0 +1,191 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit consoleUnit;
+
+#include( "console.hhf" )
+#includeonce( "os.hhf" )
+#includeonce( "stdout.hhf" )
+
+?@nodisplay := true;
+?@noalignstack := true;	
+
+#if( os.linux | os.freeBSD | os.macOS )
+	
+	procedure console.setAttrs( foreground:uns32; background:uns32 );
+		@noframe;
+		@nodisplay;
+		
+	var
+		attrStr: char[12];
+		
+	begin setAttrs;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+
+		lea( ecx, attrStr );
+		mov( #$1b, (type char [ecx]) );
+		mov( '[', (type char [ecx+1]) );
+		mov( '3', (type char [ecx+2]) );
+		mov( (type byte foreground), al );
+		or( '0', al );
+		mov( al, [ecx+3] );
+		mov( ';', (type char [ecx+4]) );
+		mov( '4', (type char [ecx+5]) );
+		mov( (type byte background), al );
+		or( '0', al );
+		mov( al, [ecx+6] );
+		mov( 'm', (type char [ecx+7]) );
+		
+		stdout.write( [ecx], 8 );
+
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+
+	end setAttrs;
+	
+#elseif( os.win32 )
+
+	#include( "stdout.hhf" )
+	#include( "w.hhf" )
+	
+	
+
+	
+	
+	procedure console.setAttrs( foreground:uns32; background:uns32 );
+		@nodisplay;
+		@noframe;
+		
+	
+	var
+		handle			:dword;
+		csbi			:w.CONSOLE_SCREEN_BUFFER_INFO;
+
+	readonly
+		fore_colors	:word[8] := 
+			[
+				0, // black
+				
+				// Red:
+				
+				w.FOREGROUND_RED		| w.FOREGROUND_INTENSITY,
+				
+				// Green:
+				
+				w.FOREGROUND_GREEN	| w.FOREGROUND_INTENSITY,
+				
+				// Yellow:
+				
+				w.FOREGROUND_RED	| w.FOREGROUND_GREEN | w.FOREGROUND_INTENSITY,
+
+				// Blue:
+				
+				w.FOREGROUND_BLUE		| w.FOREGROUND_INTENSITY,
+				
+				// Magenta:
+				
+				w.FOREGROUND_BLUE	| w.FOREGROUND_RED | w.FOREGROUND_INTENSITY,
+				
+				// Cyan:
+				
+				w.FOREGROUND_BLUE	| w.FOREGROUND_GREEN | w.FOREGROUND_INTENSITY,
+
+				// White:
+				
+				w.FOREGROUND_RED	| w.FOREGROUND_GREEN | 
+					w.FOREGROUND_BLUE | w.FOREGROUND_INTENSITY
+			];
+				
+		back_colors	:word[8] := 
+			[
+				0, // black
+				
+				// Red:
+				
+				w.BACKGROUND_RED		| w.BACKGROUND_INTENSITY,
+				
+				// Green:
+				
+				w.BACKGROUND_GREEN	| w.BACKGROUND_INTENSITY,
+				
+				// Yellow:
+				
+				w.BACKGROUND_RED	| w.BACKGROUND_GREEN | w.BACKGROUND_INTENSITY,
+
+				// Blue:
+				
+				w.BACKGROUND_BLUE		| w.BACKGROUND_INTENSITY,
+				
+				// Magenta:
+				
+				w.BACKGROUND_BLUE	| w.BACKGROUND_RED | w.BACKGROUND_INTENSITY,
+				
+				
+				// Cyan:
+				
+				w.BACKGROUND_BLUE	| w.BACKGROUND_GREEN | w.BACKGROUND_INTENSITY,
+
+				// White:
+				
+				w.BACKGROUND_RED	| w.BACKGROUND_GREEN | 
+					w.BACKGROUND_BLUE | w.BACKGROUND_INTENSITY
+			];
+				
+		
+	begin setAttrs;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( eax );
+		push( ecx );
+		push( edx );
+		
+		stdout.handle();
+		mov( eax, handle );
+		
+		xor( ecx, ecx );
+		mov( background, edx );
+		mov( back_colors[ edx*2 ], cx );
+		mov( foreground, edx );
+		or( fore_colors[ edx*2 ], cx );
+		
+		w.SetConsoleTextAttribute( eax, cx ); 
+		
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+
+	end setAttrs;	
+
+#endif
+
+	
+end consoleUnit;

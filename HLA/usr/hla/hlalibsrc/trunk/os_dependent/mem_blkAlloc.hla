@@ -1,0 +1,354 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit memory;
+
+#includeOnce( "os.hhf" )
+#if( os.linux)
+
+	#includeOnce( "linux.hhf" )
+
+#elseif( os.win32 )
+
+	#includeonce( "w.hhf" );
+	
+#elseif( os.freeBSD );
+
+	#includeOnce( "bsd.hhf" )
+
+#elseif( os.macOS );
+
+	#includeOnce( "mac.hhf" )
+
+#else
+
+	#error( "malloc is only valid for Windows, Mac OSX, Linux, or FreeBSD" )
+	
+#endif
+
+#includeonce( "../include/mem.hhf" )
+#includeOnce( "../include/thread_private.hhf" )
+
+#if( @thread )
+
+	#if( os.win32 )
+	
+		static
+			align( 4 );
+			memCS			:w.CRITICAL_SECTION;
+			memCS2			:w.CRITICAL_SECTION;
+			needMemCSinit	:boolean := true;
+			needMemCSinit2	:boolean := true;
+			
+			
+		procedure _hla.memCSenter;	@noframe;
+		begin memCSenter;
+		
+			push( eax );
+			push( ecx );
+			push( edx );
+			
+			// Must auto-initialize the critical section:
+			
+			cmp( needMemCSinit, true );
+			jne alreadyInitialized;
+			
+				w.InitializeCriticalSection( memCS );
+				mov( false, needMemCSinit );
+				
+			alreadyInitialized:
+			w.EnterCriticalSection( memCS );
+			pop( edx );
+			pop( ecx );
+			pop( eax );	
+			ret();
+			
+		end memCSenter;
+
+		procedure _hla.memCSleave;	@noframe;
+		begin memCSleave;
+		
+			push( eax );
+			push( ecx );
+			push( edx );
+			w.LeaveCriticalSection( memCS );
+			pop( edx );
+			pop( ecx );
+			pop( eax );
+			ret();
+			
+		end memCSleave;
+	
+			
+			
+			
+			
+		procedure memCSenter2;	@noframe;
+		begin memCSenter2;
+		
+			push( eax );
+			push( ecx );
+			push( edx );
+			
+			// Must auto-initialize the critical section:
+			
+			cmp( needMemCSinit2, true );
+			jne alreadyInitialized;
+			
+				w.InitializeCriticalSection( memCS2 );
+				mov( false, needMemCSinit2 );
+				
+			alreadyInitialized:
+			w.EnterCriticalSection( memCS2 );
+			pop( edx );
+			pop( ecx );
+			pop( eax );	
+			ret();
+			
+		end memCSenter2;
+
+		procedure memCSleave2;	@noframe;
+		begin memCSleave2;
+		
+			push( eax );
+			push( ecx );
+			push( edx );
+			w.LeaveCriticalSection( memCS2 );
+			pop( edx );
+			pop( ecx );
+			pop( eax );
+			ret();
+			
+		end memCSleave2;
+	
+			
+			
+	#elseif( os.linux | os.freeBSD | os.macOS )
+	
+	
+		static
+			align( 4 );
+			
+			memCS			:pthread_mutex_t;
+			memCS2			:pthread_mutex_t;
+			needMemCSinit	:boolean := true;
+			needMemCSinit2	:boolean := true;
+			
+			
+		procedure _hla.memCSenter;	@noframe;
+		begin memCSenter;
+		
+			push( eax );
+			push( ecx );
+			push( edx );
+			
+			// Must auto-initialize the critical section:
+			
+			cmp( needMemCSinit, true );
+			jne alreadyInitialized;
+			
+				pthread_mutex_init( memCS, NULL );
+				mov( false, needMemCSinit );
+				
+			alreadyInitialized:
+			pthread_mutex_lock( memCS );
+			pop( edx );
+			pop( ecx );
+			pop( eax );	
+			ret();
+			
+		end memCSenter;
+
+		procedure _hla.memCSleave;	@noframe;
+		begin memCSleave;
+		
+			push( eax );
+			push( ecx );
+			push( edx );
+			pthread_mutex_unlock( memCS );
+			pop( edx );
+			pop( ecx );
+			pop( eax );
+			ret();
+			
+		end memCSleave;
+	
+			
+			
+			
+			
+		procedure memCSenter2;	@noframe;
+		begin memCSenter2;
+		
+			push( eax );
+			push( ecx );
+			push( edx );
+			
+			// Must auto-initialize the critical section:
+			
+			cmp( needMemCSinit2, true );
+			jne alreadyInitialized;
+			
+				pthread_mutex_init( memCS2, NULL );
+				mov( false, needMemCSinit2 );
+				
+			alreadyInitialized:
+			pthread_mutex_lock( memCS2 );
+			pop( edx );
+			pop( ecx );
+			pop( eax );	
+			ret();
+			
+		end memCSenter2;
+
+		procedure memCSleave2;	@noframe;
+		begin memCSleave2;
+		
+			push( eax );
+			push( ecx );
+			push( edx );
+			pthread_mutex_unlock( memCS2 );
+			pop( edx );
+			pop( ecx );
+			pop( eax );
+			ret();
+			
+		end memCSleave2;
+	
+			
+	#else
+	
+		#error( "Unknown OS!" )		
+		
+	#endif
+			
+
+#endif
+
+
+// blockAlloc-
+// Allocates a block of memory from the OS.
+
+
+procedure blockAlloc( size:dword in eax ); @nodisplay; @noframe;
+begin blockAlloc;
+
+	push( ebp );
+	mov( esp, ebp );
+	and( $FFFF_FFFC, esp );		// dword-align for the OS.	
+	#if( @thread )
+	
+		memCSenter2();
+		
+	#endif
+		
+	#if( os.linux )
+	
+		linux.mmap
+		( 
+			NULL, 			// Let the system pick the address.
+			eax,			// Size of our allocation.
+			linux.prot_read | linux.prot_write | linux.prot_exec,
+			linux.map_private | linux.map_anon,
+			0,				// No fd needed for map_anon.
+			0				// No offset into our anon file.
+		);
+		test( eax, eax );
+		jz MemoryAllocationFailure;
+		cmp( eax, -1 );
+		je MemoryAllocationFailure;
+		
+	#elseif( os.freeBSD )
+	
+		bsd.mmap
+		( 
+			NULL, 			// Let the system pick the address.
+			eax,			// Size of our allocation.
+			bsd.PROT_READ | bsd.PROT_WRITE | bsd.PROT_EXEC,
+			bsd.MAP_PRIVATE | bsd.MAP_ANON,
+			-1,				// Must be -1 for map_anon.
+			0				// No offset into our anon file.
+		);
+		jc MemoryAllocationFailure;
+		cmp( eax, bsd.MAP_FAILED );
+		je MemoryAllocationFailure;
+		
+				
+	#elseif( os.macOS )
+	
+		mac.mmap
+		( 
+			NULL, 			// Let the system pick the address.
+			eax,			// Size of our allocation.
+			mac.PROT_READ | mac.PROT_WRITE | mac.PROT_EXEC,
+			mac.MAP_PRIVATE | mac.MAP_ANON,
+			-1,				// Must be -1 for map_anon.
+			0				// No offset into our anon file.
+		);
+		jc MemoryAllocationFailure;
+		cmp( eax, mac.MAP_FAILED );
+		je MemoryAllocationFailure;
+		
+				
+	#elseif( os.win32 )
+	
+		push( ecx );
+		push( edx );
+		w.VirtualAlloc
+		(
+			NULL,
+			eax,
+			w.MEM_COMMIT,
+			w.PAGE_EXECUTE_READWRITE
+		);
+		pop( edx );
+		pop( ecx );
+		test( eax, eax );
+		jz MemoryAllocationFailure;
+
+	
+	#else
+	
+		#error( "Malloc is only written for Windows, Mac OSX, Linux, and FreeBSD" )
+		
+	#endif
+	
+	#if( @thread )
+	
+		memCSleave2();
+		
+	#endif
+	leave();
+	ret();
+	
+
+MemoryAllocationFailure:
+	#if( @thread )
+	
+		memCSleave2();
+		
+	#endif
+	raise( ex.MemoryAllocationFailure );
+	
+		 
+end blockAlloc;
+
+
+end memory;
+
+
+
+
+	
+

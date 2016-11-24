@@ -1,0 +1,308 @@
+program psubset_test;
+#include( "stdlib.hhf" )
+
+		
+const
+	sub1_c :cset[] :=
+		[
+			#for( i := 0 to 127 )
+				 {char(0)..char(i)},
+			#endfor
+			#for( i := 0 to 126 )
+				{@char(i)..@char(127)},
+			#endfor
+			{ #$7f }
+		];
+		
+	sub2_c :cset[] :=
+		[
+			{},
+			#for( i := 0 to 127 )
+				 {char(0)..char(i)},
+			#endfor
+			#for( i := 0 to 125 )
+				{@char(i)..@char(127)},
+			#endfor
+			{ #$7f }
+		];
+		
+	sub3_c :cset[] :=
+		[
+			#for( i := 0 to 127 )
+				?j := @random(i) & $7f;
+				?k := @random(j) & $7f;
+				#if( j > k )
+					?l := j;
+					?j := k;
+					?k := l;
+				#endif
+				{char(0)..char(i)} + 
+				 	{char(j)..char(k)},
+			#endfor
+			#for( i := 0 to 126 )
+				#if( j > k )
+					?l := j;
+					?j := k;
+					?k := l;
+				#endif
+				{@char(i)..@char(127)} + 
+				 	{char(j)..char(k)},
+			#endfor
+			{ #$7f }
+		];
+		
+	prslt2_c:boolean[] :=
+			[
+				#for( i := 0 to 254 )
+					sub1_c[i] < sub2_c[i],
+				#endfor
+				sub1_c[255] < sub2_c[255]
+			];
+		
+	prslt2r_c	:boolean[] :=
+			[
+				#for( i := 0 to 254 )
+					sub2_c[i] < sub1_c[i],
+				#endfor
+				sub2_c[255] < sub1_c[255]
+			];
+		
+	prslt3_c	:boolean[] :=
+			[
+				#for( i := 0 to 254 )
+					sub1_c[i] < sub3_c[i],
+				#endfor
+				sub1_c[255] < sub3_c[255]
+			];
+		
+	prslt3r_c	:boolean[] :=
+			[
+				#for( i := 0 to 254 )
+					sub3_c[i] < sub1_c[i],
+				#endfor
+				sub3_c[255] < sub1_c[255]
+			];
+		
+		
+	rslt2_c	:boolean[] :=
+			[
+				#for( i := 0 to 254 )
+					sub1_c[i] <= sub2_c[i],
+				#endfor
+				sub1_c[255] <= sub2_c[255]
+			];
+		
+	rslt2r_c	:boolean[] :=
+			[
+				#for( i := 0 to 254 )
+					sub2_c[i] <= sub1_c[i],
+				#endfor
+				sub2_c[255] <= sub1_c[255]
+			];
+		
+	rslt3_c	:boolean[] :=
+			[
+				#for( i := 0 to 254 )
+					sub1_c[i] <= sub3_c[i],
+				#endfor
+				sub1_c[255] <= sub3_c[255]
+			];
+		
+	rslt3r_c	:boolean[] :=
+			[
+				#for( i := 0 to 254 )
+					sub3_c[i] <= sub1_c[i],
+				#endfor
+				sub3_c[255] <= sub1_c[255]
+			];
+		
+static
+	cs1		:cset[ 256 ] := sub1_c;
+	cs2		:cset[ 256 ] := sub2_c;
+	cs3		:cset[ 256 ] := sub3_c;
+	prslt2	:boolean[256] := prslt2_c;
+	prslt2r	:boolean[256] := prslt2r_c;
+	prslt3	:boolean[256] := prslt3_c;
+	prslt3r	:boolean[256] := prslt3r_c;
+	rslt2	:boolean[256] := rslt2_c;
+	rslt2r	:boolean[256] := rslt2r_c;
+	rslt3	:boolean[256] := rslt3_c;
+	rslt3r	:boolean[256] := rslt3r_c;
+	
+begin psubset_test;
+
+	
+	for( mov( 0, ecx ); ecx<256; inc(ecx) )do
+
+		intmul( @size( cset ), ecx, edx );
+		
+		cs.psubset( cs1[edx], cs1[edx] );
+		if( al <> false  ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"cs.psubset #1 failed!  ecx=", ecx, nl,
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif;
+		cs.psubset( cs1[edx], cs2[edx] );
+		if( al <> prslt2[ecx]  ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"cs.psubset #2 failed!  ecx=", ecx, nl,
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif;
+		cs.psubset( cs2[edx], cs1[edx] );
+		if( al <> prslt2r[ecx]  ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"cs.psubset #3 failed!  ecx=", ecx, nl,
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif;
+		cs.psubset( cs1[edx], cs3[edx] );
+		if( al <> prslt3[ecx]  ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"cs.psubset #4 failed!  ecx=", ecx, nl,
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif;
+		cs.psubset( cs3[edx], cs1[edx] );
+		if( al <> prslt3r[ecx]  ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"cs.psubset #5 failed!  ecx=", ecx, nl,
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif;
+		
+		
+		cs.subset( cs1[edx], cs1[edx] );
+		if( al <> true  ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"cs.subset #1 failed!  ecx=", ecx, nl,
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif;
+		cs.subset( cs1[edx], cs2[edx] );
+		if( al <> rslt2[ecx]  ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"cs.subset #2 failed!  ecx=", ecx, nl,
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif;
+		cs.subset( cs2[edx], cs1[edx] );
+		if( al <> rslt2r[ecx]  ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"cs.subset #3 failed!  ecx=", ecx, nl,
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif;
+		cs.subset( cs1[edx], cs3[edx] );
+		if( al <> rslt3[ecx]  ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"cs.subset #4 failed!  ecx=", ecx, nl,
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif;
+		cs.subset( cs3[edx], cs1[edx] );
+		if( al <> rslt3r[ecx]  ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"cs.subset #5 failed!  ecx=", ecx, nl,
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif;
+		
+	endfor;
+	stderr.put( "cs.psubset & cs.subset succeeded!" nl );
+	os.exitProcess(0);
+		
+end psubset_test;
+
+													

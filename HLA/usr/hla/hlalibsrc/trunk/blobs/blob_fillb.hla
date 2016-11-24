@@ -1,0 +1,121 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" );
+#include( "excepts.hhf" );
+#includeOnce( "threads.hhf" );
+
+
+// blob.fillb-
+//
+//	Fill a blob object with a byte value.
+
+procedure blob.fillb( theValue:byte; numBytes:dword; dest:blob.blob ); 
+	@noframe;
+var
+	saveEAX		:dword;
+	saveECX		:dword;
+	saveEDI		:dword;
+	saveFlags	:dword;
+	 
+begin fillb;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_-4), esp );
+	pushfd();	// Allocate and initialize saveFlags
+	
+	mov( edi, saveEDI );
+	mov( ecx, saveECX );
+	mov( eax, saveEAX );
+	cld();
+	
+	// Verify that dest is non-NULL.
+		
+	mov( dest, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+	#if( @thread )
+	
+	try
+	
+		thread.enterCriticalSection( (type blob.blobRec [edi]).criticalSection );
+	
+	#endif
+
+		// Set the new read cursor to zero:
+		
+		mov( 0, (type blob.blobRec [edi]).rcursor );
+		
+		// See if the destination blob is big enough to hold this value.
+		
+		mov( numBytes, ecx );
+		cmp( ecx, (type blob.blobRec [edi]).maxlen );
+		jbe noBlobOverflow;
+		
+			raise( ex.BlobOverflow );
+			
+		noBlobOverflow:
+
+		mov( ecx, (type blob.blobRec [edi]).length );	// Save away new blob length
+		mov( ecx, (type blob.blobRec [edi]).wcursor );	//  and write cursor values.
+		mov( theValue, al );
+		test( ecx, ecx );
+		jz NoSet;
+		
+			rep.stosb();
+			
+		NoSet:
+	
+	#if( @thread )
+	
+	  anyexception
+	
+		mov( dest, edx );
+		thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		push( saveFlags );
+		popfd();
+		reraise( eax );
+		
+	endtry;
+	mov( dest, edi );
+	thread.leaveCriticalSection( (type blob.blobRec [edi]).criticalSection );
+		
+	#endif
+	mov( saveEDI, edi );
+	mov( saveECX, ecx );
+	mov( saveEAX, eax );
+	popfd();
+	leave();
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+
+end fillb;
+
+
+end blobUnit;
+
+
+
+
+	
+

@@ -1,0 +1,75 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+
+/*****************************************************************/
+/*                                                               */
+/* i128ToBuf-                                                    */
+/*                                                               */
+/* this routine converts a 128-bit signed integer to a sequence  */
+/* of characters and stores those character starting at the      */
+/* location pointed at by EDI.  This routine leaves EDI pointing */
+/* at the first byte beyond the converted characters.            */
+/*                                                               */
+/*****************************************************************/
+
+procedure conv.i128ToBuf( l:lword; var buf:var in edi );  
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+	
+begin i128ToBuf;
+
+	push( ebp );
+	mov( esp, ebp );
+
+	cmp( (type int8 l[15]), 0 );
+	jnl notNegative;
+	
+		mov( '-', (type char [edi]));
+		inc( edi );
+		
+		// Negate the value since we've already output the '-'
+		
+		push( eax );
+		xor( eax, eax );
+		sub( (type dword l[0]), eax );
+		mov( eax, (type dword l[0]));
+		
+		mov( 0, eax );
+		sbb( (type dword l[4]), eax );
+		mov( eax, (type dword l[4]));
+		
+		mov( 0, eax );
+		sbb( (type dword l[8]), eax );
+		mov( eax, (type dword l[8]));
+		
+		mov( 0, eax );
+		sbb( (type dword l[12]), eax );
+		mov( eax, (type dword l[12]));
+		pop( eax );
+				
+	notNegative:
+	
+	conv.u128ToBuf( l, [edi] );
+	pop( ebp );
+	ret( _parms_ );	
+	
+end i128ToBuf;
+
+end ConvUnit;

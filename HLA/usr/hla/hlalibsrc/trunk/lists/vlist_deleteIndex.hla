@@ -1,0 +1,90 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit lists;
+#include( "lists.hhf" )
+
+
+
+const
+	nodeEDI: text := "(type node_t [edi])";
+	nodeEAX: text := "(type node_t [eax])";
+	
+
+// deleteIndex
+//
+//	This function deletes the specified node in the list.
+//	It returns a pointer to the node it deletes in ESI
+//	(in particular, this function does not free the
+//	storage associated with that node).
+//
+//	Since this is a method, EDI is already wiped
+//	out upon entry.  So this code will not bother 
+//  to preserve it.  As noted above, this function
+//	returns with ESI pointing at the deleted node
+//	object.
+
+
+method virtualList_t.deleteIndex( posn:dword ); 
+	@nodisplay;
+	@noframe;
+	
+begin deleteIndex;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	push( eax );
+	mov( posn, eax );
+	
+	// Special cases:  Check to see if this is the
+	// first or last node in the list.
+	
+	test( eax, eax );
+	jnz tryLast;
+	
+		this.deleteFirst();
+		jmp allDone;
+		
+	tryLast:
+	cmp( eax, this.Cnt );
+	jb inMiddle;
+	
+		this.deleteLast();
+		jmp allDone;
+		
+	inMiddle:
+	
+		// Okay, it's not the first or last node in the list,
+		// so locate the specified node and delete it.
+		
+		mov( this.Head, edi );
+		repeatUntilEndOfList:
+		
+			mov( nodeEDI.Next, EDI );
+			dec( eax );
+			jnz repeatUntilEndOfList;
+			
+		this.deleteNode( (type node_t [edi]));
+	
+	allDone:
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+end deleteIndex;
+
+
+
+end lists;

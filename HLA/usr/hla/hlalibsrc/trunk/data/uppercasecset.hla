@@ -1,0 +1,15 @@
+unit stdlib_data;
+#include( "chars.hhf" )
+
+namespace chars;
+
+	readonly(16)
+		UpperCaseCset :cset; @nostorage;
+			cset { 'A'..'Z' };
+			cset {};
+	 
+end chars;
+
+end stdlib_data;
+
+													

@@ -1,0 +1,67 @@
+unit filesys_toUnixpath_unit;
+
+// filesys.normalize1( pathname:string );
+//
+//	"Normalizes" a pathname, in place. 
+//
+//	Normalization process:
+//
+//	1.	Skips over any Win32 drive letters or UNC "//comp/folder"
+//		prefixes in the pathname. For the purposes of normalize,
+//		the pathname begins with the first character following the
+//		drive letter or UNC prefix.
+//
+//	2.	Converts all directory separator chars ('/' and '\')
+//		to the native directory separator (including any appearing
+//		in the UNC prefix).
+// 
+//	3.	Deletes all occurences of "./" from the pathname unless 
+//		the "./" appears as the first two characters of the pathname. 
+//
+//	4.	Translates all substrings of the form "---/xxxxx/../yyyy" to 
+//		"---/yyyy" and all substrings of the form "xxxxx/../yyyy" to 
+//		"yyyy" but does not delete any "../" sequences appearing at 
+//		the beginning of the pathname.
+//
+//	Returns carry clear if there was an invalid UNC prefix. Returns
+//	carry clear, otherwise. If there was an invalid UNC prefix, then
+//	this function normalizes the entire pathname string (rather than
+//	just the text after the UNC prefix).
+//
+//	This function stores the resulting normalized string in the
+//	dest parameter (which must be preallocated and large enough to
+//	hold the result).
+ 
+#includeOnce( "filesys.hhf" )
+#includeOnce( "excepts.hhf" )
+
+procedure filesys.normalize1( pathname:string );
+	@nodisplay; @noframe; @noalignstack;
+
+		
+begin normalize1;
+	
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	
+	mov( pathname, eax );
+	test( eax, eax );
+	jz AttemptToDerefNull;
+	
+	filesys.normalize2( eax, eax );
+	
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+	
+AttemptToDerefNull:
+	raise( ex.AttemptToDerefNULL );
+	
+	
+end normalize1;
+
+
+
+end filesys_toUnixpath_unit;

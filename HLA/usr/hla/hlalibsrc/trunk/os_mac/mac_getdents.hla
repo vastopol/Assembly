@@ -1,0 +1,37 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit BsdUnit;
+#include( "mac.hhf" )
+
+// getdents - Read a directory entry.
+
+procedure mac.getdents( fd:dword; var buf:var; nbytes:dword );
+	@nodisplay; @noframe;
+begin getdents;
+
+	push( ebp );
+	mov( esp, ebp );
+
+	push( esp );		// Allocate storage for basep variable
+	mov( esp, eax );
+	mac.getdirentries( fd, buf, nbytes, [eax] );
+	lea( esp, [esp+4] );	// Remove local variable pushed above
+	
+	pop( ebp );
+	ret( _parms_ );	
+	
+end getdents;
+
+end BsdUnit;

@@ -1,0 +1,111 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )		
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+
+
+/*****************************************************/
+/*                                                   */
+/* atou128-                                          */
+/*                                                   */
+/* ASCII to unsigned.                                */
+/*                                                   */
+/* ESI points at a string containing decimal digits. */
+/* This function converts that string to a 128-bit   */
+/* unsigned integer.                                 */
+/*                                                   */
+/* On return:                                        */
+/*   This routine places the converted value into    */
+/*   the location pointed at by "l".                 */
+/*                                                   */
+/*   ESI points at the first non-digit in the string.*/
+/*                                                   */
+/* On entry:                                         */
+/*   ESI must point at at least one legal decimal    */
+/*   digit character.                                */
+/*                                                   */
+/* A legal delimiter character (see the Delimiters   */
+/* cset) must terminate the string of digits,        */
+/* otherwise this routine raises an exception.       */
+/*                                                   */
+/* If the string of digits corresponds to a value    */
+/* too large for 128 bits, this routine raises an    */
+/* exception.                                        */
+/*                                                   */
+/* If any character in the string of digits has its  */
+/* H.O. bit set, this routine raises an exception.   */
+/*                                                   */
+/*****************************************************/
+
+
+procedure conv.atou128( var buffer:var in esi; var l:lword ); 
+	@nodisplay; 
+	@noframe;
+	@nostackalign;
+
+begin atou128;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( edi );
+
+	test( esi, esi );
+	jz refNULL;
+	
+	// Skip any leading delimiters:
+	
+	mov( _hla.get_Delimiters(), ebx );	
+	sub( 1, esi );
+	whileDelimLoop:
+	
+		NextChar;
+		cmp( eax, $80 );
+		jae IllegalChar;
+		bt( eax, (type dword [ebx] ));	// Delimiters
+		jc whileDelimLoop;
+		
+	_atou128();
+
+	mov( l, edi );
+	mov( eax, [edi] );
+	mov( ebx, [edi+4] );
+	mov( ecx, [edi+8] );
+	mov( edx, [edi+12] );
+		
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+
+refNULL:
+	raise( ex.AttemptToDerefNULL );
+
+IllegalChar:
+	raise( ex.IllegalChar );
+
+end atou128;
+
+
+end ConvUnit;

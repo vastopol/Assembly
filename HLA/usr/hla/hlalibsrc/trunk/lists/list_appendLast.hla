@@ -1,0 +1,92 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit lists;
+#include( "lists.hhf" )
+#include( "excepts.hhf" )
+#include( "memory.hhf" )
+
+
+
+const
+	nodeEDI: text := "(type node_t [edi])";
+	nodeEAX: text := "(type node_t [eax])";
+	
+
+/*************************/
+
+
+
+// appendLast
+//
+//	This function appends node "n" to the end of the list.
+//
+//	Since this is a method EDI is already wiped
+//	out upon entry.  So this code will not bother 
+//  to preserve it.  This function does return with
+//	ESI still pointing at the list object.
+
+procedure list_t.appendLast( var n:node_t ); 
+	@nodisplay;
+	@noframe;
+	
+begin appendLast;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	// Quick sanity check.
+	
+	cmp( n, NULL );
+	je AttemptToDerefNULL;
+
+	push( eax );
+	mov( n, edi );
+
+	mov( this.Tail, eax );
+	test( eax, eax );
+	jz firstItemInList;
+	
+		// Append to the end of an existing list.
+		
+		mov( edi, nodeEAX.Next );
+		mov( eax, nodeEDI.Prev );
+		mov( NULL, nodeEDI.Next );
+		mov( edi, this.Tail );
+		jmp allDone;
+		
+	firstItemInList:
+		
+		// This is the first item in the list.
+		
+		mov( edi, this.Tail );
+		mov( edi, this.Head );
+		mov( NULL, nodeEDI.Next );
+		mov( NULL, nodeEDI.Prev );
+		
+	allDone:
+	inc( this.Cnt );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end appendLast;
+
+
+
+
+end lists;

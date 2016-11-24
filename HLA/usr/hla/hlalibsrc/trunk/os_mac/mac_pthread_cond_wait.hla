@@ -1,0 +1,145 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit macUnit;
+#includeOnce( "hla.hhf" )
+#includeOnce( "mac.hhf" )
+
+procedure _condWait( pcond:dword; mutex:dword );
+	@cdecl;
+	@forward;
+	
+procedure _condTimedWait( pcond:dword; mutex:dword; timeout:dword );
+	@cdecl;
+	@forward;
+	
+	
+
+// mac.pthread_cond_wait- Waits on a pthread condition.
+
+procedure mac.pthread_cond_wait
+( 
+	var cond	:mac.pthread_cond_t;
+	var	mutex	:mac.pthread_mutex_t 
+);
+	@nodisplay; @noframe;
+var
+	ebxSave	:dword;
+	ecxSave	:dword;
+	edxSave	:dword;
+	esiSave	:dword;
+	ediSave	:dword;
+	
+begin pthread_cond_wait;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mac.saveregs;
+
+	and( $FFFF_FFF0, esp );		// Align call below to 16 bytes.
+	sub( 8, esp );
+	_condWait( (type dword cond), (type dword mutex) );
+
+	mac.restoreregs;
+	test( eax, eax );
+	jnz badPthread_attr_init;
+	clc();
+	leave();
+	ret( _parms_ );
+	
+badPthread_attr_init:
+	mac.errno();
+	stc();
+	leave();
+	ret( _parms_ );
+	
+		
+end pthread_cond_wait;
+
+// mac.pthread_cond_wait- Waits on a pthread condition.
+
+procedure mac.pthread_cond_timedwait
+( 
+	var cond	:mac.pthread_cond_t;
+	var	mutex	:mac.pthread_mutex_t;
+	var timeout	:hla.timespec 
+);
+	@nodisplay; @noframe;
+var
+	ebxSave	:dword;
+	ecxSave	:dword;
+	edxSave	:dword;
+	esiSave	:dword;
+	ediSave	:dword;
+	
+begin pthread_cond_timedwait;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mac.saveregs;
+
+	and( $FFFF_FFF0, esp );		// Align call below to 16 bytes.
+	sub( 8, esp );
+	_condTimedWait( (type dword cond), (type dword mutex), (type dword timeout) );
+
+	mac.restoreregs;
+	test( eax, eax );
+	jnz badPthread_attr_init;
+	clc();
+	leave();
+	ret( _parms_ );
+	
+badPthread_attr_init:
+	mac.errno();
+	stc();
+	leave();
+	ret( _parms_ );
+	
+		
+end pthread_cond_timedwait;
+
+#asm
+	.section __IMPORT__, __jump_table, symbol_stubs, self_modifying_code+pure_instructions, 5
+#endasm
+procedure _condWait( pcond:dword; mutex:dword );
+	@noframe;
+	@nodisplay;
+begin _condWait;
+#asm
+	.indirect_symbol _pthread_cond_wait
+	hlt ; hlt ; hlt;  hlt; hlt
+	.subsections_via_symbols
+#endasm
+end _condWait;
+
+
+
+#asm
+	.section __IMPORT__, __jump_table, symbol_stubs, self_modifying_code+pure_instructions, 5
+#endasm
+procedure _condTimedWait( pcond:dword; mutex:dword; timeout:dword );
+	@noframe;
+	@nodisplay;
+begin _condTimedWait;
+#asm
+	.indirect_symbol _pthread_cond_timedwait
+	hlt ; hlt ; hlt;  hlt; hlt
+	.subsections_via_symbols
+#endasm
+end _condTimedWait;
+
+
+end macUnit;

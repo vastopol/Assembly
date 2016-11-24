@@ -1,0 +1,49 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+
+/************************************************************/
+/*                                                          */
+/* a_h8ToStr -                                              */
+/*                                                          */
+/* Just like h8ToStr except this function allocates storage */
+/* for the string on the heap and returns a pointer to the  */
+/* string in EAX.                                           */
+/*                                                          */
+/************************************************************/
+
+
+
+procedure conv.a_h8ToStr( b:byte; size:dword; fill:char ); 
+	@nodisplay;
+	@noframe;
+	@noalignstack;
+	
+begin a_h8ToStr;
+
+	// esp+12:	b
+	// esp+8:	size
+	// esp+4:	fill
+	// esp+0:	return address
+	
+	and( $ff, (type dword [esp+12]) );	// Zero-extend b and call a_h32ToStr.
+	jmp conv.a_h32ToStr;
+
+end a_h8ToStr;
+
+end ConvUnit;

@@ -1,0 +1,73 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit memory;
+
+
+#include( "strings.hhf" )
+#include( "../include/mem.hhf" )
+
+// zalloc:
+//
+//	Does a mem.alloc operation and zeros out the
+// block of memory that was allocated.
+
+procedure mem.zalloc( size:dword ); 
+	@nodisplay;
+	@noframe;
+begin zalloc;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	push( ecx );
+	push( edi );
+	pushfd();
+	cld();
+	
+	// Call mem.alloc to actually allocate the storage.
+	
+	mem.alloc( size );
+	
+	// Zero out the data region returned by mem.alloc (do
+	// not zero out the memory data structures at the
+	// start of the region!):
+	
+	push( eax );		// Save pointer to data block.
+	mov( eax, edi );
+	mov( (type memblock [edi-@size( memblock )]).size, ecx );
+	sub( @size( memblock ), ecx );
+	shr( 2, ecx );		// Store dwords, not bytes. Note that
+	xor( eax, eax );	//  allocation is always a multiple of
+	rep.stosd();		//  four bytes (eight, actually).
+	
+	pop( eax );
+	popfd();
+	pop( edi );
+	pop( ecx );
+	pop( ebp );
+	ret( _parms_ );			
+
+end zalloc;
+
+
+
+
+end memory;
+
+
+
+
+	
+

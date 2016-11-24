@@ -1,0 +1,57 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit socketUnit;
+
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#include( "sockets.hhf" )
+#include( "memory.hhf" )
+#include( "strings.hhf" )
+
+
+// socket.a_gets-
+//
+//	Reads a string from the socket and allocates storage for it.
+
+procedure baseSocketClass_t.a_gets; 
+begin a_gets;
+
+	push( ebp );
+	mov( esp, ebp );
+
+	// Create a temporary string on the stack that we can
+	// use to read the data from the file:
+
+	str.talloc( 4096 );	// 4096 bytes, max, for this object
+
+	// Read the data from the socket:
+
+	this.gets( eax );
+
+	// Now copy that string onto the heap and return a pointer
+	// to the newly allocated string:
+
+	str.a_cpy( eax );
+	
+	leave();
+	ret();
+	
+end a_gets;
+
+	
+end socketUnit;
+

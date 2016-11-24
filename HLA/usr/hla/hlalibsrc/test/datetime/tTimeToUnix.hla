@@ -1,0 +1,73 @@
+program toUnix_Test;
+#include( "stdlib.hhf" )
+
+static
+	unixTime	:qword;
+	tm			:time.timerec;
+	dt			:date.daterec;
+	
+begin toUnix_Test;
+
+	mov( 0, (type dword unixTime[0]) );
+	mov( 0, (type dword unixTime[4]) );
+	date.pack( 1, 1, 1970, dt );
+	time.pack( 0, 0, 0, tm );
+			 
+	while( (type dword unixTime) < $8000_0000 ) do
+
+		time.toUnixTime( dt, tm );
+		if( eax <> (type dword unixTime) || edx <> (type dword unixTime[4]) ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"time.toUnixTime failed!", nl,
+				"edx:eax =", edx, ":", eax, nl
+				"unixtime=", (type dword unixTime[4]), ":", (type dword unixTime), nl
+				"date="
+			);
+			date.a_toString( dt );
+			stderr.puts( eax );
+			str.free( eax );
+			stderr.put
+			(
+				nl
+				"time="
+			);
+			time.a_toString( tm );
+			stderr.puts( eax );
+			str.free( eax );
+			stderr.put
+			(	nl
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		if( (type dword unixTime) < $80_0000 ) then
+		
+			add( 1, (type dword unixTime[0]) );
+			adc( 0, (type dword unixTime[4]) );
+			time.addSecs( 1, tm );
+			date.addDays( eax, dt );
+			
+		else
+		
+			add( 256, (type dword unixTime[0]) );
+			adc( 0, (type dword unixTime[4]) );
+			time.addSecs( 256, tm );
+			date.addDays( eax, dt );
+				 			
+		endif;
+						
+	endwhile;
+	stderr.put( "time.toUnixTime succeeded!" nl );
+	os.exitProcess(0);
+		
+end toUnix_Test;
+
+													

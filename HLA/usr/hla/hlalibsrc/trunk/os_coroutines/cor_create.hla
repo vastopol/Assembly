@@ -1,0 +1,318 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit coroutines;
+
+#includeOnce( "coroutines.hhf" )
+#includeOnce( "memory.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "os.hhf")
+#includeOnce( "threads.hhf" )
+#includeOnce( "../include/thread_private.hhf" ) 
+	
+// ??HWexcept is the (HLA compiler generated) exception handler
+// for Windows Structured Exceptions.  We need to be able to
+// take the address of this when initializing coroutines.
+
+procedure HWexcept;		@external( "HWexcept__hla_" );
+
+readonly
+	vmt( coroutine_t );
+	
+	#if( os.linux | os.freeBSD | os.macOS )
+	
+		#if( !@thread )
+		
+			static
+				ExceptionPtr	:dword; @external( "ExceptionPtr__hla_" );
+				
+		#endif
+		
+	#endif
+	
+	 
+	
+
+	procedure coFinish; forward;
+	
+	
+			
+	/********************************************************************/
+	/* 		                                                            */
+	/* 	coroutine_t.create-                                             */
+	/* 	                                                                */
+	/* 	Initializes a coroutine_t object.                               */
+	/* 	                                                                */
+	/* 	If called via "coroutine_t.create":                             */
+	/* 		This code assumes that the user has a pointer to a          */
+	/* 		coroutine_t object and they want to allocate storage        */
+	/* 		for that object.  This routine will return a pointer        */
+	/* 		to a newly allocated (and initialized) object in ESI.       */
+	/* 	                                                                */
+	/* 	If called via "objectname.create":                              */
+	/* 		This code assumes that storage for the object is already    */
+	/* 		allocated (perhaps statically).  This code just initializes */
+	/* 		the fields of the object.                                   */
+	/* 	                                                                */
+	/* 	Input Parameters:                                               */
+	/* 	                                                                */
+	/* 		size: 	Number of bytes of stack space to allocate for the  */
+	/* 				coroutine.  Coroutine_t.create rounds this value up */
+	/* 				so that it is an even multiple of four.             */
+	/* 	                                                                */
+	/* 		theProc:Address of the procedure that implements this       */
+	/* 				coroutine.                                          */
+	/*                                                                  */
+	/********************************************************************/
+		
+	procedure coroutine_t.create( size:uns32; theProc:procedure ); 
+		@nodisplay;
+		@noframe;
+	begin create;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( eax );
+		push( ebx );
+		
+		// If coroutine_t.create was called, ESI will contain NULL.
+		// This means we're allocating a coroutine dynamically.
+		// So in that case, we need to call malloc to get the
+		// storage for this coroutine_t object.
+		
+		test( esi, esi );
+		jnz haveObject;
+		
+			malloc( @size( coroutine_t ));
+			mov( eax, esi );
+			
+		haveObject:
+		
+		// Okay, new or old coroutine object, the pointer to
+		// the coroutine instance is now in ESI.  So proceed.
+		//
+		// Begin by allocating storage for the stack for this
+		// coroutine.  The size parameter specifies the number
+		// of bytes of stack space to allocate.  Round this
+		// value up to the next even multiple of four if it's
+		// not already a multiple of four.
+		
+		mov( size, eax );
+		add( 3, eax );
+		and( $FFFF_FFFC, eax );
+		
+		// Okay, save the stack size (so we can find the end
+		// of the stack later) and then allocate storage for
+		// the coroutine's stack:
+		
+		mov( eax, ebx );
+		malloc( eax );
+		mov( eax, this.Stack );
+		
+		// Point EBX at the end of the stack minus 32 bytes.
+		// the last twelve bytes hold the following info:
+		//
+		//  0:	EndOfStk - 28:	EBP (frame ptr) for the coroutine.
+		//
+		//	4:	EndOfStk - 24:	Pointer to coroutine start address
+		//						(really a return address to the code).
+		//
+		//  8:	EndOfStk - 32:	Return address that points at
+		//						the coFinish procedure.
+		//
+		//	12:	EndOfStk - 20:	NULL (pointer to next structured exception
+		//						handler block, but there isn't one.
+		//
+		//	16:	EndOfStk - 16:	Pointer to the exception handler (always
+		//						??HWexcept).
+		//
+		//	20:	EndOfStk - 12:	Current Coroutine Pointer (points at
+		//						this object).
+		//
+		//	24:	EndOfStk - 8:	EBP Saved value (NULL)
+		//
+		//	28:	EndOfStk - 4:	Ptr to default HLA exception handler
+		//						(always ??DfltExHndlr)
+	
+		lea( ebx, [eax+ebx-32] );
+		mov( ebx, this.CurrentSP );		// Initialize the stack pointer value.
+		
+		// Fake EBP by using whatever EBP happens to be right now.
+
+		mov( ebx, [ebx] );
+		mov( theProc, eax );
+		mov( eax, [ebx+4] );			// Start of procedure goes here.
+		
+		// Put a return address onto the stack
+		// that transfers control to the coFinish procedure.
+		
+		mov( &coFinish, (type dword [ebx+8]) );
+		
+		
+		#if( os.linux | os.freeBSD | os.macOS )
+		
+			#if( @thread )
+			
+				pthread_getspecific( thread.threadContext );
+				test( eax, eax );
+				jz ThreadError;
+				mov( (type _hla.stdlib_tls_t [eax]).ExceptionPtr, eax ); 
+				mov( eax, [ebx+12] );					// Link to next block
+				mov( $e8ce972, (type dword [ebx+16]) );	// Signature for SEH frame
+			
+			#else
+			
+				mov( ExceptionPtr, eax );
+				mov( eax, [ebx+12] );					// Link to next block
+				mov( $e8ce972, (type dword [ebx+16]) );	// Signature for SEH frame
+				
+			#endif
+
+		#elseif( os.win32 )
+			
+			xor( eax, eax );
+			fseg:mov( [eax], eax );
+			mov( eax, [ebx+12] );					// Link to next block
+			mov( &HWexcept, (type dword [ebx+16]) );// Ptr to exception handler
+			
+		#endif
+		mov( esi, [ebx+20] );						// Current coroutine object
+		mov( ebx, [ebx+24] );						// Faked EBP value
+		mov( &ex.defaultExceptionHandler, (type dword [ebx+28]) );
+		
+		// Set up the exception context for this object.
+		// This should be a pointer to the SEH record we've
+		// created above (excluding the return address on the top of stack).
+		
+		add( 12, ebx );
+		mov( ebx, this.ExceptionContext );
+		
+		// Initialize the virtual method table for this object:
+		
+		mov( &coroutine_t._VMT_, this._pVMT_ );
+		pop( ebx );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ );
+		
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end create;
+	
+	
+	
+
+
+
+
+
+			
+	
+	/*****************************************************/
+	/*                                                   */
+	/* coFinish-                                         */
+	/*                                                   */
+	/* This procedure provides an "escape mechanism"     */
+	/* in the event a coroutine procedure decides to     */
+	/* fall of the bottom of the procedure and return    */
+	/* to its caller.  Of course, coroutine procedures   */
+	/* cannot return via a RET instruction, since the    */
+	/* caller's return address is on a different stack.  */
+	/* During coroutine creation, a dummy return address */
+	/* is pushed on each coroutine's stack.  That dummy  */
+	/* return address points at this routine.  This      */
+	/* routine determines who cocalled the current       */
+	/* coroutine and then cocalls that caller.  Before   */
+	/* cocalling the original caller, this code pushes   */
+	/* its starting address back on the stack again      */
+	/* so if anyone attempts to cocall this coroutine    */
+	/* again, this coroutine will immediately return     */
+	/* to the cocaller (to restart the coroutine         */
+	/* requires a free and a create or a restart         */
+	/* call).                                            */
+	/*                                                   */
+	/*****************************************************/
+
+
+	procedure coFinish; @noframe; @nodisplay;
+	begin coFinish;
+	
+		// Fake a return address and EBP value so we
+		// come back here in the event someone tries
+		// to cocall this coroutine again.
+		
+		pushd( &coFinish );
+		push( ebp );
+		
+		// Okay, figure out who the current coroutine
+		// is.  To do this, scan through the Structured
+		// exception handlers until we find an entry
+		// pushed on the stack by the coroutine system.
+		// The pointer to the most recently called
+		// coroutine (i.e., the one that transfered
+		// control here) is at offset eight in the
+		// exception record.
+
+		#if( os.linux | os.freeBSD | os.macOS )
+
+			#if( @thread )
+			
+				push( eax );
+				pthread_getspecific( thread.threadContext );
+				test( eax, eax );
+				jz ThreadError;
+				mov( (type _hla.stdlib_tls_t [eax]).ExceptionPtr, esi );
+				pop( eax ); 
+			
+			#else
+			
+				mov( ExceptionPtr, esi );
+								
+			#endif
+		
+		#elseif( os.win32 )
+			
+			xor( edi, edi );
+			fseg:mov( [edi], esi );		// Get ptr to current process.
+			cmp( (type dword [esi+4]), &HWexcept );
+			je atCurPrcs;
+			search4CurPrcs:
+				mov( [esi], esi );
+				cmp( (type dword [esi+4]), &HWexcept );
+				jne search4CurPrcs;
+				
+			atCurPrcs:
+			
+		#endif
+		
+		// Get ptr to the current coroutine:
+		
+		mov( [esi+8], esi );
+		
+		
+		// Transfer control to whomever called this coroutine:
+		
+		mov( (type coroutine_t [esi]).LastCaller, esi );
+		(type coroutine_t [esi]).cocall();
+		
+		
+	ThreadError:
+		raise( ex.ThreadError );
+	
+	end coFinish;
+	
+	
+end coroutines;

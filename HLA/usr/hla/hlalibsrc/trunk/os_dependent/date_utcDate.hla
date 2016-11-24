@@ -1,0 +1,157 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+unit DateTime;
+#includeonce( "datetime.hhf" )
+#includeonce( "os.hhf" )
+
+#if( @global:os.win32 )
+
+	#includeonce( "w.hhf" )	
+	
+	procedure date.utc( var todaysDate:date.daterec ); 
+		@nodisplay; 
+		@noalignstack;
+		@noframe;
+		
+	var
+		LocalTime: w.SYSTEMTIME;
+		
+	begin utc;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ecx );
+		push( edx );
+		
+		w.GetSystemTime( LocalTime );
+		mov( todaysDate, edx );
+		
+		mov( LocalTime.wDay, ax );
+		mov( al, (type date.daterec [edx]).day );
+		
+		mov( LocalTime.wMonth, ax );
+		mov( al, (type date.daterec [edx]).month );
+		
+		mov( LocalTime.wYear, ax );
+		mov( ax, (type date.daterec [edx]).year );
+		
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	end utc;
+
+#elseif( @global:os.linux )
+
+	#include( "linux.hhf" )
+	
+	
+	procedure date.utc( var todaysDate:date.daterec ); @nodisplay; @noframe;
+	var
+		theTime		:linux.timeval;
+		theZone		:linux.timezone;
+		unixTime	:qword;
+		HMS			:time.timerec;
+		
+	begin utc;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		
+		linux.gettimeofday( theTime, theZone );
+		mov( theTime.tv_sec, eax );
+		mov( eax, (type dword unixTime));
+		mov( 0, (type dword unixTime[4]));
+		lea( eax, HMS );		
+		time.fromUnixTime( unixTime, [eax], todaysDate ); 
+		
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end utc;
+
+#elseif( @global:os.freeBSD )
+
+	#include( "bsd.hhf" )
+	
+	
+	procedure date.utc( var todaysDate:date.daterec ); @nodisplay; @noframe;
+	var
+		theTime		:bsd.timeval;
+		theZone		:bsd.timezone;
+		unixTime	:qword;
+		HMS			:time.timerec;
+		
+	begin utc;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		
+		bsd.gettimeofday( theTime, theZone );
+		mov( theTime.tv_sec, eax );
+		mov( eax, (type dword unixTime));
+		mov( 0, (type dword unixTime[4]));
+		lea( eax, HMS );		
+		time.fromUnixTime( unixTime, [eax], todaysDate ); 
+		
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end utc;
+
+#elseif(  @global:os.macOS )
+
+	#include( "mac.hhf" )
+	
+	
+	procedure date.utc( var todaysDate:date.daterec ); @nodisplay; @noframe;
+	var
+		theTime		:mac.timeval;
+		theZone		:mac.timezone;
+		unixTime	:qword;
+		HMS			:time.timerec;
+		
+	begin utc;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		
+		mac.gettimeofday( theTime, theZone );
+		mov( theTime.tv_sec, eax );
+		mov( eax, (type dword unixTime));
+		mov( 0, (type dword unixTime[4]));
+		lea( eax, HMS );		
+		time.fromUnixTime( unixTime, [eax], todaysDate ); 
+		
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end utc;
+
+#endif
+	
+end DateTime;			

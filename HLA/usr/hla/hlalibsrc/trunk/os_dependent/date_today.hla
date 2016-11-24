@@ -1,0 +1,221 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#includeonce( "datetime.hhf" )
+#includeonce( "os.hhf" )
+
+#if( @global:os.win32 )
+
+	#includeonce( "w.hhf" )	
+	
+	procedure date.today( var todaysDate:date.daterec ); 
+		@nodisplay; 
+		@noalignstack;
+		@noframe;
+		
+	var
+		LocalTime	:w.SYSTEMTIME;
+		hlaTime		:time.timerec;
+		hlaDate		:date.daterec;
+		timeZone	:int32;
+		
+	begin today;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ecx );
+		push( edx );
+		
+		time.getTimeZone();
+		mov( eax, timeZone );
+		if( eax <> 0 ) then
+		
+			time.utcDateTime( hlaDate, hlaTime ); 
+			
+		
+		else
+		
+			w.GetLocalTime( LocalTime );
+			mov( todaysDate, edx );
+			
+			mov( LocalTime.wDay, ax );
+			mov( al, (type date.daterec [edx]).day );
+			
+			mov( LocalTime.wMonth, ax );
+			mov( al, (type date.daterec [edx]).month );
+			
+			mov( LocalTime.wYear, ax );
+			mov( ax, (type date.daterec [edx]).year );
+			
+		endif;
+		
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end today;
+
+	
+
+#elseif( @global:os.linux )
+
+	#include( "linux.hhf" )
+	
+	
+	procedure date.today( var todaysDate:date.daterec ); @nodisplay; @noframe;
+	const
+		Jan_1_1970	:dword := $25_3d8c;
+		
+	var
+		LocalTime	:linux.time_t;
+		
+	begin today;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( edx );
+		
+		// Get the time in seconds since 1/1/1970:
+		
+		linux.time( LocalTime );
+		
+		// Compute (approx) the number of days since then
+		// (This is in UTC time, don't forget):
+		
+		mov( LocalTime, eax );
+		xor( edx, edx );
+		div( 86400, edx:eax );	// 86400 secs/day.
+		
+		// Convert days since 1/1/1970 to a Julian Day number:
+		
+		add( Jan_1_1970, eax );
+		
+		// Convert the Julian day number to today's date:
+		
+		date.fromJulian( eax, todaysDate );
+		
+		pop( edx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end today;
+
+	
+#elseif( @global:os.freeBSD )
+
+	#include( "bsd.hhf" )
+	
+	
+	procedure date.today( var todaysDate:date.daterec ); @nodisplay; @noframe;
+	const
+		Jan_1_1970	:dword := $25_3d8c;
+		
+	var
+		LocalTime	:bsd.timeval;
+		tz			:bsd.timezone;
+		
+	begin today;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( edx );
+		
+		// Get the time in seconds since 1/1/1970:
+		
+		bsd.gettimeofday( LocalTime, tz );
+		
+		// Compute (approx) the number of days since then
+		// (This is in UTC time, don't forget):
+		
+		mov( LocalTime.tv_sec, eax );
+		xor( edx, edx );
+		div( 86400, edx:eax );	// 86400 secs/day.
+		
+		// Convert days since 1/1/1970 to a Julian Day number:
+		
+		add( Jan_1_1970, eax );
+		
+		// Convert the Julian day number to today's date:
+		
+		date.fromJulian( eax, todaysDate );
+		
+		pop( edx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end today;
+
+	
+#elseif( @global:os.macOS )
+
+	#include( "mac.hhf" )
+	
+	
+	procedure date.today( var todaysDate:date.daterec ); @nodisplay; @noframe;
+	const
+		Jan_1_1970	:dword := $25_3d8c;
+		
+	var
+		LocalTime	:mac.timeval;
+		tz			:mac.timezone;
+		
+	begin today;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( edx );
+		
+		// Get the time in seconds since 1/1/1970:
+		
+		mac.gettimeofday( LocalTime, tz );
+		
+		// Compute (approx) the number of days since then
+		// (This is in UTC time, don't forget):
+		
+		mov( LocalTime.tv_sec, eax );
+		xor( edx, edx );
+		div( 86400, edx:eax );	// 86400 secs/day.
+		
+		// Convert days since 1/1/1970 to a Julian Day number:
+		
+		add( Jan_1_1970, eax );
+		
+		// Convert the Julian day number to today's date:
+		
+		date.fromJulian( eax, todaysDate );
+		
+		pop( edx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+						
+	end today;
+
+	
+#endif
+	
+end DateTime;			

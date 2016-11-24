@@ -1,0 +1,12 @@
+ch_isgraphic.o
+ch_isascii.o
+ch_isspace.o
+ch_isalphanum.o
+ch_isxdigit.o
+ch_isdigit.o
+ch_toupper.o
+ch_isctrl.o
+ch_isupper.o
+ch_tolower.o
+ch_isalpha.o
+ch_islower.o

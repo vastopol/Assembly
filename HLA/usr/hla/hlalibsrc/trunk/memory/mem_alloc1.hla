@@ -1,0 +1,394 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit memory;
+
+#includeonce( "os.hhf" )
+#includeonce( "../include/mem.hhf" )
+
+
+// malloc:
+
+
+static
+	align( 4 );
+	listHead	:dword := NULL;
+	listEnd		:dword := NULL;
+	freeList	:dword := NULL;
+
+
+#includeonce( "os.hhf" )
+#includeonce( "../include/mem.hhf" )
+
+
+#macro hla_mem_alloc;
+	
+	// extendFree - Allocates a new free block
+	// and returns a pointer to the block in EAX.
+
+	procedure extendFree; @nodisplay; @noframe;
+	begin extendFree;
+
+		// We're going to need to extend the data segment to extend the heap.  
+		// We'll initialize the heap to 64K+size+@size(memblock).  
+		//
+		//	algorithm:
+		//
+		//	If the desired size (plus meta-data) is greater than
+		// the allocation chunk size, then allocate the requested
+		// size rounded up to the next page size.  Else allocate
+		// an allocChunk sized block.
+		
+		mov( ebp::size, eax );
+		cmp( eax, allocChunk );
+		jnbe roundUpToNextBoundary;
+		
+			mov( allocChunk, eax );
+			jmp haveRoundedSize;
+			
+		roundUpToNextBoundary:
+		
+			add( allocChunk + 65535, eax );	// Round up to the next
+			and( $FFFF_0000, eax );			//  64K boundary.
+			
+		haveRoundedSize:
+		push( eax );						// Save actual block length.
+		blockAlloc( eax );					// Allocate the block via the OS.
+				
+		// Okay, initialize the new block as one free block:
+		
+		mov( NULL, ebx );
+		mov( ebx, memblkEAX.next );
+		mov( ebx, memblkEAX.prev );
+		mov( ebx, memblkEAX.nextInList );
+		mov( ebx, memblkEAX.prevInList );
+		mov( ebx, memblkEAX.refCount );
+		pop( ebx );							// Retrieve length saved earlier.
+		mov( ebx, memblkEAX.size );
+		
+		// This is the last block, so link it in as
+		// the listEnd block.
+		
+		mov( listEnd, ebx );
+		test( ebx, ebx );
+		jz noExistingLastBlock;
+		
+			mov( eax, memblkEBX.next );
+			mov( ebx, memblkEAX.prev );
+			
+		noExistingLastBlock:
+		mov( eax, listEnd );
+		ret();
+
+	end extendFree;
+
+
+	begin alloc1;
+	
+		push( ebp );
+		mov( esp, ebp );
+		push( ebx );
+		push( ecx );
+		
+		// First of all, round up the request to the nearest block
+		// of 8 bytes (also includes overhead bytes for the
+		// memblock data structure):
+		
+		mov( size, eax );
+		cmp( eax, 1024*1024*1024 );		// Allow a max allocation of 1GB
+		ja MemoryAllocationFailure;
+		
+		add( @size( memblock ) + 7, eax );
+		and( $FFFF_FFF8, eax );
+		mov( eax, size );
+
+		// If the free list is empty, we're going to have to allocate
+		// some more storage from main memory for the heap.  Note that
+		// freeList *will* contain NULL on the first call to malloc.
+		
+		cmp( freeList, NULL );
+		jne freeListNotEmpty;
+		
+			// Create a brand-new free list block on the heap:
+			
+			extendFree();
+
+			// Make the new block we just created the free list.
+			
+			mov( eax, freeList );
+			
+			// On the first allocation, set up a pointer to the
+			// very first block of the heap.
+			
+			cmp( listHead, NULL );
+			jne freeListNotEmpty;
+			
+				mov( eax, listHead );
+				
+		freeListNotEmpty:
+			
+		// If a free list exists, we have to search through
+		// it to see if there is a free block large enough
+		// for the current request.  This allocator uses
+		// a "first-fit" algorithm which has fairly good
+		// characteristics.
+		
+		mov( freeList, ebx );	// We know freeList is non-NULL here.
+
+		// The following will execute at least once
+		// (how else could we get here?).
+		
+		mov( size, eax );
+		findLargeEnoughBlock:
+		
+			test( ebx, ebx );
+			je noBlockLargeEnough;
+			
+			// Is this block large enough (including space
+			// for malloc overhead)?
+
+			cmp( eax, memblkEBX.size );
+			jbe foundLargeEnoughBlock;
+
+			// If not, move on to the next free block in the
+			// free list.
+			
+			mov( memblkEBX.nextInList, ebx );
+			jmp findLargeEnoughBlock;
+			
+		noBlockLargeEnough:
+			
+			// If we drop down here, then we've scanned the
+			// whole free list and couldn't find a block large
+			// enough (i.e., EBX is NULL).  So we've got to 
+			// allocate more storage from the system.
+
+			extendFree();
+			
+			// Link the new block to the beginning of
+			// the free list.
+			
+			mov( freeList, ebx );
+			mov( ebx, memblkEAX.nextInList );
+			mov( eax, memblkEBX.prevInList );
+			mov( eax, freeList );
+			mov( eax, ebx );	// Ptr to free blk must be in ebx.
+
+		foundLargeEnoughBlock:
+
+		
+		// When we get down here, EBX points at a block of storage
+		// that is large enough to handle the allocation request.
+		// Carve the data off the *end* of this block so that we
+		// might be able to get away without updating free list ptrs
+		// (this also reduces search time through the free list since
+		// the largest block tends to remain at the head of the list).
+		//
+		//	Note: if the allocation request is only about 
+		// @size(memblock)*2 + 8 bytes smaller than the size of the
+		// free block, just go ahead an allocate the entire block.
+		// (Remember that size already contains @size(memblock) factored
+		// into it.)
+		
+		mov( size, eax );
+		add( @size(memblock)+8, eax );	// Size already includes @size(memblock)*1
+		cmp( eax, memblkEBX.size );
+		jnae splitBlock;
+		
+			// Just allocate the whole block.
+			// The only real work to be done here is to remove
+			// the block from the free list.
+			
+			mov( memblkEBX.size, eax );
+			mov( eax, size );			// Size of block we're allocating.
+			
+			mov( memblkEBX.prevInList, ecx );
+			mov( memblkEBX.nextInList, eax );
+			test( eax, eax );
+			jz noNextBlock;
+			
+				mov( ecx, memblkEAX.prevInList );
+				
+			noNextBlock:
+			test( ecx, ecx );
+			jz noPrevBlock;
+			
+				mov( eax, memblkECX.nextInList );
+				jmp didPrevBlock;
+				
+			noPrevBlock:
+			
+				// If the prevInList pointer was NULL, then
+				// the next free block becomes the head of
+				// the free list.
+				
+				assert( ebx = freeList );
+				mov( eax, freeList );
+				
+			didPrevBlock:
+			
+			// Return pointer to allocated block in EAX.  Note that
+			// the pointer must be the address of the first byte
+			// beyond the memblock structure:
+			
+			lea( eax, [ebx+@size(memblock)] );
+			
+			// Set the reference counter to one:
+			
+			mov( 1, memblkEBX.refCount );
+			jmp allocDone;
+			
+			
+			
+		splitBlock:
+		
+			// Carve off the allocation from the end of the block.
+			// Note that EAX still contains the size of the block
+			// we need to allocate (including meta-data) plus
+			// an extra few bytes for two additional copies of the meta-data.
+			
+			mov( size, eax );		
+			mov( ebx, ecx );					// Carve off the block
+			add( memblkEBX.size, ecx );			// Point at end of block.
+			sub( eax, ecx );					// Pointer to start of new block.
+			sub( eax, memblkEBX.size );			// Fix size of remainder block.
+			
+			// If EBX is the last block on the heap, we've
+			// got to change listEnd to point at our new
+			// block (since it's at the end).
+			
+			cmp( ebx, listEnd );
+			jne notListEnd;
+			
+				mov( ecx, listEnd );
+				
+			notListEnd:
+			
+			// Adjust all the pointers between the two blocks.
+			
+			mov( memblkEBX.next, eax );
+			mov( eax, memblkECX.next );
+			mov( ebx, memblkECX.prev );
+			mov( ecx, memblkEBX.next );
+			test( eax, eax );
+			je is1stBlk;
+			
+				mov( ecx, memblkEAX.prev );
+				
+			is1stBlk:
+
+			// The following two instrs aren't really necessary,
+			// but it helps keep the system consistent, by ensuring
+			// these pointers are misinterpreted as valid data.
+			
+			mov( NULL, memblkECX.nextInList );
+			mov( NULL, memblkECX.prevInList );
+					
+			// Return a pointer to the allocated block in EAX.
+			// (See the comment above.)
+			
+			lea( eax, [ecx+@size(memblock)] );
+			
+			// Set the reference counter to one:
+			
+			mov( 1, memblkECX.refCount );
+
+		allocDone:
+		 
+		mov( size, ebx );
+		mov( ebx, (type memblock [eax-@size(memblock)]).size );
+	
+#endmacro
+
+
+#if( @thread )
+
+	procedure _hla.alloc1( size:dword ); 
+		@nodisplay; 
+		@noframe;
+	const
+		
+	
+		hla_mem_alloc
+		clc();
+		pop( ecx );		
+		pop( ebx );
+		pop( ebp );
+		ret( _parms_ );
+		
+		MemoryAllocationFailure:
+		
+			pop( ecx );
+			pop( ebx );
+			pop( ebp );
+			stc();
+			ret( _parms_ );
+	
+	end alloc1;
+	
+	
+	
+	
+	procedure mem.alloc1( size:dword ); 
+		@nodisplay; 
+		@noframe;
+		
+	begin alloc1;
+	
+	
+		_hla.memCSenter();
+		_hla.alloc1( (type dword [esp+4]) );
+		jc MemoryAllocationFailure;
+		_hla.memCSleave();
+		ret( _parms_ );
+		
+		MemoryAllocationFailure:
+			_hla.memCSleave();
+			raise( ex.MemoryAllocationFailure );
+		
+	
+	end alloc1;
+		
+	
+	
+#else	// !@thread
+
+	procedure mem.alloc1( size:dword ); 
+		@nodisplay; 
+		@noframe;
+	const		
+	
+		hla_mem_alloc
+		pop( ecx );		
+		pop( ebx );
+		pop( ebp );
+		ret( _parms_ );
+		
+		MemoryAllocationFailure:
+			raise( ex.MemoryAllocationFailure );
+	
+	end alloc1;
+	
+#endif
+	
+
+
+
+end memory;
+
+
+
+
+	
+

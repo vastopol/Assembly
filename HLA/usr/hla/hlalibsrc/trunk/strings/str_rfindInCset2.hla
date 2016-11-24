@@ -1,0 +1,91 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+/*****************************************************************/
+/*                                                               */
+/* findInCset2,                                                  */
+/* findInCset3,                                                  */
+/* rfindInCset2,                                                 */
+/* rfindInCset3 -                                                */
+/* 		Complementary to the skipInCset2, skipInCset3,           */
+/* 		rskipInCset2, and rskipInCset3 routines, respectively.   */
+/* 		These routines skip over characters in a string that     */
+/* 		are *not* members of a set rather than skipping          */
+/* 		characters that are members.                             */
+/*                                                               */
+/*****************************************************************/
+
+
+procedure str.rfindInCset2( src1: string; src2:cset ); @noframe;
+begin rfindInCset2;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ecx );
+	push( edi );
+	
+	mov( src1, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+	// If the starting index is beyond the end of the string,
+	// raise an exception.
+	 
+	mov( (type str.strRec [edi]).length, ecx );
+	test( ecx, ecx );
+	jz noMatch;
+	
+		// Compute the starting position to scan in the string.
+			
+		xor( eax, eax );			// Zero out H.O. three bytes of char-index.
+		whileNotAtStartOfStr:		// Repeat until we run of the start of the str.
+		
+			mov( [edi+ecx], al );			// Get the next char in string.
+			bt( eax, (type dword src2) );	// See if a member of the set.
+			jc ExitWhlLoop;					// Exit loop if it is.
+			sub( 1, ecx );					// Move to previous character.
+			jns whileNotAtStartOfStr;
+		
+	noMatch:
+		or( -1, ecx );		// Return failure if the string length was zero.
+		
+	ExitWhlLoop:
+	
+	mov( ecx, eax );		//  and move index into EAX (string length if
+	pop( edi );				//  all chars are members of src2).
+	pop( ecx );
+	pop( ebp );
+	cmp( eax, -1 );		// Set carry on success, clear if no match.
+	ret( _parms_ );	
+		 
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end rfindInCset2;
+
+
+end stringUnit;
+
+
+
+
+	
+

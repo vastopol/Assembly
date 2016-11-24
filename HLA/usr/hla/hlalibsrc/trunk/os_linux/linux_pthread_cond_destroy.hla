@@ -1,0 +1,51 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit linuxUnit;
+#include( "linux.hhf" )
+
+procedure _destroy( cond:dword );
+	@cdecl;
+	@external( "pthread_cond_destroy" );
+	
+// linux.pthread_cond_destroy- Deallocates a pthread_cond_t object.
+
+procedure linux.pthread_cond_destroy
+( 
+	var cond	:linux.pthread_cond_t 
+);
+	@nodisplay; @noframe;
+var
+	ebxSave	:dword;
+	ecxSave	:dword;
+	edxSave	:dword;
+	esiSave	:dword;
+	ediSave	:dword;
+	
+begin pthread_cond_destroy;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	linux.saveregs;
+
+	_destroy( (type dword cond) );
+
+	linux.restoreregs;
+	leave();
+	ret( _parms_ );
+	
+end pthread_cond_destroy;
+
+end linuxUnit;

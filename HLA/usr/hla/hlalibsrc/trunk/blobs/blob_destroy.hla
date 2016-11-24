@@ -1,0 +1,75 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" )
+#include( "memory.hhf" )
+#include( "excepts.hhf" )
+#include( "threads.hhf" )
+
+// blob.destroy:
+//
+//	If threaded code, deletes the criticalSection variable.
+//	If storage allocated with blob.alloc/allocAligned, frees the storage.
+
+
+
+
+procedure blob.destroy( theBlob:blob.blob ); 
+	@nodisplay;
+	@noframe;
+begin destroy;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	mov( theBlob, eax );
+	test( eax, eax );
+	jz AttemptToFreeNULL;
+	
+	cmp( (type blob.blobRec[eax]).allocPtr, NULL );
+	jz NotAllocated;
+	
+		// Allocated on heap, let blob.free do all the work:
+		
+		blob.free( theBlob );
+		jmp allDone;
+		
+	NotAllocated:
+		cmp( (type blob.blobRec[eax]).criticalSection, 0 );
+		jz allDone; 
+	
+		thread.deleteCriticalSection( (type blob.blobRec[eax]).criticalSection );
+	
+	allDone:
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+AttemptToFreeNULL:
+	raise( ex.AttemptToFreeNULL );
+
+	
+end destroy;
+	
+end blobUnit;
+
+
+
+
+	
+

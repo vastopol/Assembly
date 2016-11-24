@@ -1,0 +1,142 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+
+#include( "../include/fileiounit.hhf" )
+
+
+/****************************************************/
+/*                                                  */
+/* OpenNew-                                         */
+/*                                                  */
+/* Opens a new file (deleting a file, if it already */
+/* exists) for writing.  Returns a file handle in   */
+/* EAX.  Raises an exception if the file cannot     */
+/* be opened.                                       */
+/*                                                  */
+/****************************************************/
+
+#if( os.linux )
+
+	procedure fileio.openNew( FileName:string ); @nodisplay; @noframe;
+	begin openNew;
+
+		push( ebp );
+		mov( esp, ebp );
+		linux.open
+		( 
+			FileName, 
+			linux.o_rdwr | linux.o_creat | linux.o_trunc, 
+			linux.usr_r | linux.usr_w 
+		);
+		cmp( eax, -1 );
+		je FileOpenFailure;
+		pop( ebp );
+		ret( _parms_ );
+		
+	FileOpenFailure:
+		raise( ex.FileOpenFailure );
+			
+	end openNew;
+
+#elseif( os.freeBSD )
+
+	procedure fileio.openNew( FileName:string ); @nodisplay; @noframe;
+	begin openNew;
+
+		push( ebp );
+		mov( esp, ebp );
+		bsd.open3
+		( 
+			FileName, 
+			bsd.O_RDWR | bsd.O_CREAT | bsd.O_TRUNC, 
+			bsd.S_IRUSR | bsd.S_IWUSR 
+		);
+		jc FileOpenFailure;
+		pop( ebp );
+		ret( _parms_ );
+		
+	FileOpenFailure:
+		raise( ex.FileOpenFailure );
+			
+	end openNew;
+
+#elseif( os.macOS )
+
+	procedure fileio.openNew( FileName:string ); @nodisplay; @noframe;
+	begin openNew;
+
+		push( ebp );
+		mov( esp, ebp );
+		mac.open3
+		( 
+			FileName, 
+			mac.O_RDWR | mac.O_CREAT | mac.O_TRUNC, 
+			mac.S_IRUSR | mac.S_IWUSR 
+		);
+		jc FileOpenFailure;
+		pop( ebp );
+		ret( _parms_ );
+		
+	FileOpenFailure:
+		raise( ex.FileOpenFailure );
+			
+	end openNew;
+
+#elseif( os.win32 )
+
+	procedure fileio.openNew( FileName:string ); @nodisplay; @noframe;
+	begin openNew;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( ecx );
+		push( edx );
+		pushfd();
+		cld();
+		
+		CreateFile
+		( 
+			0, 
+			0, 
+			win.CREATE_ALWAYS,
+			0, 
+			0, 
+			win.GENERIC_READ | win.GENERIC_WRITE, 
+			FileName
+		);
+		cmp( eax, win.INVALID_HANDLE_VALUE );
+		je FileOpenFailure;
+
+		popfd();
+		pop( edx );
+		pop( ecx );
+		pop( ebp );
+		ret( _parms_ );
+		
+	FileOpenFailure:	
+		raise( ex.FileOpenFailure );
+		
+	end openNew;
+	
+#else
+
+	#print( "Unknown OS!" )
+		
+#endif
+	
+end FileIOUnit;
+

@@ -1,0 +1,107 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+#if( !@defined( conversions_hhf ))
+?conversions_hhf := true;
+
+
+	#includeOnce( "_hla.hhf" )
+
+	#macro NextChar: repeatUntilNot_;
+
+		repeatUntilNot_:
+		
+			movzx( (type byte [esi+1]), eax );
+			add( 1, esi );
+			cmp( eax, '_' );
+			je repeatUntilNot_;
+		
+	#endmacro;
+
+
+	#macro CurChar: repeatUntilNot_;
+
+		sub( 1, esi );
+		repeatUntilNot_:
+		
+			movzx( (type byte [esi+1]), eax );
+			add( 1, esi );
+			cmp( eax, '_' );
+			je repeatUntilNot_
+		
+	#endmacro;
+
+
+	procedure _atoh;		@global:_hla._ext( "CONV__ATOH" ); 
+	procedure _atoi32; 		@global:_hla._ext( "CONV__ATOI32" );
+	procedure _atoi64; 		@global:_hla._ext( "CONV__ATOI64" );
+	procedure _atoi128; 	@global:_hla._ext( "CONV__ATOI128" );
+	procedure _atou32; 		@global:_hla._ext( "CONV__ATOU32" );
+	procedure _atou64; 		@global:_hla._ext( "CONV__ATOU64" );
+	procedure _atou128; 	@global:_hla._ext( "CONV__ATOU128" );
+	procedure _utoEng; 		@global:_hla._ext( "CONV__UTOENG" );
+	procedure _utoEngth; 	@global:_hla._ext( "CONV__UTOENGTH" );
+	procedure FPDigits; 	@global:_hla._ext( "CONV_FPDIGITS" );
+	procedure Output_; 		@global:_hla._ext( "CONV_OUTPUT_" );
+
+static
+	LessThan20			:string[20]; 	@global:_hla._ext( "CONV_LESSTHAN20" );
+	LessThan20th		:string[20]; 	@global:_hla._ext( "CONV_LESSTHAN20TH" );
+	Tens 				:string[10]; 	@global:_hla._ext( "CONV_TENS" );
+	Tenths				:string[10]; 	@global:_hla._ext( "CONV_TENTHS" );
+
+
+
+#if( !@thread )
+
+	namespace conv;
+
+		static
+			Delimiters			:cset;		@global:_hla._ext( "CONV_DELIMITERS" );
+			OutputUnderscores	:boolean;	@global:_hla._ext( "CONV_OUTPUTUNDERSCORES" );
+			
+			
+	end conv;
+
+#endif
+		
+
+namespace _hla;
+
+			
+	// Conv module related accessor functions	
+			
+	procedure get_Delimiters;	
+		@returns( "eax" );	
+		_ext( "HLA_GET_DELIMITERS" );
+				
+				
+	procedure get_OutputUnderscores;	
+		@returns( "al" );	
+		_ext( "HLA_GET_OUTPUTUNDERSCORES" );
+				
+				
+	procedure test_OutputUnderscores;	
+		@returns( "@z" );	
+		_ext( "HLA_TEST_OUTPUTUNDERSCORES" );
+				
+				
+	procedure set_OutputUnderscores( ou:boolean );	
+		_ext( "HLA_SET_OUTPUTUNDERSCORES" );
+			
+		
+	
+end _hla;
+
+#endif

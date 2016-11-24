@@ -1,0 +1,127 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit memory;
+
+
+#include( "strings.hhf" )
+#include( "../include/mem.hhf" )
+
+// mem.getref:
+//
+//	Returns the reference counter value for
+// a particular block of memory on the heap.
+
+
+procedure mem.getref( memptr:dword ); 
+	@nodisplay;
+	@noframe;
+begin getref;
+
+	push( ebp );
+	mov( esp, ebp );
+	#if( @thread )
+	
+		_hla.memCSenter();
+		
+	#endif
+	
+	
+	// First, make sure that this is a valid memory
+	// block:
+	
+	mov( memptr, eax );
+	test( eax, eax );
+	jz AttemptToDerefNULL;
+	
+	// Can't call "mem.isInHeap" here because we want to
+	// return zero if the block has been deallocated.
+	
+	push( ebx );
+	push( ecx );
+	push( edx );
+	mov( listHead, ebx );
+	mov( memptr, edx );
+	mov( 0, eax );
+	WhileNotEndOfList:
+	
+		// If we didn't find the block on the heap, raise
+		// an exception.
+	
+		test( ebx, ebx );
+		jz PointerNotInHeap;
+	
+		mov( (type memblock [ebx]).size, ecx );
+		add( @size( memblock ), ebx );
+		add( ebx, ecx );
+		cmp( edx, ebx );
+		jb nextBlock;
+		cmp( edx, ecx );
+		jb allDone;
+		
+		nextBlock:
+		
+			// Move on to the next block:
+			
+			mov( (type memblock [ebx-@size( memblock )]).next, ebx );
+			jmp WhileNotEndOfList;
+		
+	allDone:
+		
+	// Pointer is within the current block,
+	// So grab the reference counter value
+	// and return that (even if this is a
+	// free block and the reference counter is zero).
+	
+	mov( (type memblock [ebx-@size( memblock )]).refCount, eax );
+
+	#if( @thread )
+	
+		_hla.memCSleave();
+		
+	#endif
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( ebp );
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	#if( @thread )
+	
+		_hla.memCSleave();
+		
+	#endif
+	raise( ex.AttemptToDerefNULL );
+
+PointerNotInHeap:
+	#if( @thread )
+	
+		_hla.memCSleave();
+		
+	#endif
+	raise( ex.PointerNotInHeap );		
+
+end getref;
+
+
+
+
+end memory;
+
+
+
+
+	
+

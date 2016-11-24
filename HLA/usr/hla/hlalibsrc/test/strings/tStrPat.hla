@@ -1,0 +1,259 @@
+program strpat_test;
+#include( "stdlib.hhf" )
+
+	
+type
+	experiment:
+		record
+			src		:string;
+			rem		:string;
+			mat		:string;
+			boolres	:boolean;
+			align(4);
+		endrecord;
+	
+const	
+	exPat	:= $8000;
+	exRem	:= $8001;
+	exRem2	:= $8002;
+	exMat	:= $8003;
+	 
+	exESI	:text := "(type experiment [esi])";
+
+	oneCsetExperiment_c	
+		:experiment[] :=
+			[
+				experiment:[ "abcdefg", "bcdefg", "a", true ],
+				experiment:[ "abcdefg0123456", "bcdefg0123456", "a", true ],
+				experiment:[ "abcdefgABCDEFG", "bcdefgABCDEFG", "a", true ],
+				experiment:[ "abcdefgABCDEFG0123456", "bcdefgABCDEFG0123456", "a", true ],
+				experiment:[ "a0123456", "0123456", "a", true ],
+				experiment:[ "0123456abcdefg", "0123456abcdefg", "", false ],
+				experiment:[ "", "", "", false ],
+				experiment:[ "a", "", "a", true ],
+				experiment:[ "0", "0", "", false ],
+				experiment:[ " ", " ", "", false ]
+			];
+		
+static
+	index	:dword;
+	offset	:dword;
+	rslt	:boolean;
+	
+	cst		:cset := { 'a'..'z', 'A'..'Z' };
+	rem		:str.strvar( 256 );
+	mat 	:str.strvar( 256 );
+	
+	oneCsetExperiment : 
+		experiment[ @elements( oneCsetExperiment_c )] := oneCsetExperiment_c;	
+	
+
+#macro init;
+	str.cpy( "", rem );
+	str.cpy( "", mat );
+#endmacro
+	
+#macro checkFailure( exp );
+	mov( al, rslt );
+	mov( edx, offset );
+	mov( ecx, index );
+	if( al <> exp.boolres[edx] ) then
+		raise( exPat );
+	endif
+#endmacro
+
+#macro checkRemFailure( exp );
+	if( al <> exp.boolres[edx] ) then
+		raise( exPat );
+	endif;
+	if( al ) then
+	
+		if( str.ne( exp.rem[edx], rem )) then
+			raise( exRem );
+		endif;
+		
+	endif;
+#endmacro
+
+#macro checkMatFailure( exp );
+	if( al <> exp.boolres[edx] ) then
+		raise( exPat );
+	endif;
+	if( al ) then
+	
+		if( str.ne( exp.rem[edx], rem )) then
+			raise( exRem2 );
+		endif;
+		if( str.ne( exp.mat[edx], mat )) then
+			raise( exMat );
+		endif;
+		
+	endif;
+#endmacro
+
+begin strpat_test;
+
+#if( false )
+
+// These tests still need to be written!
+// Note that the existing code does not work as the semantics
+// of str.oneCset have changed.
+
+	try
+	
+		lea( esi, oneCsetExperiment );
+		for( mov( 0, ecx ); ecx < @elements( oneCsetExperiment ); inc( ecx )) do
+		
+			intmul(@size( experiment ), ecx, edx );
+			
+			init;		 
+			str.oneCset( exESI.src[edx], cst );
+			checkFailure( exESI );
+			
+			init;		 
+			str.oneCset2( exESI.src[edx], cst );
+			checkFailure( exESI );
+			
+			
+			
+			init;		 
+			str.oneCset( exESI.src[edx], cst, rem );
+			checkRemFailure( exESI );
+			 
+			init;		 
+			str.oneCset3( exESI.src[edx], cst, rem );
+			checkRemFailure( exESI );
+			
+			str.cpy( exESI.src[edx], rem );
+			str.oneCset3( rem, cst, rem );
+			checkRemFailure( exESI );
+		
+			 
+			
+			init;		 
+			str.oneCset( exESI.src[edx], cst, rem, mat );
+			checkMatFailure( exESI ); 
+			
+			init;		 
+			str.oneCset4( exESI.src[edx], cst, rem, mat );
+			checkMatFailure( exESI ); 
+
+			init;
+			str.cpy( exESI.src[edx], rem );
+			str.oneCset4( rem, cst, rem, mat );
+			checkMatFailure( exESI );
+
+			init;
+			str.cpy( exESI.src[edx], mat );
+			str.oneCset4( mat, cst, rem, mat );
+			checkMatFailure( exESI );
+			
+			
+		endfor;  
+		stderr.put( "str.oneCset succeeded!" nl );
+		os.exitProcess(0);
+		
+	  exception( exPat )
+	  
+	  	mov( index, ecx );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.oneCset2 result failure!  EAX=", eax, nl
+			"Result = ", rslt, nl
+			"index=", (type uns32 ecx), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( exRem )
+	  
+	  	mov( index, ecx );
+		mov( offset, edx );
+	  	mov( exESI.rem[edx], edi );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.oneCset3 result failure!  EAX=", eax, nl
+			"Result = ", rslt, nl
+			"index=", (type uns32 ecx), nl
+			"rem = '", rem, "'" nl,
+			"expected '", (type string edi), "'" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( exRem )
+	  
+	  	mov( index, ecx );
+		mov( offset, edx );
+	  	mov( exESI.rem[edx], edi );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.oneCset4 result failure!  EAX=", eax, nl
+			"Result = ", rslt, nl
+			"index=", (type uns32 ecx), nl
+			"rem = '", rem, "'" nl,
+			"expected '", (type string edi), "'" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( exMat )
+	  
+	  	mov( index, ecx );
+		mov( offset, edx );
+	  	mov( exESI.mat[edx], edi );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.oneCset4 match failure!  EAX=", eax, nl,
+			"Result = ", rslt, nl
+			"index=", (type uns32 ecx), nl
+			"rem = '", rem, "'" nl,
+			"expected '", (type string edi), "'" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	  anyexception
+	  
+	  	mov( index, ecx );
+		mov( offset, edx );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.oneCset unknown failure!  EAX=", eax, nl,
+			"index=", (type uns32 ecx), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+#endif
+	stdout.put( "strpat_test suceeded!" nl );
+	
+end strpat_test;
+
+													

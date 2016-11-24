@@ -1,0 +1,124 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+
+
+//  catbuf2( src1:buf_t; dest:string );
+//  catbuf3a( startBuf:dword; endBuf:dword; dest:string );
+//
+//  These two functions are the same. They are just different prototypes
+//  for the exact same code (the buf_t data type maps to the two dword
+//  arguments for catbuf3a).
+//
+//  This function concatenates the sequence of characters of length
+//  (endBuf-startBuf) starting at memory address startBuf to the
+//  end of the string dest. 
+
+
+ 
+procedure str.catbuf3a
+(
+	startBuf	:dword; 
+	endBuf		:dword;
+	dest		:string 
+); @noframe;
+var
+	saveEAX		:dword;
+	saveECX		:dword;
+	saveESI		:dword;
+	saveEDI		:dword;
+	
+begin catbuf3a;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	pushfd();
+	cld();
+	
+	mov( eax, saveEAX );
+	mov( ecx, saveECX );
+	mov( esi, saveESI );
+	mov( edi, saveEDI );
+	
+	// Sanity check for edi:
+	
+	mov( dest, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+
+	// Make sure that endBuf >= startBuf:
+	
+	mov( endBuf, ecx );
+	test( ecx, ecx );
+	jz AttemptToDerefNULL;
+	
+	mov( startBuf, esi );
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+	// Compute the new string length and make sure
+	// it will fit in dest:
+	
+	sub( esi, ecx );								// ECX = buffer length
+	mov( (type str.strRec [edi]).length, eax );		// dest length
+	add( eax, ecx );								// new string length
+	
+	cmp( ecx, (type str.strRec [edi]).maxlen );		// overflow?
+	ja StringOverflow;
+	
+	mov( ecx, (type str.strRec [edi]).length );		// Save as new length.
+	
+	// Compute index of concatenation point:
+	
+	add( eax, edi );	
+	
+	 
+	// Now copy the buffer to the end of the destination string:
+	
+	sub( eax, ecx );								// length of buffer
+	rep.movsb();
+	mov( 0, (type byte [edi]));
+	
+	mov( saveEAX, eax );
+	mov( saveECX, ecx );
+	mov( saveESI, esi );
+	mov( saveEDI, edi );
+	popfd();
+	leave();
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+StringOverflow:
+	raise( ex.StringOverflow );
+	
+end catbuf3a;
+
+end stringUnit;
+
+
+
+
+	
+

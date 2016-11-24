@@ -1,0 +1,148 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+	
+// This procedure is passed a Julian date and the address
+// of a daterec object.  It converts the Julian date to
+// a Gregorian date and stores the Gregorian date into
+// the reference parameter.
+
+procedure date.fromJulian( Julian:uns32; var Gregorian:date.daterec ); 
+	@nodisplay; 
+	@noframe;
+	
+var
+	esiSave	:dword;
+	ediSave	:dword;
+	edxSave	:dword;
+	ecxSave	:dword;
+	ebxSave	:dword;
+	eaxSave	:dword;
+	
+begin fromJulian;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( eax, eaxSave );
+	mov( ebx, ebxSave );
+	mov( ecx, ecxSave );
+	mov( edx, edxSave );
+	mov( edi, ediSave );
+	mov( esi, esiSave );
+	
+	
+	// Julian to Gregorian calculation is based on the
+	// following algorithm:
+	//
+	//  L = Julian + 68_569;
+	//	N = ( 4*L ) / 146_097;
+	//	L = L - ( 146_097 * N + 3 )/4;
+	//	K = ( 4000 * ( L + 1 ))/1_461_001;
+	//	L = L - ( 1461 * K )/4 + 31;
+	//	J = ( 80 * L )/2447;
+	//	day = L - (2447 * J )/80;
+	//	L = J/11;
+	//	month = J + 2 - (12 * L);
+	//	year = 100*( N - 49 ) + K + L;
+	
+	// ECX(L) = Julian + 68_569
+	
+	mov( Julian, ecx );
+	add( 68_569, ecx );
+	
+	// ESI(N) = (4*L)/146_097
+	
+	mov( ecx, eax );
+	shl( 2, eax );
+	xor( edx, edx );
+	div( 146_097, edx:eax );
+	mov( eax, esi );
+	
+	// ECX(L) = L - ( 146_097*N + 3)/4;
+	
+	intmul( 146_097, eax );
+	add( 3, eax );
+	shr( 2, eax );
+	sub( eax, ecx );
+	
+	// EBX(K) = ( 4000 * ( L + 1 ))/1_461_001
+	
+	mov( ecx, eax );
+	inc( eax );
+	mul( 4000, eax );			// Extends EDX as appropriate.
+	div( 1_461_001, edx:eax );
+	mov( eax, ebx );
+	
+	// ECX(L) = L - (1461 * K)/4 + 31;
+	
+	intmul( 1461, eax );
+	shr( 2, eax );
+	sub( eax, ecx );
+	add( 31, ecx );
+	
+	// EDI(J) = (80*L)/2447;
+	
+	intmul( 80, ecx, eax );
+	xor( edx, edx );
+	div( 2447, edx:eax );
+	mov( eax, edi );
+	
+	// day = L - (2447 * J )/80
+	
+	intmul( 2447, eax );
+	xor( edx, edx );
+	div( 80, edx:eax );
+	neg( eax );
+	add( ecx, eax );
+	mov( Gregorian, edx );
+	mov( al, (type date.daterec [edx]).day );
+	
+	// ECX(L) = J/11;
+	
+	mov( EDI, eax );
+	xor( edx, edx );
+	div( 11, edx:eax );
+	mov( eax, ecx );
+	
+	// month = J + 2 - (12 * L)
+	
+	intmul( 12, eax );
+	neg( eax );
+	add( edi, eax );
+	add( 2, eax );
+	mov( Gregorian, edi );
+	mov( al, (type date.daterec [edi]).month );
+	
+	//	year = 100*( N - 49 ) + K + L;
+	
+	sub( 49, esi );
+	intmul( 100, esi );
+	add( ebx, esi );
+	add( ecx, esi );
+	mov( si, (type date.daterec [edi]).year ); 
+	
+	mov( eaxSave, eax );
+	mov( ebxSave, ebx );
+	mov( ecxSave, ecx );
+	mov( edxSave, edx );
+	mov( ediSave, edi );
+	mov( esiSave, esi );
+	leave();
+	ret( _parms_ );
+					
+end fromJulian;
+	
+end DateTime;			

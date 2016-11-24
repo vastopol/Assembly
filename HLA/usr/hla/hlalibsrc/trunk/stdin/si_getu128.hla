@@ -1,0 +1,126 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit StdInput;
+#includeOnce( "../include/stdinunit.hhf" )
+#includeOnce( "../include/conversions.hhf" )
+
+/**********************************************************************************************/
+/*                                                                                            */
+/* getu128-                                                                                   */
+/*                                                                                            */
+/* This routine reads a 128-bit integer and returns the                                       */
+/* value in the specified destination location.                                               */
+/*                                                                                            */
+/* This routine will generate an appropriate exception                                        */
+/* if there is a conversion error, overflow, or other                                         */
+/* problem with reading the integer from the standard                                         */
+/* input device.                                                                              */
+/*                                                                                            */
+/* Note that this routine will skip over any leading                                          */
+/* delimiter characters (see the Delimiters cset in                                           */
+/* conv.hla).  Furthermore, the value must end with                                           */
+/* a valid delimiter character or an exception occurs.                                        */
+/*                                                                                            */
+/**********************************************************************************************/
+
+
+procedure getu128( var dest:lword ); 
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+	
+begin getu128;
+
+	push( ebp );
+	mov( esp, ebp );
+
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( edi );
+	push( esi );
+
+	// If the input buffer is empty, read a new line from the
+	// standard input device.
+	
+	if( NeedsInput = true ) then
+	
+		ReadLn();
+		
+	endif;
+
+	mov( _hla.get_Delimiters(), edx );
+	xor( eax, eax );
+	mov( InputIndex, ebx );
+	mov( CharsInBuf, ecx );
+	SkipDelimsLoop:
+	
+		mov( InputBuffer[ ebx ], al );
+		cmp( al, '_' );
+		je isDelim;
+		
+			bt( eax, (type dword [edx] ));	// Delimiters
+			jnc NoMoreDelims;
+			
+		isDelim:
+		inc( ebx );
+		cmp( ebx, ecx );
+		jb SkipDelimsLoop;
+		
+		// We are at the end of the line, so read a new line from the user.
+		
+		ReadLn();
+		mov( InputIndex, ebx );
+		mov( CharsInBuf, ecx );
+		jmp SkipDelimsLoop;
+		
+	NoMoreDelims:
+
+	// Point esi at the start of the text and call atoi to
+	// convert this text to an integer.
+	
+	lea( esi, InputBuffer[ebx] );		
+	_atou128();
+	mov( dest, edi );
+	mov( eax, [edi] );
+	mov( ebx, [edi+4] );
+	mov( ecx, [edi+8] );
+	mov( edx, [edi+12] );
+	
+	// Compute new InputIndex value.
+	
+	sub( &InputBuffer, esi );
+	mov( esi, InputIndex );
+
+	pop( esi );
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+
+end getu128;
+
+
+end StdInput;
+
+
+
+
+	
+

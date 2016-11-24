@@ -1,0 +1,259 @@
+unit wDragListBox_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+
+readonly		
+	align( 4 );
+	vmt( wDragListBox_t );
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//
+// Drag List Box objects.
+//
+
+
+// Constructor for the wDragListBox_t class:
+
+procedure wDragListBox_t.create_wDragListBox
+(
+	wlbName		:string;
+	parent		:dword; 									
+	x			:dword; 
+	y			:dword;
+	width		:dword;
+	height		:dword;
+	onClick		:widgetProc 
+);;
+	
+_begin( wDragListBox_t, create_wDragListBox );
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wDragListBox_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+
+	// We need to create a window that will hold this object.
+	// The temptation is to call the wListBox_t.create_ListBox
+	// procedure here, but we can't do that because we don't want
+	// to call the onCreate method for wListBox;  We have to wait
+	// until we've initialized the wDragListBox object completely
+	// before calling onCreate.
+
+	(type wClickable_t [esi]).create_wClickable
+	(
+		wlbName,
+		parent,									
+		x,		
+		y,		
+		width,	
+		height,	
+		onClick	  
+	);	
+	mov( cl, this.wBase_private.onHeap );
+	mov
+	(
+		w.WS_CHILD | w.WS_VISIBLE | w.WS_TABSTOP | w.WS_GROUP |
+			w.LBS_NOTIFY | w.LBS_STANDARD,
+		eax
+	);
+	w.CreateWindowEx
+	(
+		0,
+		"LISTBOX",							// Button class name
+		"list box",							// ListBox caption
+		eax,								// ListBox style
+		x,
+		y,
+		width,
+		height,
+		parent,
+		this.wBase_private.objectID,
+		howl.howlInstance,
+		NULL
+	);
+	mov( eax, this.handle );
+	w.SetWindowLong( eax, w.GWL_USERDATA, esi );
+	
+	// Turn this guy into a drag list box:
+	
+	if( !howl.hasDragListBox_g ) then
+	
+		// If this is the first wDragListBox creation, we
+		// must register a window message and save the message number.
+		
+		w.RegisterWindowMessage( w.DRAGLISTMSGSTRING );
+		mov( eax, howl.dragListBoxMsg_g );
+		mov( true, howl.hasDragListBox_g );
+		
+	endif;
+	w.MakeDragList( this.handle );
+	
+	// Initialize the type string field:
+		
+	howl.setType( wDragListBox_c );
+	
+	// Initialize the VMT pointer:
+	
+	mov( &wDragListBox_t._VMT_, this._pVMT_ );
+			   
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wDragListBox_t, create_wDragListBox );
+
+
+
+
+method wDragListBox_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);
+var
+	dropIndex	:dword;
+	itemData	:dword;
+	itemString	:string;
+	
+_begin( wDragListBox_t, processMessage );
+
+	mov( lParam, ebx );
+	mov((type w.DRAGLISTINFO [ebx]).uNotification, eax );
+	switch( eax )
+	
+		case( w.DL_BEGINDRAG )
+ 
+			// First, insert a dummy item at the end of the list box
+			// so we can move objects to the end of the list:
+			
+			this.insert_string( -1, "" );
+			
+			// Now determine where the cursor is pointing:
+			
+			w.LBItemFromPt
+			(
+				(type w.DRAGLISTINFO [ebx]).hWnd,
+				(type w.DRAGLISTINFO [ebx]).ptCursor,
+				true
+			);
+			mov( eax, this.wDragListBox_private.startDragIndex );
+			mov( true, eax );
+			
+		case( w.DL_CANCELDRAG )
+		
+			w.DrawInsert( this.wBase_private.parentHandle, this.handle, -1 );
+			
+			// We have to delete the extra item we added when
+			// we began the drag operation:
+			
+			this.get_count();
+			if( eax <> w.LB_ERR ) then
+			
+				dec( eax );		// Zero-based indexes!
+				this.delete_string( eax );
+				
+			endif;
+			mov( true, eax );
+			
+		case( w.DL_DRAGGING )
+		
+			w.LBItemFromPt
+			(
+				(type w.DRAGLISTINFO [ebx]).hWnd,
+				(type w.DRAGLISTINFO [ebx]).ptCursor,
+				true
+			);
+			if( eax <> -1 ) then
+			
+				w.DrawInsert( this.wBase_private.parentHandle, this.handle, eax );
+				mov( w.DL_MOVECURSOR, eax );
+				
+			else
+			
+				mov( w.DL_STOPCURSOR, eax );
+				
+			endif; 
+			
+		case( w.DL_DROPPED )
+		
+			w.LBItemFromPt
+			(
+				(type w.DRAGLISTINFO [ebx]).hWnd,
+				(type w.DRAGLISTINFO [ebx]).ptCursor,
+				true
+			);
+			mov( eax, dropIndex );
+			if( eax <> -1 ) then
+			
+				// Okay, begin by deleting the item at the starting index:
+				
+				this.get_itemData( this.wDragListBox_private.startDragIndex );
+				mov( eax, itemData ); 
+				this.a_get_text( this.wDragListBox_private.startDragIndex );
+				mov( eax, itemString );
+				this.delete_string( this.wDragListBox_private.startDragIndex );
+				mov( dropIndex, eax );
+				if( eax > this.wDragListBox_private.startDragIndex ) then
+				
+					dec( dropIndex );
+					
+				endif;
+				this.insert_string( dropIndex, itemString );
+				this.set_itemData( dropIndex, itemData );
+				str.free( itemString );
+				
+			
+				// We have to delete the extra item we added when
+				// we began the drag operation:
+				
+				this.get_count();
+				if( eax <> w.LB_ERR ) then
+				
+					dec( eax );		// Zero-based indexes!
+					this.delete_string( eax );
+					
+				endif;
+				
+				// Redraw the drag listbox:
+				
+				w.InvalidateRect( (type w.DRAGLISTINFO [ebx]).hWnd, NULL, true );
+				
+				
+			endif;
+			w.DrawInsert( this.wBase_private.parentHandle, this.handle, -1 );
+			this.set_curSel( dropIndex );
+			
+							
+		default
+			super.processMessage( hwnd, uMsg, wParam, lParam );
+			
+	endswitch;
+
+_end( wDragListBox_t, processMessage );
+
+
+end	wDragListBox_u;

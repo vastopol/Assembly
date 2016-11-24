@@ -1,0 +1,123 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "excepts.hhf" )
+
+	
+// addMins-
+//
+//	This procedure adds an arbitrary number of
+// minutes to a time. It returns the number of
+// overflow days in EAX.
+
+procedure time.addMins( minutes:uns32; var HMS:time.timerec ); 
+	@nodisplay; 
+	@noframe;
+begin addMins;
+
+		
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ebx );
+	push( edx );
+	
+	mov( HMS, ebx );
+	movzx( (type time.timerec [ebx]).mins, eax );
+	add( minutes, eax );
+	jc invalidTime;
+	
+	// If there are more than two hour's
+	// worth of minutes, then skip the
+	// optimized code.
+	
+	cmp( eax, 120 );
+	jae slowComputation;
+	
+		// If less than one hour of minutes,
+		// then we're done.
+		
+		cmp( eax, 60 );
+		jb fastComputation;
+
+			// More than an hour, but less than two hours:
+			
+			sub( 60, al );			
+			mov( (type time.timerec [ebx]).hours, dx );
+			add( 1, dx );
+			cmp( dx, 24 );
+			jb noOverflowDays;
+			
+				mov( al, (type time.timerec [ebx]).mins	);
+				sub( 24, dx );						
+				mov( dx, (type time.timerec [ebx]).hours );
+				mov( 1, eax );	// One overflow day.
+				pop( edx );
+				pop( ebx );
+				pop( ebp );
+				ret( _parms_ );
+			
+			noOverflowDays:
+			mov( dx, (type time.timerec [ebx]).hours );
+			
+		fastComputation:
+			mov( al, (type time.timerec [ebx]).mins	);
+			xor( eax, eax );	// No overflow days.
+			pop( edx );
+			pop( ebx );
+			pop( ebp );
+			ret( _parms_ );
+	
+	// Down here, we've got more than two hours. So compute everything
+	// to minutes, do the addition, and then convert the result back to
+	// a time.
+	
+	slowComputation:
+		
+		movzx( (type time.timerec [ebx]).hours, edx );
+		intmul( 60, edx );
+		add( edx, eax );
+		
+		// Convert time in minutes to time in HH:MM format:
+		
+		xor( edx, edx );
+		div( 60, edx:eax );
+		mov( dl, (type time.timerec [ebx]).mins );
+		mov( ax, (type time.timerec[ebx]).hours );
+		cmp( ax, 24 );
+		jb noOverflow;
+		
+			xor( edx, edx );
+			div( 24, edx:eax );
+			mov( dx, (type time.timerec[ebx]).hours );
+			pop( edx );
+			pop( ebx );
+			pop( ebp );
+			ret( _parms_ );
+		
+		noOverflow:
+		xor( eax, eax );	// No overflow days.
+		pop( edx );
+		pop( ebx );
+		pop( ebp );
+		ret( _parms_ );
+
+invalidTime:
+	raise( ex.InvalidTime );
+					
+end addMins;
+	
+end DateTime;			

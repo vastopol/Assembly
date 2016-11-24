@@ -1,0 +1,133 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ThreadUnit;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "../include/thread_private.hhf" )
+#includeOnce( "../include/osargs.hhf" )
+#includeOnce( "threads.hhf" )
+#includeOnce( "excepts.hhf" )
+
+
+#if( @thread )
+
+		
+		
+	procedure _hla.get_argc;
+	begin get_argc;
+
+		push( ecx );
+		push( edx );
+		#if( os.win32 )
+		
+			TlsGetValue( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			
+		#elseif( os.linux | os.freeBSD | os.macOS )
+		
+			pthread_getspecific( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			
+		#else
+		
+			#error( "Unknown OS!" )
+			
+		#endif
+		mov( (type _hla.stdlib_tls_t [eax]).cl_argc, eax );
+		pop( edx );
+		pop( ecx );
+		ret(); 
+		
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end get_argc;
+		
+	procedure _hla.set_argc( argc:uns32 );
+	begin set_argc;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( eax );
+		push( ecx );
+		push( edx );
+		#if( os.win32 )
+		
+			TlsGetValue( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			
+		#elseif( os.linux | os.freeBSD | os.macOS )
+		
+			pthread_getspecific( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			
+		#else
+		
+			#error( "Unknown OS!" )
+			
+		#endif
+		mov( argc, ecx );
+		mov( ecx, (type _hla.stdlib_tls_t [eax]).cl_argc );
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ );
+		
+	ThreadError:
+		raise( ex.ThreadError ); 
+				 
+	end set_argc;		
+
+
+
+#else
+		
+	procedure _hla.get_argc;
+	begin get_argc;
+
+		mov( arg._argc, eax );
+		ret();
+		
+	end get_argc;
+		
+	procedure _hla.set_argc( argc:uns32 );
+	begin set_argc;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( eax );
+		
+		mov( argc, eax );
+		mov( eax, arg._argc );
+		
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ );
+		 
+	end set_argc;
+		
+	
+
+#endif
+	
+
+
+end ThreadUnit;

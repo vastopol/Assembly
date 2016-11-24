@@ -1,0 +1,40 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit BsdUnit;
+#include( "bsd.hhf" )
+
+// munmap - Unmap a memory-mapped file.
+
+procedure bsd.munmap( addr:dword; len:bsd.size_t );
+	@nodisplay; @noframe;
+begin munmap;
+
+	push( ebp );
+	mov( esp, ebp );
+	bsd.pushregs;
+	mov( esp, eax );
+	push( len );
+	push( addr );
+	push( eax ); 		// Dummy Return/stack cleanup
+	mov( bsd.sys_munmap, eax );
+	int( $80 );
+	pop( esp );			// Clean parms w/o affecting CF.
+	bsd.popregs;
+	pop( ebp );
+	ret( _parms_ );	
+	
+end munmap;
+
+end BsdUnit;

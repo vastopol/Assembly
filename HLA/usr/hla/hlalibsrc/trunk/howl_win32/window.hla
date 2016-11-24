@@ -1,0 +1,349 @@
+unit window_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( window_t );
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// window_t objects:
+
+
+procedure window_t.create_window
+(
+	wwName		:string;
+	caption		:string;
+	exStyle		:dword;
+	style		:dword; 
+	parent		:dword; 									
+	x			:dword; 
+	y			:dword;
+	width		:dword;
+	height		:dword;
+	bkgColor	:dword;
+	visible		:boolean 
+);;
+	
+_begin( window_t, create_window );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( window_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	(type wContainer_t [esi]).create_wContainer
+	(
+		wwName,
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height
+	);
+	mov( cl, this.wBase_private.onHeap );
+	howl.setType( window_c );
+	mov( &window_t._VMT_, this._pVMT_ );
+	
+	mov( style, eax );
+	mov( eax, this.wVisual_private.style );
+	mov( exStyle, eax );
+	mov( eax, this.wVisual_private.exStyle );
+	
+	mov( caption, eax );
+	if( eax <> NULL ) then
+	
+		str.a_cpy( caption );
+		
+	endif;
+	mov( eax, this.window_private.caption );
+	
+	
+	// Create the window:
+	
+	w.CreateWindowEx
+	( 
+		exStyle, 
+		howl.Window_t_ClassName, 
+		this.window_private.caption, 
+		style,
+		x,
+		y,
+		width,
+		height,
+		parent,
+		NULL,
+		howl.howlInstance,
+		NULL
+	);
+	mov( eax, this.handle );
+	w.SetWindowLong( eax, w.GWL_USERDATA, esi );
+	
+	mov( NULL, this.window_private.onPaint );
+	this.set_bkgColor( bkgColor );
+	
+	if( visible ) then
+	
+		w.ShowWindow( this.handle, w.SW_SHOWNORMAL );
+		w.UpdateWindow( this.handle );
+		
+	else
+		
+		w.ShowWindow( this.handle, w.SW_HIDE );
+
+	endif;
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );	
+	
+
+_end( window_t, create_window );
+
+
+// destroy-
+//
+//	Deallocates storage for the window and all the windows on
+// the widgets on the window.
+
+method window_t.destroy;;
+_begin( window_t, destroy );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.DestroyWindow( this.handle );
+	if( mem.isInHeap( this.window_private.caption ) ) then
+	
+		str.free( this.window_private.caption );
+		
+	endif;
+	
+	// Delete the container objects and the storage
+	// associated with this window_t object:
+	
+	super.destroy();
+		
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( window_t, destroy );
+
+
+
+
+
+// Empty onCreate and onClose methods for these guys
+// (overridden by descendant classes).
+
+method window_t.onCreate;;
+_begin( window_t, onCreate );
+_end( window_t, onCreate );
+
+method window_t.onClose;;
+_begin( window_t, onClose );
+_end( window_t, onClose );
+
+
+
+// Retrieve the onPaint pointer for the window.
+
+method window_t.get_onPaint;;
+_begin( window_t, get_onPaint );
+
+	mov( this.window_private.onPaint, eax );
+	
+_end( window_t, get_onPaint );
+
+
+// Retrieve the window title (caption):
+
+
+method window_t.get_caption;;
+_begin( window_t, get_caption );
+
+	mov( this.window_private.caption, eax );
+	
+_end( window_t, get_caption );
+
+method window_t.a_get_caption;;
+_begin( window_t, a_get_caption );
+
+	str.a_cpy( this.window_private.caption );
+	
+_end( window_t, a_get_caption );
+
+
+
+
+// Set the onPaint pointer for the window.
+
+method window_t.set_onPaint( onPaint:widgetProc );;
+_begin( window_t, set_onPaint );
+
+	mov( onPaint, eax );
+	mov( eax, this.window_private.onPaint ) ;
+	
+_end( window_t, set_onPaint );
+
+
+
+
+
+
+
+
+
+// Generic window_t processMessage method.
+//
+//	Handles the following messages:
+//
+//	w.WM_ERASEBKGND:
+//		Draws the background of a window.
+//
+//	w.WM_NOTIFY:
+//		Invokes the particular notification handler for the underlying object.
+//
+//	DragListBox messages-
+//		Invokes the particular notification handler for the underlying object.
+//
+//	w.WM_COMMAND-
+//		Invokes the particular notification handler for the underlying object.
+//
+//	Any Other Message-
+//		Calls the default message handler for the wContainer_t class (which
+//		probably means we're calling the default Windows message handler).			
+
+method window_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);
+var
+	r			:w.RECT;
+
+_begin( window_t, processMessage );
+
+	mov( uMsg, eax );
+	if( eax = w.WM_ERASEBKGND ) then
+	
+		w.GetClientRect( hwnd, r );
+		w.FillRect( wParam, r, this.wVisual_private.bkgBrush );
+		mov( true, eax );
+		exit processMessage;
+		
+	elseif( eax = w.WM_NOTIFY ) then
+	
+		mov( lParam, ebx );
+		w.GetWindowLong( (type w.NMHDR [ebx]).hwndFrom, w.GWL_USERDATA );
+		if( eax <> NULL ) then
+		
+			mov( eax, esi );
+			(type wBase_t [esi]).processMessage( hwnd, uMsg, wParam, lParam );
+			exit processMessage;
+		
+		endif;
+		
+	// DragListBoxes have a special application-defined message code
+	// that we have to check for. The following code checks to see if
+	// DragListBoxes have been created and dispatches the message if
+	// we have at least one DragListBox and a DragListBox message has
+	// arrived.
+	
+	elseif( howl.hasDragListBox_g && eax = howl.dragListBoxMsg_g ) then
+
+		mov( lParam, eax );
+		mov( (type w.DRAGLISTINFO [eax]).hWnd, esi );
+		w.GetWindowLong( esi, w.GWL_USERDATA );
+		if( eax <> NULL ) then
+		
+			(type wDragListBox_t [eax]).processMessage
+			( 
+				esi, 
+				uMsg, 
+				wParam, 
+				lParam 
+			);
+			exit processMessage;
+			
+		endif;
+	
+		
+	elseif( eax = w.WM_COMMAND ) then
+	
+		// Menu command, control notification, or accelerator key:
+		
+		w.GetWindowLong( lParam, w.GWL_USERDATA );
+		if( eax <> NULL ) then
+		
+			// Pass the notification along to the control:
+			
+			(type wBase_t [eax]).processMessage( hwnd, uMsg, wParam, lParam );
+			exit processMessage;
+			
+		endif;
+	
+	elseif( eax = w.WM_HSCROLL || eax = w.WM_VSCROLL ) then
+	
+		w.GetWindowLong( lParam, w.GWL_USERDATA );
+		if( eax <> NULL ) then
+		
+			mov( eax, esi );
+			(type wBase_t [esi]).processMessage( hwnd, uMsg, wParam, lParam );
+			exit processMessage;
+		
+		endif;
+		
+	elseif( eax = w.WM_PAINT ) then
+	
+		if( this.window_private.onPaint <> NULL ) then
+		
+			this.window_private.onPaint( esi, wParam, lParam );
+			exit processMessage;
+		
+		endif;
+		
+		// Note: fall through to super.processMessage to draw all the
+		// stuff on the window.
+		
+	endif;
+	
+	// Some generic message that the default handler must
+	// process.
+	
+	super.processMessage( hwnd, uMsg, wParam, lParam );
+		
+_end( window_t, processMessage );
+
+
+
+end	window_u;

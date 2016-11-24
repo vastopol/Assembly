@@ -1,0 +1,151 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+
+
+/********************************************************/
+/*                                                      */
+/* trim1,                                               */
+/* trim2,                                               */
+/* a_trim-                                              */
+/*                                                      */
+/* Deletes any leading/trailing spaces from a string.   */
+/*                                                      */
+/* trim1 is destructive, it modifies the                */
+/* string passed as a  parameter.                       */
+/*                                                      */
+/* trim2 is nondestructive, it copies the               */
+/* source to the dest string (w/o lead/trailing spaces).*/
+/*                                                      */
+/* a_trim makes a copy of the string before             */
+/* trimming any spaces.                                 */
+/*                                                      */
+/********************************************************/
+
+procedure str.trim1( s: string ); @noframe;
+begin trim1;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( edi );
+	push( esi );
+	push( eax );
+	
+	mov( s, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+		
+	mov( edi, eax );	// Save so we can compute index of 1st non-blank char.
+	
+	// Skip over all leading spaces.
+	
+	dec( edi );
+	repeatWhlWS:
+	
+		inc( edi );
+		cmp( (type char [edi]), ' ' );
+		je repeatWhlWS;
+		cmp( (type char [edi]), stdio.tab );
+		je repeatWhlWS;
+	
+	
+	// Now start at the end of the string and search backwards for
+	// the first non-blank char.
+	
+	mov( eax, esi );
+	add( (type str.strRec [eax]).length, esi );	// Point at end of string
+
+	// Now locate the last non-blank character in the string.
+	
+	cmp( edi, esi );
+	jae emptyString;
+	
+		skipWS:
+			cmp( esi, edi );
+			jbe endSkipWS;	// if esi <= edi
+		
+			dec( esi );
+			cmp((type char [esi]), ' ' );
+			je skipWS;
+			cmp( (type char [esi]), stdio.tab );
+			je skipWS;
+			
+		endSkipWS:
+		
+		// Okay, edi points at the start of the substring we want to keep,
+		// esi points at the end of the substring we want to keep.  Remove
+		// the excess spaces.
+		//
+		// Note the test for the special case (fairly common) where there
+		// are no leading spaces (much faster just to trim spaces off the
+		// end of the string).
+		
+		cmp( edi, eax );
+		jne generalCase;		// Equal if no leading spaces.
+		
+			sub( eax, esi );	// Compute length of resulting string.
+			inc( esi );			// Because esi points at last non-blank char.
+			
+			// Save away the length and zero terminate this string.
+			
+			mov( esi, (type str.strRec [eax]).length );
+			mov( 0, (type byte [eax + esi]));
+			jmp allDone;
+			
+		generalCase: // We have leading and trailing spaces.
+		
+			sub( edi, esi );	// Compute length of substring.
+			inc( esi );
+			sub( eax, edi );	// Compute starting index of substring.
+
+			str.substr( eax, edi, esi, eax );
+			jmp allDone;
+		
+	emptyString:
+	
+		// If we get to this point, then the string is empty.
+		// Either it was an empty string to begin with or it contained
+		// nothing but spaces to begin with.  Set the destination
+		// operand to the empty string.
+		
+		mov( 0, (type byte [eax]));
+		mov( 0, (type str.strRec [eax]).length );
+		
+	allDone:
+	pop( eax );
+	pop( esi );
+	pop( edi );
+	pop( ebp );
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+		 
+end trim1;
+
+end stringUnit;
+
+
+
+
+	
+

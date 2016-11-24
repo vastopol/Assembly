@@ -1,0 +1,49 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "excepts.hhf" )
+
+	
+// time._IsValid-
+//
+//	Returns false if the time passed as a parameter
+//  is not a valid time, true if it is a valid time.
+
+procedure time._isValid( tm:time.timerec ); @nodisplay; @noframe;
+begin _isValid;
+
+	push( ebp );
+	mov( esp, ebp );
+	xor( eax, eax );	// Assume it's invalid
+	
+	cmp( tm.mins, 60 );
+	jae invalidtime;
+	
+	cmp( tm.secs, 60 );
+	jae invalidtime;
+	
+	cmp( tm.hours, 24 );
+	jae invalidtime;
+		
+	add( 1, eax );
+	
+invalidtime:
+	pop( ebp );
+	ret( _parms_ );
+
+end _isValid;
+		
+end DateTime;			

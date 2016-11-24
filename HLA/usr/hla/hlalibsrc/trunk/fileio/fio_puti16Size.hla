@@ -1,0 +1,42 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+#include( "../include/fileiounit.hhf" )
+
+// puti16Size- Outputs a 16-bit integer 
+// with a minimum width and fill character.
+//
+// Grugy code alert! This guy messes with its activation record and turns
+// it to one that puti32Size likes and then just jumps there.
+
+
+
+procedure fileio.puti16Size( Handle:dword; w:word; width:int32; fill:char ); 
+	@noframe;
+	@nodisplay;
+	
+begin puti16Size;
+
+	push( eax );
+	movsx( (type word [esp+16]), eax );	// Sign-extend w to 32 bits.
+	mov( eax, (type dword [esp+16]));	
+	pop( eax );	
+	jmp fileio.puti32Size;
+
+end puti16Size;
+
+end FileIOUnit;
+

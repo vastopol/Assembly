@@ -1,0 +1,66 @@
+unit str_detab_unit;
+
+// synopsis:
+// convert tab characters to spaces using specified 
+// tab columns or array of tab columns as appropriate
+
+
+//	Version History:
+//	Revision:	3
+//	Author:		Sevag Krikorian
+//	Date:		Oct. 12, 2007
+//	Note:		converted to library format
+//				moved most of the grunt work to str._tabulate
+//
+//	Revision:	2
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 06, 2007
+//	Note:		removed some unnecessary instructions
+
+//	Revision:	1
+//	Author:		Sevag Krikorian
+//	Date:		Aug 30, 2007
+//	Note:		1st release
+//				tabCols of 0 (zero) effectively removes the
+//				tab.  If this is undesirable behavior,
+//				it can be changed.
+	
+	#include( "strings.hhf" )
+	#include( "excepts.hhf" )
+
+
+
+
+	procedure str.deTab3a( s:string; tabCols:dword; dest:string );
+		@nodisplay; @noframe; @noalignstack;
+	
+		// convert all space characters to tabs to using tabCols
+		// to determine field width.  Result in dest
+	
+	begin deTab3a;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( eax );
+		
+		mov( dest, eax );
+		test( eax, eax );
+		jz raiseDerefNULL;
+			
+		// tabulate
+		str._tabulate( s, tabCols, NULL, dest, stdio.tab );
+
+		pop( eax );
+
+		pop( ebp );
+		ret( _parms_ );
+
+		raiseDerefNULL:
+			raise( ex.AttemptToDerefNULL );
+		
+	end deTab3a;
+
+
+
+end str_detab_unit;

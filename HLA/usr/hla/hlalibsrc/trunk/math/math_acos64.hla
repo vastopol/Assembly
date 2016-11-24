@@ -1,0 +1,54 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit mathUnit;
+
+#include( "math.hhf" )
+
+
+/***************************************************************/
+/*                                                             */
+/*  ACOS(x)-	Computes the arccosine of st(0) and leaves the */
+/* 			result in st(0).                                   */
+/* 		Allowable range: -1<=x<=+1                             */
+/* 		There must be at least two free registers for          */
+/* 		this function to operate properly.                     */
+/*                                                             */
+/* 	acos(x) = atan(sqrt((1-x*x)/(x*x)))                        */
+/*                                                             */
+/***************************************************************/
+
+
+
+procedure math.acos64( r:real64 ); @noframe; @nodisplay;
+begin acos64;
+
+		fld( (type real64 [esp+4]) );
+
+		fld( st0 );		// Duplicate X on tos.
+		fmulp();		// Compute X**2.
+		fld( st0 );		// Duplicate X**2 on tos.
+		fld1();			// Compute 1-X**2.
+		fsubrp();		// 
+		fdivrp();		// Compute (1-x**2)/X**2.
+		fsqrt();		// Compute sqrt((1-X**2)/X**2).
+		fld1();			// To compute full arctangent.
+		fpatan();		// Compute atan of the above.
+		ret( _parms_ );
+
+end acos64;
+
+
+
+end mathUnit;

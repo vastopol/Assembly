@@ -1,0 +1,102 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+#include( "../include/fileiounit.hhf" )
+
+/********************************************************************/
+/*                                                                  */
+/* fileio.putlSize-                                                 */
+/* 	Prints a 128-bit number to the file specified by the file       */
+/* 	handled passed as a parameter.                                  */
+/*                                                                  */
+/* Inputs:                                                          */
+/* 	Handle-                                                         */
+/* 		File handle to write to.                                    */
+/*                                                                  */
+/* 	l-                                                              */
+/* 		128-bit lword value to convert and write.                   */
+/*                                                                  */
+/* 	width-                                                          */
+/* 		Minimum # of print positions to use when writing the value. */
+/* 		If negative, value is left justified in field width, if     */
+/* 		non-negative, value is right justified in width.            */
+/*                                                                  */
+/* 	fill-                                                           */
+/* 		Padding character to use if width is greater than the       */
+/* 		number of digits required to print the number.              */
+/*                                                                  */
+/********************************************************************/
+
+
+
+procedure fileio.puth128Size( Handle:dword; l:lword; width:dword; fill:char ); 
+	@noframe;
+	@nodisplay;
+
+var
+	eaxSave		:dword;
+	ecxSave		:dword;
+	ediSave		:dword;
+	numWidth	:uns32;
+	numPad		:uns32;
+	buffer		:char[4096];
+	
+begin puth128Size;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( edi, ediSave );
+	mov( ecx, ecxSave );
+	mov( eax, eaxSave );
+
+	// Compute the actual size of the number for later use:
+
+	conv.h128Size( l );		// Compute # of print positions required
+	mov( eax, numWidth );
+
+
+	// Convert the hex value to a string and put it at
+	// just before the padding characters:
+
+	lea( edi, buffer );
+	movzx( fill, eax );
+	conv._hexToBuf128Size
+	( 
+		l, 
+		width, 
+		numWidth, 
+		al, 
+		[edi], 
+		@size( buffer ) - 1 
+	);
+
+	// Output the sequence to the specified file:
+
+	fileio.write( Handle, [edi], ecx );
+
+
+	mov( ediSave, edi );
+	mov( ecxSave, ecx );
+	mov( eaxSave, eax );
+	leave();
+	ret( _parms_ );
+	
+end puth128Size;
+
+
+end FileIOUnit;
+

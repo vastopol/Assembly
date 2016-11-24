@@ -1,0 +1,85 @@
+program rclient; 
+#include( "stdlib.hhf" )
+#include( "sockets.hhf" )
+
+static
+	s			:client_t;
+	f			:file;
+	ipStr		:string;
+	portStr		:string;
+	filename	:string;
+	ipAdrs		:dword;
+	
+	ss			:str.strvar( 1024 );
+	exmsg		:str.strvar( 256 );
+	
+	port		:word;
+	
+	
+begin rclient; 
+
+	try
+	
+		arg.c();
+		if( eax <> 4 ) then
+		
+			stderr.put( "rclient <<filename>> <<ipAddress>> <<port>>" nl );
+			exit rclient;
+			
+		endif;
+		mov( arg.v(1), filename );
+		mov( arg.v(2), ipStr );
+		mov( arg.v(3), portStr );
+		conv.atoh16( val portStr );
+		mov( ax, port ); 
+		sock.strToIP( ipStr );
+
+		mov( eax, ipAdrs );
+		stdout.put
+		( 
+			"Connecting to ipAddress: ", 
+			ipStr, 
+			", port=$", 
+			portStr,
+			nl 
+		);
+		
+		
+		s.create();
+		f.create();
+		f.open( filename, fileio.r );
+		
+		s.connect
+		( 
+			ipAdrs, 
+			port
+		);
+		stdout.put( "Connected..." nl );
+		
+		s.setTimeout2( 4, 0 );
+		
+		// Repeat the following until we time out (End of File on socket):
+		
+		while( !f.eof() ) do
+		
+			f.gets( ss );
+			s.puts( ss );
+			s.newln();
+			
+		endwhile;
+			
+	
+	  anyexception
+	  
+	  	ex.exceptionMsg( eax, exmsg );
+	  	stderr.put( nl "Client Exception: ", exmsg, nl );
+		stdout.put( "Pause (hit enter to continue):" );
+		stdin.readLn();
+		
+	endtry;
+	s.close();
+	s.destroy();
+	f.close();
+	
+	 
+end rclient; 

@@ -1,0 +1,198 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+
+
+/***********************************************************/
+/*                                                         */
+/* i32Size                                                 */
+/*                                                         */
+/* This routine computes the minimum number of print       */
+/* positions needed to display an int32 value.             */
+/* The size, in digits, is returned in the EAX register.   */
+/*                                                         */
+/* Input:                                                  */
+/* 	iValue parameter contains value to check.              */
+/* 	                                                       */
+/* Returns:                                                */
+/* 	# of digits in the EAX register.                       */
+/*                                                         */
+/***********************************************************/
+
+
+procedure conv.i32Size( iValue:dword in eax ); @nodisplay; @noframe;
+begin i32Size;
+
+	cmp( eax, 0 );
+	jl negativeValue;
+
+		cmp( eax, 10 );
+		jb one;
+			cmp( eax, 100 );
+			jb two;
+				cmp( eax, 1_000 );
+				jb three;
+					cmp( eax, 10_000 );
+					jb four;
+						cmp( eax, 100_000 );
+						jb five;
+							cmp( eax, 1_000_000 );
+							jb six;
+								cmp( eax, 10_000_000 );
+								jb seven;
+									cmp( eax, 100_000_000 );
+									jb eight;
+										cmp( eax, 1_000_000_000 );
+										jb nine;
+
+											mov( 10, eax );
+											_hla.test_OutputUnderscores();
+											jne addThree;
+											ret();
+
+										nine:
+											mov( 9, eax );
+											_hla.test_OutputUnderscores();
+											jne addTwo;
+											ret();
+
+									eight:
+										mov( 8, eax );
+										_hla.test_OutputUnderscores();
+										jne addTwo;
+										ret();
+
+								seven:
+									mov( 7, eax );
+									_hla.test_OutputUnderscores();
+									jne addTwo;
+									ret();
+
+							six:
+								mov( 6, eax );
+								_hla.test_OutputUnderscores();
+								jne addOne;
+								ret();
+
+						five:
+							mov( 5, eax );
+							_hla.test_OutputUnderscores();
+							jne addOne;
+							ret();
+
+					four:
+						mov( 4, eax );
+						_hla.test_OutputUnderscores();
+						jne addOne;
+						ret();
+
+				three:
+					mov( 3, eax );
+					ret();
+
+			two:
+				mov( 2, eax );
+				ret();
+
+		one:
+			mov( 1, eax );
+			ret();
+
+	negativeValue:
+		cmp( eax, -10 );
+		jg two;
+		cmp( eax, -100 );
+		jg three;
+		cmp( eax, -1_000 );
+		jg _four;
+			cmp( eax, -10_000 );
+			jg _five;
+				cmp( eax, -100_000 );
+				jg _six;
+					cmp( eax, -1_000_000 );
+					jg _seven;
+						cmp( eax, -10_000_000 );
+						jg _eight;
+							cmp( eax, -100_000_000 );
+							jg _nine;
+								cmp( eax, -1_000_000_000 );
+								jg _ten;
+
+									mov( 11, eax );
+									_hla.test_OutputUnderscores();
+									jne addThree;
+									ret();
+
+								_ten:
+									mov( 10, eax );
+									_hla.test_OutputUnderscores();
+									jne addTwo;
+									ret();
+								
+							_nine:
+								mov( 9, eax );
+								_hla.test_OutputUnderscores();
+								jne addTwo;
+								ret();
+
+						_eight:
+							mov( 8, eax );
+							_hla.test_OutputUnderscores();
+							jne addTwo;
+							ret();
+
+					_seven:
+						mov( 7, eax );
+						_hla.test_OutputUnderscores();
+						jne addOne;
+						ret();
+
+				_six:
+					mov( 6, eax );
+					_hla.test_OutputUnderscores();
+					jne addOne;
+					ret();
+
+			_five:
+				mov( 5, eax );
+				_hla.test_OutputUnderscores();
+				jne addOne;
+				ret();
+
+		_four:
+			mov( 4, eax );
+			ret();
+
+
+addOne:
+		add( 1, eax );
+		ret();
+
+addTwo:
+		add( 2, eax );
+		ret();
+
+addThree:
+		add( 3, eax );
+		ret();
+
+
+end i32Size;
+
+
+end ConvUnit;

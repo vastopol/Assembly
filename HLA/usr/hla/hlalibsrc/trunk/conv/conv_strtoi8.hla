@@ -1,0 +1,106 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "strings.hhf" )
+
+
+/***********************************************************/
+/*                                                         */
+/* StrToi8-                                                */
+/* StrToi16-                                               */
+/* StrToi32-                                               */
+/* StrToi64-                                               */
+/*                                                         */
+/* These functions convert a sequence of characters to the */
+/* corresponding numeric value.                            */
+/*                                                         */
+/* On Entry:                                               */
+/*                                                         */
+/* 	"s" points at the string containing the sequence of    */
+/* 	decimal digits to convert.                             */
+/* 	"index" contains an index into the string where the    */
+/* 	sequence of decimal digits begins.                     */
+/* 	                                                       */
+/* On Exit:                                                */
+/*                                                         */
+/* 	StrToi8, StrToi16, and StrToi32 return the converted   */
+/* 	integer in the EAX register.  StrToi64 returns the     */
+/* 	converted integer in the EDX:EAX register pair.        */
+/* 	Note that for StrToi8 and StrToi16, the H.O. bits of   */
+/* 	EAX will contain zeros or ones depending on the sign   */
+/* 	of the converted value;  i.e., AL (StrToi8) or AX      */
+/* 	(StrToi16) contains the converted value which is       */
+/* 	sign extended into EAX.                                */
+/* 	                                                       */
+/* Exceptions:                                             */
+/*                                                         */
+/* 	These routines will raise an exception if:             */
+/* 	                                                       */
+/* 		(a) A conversion error occurs (see atou/atoi).     */
+/* 		(b) The resulting value is not within range.       */
+/* 		(c) The supplied string index is out of range.     */
+/* 		(d) "s" contains a NULL pointer.                   */
+/* 		                                                   */
+/***********************************************************/
+		
+
+procedure conv.strToi8( s:string; index:dword );  
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+
+begin strToi8;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( esi );
+	
+	// Get the string pointer and make sure it's valid.
+	
+	mov( s, esi );
+	test( esi, esi );
+	jz refNULL;
+		
+	// Get the starting index and make sure it does not
+	// exceed the string length.
+	
+	mov( index, eax );
+	cmp( eax, (type str.strRec [esi]).length );
+	ja badIndex;
+	
+	add( eax, esi );		// Point at start of integer string.
+	conv.atoi8( [esi] );	// Convert to an integer.	
+		
+	// Return the result in EAX.
+	
+	pop( esi );
+	pop( ebp );
+	ret( _parms_ );
+
+refNULL:
+	raise( ex.AttemptToDerefNULL );
+
+badIndex:
+	raise( ex.StringIndexError );
+
+	
+end strToi8;
+
+
+end ConvUnit;

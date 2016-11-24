@@ -1,0 +1,190 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit consoleUnit;
+
+#include( "excepts.hhf" )
+#include( "console.hhf" )
+#includeonce( "os.hhf" )
+#includeonce( "stdout.hhf" )
+
+?@nodisplay := true;
+?@noalignstack := true;	
+
+#if( os.linux | os.freeBSD | os.macOS )
+		
+		
+	// gotoxy - positions the cursor at the (x,y) coordinate specfied.
+	// Note that gotorc (row,column) is an alias of this function that
+	// swaps the parameters (generally, it's more useful to specify
+	// the y coordinate first).
+	//
+	// Coordinates are zero-based.  (0,0) is the upper left hand
+	// corner of the console window.
+	//
+	// Linux:
+	// ANSI ESC sequence is ESC "[" {row} ";" {column} "H"
+	// where {row} and {column} represent strings of digits (1-based
+	// rather than zero-based) providing the new cursor coordinates.
+
+	procedure console.gotoxy( x:uns32; y:uns32 ); @noframe; @nodisplay;
+	const
+		sys_write		:= 4;
+		
+	var
+		output	:char[16];
+		
+	readonly
+		homeStr	:char; @nostorage;
+				 byte #$1b, "[f";
+ 
+	begin gotoxy;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		
+		inc( x );	// ANSI terminal numbers are based-1 rather than
+		inc( y );	// based-0, deal with that here.
+		
+		mov( #$1b, output[0] );
+		mov( '[', output[1] );
+		lea( ecx, output[2] );		
+		console.utoa( y, ecx );
+		mov( ';', (type char [ecx]));
+		inc( ecx );
+		console.utoa( x, ecx );
+		mov( 'H', (type char [ecx]));
+		inc( ecx );
+		
+		lea( edx, output );     // Buffer to write
+		xchg( ecx, edx );  
+		sub( ecx, edx );        // Length to write
+		stdout.write( [ecx], edx );
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	end gotoxy;
+
+#elseif( os.win32 )
+
+
+	#include( "stdout.hhf" );
+	
+	type 
+	 	COORD: record
+			x: word;
+			y: word;
+		endrecord;
+
+
+	 	SMALL_RECT: record
+			Left: word;
+			Top: word;
+			Right: word;
+			Bottom: word;
+		endrecord;
+	
+		CONSOLE_SCREEN_BUFFER_INFO: record
+
+			dwSize: COORD;
+			dwCursorPosition: COORD;
+			wAttributes: word;
+			srWindow: SMALL_RECT;
+			dwMaximumWindowSize: COORD;
+			
+		endrecord;
+		
+	static
+			
+		GetConsoleScreenBufferInfo: procedure
+		( 
+				handle:	dword; 
+			var csbi:	CONSOLE_SCREEN_BUFFER_INFO
+		);
+			@stdcall;
+			@returns( "eax" );
+			@external( "__imp__GetConsoleScreenBufferInfo@8" );
+			
+		SetConsoleCursorPosition: procedure
+		( 
+			hConsoleOutput:		dword;
+			dwCursorPosition:	COORD	
+		);
+			@stdcall;
+			@returns( "eax" );
+			@external( "__imp__SetConsoleCursorPosition@8" );
+
+	
+	
+
+	// gotoxy-
+	//
+	//	Positions the cursor at the specified (x,y) coordinate.
+	// Note that gotorc is a synonym for this function with the
+	// x,y coordinates switched (which is more intuitive).
+	
+	procedure console.gotoxy( x:uns32; y:uns32 ); @nodisplay; @noframe;
+	var
+		handle	:dword;
+		csbi	:CONSOLE_SCREEN_BUFFER_INFO;
+
+	begin gotoxy;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		pushad();
+		
+		stdout.handle();
+		mov( eax, handle );
+		
+		// Verify that the coordinates are within range:
+		
+		GetConsoleScreenBufferInfo( handle, csbi );
+		
+		
+		// Warning: the following code depends upon the fact
+		// that the first parameter of SCCP is a COORD
+		// object consisting of two words with the X coordinate
+		// at the L.O. word and the Y coordinate at the H.O. word.
+		
+		SetConsoleCursorPosition
+		(
+			handle, 
+			#{ 
+				pushw( (type word y) ); 
+				pushw( (type word x) );
+			}# 
+		);
+		popad();
+		leave();
+		ret( _parms_ );
+		
+	end gotoxy;
+
+#endif
+	
+end consoleUnit;

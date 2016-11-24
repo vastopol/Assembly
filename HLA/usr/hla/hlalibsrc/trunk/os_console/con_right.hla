@@ -1,0 +1,219 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit consoleUnit;
+
+#include( "console.hhf" )
+#includeonce( "os.hhf" )
+#includeonce( "stdout.hhf" )
+
+?@nodisplay := true;
+?@noalignstack := true;	
+
+#if( os.linux | os.freeBSD | os.macOS )
+	
+
+	// right - moves the cursor right one  position.
+	//
+	// Linux:
+	// ANSI ESC sequence is ESC "[1C"
+
+	procedure console.right; @noframe;
+	readonly
+		rightStr:byte; @nostorage;
+				byte #$1b "[1C";
+				
+	begin right;
+	
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+
+		stdout.write( &rightStr, 4 );
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		ret();
+		
+	end right;
+
+#elseif( os.win32 )
+
+	#include( "stdout.hhf" )
+	
+	type 
+	 	COORD: record
+			x: word;
+			y: word;
+		endrecord;
+
+
+	 	SMALL_RECT: record
+			Left: word;
+			Top: word;
+			Right: word;
+			Bottom: word;
+		endrecord;
+	
+	 	CHARTYPE: union
+			UnicodeChar: word;
+			AsciiChar: byte;
+		endunion;
+
+	 	CHAR_INFO: record
+			CharVal: CHARTYPE;
+			Attributes: word;
+		endrecord;
+
+		CONSOLE_SCREEN_BUFFER_INFO: record
+
+			dwSize: COORD;
+			dwCursorPosition: COORD;
+			wAttributes: word;
+			srWindow: SMALL_RECT;
+			dwMaximumWindowSize: COORD;
+			
+		endrecord;
+		
+	static
+		FillConsoleOutputAttribute: procedure
+		( 
+				hConsoleOutput			:dword; 
+				wAttribute				:word; 
+				nLength					:dword; 
+				dwWriteCoord			:COORD; 
+			var	lpNumberOfAttrsWritten	:dword
+		);
+			@stdcall;
+			@returns( "eax" );
+			@external( "__imp__FillConsoleOutputAttribute@20" );
+
+		FillConsoleOutputCharacter: procedure
+		( 
+			hConsoleOutput:				dword; 
+			cCharacter:					char; 
+			nLength:					dword; 
+			dwWriteCoord:				COORD; 
+			var	lpNumberOfAttrsWritten:	dword
+		);
+			@stdcall;
+			@returns( "eax" );
+			@external( "__imp__FillConsoleOutputCharacterA@20" );
+
+			
+		GetConsoleScreenBufferInfo: procedure
+		( 
+				handle:	dword; 
+			var csbi:	CONSOLE_SCREEN_BUFFER_INFO
+		);
+			@stdcall;
+			@returns( "eax" );
+			@external( "__imp__GetConsoleScreenBufferInfo@8" );
+			
+		SetConsoleCursorPosition: procedure
+		( 
+			hConsoleOutput:		dword;
+			dwCursorPosition:	COORD	
+		);
+			@stdcall;
+			@returns( "eax" );
+			@external( "__imp__SetConsoleCursorPosition@8" );
+		
+		ScrollConsoleScreenBuffer: procedure
+		( 
+				hConsoleOutput:			dword; 
+			var	lpScrollRectangle:		SMALL_RECT; 
+			var	lpClipRectangle:		SMALL_RECT; 
+				dwDestinationOrigin:	COORD; 
+			var	lpFill:					CHAR_INFO
+		);
+			@stdcall;
+			@returns( "eax" );
+			@external( "__imp__ScrollConsoleScreenBufferA@20" );
+	
+
+	
+	
+	procedure console.right; @nodisplay; @noframe;
+	var
+		handle			:dword;
+		csbi			:CONSOLE_SCREEN_BUFFER_INFO;
+		
+	begin right;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		pushad();
+		
+		stdout.handle();
+		mov( eax, handle );
+		
+		// Verify that the coordinates are within range:
+		
+		GetConsoleScreenBufferInfo( handle, csbi );
+		
+		
+		// Warning: the following code depends upon the fact
+		// that the first parameter of SCCP is a COORD
+		// object consisting of two words with the X coordinate
+		// at the L.O. word and the Y coordinate at the H.O. word.
+		
+		mov( csbi.dwCursorPosition.x, ax );
+		inc( ax );
+		cmp( ax, csbi.dwSize.x );
+		jb noReset;
+		
+			mov( 0, ax );
+			inc( csbi.dwCursorPosition.y );
+			
+		noReset:
+		mov( csbi.dwCursorPosition.y, bx );
+		cmp( bx, csbi.dwSize.y );
+		jb justSetPosn;
+		
+			// If we go right beyond the last character cell in
+			// the screen buffer, scroll the screen up one line.
+			
+			console.scrollUp();
+			movzx( csbi.dwSize.y, eax );
+			dec( eax );
+			console.gotorc( eax, 0 );
+			jmp allDone;
+		
+		justSetPosn:
+		
+			SetConsoleCursorPosition
+			(
+				handle, 
+				#{ 
+					pushw( csbi.dwCursorPosition.y );
+					pushw( ax ); 
+				}# 
+			);
+			
+		allDone:
+		popad();
+		leave();
+		ret();
+
+	end right;	
+
+#endif
+	
+end consoleUnit;

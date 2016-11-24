@@ -1,0 +1,15 @@
+unit stdlib_data;
+#include( "chars.hhf" )
+
+namespace chars;
+
+	readonly(16)
+		GraphicCset :cset; @nostorage;
+			cset { ' '..#$7e };
+			cset {};
+	 
+end chars;
+
+end stdlib_data;
+
+													

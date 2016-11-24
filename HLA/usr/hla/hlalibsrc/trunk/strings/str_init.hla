@@ -1,0 +1,92 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+
+/*******************************************************************/
+/*                                                                 */
+/* str.init-                                                       */
+/*                                                                 */
+/* This function initializes a block of memory so that it          */
+/* is a valid HLA string.  On entry, the b parameter contains      */
+/* the address of the memory block and numBytes specifies the      */
+/* total number of bytes in block.  numBytes should be at least    */
+/* 16 or this function will raise an ex.ValueOutOfRange exception. */
+/*                                                                 */
+/* This function first dword-aligns the address because            */
+/* HLA strings prefer to be aligned on a dword boundary.           */
+/* This subtracts 0-3 bytes from the overall buffer length.        */
+/* Next, this code initializes	the MaxLength and length fields    */
+/* and it initializes the first dword of the string data with      */
+/* zeros.  Finally, this code returns the pointer to the first     */
+/* byte of the string data in the EAX register.                    */
+/*                                                                 */
+/*******************************************************************/
+
+procedure str.init( var b:var; numBytes:dword ); @noframe;
+begin init;
+
+	push( ebp );
+	mov( esp, ebp );
+	cmp( numBytes, 16 );
+	jb ValueOutOfRange;	
+		
+	push( ebx );
+	mov( b, ebx );
+	
+	// DWORD align the address:
+	
+	add( 3, ebx );
+	and( $FFFF_FFFC, ebx );
+
+	// Compute the maximum string length.
+	
+	mov( b, eax );			// End of buffer address, minus EBX, is
+	add( numBytes, eax );	// the number of bytes in the buffer.
+	sub( ebx, eax );
+
+	sub( 9, eax );		// Adjust for maxlength, length, and zero byte.
+	mov( eax, [ebx] );	// Save as maxlength value.
+	
+	// Initialize the length and zero terminating byte values:
+	
+	mov( 0, (type dword [ebx+4]));	// Current string length is zero.
+	mov( 0, (type dword [ebx+8]));	// Only first byte counts!
+	
+	// Compute the final address in EAX and return this value.
+	
+	lea( eax, [ebx+8] );
+	pop( ebx );
+	pop( ebp );
+	ret( _parms_ );
+	
+ValueOutOfRange:	
+	raise( ex.ValueOutOfRange );
+
+end init;
+
+end stringUnit;
+
+
+
+
+	
+

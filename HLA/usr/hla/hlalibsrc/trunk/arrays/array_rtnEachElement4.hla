@@ -1,0 +1,76 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit arrays;
+
+
+#include( "arrays.hhf" );
+
+
+
+iterator array.__returnEachArrayElement4
+( 
+	var	theArray : dword; 
+		Elements : uns32 
+);
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+var
+	eaxSave	:dword;
+	ebxSave	:dword;
+	ecxSave	:dword;
+	
+begin __returnEachArrayElement4;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( ecx, ecxSave );
+	mov( ebx, ebxSave );
+	mov( eax, eaxSave );
+
+	xor( ecx, ecx );
+	mov( theArray, ebx );
+	while( ecx < Elements ) do
+	
+		push( ebx );
+		push( ecx );
+		mov( [ebx+ecx*4], eax );
+		mov( ecx, ecxSave );
+		mov( ebx, ebxSave );
+		yield();
+		mov( ecx, ecxSave );
+		mov( ebx, ebxSave );
+		pop( ecx );
+		pop( ebx );
+		inc( ecx );
+		
+	endwhile;
+	mov( ecxSave, ecx );
+	mov( ebxSave, ebx );
+	mov( eaxSave, eax );
+	leave();
+	add( 4, esp );		// Remove ptr to foreach loop body
+	ret( _parms_ );
+
+end __returnEachArrayElement4;
+
+end arrays;
+
+
+
+
+	
+

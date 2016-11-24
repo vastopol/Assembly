@@ -1,0 +1,379 @@
+unit wBitmap_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+
+readonly		
+	align( 4 );
+	vmt( wBitmap_t );
+
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wBitmap objects here:
+
+
+					
+procedure wBitmap_t.create_wBitmap
+(
+	wiName		:string;
+	imageName	:string;
+	parent		:dword;
+	x			:dword; 
+	y			:dword;
+	width		:dword;
+	height		:dword;
+	bkgColor	:dword 
+);;
+	
+_begin( wBitmap_t, create_wBitmap );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wBitmap_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	
+	// We're going to create a surface object here.
+	// However, this widget is not going to use
+	// the window that create_wSurface creates;
+	// instead, the rectangle will be drawn directly
+	// on the parent's window. 
+	
+	(type wSurface_t [esi]).create_wSurface
+	(
+		wiName,
+		0,								// ex style
+		w.WS_CHILD | w.WS_VISIBLE,		// style
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height,
+		bkgColor,
+		false
+	);
+	mov( cl, this.wBase_private.onHeap );
+		
+	howl.setType( wBitmap_c );
+	mov( &wBitmap_t._VMT_, this._pVMT_ );
+
+	mov( imageName, eax );
+	if( eax < $1_0000 ) then // icon resource ID
+	
+		mov( eax, this.wBitmap_private.imageName );
+		w.LoadBitmap( NULL, eax );
+		
+	else	// We've got an actual string:
+	
+		str.a_cpy( eax );			// Must dup the string, it gets freed.
+		mov( eax, this.wBitmap_private.imageName );
+		w.LoadBitmap( howl.howlInstance, eax );
+		
+	endif;
+	mov( eax, this.wBitmap_private.imageHandle );
+	mov( false, this.wBitmap_private.stretch );
+		
+	pop( edx );
+	pop( ecx );			   
+	pop( eax );
+	
+_end( wBitmap_t, create_wBitmap );
+
+
+// destroy-
+//
+//	Frees the imageName string if it was allocated on the heap:
+
+method wBitmap_t.destroy;;
+_begin( wBitmap_t, destroy );
+
+	if( this.wBitmap_private.imageName >= $1_0000 ) then // It's a string
+
+		str.free( this.wBitmap_private.imageName );
+		
+	endif;
+	super.destroy();
+	
+_end( wBitmap_t, destroy );
+
+
+
+
+// Accessor for the imageName field.
+
+
+method wBitmap_t.get_imageName; @noframe;;
+_begin( wBitmap_t, get_imageName );
+
+	mov( this.wBitmap_private.imageName, eax );
+	ret();
+	 
+_end( wBitmap_t, get_imageName );
+
+
+method wBitmap_t.get_sourceX; @noframe;;
+_begin( wBitmap_t, get_sourceX );
+
+	mov( this.wBitmap_private.sourceX, eax );
+	ret();
+	 
+_end( wBitmap_t, get_sourceX );
+
+
+method wBitmap_t.get_sourceY; @noframe;;
+_begin( wBitmap_t, get_sourceY );
+
+	mov( this.wBitmap_private.sourceY, eax );
+	ret();
+	 
+_end( wBitmap_t, get_sourceY );
+
+
+method wBitmap_t.get_sourceW; @noframe;;
+_begin( wBitmap_t, get_sourceW );
+
+	mov( this.wBitmap_private.sourceW, eax );
+	ret();
+	 
+_end( wBitmap_t, get_sourceW );
+
+
+method wBitmap_t.get_sourceH; @noframe;;
+_begin( wBitmap_t, get_sourceH );
+
+	mov( this.wBitmap_private.sourceH, eax );
+	ret();
+	 
+_end( wBitmap_t, get_sourceH );
+
+
+method wBitmap_t.get_destW; @noframe;;
+_begin( wBitmap_t, get_destW );
+
+	mov( this.wBitmap_private.destW, eax );
+	ret();
+	 
+_end( wBitmap_t, get_destW );
+
+
+method wBitmap_t.get_destH; @noframe;;
+_begin( wBitmap_t, get_destH );
+
+	mov( this.wBitmap_private.destH, eax );
+	ret();
+	 
+_end( wBitmap_t, get_destH );
+
+
+method wBitmap_t.get_stretch; @noframe;;
+_begin( wBitmap_t, get_stretch );
+
+	movzx( this.wBitmap_private.stretch, eax );
+	ret();
+	 
+_end( wBitmap_t, get_stretch );
+
+
+
+
+// Load an image-
+//	Either from a resource in the execuable file or a standard image resource.
+//
+//	From a file:	specify the filename as the parameter.
+//	Standard image:	specify @string( id ) (e.g., @string( w.OBM_BTNCORNERS ))
+//					as the parameter.
+//
+// This is, effectively, the mutator for the imageName field.
+ 
+method wBitmap_t.load_bitmap( imageName:string );;
+_begin( wBitmap_t, load_bitmap );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	// If the existing imageName is a string, we've got to deallocate the
+	// storage for it:
+	
+	if( (type dword this.wBitmap_private.imageName ) >= $1_0000 ) then
+	
+		str.free( this.wBitmap_private.imageName );
+		
+	endif;
+
+	mov( imageName, eax );
+	if( eax < $1_0000 ) then // image resource ID
+	
+		mov( eax, this.wBitmap_private.imageName );
+		w.LoadBitmap( NULL, eax );
+		
+	else	// We've got an actual string:
+	
+		str.a_cpy( eax );			// Must dup the string, it gets freed.
+		mov( eax, this.wBitmap_private.imageName );
+		w.LoadBitmap( howl.howlInstance, eax );
+		
+	endif;
+	mov( eax, this.wBitmap_private.imageHandle );
+
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wBitmap_t, load_bitmap );
+
+
+method wBitmap_t.normalBitmap;;
+_begin( wBitmap_t, normalBitmap );
+
+	mov( false, this.wBitmap_private.stretch );
+	w.InvalidateRect( this.handle, NULL, true );
+	
+_end( wBitmap_t, normalBitmap );
+
+
+
+method wBitmap_t.stretchBitmap
+( 
+	sourceX			:dword;
+	sourceY			:dword;
+	sourceW			:dword;
+	sourceH			:dword;
+	destW			:dword;
+	destH			:dword
+);;
+_begin( wBitmap_t, stretchBitmap );
+
+	mov( true, this.wBitmap_private.stretch );
+	
+	mov( sourceX, eax );
+	mov( eax, this.wBitmap_private.sourceX );
+		
+	mov( sourceY, eax );
+	mov( eax, this.wBitmap_private.sourceY );
+	
+	mov( sourceW, eax );
+	mov( eax, this.wBitmap_private.sourceW );
+	
+	mov( sourceH, eax );
+	mov( eax, this.wBitmap_private.sourceH );
+	
+	mov( destW, eax );	
+	mov( eax, this.wBitmap_private.destW );
+	
+	mov( destH, eax );	
+	mov( eax, this.wBitmap_private.destH );
+	
+	w.InvalidateRect( this.handle, NULL, true );
+	
+_end( wBitmap_t, stretchBitmap );
+
+
+
+
+method wBitmap_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);
+var
+	ps			:w.PAINTSTRUCT;
+	hdc			:dword;
+	hdcMem		:dword;
+	size		:w.SIZE;
+
+_begin( wBitmap_t, processMessage );
+
+	if( uMsg = w.WM_PAINT ) then
+	
+		// Note: do the actual drawing on the parent's window:
+		
+		w.BeginPaint( this.handle, ps );
+		
+			mov( eax, hdc );
+			
+			w.CreateCompatibleDC( hdc );
+			mov( eax, hdcMem );
+			w.SelectObject( hdcMem, this.wBitmap_private.imageHandle );
+			if( this.wBitmap_private.stretch ) then
+			
+				w.StretchBlt
+				( 
+					hdc, 
+					0,
+					0, 
+					this.wBitmap_private.destW, 
+					this.wBitmap_private.destH, 
+					hdcMem,
+					this.wBitmap_private.sourceX, 
+					this.wBitmap_private.sourceY, 
+					this.wBitmap_private.sourceW, 
+					this.wBitmap_private.sourceH, 
+					w.SRCCOPY 
+				);
+				
+			else
+			
+				w.BitBlt
+				( 
+					hdc, 
+					0, 
+					0, 
+					this.wVisual_private.width, 
+					this.wVisual_private.height, 
+					hdcMem, 
+					0, 
+					0, 
+					w.SRCCOPY 
+				);
+				
+			endif;
+			w.DeleteDC( hdcMem );
+			
+		w.EndPaint( this.handle, ps );
+		exit processMessage;
+		
+	elseif( uMsg = w.WM_MOUSEACTIVATE ) then
+	
+		if( this.wClickable_private.onClick <> NULL ) then
+		
+			this.wClickable_private.onClick( esi, wParam, lParam );
+			mov( w.MA_NOACTIVATEANDEAT, eax );
+			exit processMessage;
+		
+		endif;
+	
+		
+	endif;
+	super.processMessage( hwnd, uMsg, wParam, lParam );
+	
+_end( wBitmap_t, processMessage );
+
+
+
+
+
+end	wBitmap_u;

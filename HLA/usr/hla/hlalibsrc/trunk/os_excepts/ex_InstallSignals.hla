@@ -1,0 +1,982 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit InstallSignals;
+#include( "os.hhf" )
+#include( "stdlib.hhf" )
+
+#if( os.win32 )
+
+	#print
+	(
+		"Windows does not need the InstallSignals module, compilation ignored"
+	)
+	
+#elseif( os.linux )
+
+	#include( "linux.hhf" )
+	#include( "excepts.hhf" )
+	#include( "arrays.hhf" )
+
+	//*********************************************************************
+	// Linux Signal Handlers:
+	//*********************************************************************
+
+	// handleSegv- Handles the SIGSEGV signal (this is a segment/access
+	// violation).
+
+	?@noframe := true;
+	?@nodisplay := true;
+	?@noalignstack := true;
+
+	// handleSegv- Linux signal handler for the SIGSEGV signal:
+
+	procedure handleSegv
+	( 
+			signum	:int32; 
+		var	siginfo	:linux.siginfo_t; 
+		var task	:var 
+	); 
+		@frame; 
+		@cdecl;
+
+	const
+		Trap_num_offset	:= 17*4;
+		
+	begin handleSegv;
+
+		// This is magic and will break if someone ever changes
+		// the offsets to the various fields of the task_struct
+		// structure in the Linux kernel (not too likely since
+		// the offsets are used in ASM code in the kernel).
+		//
+		//	Note: the trap number appears at offset 17*4 in the
+		//	task_struct data structure pointed at by "task".
+		//	If this field contains 4, then we've got an INTO trap.
+		//	If this field contains 5, then we've got a BOUND trap.
+		//	Otherwise, just assume it's a regular seg violation.
+		
+		mov( task, eax );
+		mov( [eax+Trap_num_offset], eax );
+		cmp( eax, 4 );
+		je DoINTO;
+		cmp( eax, 5 );
+		je DoBOUND;
+		raise( ex.AccessViolation );
+		
+		DoINTO:
+			raise( ex.IntoInstr );
+			
+		DoBOUND:
+			raise( ex.BoundInstr );
+	end handleSegv;
+
+
+
+	// handleTrap- Linux signal handler for the SIGTRAP signal:
+
+	procedure handleTrap
+	( 
+			signum	:int32; 
+		var	siginfo	:linux.siginfo_t; 
+		var buf		:var 
+	); @frame;  @cdecl; 
+	begin handleTrap;
+
+		mov( siginfo, eax );
+		mov( (type linux.siginfo_t [eax]).si_code, eax );
+		cmp( eax, linux.trap_trace );
+		je singleStep;
+			raise( ex.Breakpoint );	
+		
+		singleStep:
+		 	raise( ex.SingleStep );
+	
+	end handleTrap;
+
+
+
+	// handleIll- Linux signal handler for the SIGILL signal:
+
+	procedure handleIll
+	( 
+			signum	:int32; 
+		var	siginfo	:linux.siginfo_t; 
+		var buf		:var 
+	); @frame;  @cdecl; 
+	begin handleIll;
+
+		mov( siginfo, eax );
+		mov( (type linux.siginfo_t [eax]).si_code, eax );
+		cmp( eax, linux.ill_prvopc );
+		je PrivInstr;
+			raise( ex.IllegalInstr );	
+		
+		PrivInstr:
+			raise( ex.PrivInstr );
+		
+	end handleIll;
+
+
+
+	// handleFpe- Linux signal handler for the SIGFPE signal:
+
+	procedure handleFPE
+	( 
+			signum	:int32; 
+		var	siginfo	:linux.siginfo_t; 
+		var buf		:var 
+	); @frame;  @cdecl;
+	
+	readonly
+		fpExMap	: array.lookupTable
+		(
+			dword,
+			ex.UnknownException,
+			ex.DivideError		: linux.fpe_intdiv,
+			ex.BoundInstr		: linux.fpe_fltsub,
+			ex.IntoInstr		: linux.fpe_intovf,
+			ex.fDivByZero		: linux.fpe_fltdiv,
+			ex.fInexactResult	: linux.fpe_fltres,
+			ex.fInvalidOperation: linux.fpe_fltinv,
+			ex.fOverflow		: linux.fpe_fltovf,
+			ex.fUnderflow		: linux.fpe_fltund
+		);
+			
+	begin handleFPE;
+
+		mov( siginfo, eax );
+		mov( (type linux.siginfo_t [eax]).si_code, eax );
+		#if( fpExMap_minValue > 0 )
+		
+			cmp( eax, fpExMap_minValue );
+			jb unknownException;
+			
+		#endif
+		cmp( eax, fpExMap_maxValue );
+		ja unknownException;
+		mov( fpExMap[ eax*4 ], eax );
+		raise( eax );
+
+	unknownException:
+		raise( ex.UnknownException );
+		
+	end handleFPE;
+
+
+
+	// The following procedure gets called from the
+	// main program if the user has included "excepts.hhf"
+	// in their main program (otherwise, the main program
+	// simply calls a stub that immediately returns and the
+	// system doesn't install any Linux signal handlers.
+
+	procedure excepts_install_signals; @external;
+
+	procedure excepts_install_signals;
+	readonly
+		segvAction	:linux.sigaction_t :=
+						linux.sigaction_t:
+						[
+							&handleSegv,
+							0,
+							linux.sa_siginfo,
+							NULL
+						];
+							
+		trapAction	:linux.sigaction_t :=
+						linux.sigaction_t:
+						[
+							&handleTrap,
+							0,
+							linux.sa_siginfo,
+							NULL
+						];
+							
+		illAction	:linux.sigaction_t :=
+						linux.sigaction_t:
+						[
+							&handleIll,
+							0,
+							linux.sa_siginfo,
+							NULL
+						];
+							
+		fpeAction	:linux.sigaction_t :=
+						linux.sigaction_t:
+						[
+							&handleFPE,
+							0,
+							linux.sa_siginfo,
+							NULL
+						];
+							
+							
+
+	begin excepts_install_signals;
+
+		// Set up some signal handlers for common Linux exceptions.
+		//
+		// Begin by setting up the signal handler for ex.AccessViolation:
+		
+		linux.sigaction( linux.sigsegv, segvAction, NULL );
+		
+		// SIGTRAP- handles ex.Breakpoint and ex.SingleStep exceptions:
+		
+		linux.sigaction( linux.sigtrap, trapAction, NULL );
+		
+		// SIGILL- handles ex.IllegalInstr and ex.PrivInstr exceptions:
+		
+		linux.sigaction( linux.sigill, illAction, NULL );
+		
+		// SIGFPE- handles the following exceptions:
+		//
+		//	ex.DivideError
+		//	ex.BoundInstr
+		//	ex.IntoInstr
+		//	ex.fDivByZero
+		//	ex.fInexactResult
+		//	ex.fInvalidOperation
+		//	ex.fOverflow
+		//	ex.fUnderflow
+		//	ex.fStackCheck
+		//	
+		
+		linux.sigaction( linux.sigfpe, fpeAction, NULL );
+		
+		ret(); 
+
+	end excepts_install_signals;
+
+#elseif( os.freeBSD )
+
+	#include( "bsd.hhf" )
+	#include( "excepts.hhf" )
+
+const
+	ucEAX	:text := "(type bsd.ucontext_t [eax]).uc_mcontext";
+
+	//*********************************************************************
+	// FreeBSD Signal Handlers:
+	//*********************************************************************
+
+	// handleSegv- Handles the SIGSEGV signal (this is a segment/access
+	// violation).
+
+	?@noframe := true;
+	?@nodisplay := true;
+	?@noalignstack := true;
+
+
+	// Handle seg faults, page faults, and priviledged instruction faults:
+	
+	procedure handleSegv
+	( 
+			signum	:int32; 
+		var	siginfo	:bsd.siginfo_t; 
+		var buf		:bsd.ucontext_t 
+	); @noframe;  @cdecl;
+		
+	begin handleSegv;
+	
+		push( ebp );
+		mov( esp, ebp );
+		
+		mov( buf, eax );		
+		mov( (type bsd.ucontext_t [eax]).uc_mcontext.mc_trapno, eax );
+		cmp( eax, bsd.T_PROTFLT );
+		je ProtInstr;
+
+		mov( buf, eax );
+		mov( ex.AccessViolation, ucEAX.mc_eax );
+		mov( &raiseEX, ucEAX.mc_eip );
+		pop( ebp );
+		ret();
+		
+	ProtInstr:
+		mov( buf, eax );
+		mov( ex.PrivInstr, ucEAX.mc_eax );
+		mov( &raiseEX, ucEAX.mc_eip );
+		pop( ebp );
+		ret();
+		
+	raiseEX:
+		raise( eax );
+	
+	end handleSegv;
+	
+
+	// Handle illegal instruction exceptions:
+	
+	procedure handleIll
+	( 
+			signum	:int32; 
+		var	siginfo	:bsd.siginfo_t; 
+		var buf		:bsd.ucontext_t 
+	); @noframe;  @cdecl;
+		
+	begin handleIll;
+	
+		push( ebp );
+		mov( esp, ebp );
+		
+		mov( buf, eax );
+		mov( ex.IllegalInstr, ucEAX.mc_eax );
+		mov( &raiseEX, ucEAX.mc_eip );
+		pop( ebp );
+		ret();
+		
+	raiseEX:
+		raise( eax );
+	
+	end handleIll;
+	
+
+	// Handle the control-C exception.
+	
+	procedure handleControlC
+	( 
+			signum	:int32; 
+		var	siginfo	:bsd.siginfo_t; 
+		var buf		:bsd.ucontext_t 
+	); @noframe;  @cdecl;
+		
+	begin handleControlC;
+	
+		push( ebp );
+		mov( esp, ebp );
+		
+		mov( buf, eax );
+		mov( ex.ControlC, ucEAX.mc_eax );
+		mov( &raiseEX, ucEAX.mc_eip );
+		pop( ebp );
+		ret();
+		
+	raiseEX:
+		raise( eax );
+	
+	end handleControlC;
+	
+
+	// Handle singlestep and breakpoint exceptions:
+	
+	procedure handleTrace
+	( 
+			signum	:int32; 
+		var	siginfo	:bsd.siginfo_t; 
+		var buf		:bsd.ucontext_t 
+	); @noframe;  @cdecl;
+		
+	begin handleTrace;
+	
+		push( ebp );
+		mov( esp, ebp );
+		
+		mov( buf, eax );		
+		mov( (type bsd.ucontext_t [eax]).uc_mcontext.mc_trapno, eax );
+		cmp( eax, bsd.T_TRCTRAP );
+		je SingleStep;
+
+		// Must be breakpt (INT3):
+		
+		mov( buf, eax );
+		mov( ex.Breakpoint, ucEAX.mc_eax );
+		mov( &raiseEX, ucEAX.mc_eip );
+		pop( ebp );
+		ret();
+		
+	SingleStep:
+		mov( buf, eax );
+		mov( ex.SingleStep, ucEAX.mc_eax );
+		mov( &raiseEX, ucEAX.mc_eip );
+		pop( ebp );
+		ret();
+		
+	raiseEX:
+		raise( eax );
+	
+	end handleTrace;
+
+
+
+	// Handle INTO, BOUND, DIVIDE error, and FP exceptions:
+	
+	procedure handleFPE
+	( 
+			signum	:int32; 
+		var	siginfo	:bsd.siginfo_t; 
+		var buf		:bsd.ucontext_t 
+	); @noframe;  @cdecl;
+	begin handleFPE;
+	
+
+		push( ebp );
+		mov( esp, ebp );
+		
+
+		mov( buf, eax );		
+		mov( (type bsd.ucontext_t [eax]).uc_mcontext.mc_trapno, eax );
+		cmp( eax, bsd.T_BOUND );
+		je BoundInstr;
+		cmp( eax, bsd.T_OFLOW );
+		je IntoInstr;
+		cmp( eax, bsd.T_DIVIDE );
+		je DivideError;
+		
+		cmp( eax, bsd.T_ARITHTRAP );
+		jne fInvalidOperation;
+		
+	
+		mov( siginfo, eax );
+		mov( (type bsd.siginfo_t [eax]).si_code, eax );
+		cmp( eax, bsd.FPE_FLTDIV );
+		je fDivByZero;
+		cmp( eax, bsd.FPE_FLTOVF );
+		je fOverflow;
+		cmp( eax, bsd.FPE_FLTUND );
+		je fUnderflow;
+		cmp( eax, bsd.FPE_FLTRES );
+		je fInexactResult;
+
+		// Must be invalid operation or stack overflow.
+		// Can't figure out how to differentiate the two under FreeBSD.
+		// The FPU status value doesn't seem to have the SF bit set on
+		// stack overflow.
+		
+		
+		fInvalidOperation:
+			mov( buf, eax );		
+			mov( ex.fInvalidOperation, ucEAX.mc_eax );
+			jmp done;
+			
+		fStackCheck:
+			mov( buf, eax );
+			mov( ex.fStackCheck, ucEAX.mc_eax );
+			jmp done;
+		
+		fInexactResult:
+			mov( buf, eax );		
+			mov( ex.fInexactResult, ucEAX.mc_eax );
+			jmp done;
+
+		fUnderflow:
+			mov( buf, eax );		
+			mov( ex.fUnderflow, ucEAX.mc_eax );
+			jmp done;
+
+		fOverflow:
+			mov( buf, eax );		
+			mov( ex.fOverflow, ucEAX.mc_eax );
+			jmp done;
+
+		fDivByZero:
+			mov( buf, eax );		
+			mov( ex.fDivByZero, ucEAX.mc_eax );
+			jmp done;
+
+		DivideError:
+			mov( buf, eax );		
+			mov( ex.DivideError, ucEAX.mc_eax );
+			jmp done;
+
+		IntoInstr:
+			mov( buf, eax );		
+			mov( ex.IntoInstr, ucEAX.mc_eax );
+			jmp done;
+
+		BoundInstr:
+			mov( buf, eax );		
+			mov( ex.BoundInstr, ucEAX.mc_eax );
+			jmp done;
+			
+		fDenormal:
+			mov( buf, eax );
+			mov( ex.fDenormal, ucEAX.mc_eax );
+
+	done:
+		mov( &raiseEX, ucEAX.mc_eip );
+		pop( ebp );
+		ret();
+		
+	raiseEX:
+		raise( eax );
+		
+	
+	end handleFPE;
+
+
+
+	// The following procedure gets called from the
+	// main program if the user has included "excepts.hhf"
+	// in their main program (otherwise, the main program
+	// simply calls a stub that immediately returns and the
+	// system doesn't install any FreeBSD signal handlers.
+
+	procedure excepts_install_signals; @external;
+
+	procedure excepts_install_signals; @noframe;
+	readonly
+		segvAction	:bsd.sigaction_t :=
+						bsd.sigaction_t:
+						[
+							&handleSegv,
+							bsd.SA_SIGINFO,
+							bsd.sigset_t.__lword:[0]
+						];
+						
+		fpeAction	:bsd.sigaction_t :=
+						bsd.sigaction_t:
+						[
+							&handleFPE,
+							bsd.SA_SIGINFO,
+							bsd.sigset_t.__lword:[0]
+						];
+
+										
+		IllAction	:bsd.sigaction_t :=
+						bsd.sigaction_t:
+						[
+							&handleIll,
+							bsd.SA_SIGINFO,
+							bsd.sigset_t.__lword:[0]
+						];
+
+		traceAction	:bsd.sigaction_t :=
+						bsd.sigaction_t:
+						[
+							&handleTrace,
+							bsd.SA_SIGINFO,
+							bsd.sigset_t.__lword:[0]
+						];
+
+		ctrlC	:bsd.sigaction_t :=
+						bsd.sigaction_t:
+						[
+							&handleControlC,
+							bsd.SA_SIGINFO,
+							bsd.sigset_t.__lword:[0]
+						];
+
+										
+
+	begin excepts_install_signals;
+
+		// Set up some signal handlers for common FreeBSD exceptions.
+		//
+		// Begin by setting up the signal handler for ex.AccessViolation:
+		
+		bsd.sigaction( bsd.SIGSEGV, segvAction, NULL );
+		bsd.sigaction( bsd.SIGBUS, segvAction, NULL );
+		
+		// Install the FPU and integer exceptions:
+		
+		bsd.sigaction( bsd.SIGFPE, fpeAction, NULL );
+		
+		// Install the illegal instruction exception:
+		
+		bsd.sigaction( bsd.SIGILL, IllAction, NULL );
+
+		// Install the trace exception:
+		
+		bsd.sigaction( bsd.SIGTRAP, traceAction, NULL );
+		
+		// Install the control C exception:
+		
+		bsd.sigaction( bsd.SIGINT, ctrlC, NULL );
+		ret(); 
+
+	end excepts_install_signals;
+
+
+
+
+
+
+#elseif( os.macOS )
+
+	#include( "mac.hhf" )
+	#include( "excepts.hhf" )
+
+const
+	ucEAX	:text := "(type mac.ucontext_t [eax]).uc_mcontext";
+	mcEAX	:text := "(type mac.mcontext_t [eax]).__ss";
+
+	//*********************************************************************
+	// Mac OSX Signal Handlers:
+	//*********************************************************************
+
+	// handleSegv- Handles the SIGSEGV signal (this is a segment/access
+	// violation).
+
+	?@noframe := true;
+	?@nodisplay := true;
+	?@noalignstack := true;
+
+	// Restore register values from the mcontext_t object pointed at
+	// by EAX (does not restore EAX or ESP):
+	
+	procedure restoreRegs; 
+	begin restoreRegs;
+	
+		mov( mcEAX.__ebx, ebx );
+		mov( mcEAX.__ecx, ecx );
+		mov( mcEAX.__edx, edx );
+		mov( mcEAX.__edi, edi );
+		mov( mcEAX.__esi, esi );
+		ret();
+		
+	end restoreRegs;
+	
+	// Handle INTO, BOUND, DIVIDE error, and FP exceptions:
+	
+	procedure handleFPE
+	( 
+			signum	:int32; 
+		var	siginfo	:mac.siginfo_t; 
+		var buf		:mac.ucontext_t 
+	); @cdecl;
+	
+	// It's BAD that this is static. But exception handling on the
+	// Mac isn't thread-safe anyway, so what's one more violation of
+	// reentrancy?
+	
+	static
+		exceptionToRaise	:dword;
+		
+	begin handleFPE;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		// siginfo->si_code is *supposed* to give us the sub-code for
+		// the exception. But this doesn't seem to work on the Mac.
+		// So we will have to synthesize this information on our own.
+		//
+		// First, look at the opcode that generated this exception.
+		// If it's DIV, assume we have a divide error:
+		
+		mov( buf, eax );
+		mov( (type mac.ucontext_t [eax]).uc_mcontext, eax );
+		
+		// $F6/$F7 opcode could be TEST, NOT, NEG, MUL, IMUL, IDIV, or DIV.
+		// However, DIV and IDIV are the only ones that raise an arithmetic
+		// exception so if we see that opcode, assume it's a divide error.
+		
+		mov( ex.DivideError, exceptionToRaise ); 
+		mov( (type mac.mcontext_t [eax]).__ss.__eip, ebx );
+		cmp( (type byte [ebx]), $F6 );
+		je gotException;
+		cmp( (type byte [ebx]), $F7 );
+		je gotException;
+		
+		// Check to see if the opcode is an INTO instruction ($CE)
+		// Note that EBX points at the byte *past* the INTO opcode.
+		
+		mov( ex.IntoInstr, exceptionToRaise );
+		cmp( (type byte [ebx-1]), $CE );
+		je gotException;
+		
+		// At this point, we must have some sort of floating-point exception.
+		// Grab the floating-point status register value and determine what
+		// exception has been raised.
+		//
+		// Begin by getting the control word and determining which exceptions
+		// are masked (so we can ignore them).
+		
+		mov( (type mac.mcontext_t [eax]).__fs.__fpu_fcw, cx );
+		not( cx );
+		and( (type mac.mcontext_t [eax]).__fs.__fpu_fsw, cx );
+		
+		mov( ex.fInvalidOperation, exceptionToRaise );
+		test( mac.FPS_IE, cx );
+		jnz gotException;
+		
+		mov( ex.fDenormal, exceptionToRaise );
+		test( mac.FPS_DE, cx );
+		jnz gotException;
+		
+		mov( ex.fDivByZero, exceptionToRaise );
+		test( mac.FPS_ZE, cx );
+		jnz gotException;
+		
+		mov( ex.fOverflow, exceptionToRaise );
+		test( mac.FPS_OE, cx );
+		jnz gotException;
+		
+		mov( ex.fUnderflow, exceptionToRaise );
+		test( mac.FPS_UE, cx );
+		jnz gotException;
+		
+		mov( ex.fInexactResult, exceptionToRaise );
+		test( mac.FPS_PE, cx );
+		jnz gotException;
+		
+		mov( ex.fStackCheck, exceptionToRaise );
+		test( mac.FPS_SF, cx );
+		jnz gotException;
+		
+		// ????
+		
+	gotException:	
+		call restoreRegs;
+		
+		mov( &doRaise, mcEAX.__eip );
+		pushd( mac.UC_FLAVOR );
+		push( buf );
+		push( signum );
+		mov( mac.sys_sigreturn, eax );
+		int( $80 );		// Control transfers to doRaise from here.
+		
+		
+	doRaise:
+		raise( exceptionToRaise );
+	
+	end handleFPE;
+
+
+
+	// Handle seg faults, page faults, and priviledged instruction faults:
+	
+	
+	procedure handleSegv
+	( 
+			signum	:int32; 
+		var	siginfo	:mac.siginfo_t; 
+		var buf		:mac.ucontext_t 
+	); @cdecl;
+		
+	begin handleSegv;
+		
+		push( ebp );
+		mov( esp, ebp );
+		
+		mov( buf, eax );
+		mov( (type mac.ucontext_t [eax]).uc_mcontext, eax );		
+		call restoreRegs;		
+		mov( &doRaise, mcEAX.__eip );
+		
+		pushd( mac.UC_FLAVOR );
+		push( eax );
+		push( signum );
+		mov( mac.sys_sigreturn, eax );
+		int( $80 );		// Control transfers to doRaise from here.
+		
+	doRaise:
+		raise( ex.AccessViolation );
+
+	end handleSegv;
+	
+
+	// Handle illegal instruction exceptions:
+	
+	procedure handleIll
+	( 
+			signum	:int32; 
+		var	siginfo	:mac.siginfo_t; 
+		var buf		:mac.ucontext_t 
+	); @noframe;  @cdecl;
+		
+	begin handleIll;
+	
+		push( ebp );
+		mov( esp, ebp );
+		
+		mov( buf, eax );
+		mov( (type mac.ucontext_t [eax]).uc_mcontext, eax );		
+		call restoreRegs;		
+		mov( &doRaise, mcEAX.__eip );
+		
+		pushd( mac.UC_FLAVOR );
+		push( eax );
+		push( signum );
+		mov( mac.sys_sigreturn, eax );
+		int( $80 );		// Control transfers to doRaise from here.
+		
+	doRaise:
+		raise( ex.IllegalInstr );
+
+end handleIll;
+	
+
+	// Handle the control-C exception.
+	
+	procedure handleControlC
+	( 
+			signum	:int32; 
+		var	siginfo	:mac.siginfo_t; 
+		var buf		:mac.ucontext_t 
+	); @noframe;  @cdecl;
+		
+	begin handleControlC;
+	
+		push( ebp );
+		mov( esp, ebp );
+		
+		mov( buf, eax );
+		mov( (type mac.ucontext_t [eax]).uc_mcontext, eax );		
+		call restoreRegs;		
+		mov( &doRaise, mcEAX.__eip );
+		
+		pushd( mac.UC_FLAVOR );
+		push( eax );
+		push( signum );
+		mov( mac.sys_sigreturn, eax );
+		int( $80 );		// Control transfers to doRaise from here.
+		
+	doRaise:
+		raise( ex.ControlC );
+
+	end handleControlC;
+	
+
+	// Handle singlestep and breakpoint exceptions:
+	
+	procedure handleTrace
+	( 
+			signum	:int32; 
+		var	siginfo	:mac.siginfo_t; 
+		var buf		:mac.ucontext_t 
+	); @noframe;  @cdecl;
+		
+	static
+		exceptionToRaise	:dword;
+		
+	begin handleTrace;
+	
+		push( ebp );
+		mov( esp, ebp );
+		
+		mov( buf, eax );
+		mov( (type mac.ucontext_t [eax]).uc_mcontext, eax );
+		mov( (type mac.mcontext_t [eax]).__ss.__eip, ebx );
+
+		// Check to see if the opcode is a BOUND instruction ($62)
+		
+		mov( ex.BoundInstr, exceptionToRaise );
+		cmp( (type byte [ebx]), $62 );
+		je gotException;
+		
+		// Check to see if it's a breakpoint/INT(3) instruction ($CC)
+		
+		mov( ex.Breakpoint, exceptionToRaise );
+		cmp( (type byte [ebx]), $CC );
+		je gotException;
+		
+		// Assume at this point that it's a single-step exception:
+		
+		mov( ex.SingleStep, exceptionToRaise );
+
+		
+	gotException:
+		call restoreRegs;		
+		mov( &doRaise, mcEAX.__eip );
+		
+		pushd( mac.UC_FLAVOR );
+		push( eax );
+		push( signum );
+		mov( mac.sys_sigreturn, eax );
+		int( $80 );		// Control transfers to doRaise from here.
+		
+	doRaise:
+		raise( exceptionToRaise );
+
+	end handleTrace;
+
+ 
+	// The following procedure gets called from the
+	// main program if the user has included "excepts.hhf"
+	// in their main program (otherwise, the main program
+	// simply calls a stub that immediately returns and the
+	// system doesn't install any FreeBSD signal handlers.
+
+	procedure excepts_install_signals; @external;
+
+	procedure excepts_install_signals; @noframe;
+	readonly
+		segvAction	:mac.sigaction_t :=
+						mac.sigaction_t:
+						[
+							mac.__sigaction_u.__sa_sigaction_t:[&handleSegv],
+							0,
+							mac.SA_SIGINFO
+						];
+						
+		fpeAction	:mac.sigaction_t :=
+						mac.sigaction_t:
+						[
+							mac.__sigaction_u.__sa_sigaction_t:[&handleFPE],
+							0,
+							mac.SA_SIGINFO
+						];
+
+										
+		IllAction	:mac.sigaction_t :=
+						mac.sigaction_t:
+						[
+							mac.__sigaction_u.__sa_sigaction_t:[&handleIll],
+							0,
+							mac.SA_SIGINFO
+						];
+
+		traceAction	:mac.sigaction_t :=
+						mac.sigaction_t:
+						[
+							mac.__sigaction_u.__sa_sigaction_t:[&handleTrace],
+							0,
+							mac.SA_SIGINFO
+						];
+
+		ctrlC	:mac.sigaction_t :=
+						mac.sigaction_t:
+						[
+							mac.__sigaction_u.__sa_sigaction_t:[&handleControlC],
+							0,
+							mac.SA_SIGINFO
+						];
+
+										
+
+	begin excepts_install_signals;
+
+		// Set up some signal handlers for common MacOS exceptions.
+		//
+		// Begin by setting up the signal handler for ex.AccessViolation:
+		
+		mac.sigaction( mac.SIGSEGV, &segvAction, NULL );
+		mac.sigaction( mac.SIGBUS, &segvAction, NULL );
+		
+		// Install the FPU and integer exceptions:
+		
+		mac.sigaction( mac.SIGFPE, &fpeAction, NULL );
+		
+		// Install the illegal instruction exception:
+		
+		mac.sigaction( mac.SIGILL, IllAction, NULL );
+
+		// Install the trace exception:
+		
+		mac.sigaction( mac.SIGTRAP, &traceAction, NULL );
+		
+		// Install the control C exception:
+		
+		mac.sigaction( mac.SIGINT, &ctrlC, NULL );
+		ret(); 
+
+	end excepts_install_signals;
+
+#endif
+
+
+end InstallSignals;

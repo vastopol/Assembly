@@ -1,0 +1,12 @@
+unit rpcUnit;
+
+#includeOnce( "rpc.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "memory.hhf" )
+#includeOnce( "stdlib.hhf" )
+
+static
+	vmt( rpcBase_t );
+	
+
+end rpcUnit;

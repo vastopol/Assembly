@@ -1,0 +1,372 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#includeOnce( "datetime.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "memory.hhf" )
+#includeOnce( "../include/datetime_private.hhf" )
+
+procedure date._toString( dr:date.daterec; s:string ); 
+	@nodisplay; 
+	@noframe;
+
+	// PutMonth-
+	// Emits the month component of a date as an n-digit
+	// number, where 'n' is the minDigits parameter value.
+	// Assertion: 'n' is always 1 or 2.
+	
+	procedure PutMonth( m:byte; minDigits:uns32 ); 
+		@nodisplay; 
+		@noframe;
+	begin PutMonth;
+	
+		push( ebp );
+		mov( esp, ebp );
+		conv.u8Size( m );
+		cmp( eax, minDigits );
+		jae doConv;
+		
+			mov( '0', (type byte [edi]));
+			inc( edi );
+			
+		doConv:
+		mov( m, al );
+		conv.u8ToBuf( al, [edi] );
+		pop( ebp );
+		ret( _parms_ );
+	
+	end PutMonth;
+	
+	// Output the day as a one or two-digit value
+	// (minimum width, which is always 1 or 2, is passed
+	// in the minDigits parameter)
+	
+	procedure PutDay( d:byte; minDigits:uns32 ); 
+		@nodisplay; 
+		@noframe;
+	begin PutDay;
+	
+		push( ebp );
+		mov( esp, ebp );
+		conv.u8Size( d );
+		cmp( eax, minDigits );
+		jae doConv;
+		
+			mov( '0', (type byte [edi]));
+			inc( edi );
+			
+		doConv:
+		mov( d, al );
+		conv.u8ToBuf( al, [edi] );
+		pop( ebp );
+		ret( _parms_ );
+	
+	end PutDay;
+	
+	// PutYear-
+	//
+	//	Emits the year as either a two-digit or four-digit
+	// string.
+	
+	procedure PutYear( y:word; minDigits:uns32 ); 
+		@nodisplay; 
+		@noframe;
+	begin PutYear;
+	
+		push( ebp );
+		mov( esp, ebp );
+		mov( y, ax );
+		cmp( minDigits, 2 );
+		jne doFullYear;
+		
+			mov( y, ax );
+			xor( edx, edx );
+			div( 100, dx:ax );
+			conv.u8Size( dl );
+			cmp( eax, 1 );
+			jne twoDigitYear;
+			
+				mov( '0', (type byte [edi]));
+				inc( edi );
+				
+			twoDigitYear:
+			mov( dl, al );
+			conv.u8ToBuf( al, [edi] );
+			jmp yearDone;
+			
+		doFullYear:
+		
+			mov( y, ax );
+			conv.u16ToBuf( ax, [edi] );
+			
+		yearDone:
+		pop( ebp );
+		ret( _parms_ );
+	
+	end PutYear;
+	
+	// PutSep-
+	//	Emits the global date separater character between
+	// any two date values.
+	
+	#macro PutSep( dummy[] );
+	
+		mov( DateSep, al );
+		mov( al, [edi] );
+		inc( edi );
+		
+	#endmacro;
+	
+	// PutEOS-
+	//	Cleans up the string generation at the end of a
+	// date-to-string conversion.
+	
+	#macro PutEOS( dummy[] );
+
+		mov( 0, (type byte [edi]));
+		mov( s, eax );
+		sub( eax, edi );
+		mov( edi, (type str.strRec [eax]).length );
+		
+	#endmacro;
+	
+	// CheckString-
+	//	Checks for string overflow while constructing a date string.
+	
+	#macro CheckString( size ); 
+	
+		cmp( (type str.strRec [edi]).maxlen, size );
+		jb strOvrFlw;
+		
+	#endmacro
+	
+	// pushMonth-
+	//	Pushes an 8-bit month value as a dword onto the stack.
+	
+	#macro pushMonth( m );
+		#{
+			pushw(0);
+			pushw((type word m));
+		}#
+	#endmacro
+	
+	// pushDay-
+	//	Pushes an 8-bit day value as a dword onto the stack.
+	
+	#macro pushDay(d);
+		#{ push((type dword d)); }#
+	#endmacro
+			
+	
+readonly
+	caseLabels	:dword[10] :=
+		[
+			&mdyy,
+			&mdyyyy,
+			&mmddyy,
+			&mmddyyyy,
+			&yymd,
+			&yyyymd,
+			&yymmdd,
+			&yyyymmdd, 
+			&MONdyyyy, 
+			&MONTHdyyyy 
+		];
+	
+	
+var
+	DateSep	:char;
+	
+begin _toString;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	pushfd();
+	push( eax );
+	push( ecx );
+	push( edx );
+	push( esi );
+	push( edi );
+	cld();
+	
+	_hla.get_DateSeparator();
+	mov( al, DateSep );
+	
+	// Make sure this is a valid date, raise an exception
+	// if it is not:
+	
+	mov( s, edi );
+	date.validate( dr );
+	
+	// Convert the date to a string using the format specified by
+	// the DateFormat global object.
+	
+	_hla.get_DateFormat();
+	cmp( eax, date.MONTHdyyyy );
+	ja invalidDate;
+	jmp( caseLabels[eax*4] );
+	  
+	mdyy:
+ 	  
+	  	CheckString( 8 );
+		PutMonth( pushMonth( dr.month ), 1 );				  
+		PutSep();
+		PutDay( pushDay( dr.day ), 1 );
+		PutSep();
+		PutYear( dr.year, 2 );
+		PutEOS();
+		jmp allDone;
+
+
+	  
+	mdyyyy:
+	  	CheckString( 10 );
+		PutMonth( pushMonth( dr.month ), 1 );
+		PutSep();
+		PutDay( pushDay( dr.day ), 1 );
+		PutSep();
+		PutYear( dr.year, 4 );
+		PutEOS();
+		jmp allDone;
+
+
+	mmddyy:
+
+	  	CheckString( 8 );
+		PutMonth( pushMonth( dr.month ), 2 );
+		PutSep();
+		PutDay( pushDay( dr.day ), 2 );
+		PutSep();
+		PutYear( dr.year, 2 );
+		PutEOS();
+		jmp allDone;
+
+	  
+	mmddyyyy:
+
+	  	CheckString( 10 );
+		PutMonth( pushMonth( dr.month ), 2 );
+		PutSep();
+		PutDay( pushDay( dr.day ), 2 );
+		PutSep();
+		PutYear( dr.year, 4 );
+		PutEOS();
+		jmp allDone;
+
+	yymd:
+	  
+	  	CheckString( 8 );
+		PutYear( dr.year, 2 );
+		PutSep();
+		PutMonth( pushMonth( dr.month ), 1 );
+		PutSep();
+		PutDay( pushDay( dr.day ), 1 );
+		PutEOS();
+		jmp allDone;
+
+	yymmdd:
+	  
+	  	CheckString( 10 );
+		PutYear( dr.year, 2 );
+		PutSep();
+		PutMonth( pushMonth( dr.month ), 2 );
+		PutSep();
+		PutDay( pushDay( dr.day ), 2 );
+		PutEOS();
+		jmp allDone;
+
+	yyyymd: 
+
+	  	CheckString( 10 );
+		PutYear( dr.year, 4 );
+		PutSep();
+		PutMonth( pushMonth( dr.month ), 1 );
+		PutSep();
+		PutDay( pushDay( dr.day ), 1 );
+		PutEOS();
+		jmp allDone;
+
+	yyyymmdd: 
+
+	  	CheckString( 10 );
+		PutYear( dr.year, 4 );
+		PutSep();
+		PutMonth( pushMonth( dr.month ), 2 );
+		PutSep();
+		PutDay( pushDay( dr.day ), 2 );
+		PutEOS();
+		jmp allDone;
+
+	MONdyyyy:
+	   
+	  	CheckString( 12 );
+		movzx( dr.month, esi );
+		mov( date.shortMonths[ esi*4 ], esi );
+		mov( 3, ecx );
+		rep.movsb();
+		mov( ' ', al );
+		stosb();
+		PutDay( pushDay( dr.day ), 1 );
+		mov( ',', al );
+		stosb();
+		mov( ' ', al );
+		stosb();
+		PutYear( dr.year, 4 );
+		PutEOS();						
+		jmp allDone;
+
+	MONTHdyyyy:
+	  
+	  	CheckString( 18 );
+		movzx( dr.month, esi );
+		mov( date.Months[ esi*4 ], esi );
+		mov( (type str.strRec [esi]).length, ecx );
+		rep.movsb();
+		mov( ' ', al );
+		stosb();
+		PutDay( pushDay( dr.day ), 1 );
+		mov( ',', al );
+		stosb();
+		mov( ' ', al );
+		stosb();
+		PutYear( dr.year, 4 );
+		PutEOS();
+								
+	allDone:
+	pop( edi );
+	pop( esi );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	popfd();
+	leave();
+	ret( _parms_ );
+	
+invalidDate:
+	 raise( ex.InvalidDateFormat );
+			
+strOvrFlw:
+	raise( ex.StringOverflow );
+		
+end _toString;
+
+
+
+
+end DateTime;			

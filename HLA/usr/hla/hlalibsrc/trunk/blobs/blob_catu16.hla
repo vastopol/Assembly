@@ -1,0 +1,58 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" );
+
+
+
+// blob.catu16-                                                  
+//                                                               
+// Appends the unsigned decimal equivalent of the "u16" parameter
+// to the end of the specified blob.                             
+
+
+ 
+procedure blob.catu16( dest:blob.blob; u16:word  ); 
+	@noframe;	
+begin catu16;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	push( eax );
+	hla.putu16
+	( 
+		#{	// Push (pseudo) thunk object on stack: 
+			pushd( &blob._cats );
+			push( dest );	// Fake EBP value
+		}#, 
+		u16 
+	);
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+end catu16;
+
+end blobUnit;
+
+
+
+
+	
+

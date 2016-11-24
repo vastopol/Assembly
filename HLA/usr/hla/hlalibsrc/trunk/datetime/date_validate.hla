@@ -1,0 +1,100 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "excepts.hhf" )
+
+	
+// validate-
+//
+//	Raises an exception if the date passed as a parameter
+//  is not a valid date.
+
+procedure date._validate( dr:date.daterec ); @nodisplay; @noframe;
+begin _validate;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	movzx( dr.month, eax );
+
+	test( eax, eax );
+	jz invalidDate;
+	cmp( eax, 12 );
+	ja invalidDate;
+	
+	// Quick check for leap year (not a leap year, actually).
+	// If the month is not Feb, don't bother checking because
+	// it won't matter.  If the year is not divisible by four, 
+	// don't bother calling date.IsLeapYear (because it can't 
+	// be a leap year).	If it's Feb and the year is divisible
+	// by four, call date.IsLeapYear to see if it really is
+	// a leap year.  If so, set the days in the month to 29.
+	
+	mov( date.DaysInMonth[ eax*4 ], ebx );
+	cmp( eax, 2 );
+	jne notLeapYear;
+	
+		test( %11, dr.year );
+		jnz notLeapYear;
+		
+			date.isLeapYear( dr.year );
+			test( eax, eax );
+			jz notLeapYear;
+			
+				mov( 29, bl );
+							
+	
+	notLeapYear:
+	cmp( bl, dr.day );
+	jb invalidDate;
+	cmp( dr.day, 0 );
+	je invalidDate;
+
+	movzx( dr.year, eax );
+	
+		// The following is questionable.
+		// Who knows what ranges we should check?
+		// 1600 is probably a good starting year
+		// since this was shortly after the advent
+		// of the Gregorian calendar.  The upper
+		// end should be reasonably small so as
+		// to catch ridiculous dates, but large
+		// enough so that we don't suffer from
+		// the "Y2K Syndrome".  date.maxYear was
+		// set to 3000 as this was being written
+		// (because calendar will have to add
+		// an extra leap year between 3000 & 4000
+		// and the Julian day numbers reset
+		// during this time), but smaller or larger
+		// values could be argued for.
+	
+	cmp( eax, date.minYear );
+	jb invalidDate;
+	cmp( eax, date.maxYear );
+	ja invalidDate;
+
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+invalidDate:
+	raise( ex.InvalidDate );
+
+end _validate;
+		
+end DateTime;			

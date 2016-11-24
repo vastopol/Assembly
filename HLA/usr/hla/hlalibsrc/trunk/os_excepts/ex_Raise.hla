@@ -1,0 +1,246 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+/*
+** This is the "Raise" handler for HLA under Linux.
+**	
+*/
+
+
+unit RaiseUnit;
+#includeOnce( "os.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "threads.hhf" )
+#includeOnce( "../include/thread_private.hhf" )
+
+?@noframe := true;
+?@nodisplay := true;
+
+
+procedure _Raise( condCode:dword in eax );	external( "Raise__hla_" );
+procedure HWexcept; 						external( "HWexcept__hla_" );
+
+
+
+#if( os.linux | os.freeBSD | os.macOS )
+
+	const
+		ExceptSignature	:= $e8ce972;	// Exception Record Signature
+
+	#if( !@thread )
+	
+		static
+			ExceptionPtr:dword; @external( "ExceptionPtr__hla_" );
+			
+	#endif
+		
+	procedure shortDfltExcept;	   	@external( "shortDfltExcept__hla_" );
+		
+#elseif( os.win32 )
+
+	const
+		ExceptionPtr	:text := "(type dword [ebp])";
+		
+#endif
+
+
+#if( os.win32 )	
+
+	// Unwind the stack looking for a node
+	// in the exception registration list
+	// that HLA built.  Such nodes will have
+	// a pointer to the HWexcept routine
+	// in the callback pointer position.
+	// 
+	// Since this is a software generated exception,
+	// we know there will be at least one such node
+	// in the list.
+
+
+	procedure _Raise( condCode:dword in eax );
+	begin _Raise;
+
+			pop( ebx );		// Get address of raise operation into EBX.
+			
+			xor( ebp, ebp );
+			fseg:mov( ExceptionPtr, ebp );
+			
+		Unstack:
+			cmp( (type dword [ebp+4]), &HWexcept );
+			je	DoThisOne;
+			mov( [ebp], ebp );
+			jmp	Unstack;
+					
+		DoThisOne:
+			mov( ebp, esp );
+			xor( ebp, ebp );
+			fseg:pop( ExceptionPtr );
+			add( 8, esp );
+			pop( ebp );
+			ret();
+
+	end _Raise;
+	
+
+
+
+#elseif( os.linux | os.freeBSD | os.macOS )
+
+
+	// _Raise- Whenever a program executes the HLA "raise" statement,
+	// it loads EAX with the exception number and *jumps* to this
+	// code.
+	//
+	//	Under Linux/FreeBSD, the global variable "ExceptionPtr" (above)
+	// points at the most recent exception record sitting on the
+	// stack.  This exception record takes the following form
+	// (once you've loaded ExceptionPtr into ESP):
+	//
+	//	ESP+16:	Pointer to HLA exception handler code.
+	//	ESP+12:	Context for the exception handler code (i.e.,
+	//			a saved EBP value).
+	//	ESP+8:	Pointer to the coroutine record of the most
+	//			recently activated coroutine (usually the
+	//			main program's coroutine record).
+	//	ESP+4:	Signature dword for a sanity check (must contain
+	//			$e8ce972, which is a hexadecimal-mangled spelling
+	//			of the word "excepts" (ExceptSignature constant).
+	//	ESP+0:	Pointer to previous exception frame on the stack.	
+	//
+	//	Since ExceptionPtr is a global object, exception handling
+	//	under Linux is not "thread-safe."  I will fix this problem
+	//	when there is a standard way to deal with threads under
+	//	Linux (and I take the time to learn about it).  
+	//
+	//	The _Raise procedure does a quick sanity check on the
+	// exception record at which ExceptionPtr points (bailing
+	// through "shortDefltExcept" if there isn't a reasonable
+	// exception record) and then transfers control to an
+	// appropriate exception handler.
+	//
+	//	Keep in mind that there is no return address sitting
+	// on the stack upon entry to this code.  Furthermore,
+	// Raise is going to reset ESP anyway, so it wouldn't matter
+	// if there was.
+	//
+	//	HLA does not guarantee the value of any registers (except
+	// eax) upon entry into an EXCEPTION section of a TRY..ENDTRY
+	// statement.  However, we'll be nice and preserve them as much
+	// as possible.   
+
+	procedure _Raise( condCode:dword in eax );
+	const
+		tlsEAX	:text := "(type _hla.stdlib_tls_t [eax])";
+		 
+	begin _Raise;
+	
+			pop( ebx );		// Get address of raise operation into EBX.
+
+		#if( @thread )
+		
+			push( eax );
+			push( ecx );
+			push( edx );
+			
+			// The following *must* succeed or we're in big trouble!
+			
+			pthread_getspecific( thread.threadContext );
+			test( eax, eax );
+			jz ThreadError;
+			
+			pop( tlsEAX.raiseEDXSave );
+			pop( tlsEAX.raiseECXSave );
+			pop( tlsEAX.raiseEAXSave );
+			
+			// If the ExceptionPtr is NULL or doesn't point
+			// at a valid exception record on the stack,
+			// then call the shortDfltExcept procedure to
+			// abort the program.
+			
+			mov( tlsEAX.ExceptionPtr, ecx );
+			test( ecx, ecx );
+			jz _shortDfltExcept;
+
+			cmp( (type dword [ecx+4]), ExceptSignature );
+			jne _shortDfltExcept;
+					
+			// Okay, we've got what seems to be a real exception
+			// record.  Switch ESP over there.  
+			
+			mov( tlsEAX.ExceptionPtr, esp );
+			
+			// Okay, clean up the exception record on the stack
+			// and transfer control to the exception handler.
+			
+			pop( tlsEAX.ExceptionPtr );	// Sets ExceptionPtr to previous value.
+			mov( [esp+8], ebp );		// Sets up handler's context.
+			add( 12, esp );				// Remove signature, coroutine, context
+			
+			// Restore the registers:
+			
+			mov( tlsEAX.raiseEDXSave, edx );
+			mov( tlsEAX.raiseECXSave, ecx );
+			mov( tlsEAX.raiseEAXSave, eax );
+			ret();						// Transfers control to handler.
+			
+		// We cannot raise an exception here, because it's the RAISE
+		// operation that has failed!
+		
+		ThreadError:
+			os.exitProcess(-1);
+			  			 
+		
+		#else // non-threaded code
+
+			push( ebx );
+			mov( ExceptionPtr, ebx );
+				
+			// If the ExceptionPtr is NULL or doesn't point
+			// at a valid exception record on the stack,
+			// then call the shortDfltExcept procedure to
+			// abort the program.
+			
+			test( ebx, ebx );
+			jz _shortDfltExcept;
+
+			cmp( (type dword [ebx+4]), ExceptSignature );
+			jne _shortDfltExcept;
+					
+			// Okay, we've got what seems to be a real exception
+			// record.  Switch ESP over there.  
+			
+			pop( ebx );		// Restore EBX's value before switching ESP
+			mov( ExceptionPtr, esp );
+			
+			// Okay, clean up the exception record on the stack
+			// and transfer control to the exception handler.
+			
+			pop( ExceptionPtr );	// Sets ExceptionPtr to previous value.
+			mov( [esp+8], ebp );	// Sets up handler's context.
+			add( 12, esp );			// Remove signature, coroutine, context
+			ret();					// Transfers control to handler.
+			
+		#endif
+		
+		// Note that we do not return from shortDfltExcept:
+		
+		_shortDfltExcept:
+			shortDfltExcept();
+			
+		
+
+	end _Raise;
+
+#endif
+end RaiseUnit;

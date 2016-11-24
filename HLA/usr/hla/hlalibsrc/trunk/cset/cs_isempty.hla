@@ -1,0 +1,60 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit charSets;
+
+#include( "cset.hhf" );
+
+
+
+
+/**********************************************************/
+/*                                                        */
+/* IsEmpty-                                               */
+/*                                                        */
+/* Returns true in EAX if the parameter is the empty set. */
+/*                                                        */
+/**********************************************************/
+
+procedure cs.isEmpty( src: cset ); @nodisplay; @noframe; 
+const
+	_src	:text := "(type dword [esp+4])";
+	
+begin isEmpty;
+	
+	// Stack at this point:
+	//
+	//	esp+4	dest:dword
+	//	esp		return address
+	
+	mov( _src, eax );
+	or( _src[4], eax );
+	or( _src[8], eax );
+	or( _src[12], eax );
+	test( eax, eax );
+	sete( al );
+	movzx( al, eax );
+	ret( _parms_ );
+	
+end isEmpty;
+
+
+
+end charSets;
+
+
+
+
+	
+

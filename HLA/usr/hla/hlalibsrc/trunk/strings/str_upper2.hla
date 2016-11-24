@@ -1,0 +1,119 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+
+/******************************************************************/
+/*                                                                */
+/* upper1,                                                        */
+/* upper2,                                                        */
+/* a_upper-                                                       */
+/*                                                                */
+/* These routines convert the string passed as a parameter to     */
+/* upper case.  That is, if the string contains any lower case    */
+/* alphabetic characters, they are converted to upper case.       */
+/* All other characters in the string are left unchanged.         */
+/*                                                                */
+/* upper destructively converts the string passed as a parameter. */
+/*																  */
+/* aupper makes a copy of the string and converts the copy        */
+/* to upper case. aupper returns a pointer to the new string in   */
+/* the EAX register.                                              */
+/*                                                                */
+/******************************************************************/
+
+procedure str.upper2( src:string; dest:string ); @noframe;
+begin upper2;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( edi );
+	push( esi );
+	push( eax );
+	
+	mov( src, esi );
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+	mov( dest, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+	// Make sure the destination can hold the string:
+	
+	mov( (type str.strRec [esi]).length, eax );
+	cmp( eax, (type str.strRec [edi]).maxlen );
+	ja StringOverflow;
+	
+	// Set the destination length:
+	
+	mov( eax, (type str.strRec [edi]).length );
+	
+	// Until we encounter a zero byte, convert any lower
+	// case characters to upper case.
+	
+	dec( esi );					// To balance add, below.
+	forEachChar:
+	
+		mov( [esi+1], al );
+		add( 1, esi );
+		cmp( al, 0 );
+		je allDone;				// Quit when we find a zero byte.
+		
+		// If a lower case character, convert it to upper case
+		// and store the result back into the destination string.
+		
+		cmp( al, 'a' );
+		jb storeChar;
+		cmp( al, 'z' );
+		ja storeChar;
+	
+			and( $5f, al );		// Magic lc->UC translation
+			
+		storeChar:
+		mov( al, [edi] );	// Save result.
+		add( 1, edi );
+		jmp forEachChar;
+			
+		
+	allDone:
+	
+	pop( eax );
+	pop( esi );
+	pop( edi );
+	pop( ebp );
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+StringOverflow:
+	raise( ex.StringOverflow );
+
+end upper2;
+
+end stringUnit;
+
+
+
+
+	
+

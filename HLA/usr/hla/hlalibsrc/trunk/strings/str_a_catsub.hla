@@ -1,0 +1,116 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+
+
+/************************************************************/
+/*                                                          */
+/* catsub4-                                                 */
+/* catsub5-                                                 */
+/* a_catsub-                                                */
+/*                                                          */
+/* Extracts a substring from the first string operand and   */
+/* concatentates it to the end of the string specified by   */
+/* the second string operand.                               */
+/*                                                          */
+/* catsub4-                                                 */
+/* Concatenates the substring to the end of the dest        */
+/* substring (the second string operand).                   */
+/*                                                          */
+/* catsub5-                                                 */
+/* Concatenates the substring of src2 (the first string     */
+/* operand) to the end of the src1 string (the second       */
+/* string operand), and stores the result into dest.        */
+/*                                                          */
+/* a_catsub-                                                */
+/* Like catsub5, except it creates a new string on the heap */
+/* rather than storing the string in a destination string.  */
+/*                                                          */
+/*                                                          */
+/*                                                          */
+/* Possible errors:                                         */
+/*                                                          */
+/* Raises a StringIndexError exception if start is a value  */
+/* greater than the length of the source string.            */
+/*                                                          */
+/* Raises a StringOverflow exception if the actual length   */
+/* of the substring is greater than the maximum length      */
+/* of the destination string.                               */
+/*                                                          */
+/* If start+len is greater than the length of the src       */
+/* string, but start is less than src's length, then        */
+/* substr simply copies the characters through to the       */
+/* end of the string.                                       */
+/*                                                          */
+/* If start is equal to the length of src, substr does      */
+/* not raise an exception;  it just returns a string        */
+/* of zero length.                                          */
+/*                                                          */
+/************************************************************/
+
+
+ 
+procedure str.a_catsub
+(
+	src2	:string; 
+	start	:dword; 
+	len		:dword;
+	src1	:string 
+); @noframe;
+begin a_catsub;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	mov( src1, eax );
+	test( eax, eax );
+	jz AttemptToDerefNULL;
+	
+	// Compute the amount of storage we need to allocate
+	// and then allocate storage for a new string.
+	
+	mov( (type str.strRec [eax]).length, eax );
+	add( len, eax );
+	str.alloc( eax );
+	 
+	// Now, copy the src1 string to the destination string:
+	
+	str.cpy( src1, eax );
+	
+	// Now call the str.catsub4 function to do the real work:
+	
+	str.catsub4( src2, start, len, eax );
+	
+	pop( ebp );
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end a_catsub;
+
+end stringUnit;
+
+
+
+
+	
+

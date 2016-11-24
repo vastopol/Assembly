@@ -1,0 +1,154 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+#includeOnce( "threads.hhf" );
+
+//  catbuf2( src1:buf_t; dest:blob.blob );
+//  catbuf3a( startBuf:dword; endBuf:dword; dest:blob.blob );
+//
+//  These two functions are the same. They are just different prototypes
+//  for the exact same code (the buf_t data type maps to the two dword
+//  arguments for catbuf3a).
+//
+//  This function concatenates the sequence of characters of length
+//  (endBuf-startBuf) starting at memory address startBuf to the
+//  end of the blob dest. 
+
+
+ 
+procedure blob.catbuf3a
+(
+	startBuf	:dword; 
+	endBuf		:dword;
+	dest		:blob.blob 
+); @noframe;
+var
+	saveEAX		:dword;
+	saveECX		:dword;
+	saveESI		:dword;
+	saveEDI		:dword;
+	saveFlags	:dword;
+	
+begin catbuf3a;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_-4), esp );
+	pushfd();	// Allocates and initializes saveFlags
+	cld();
+	
+	mov( eax, saveEAX );
+	mov( ecx, saveECX );
+	mov( esi, saveESI );
+	mov( edi, saveEDI );
+	
+	// Sanity check for edi:
+	
+	mov( dest, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+
+	// Make sure that endBuf >= startBuf:
+	
+	mov( endBuf, ecx );
+	test( ecx, ecx );
+	jz AttemptToDerefNULL;
+	
+	mov( startBuf, esi );
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+
+	#if( @thread )
+	try
+	
+		thread.enterCriticalSection( (type blob.blobRec [edi]).criticalSection );
+	
+	#endif
+
+		// Compute the new blob length and make sure
+		// it will fit at dest[wcursor]:
+		
+		sub( esi, ecx );								// ECX = buffer length
+		mov( (type blob.blobRec [edi]).wcursor, eax );	// dest length
+		add( eax, ecx );								// new blob length
+		
+		cmp( ecx, (type blob.blobRec [edi]).maxlen );	// overflow?
+		jna noBlobOverflow;
+			raise( ex.BlobOverflow );
+	
+		noBlobOverflow:
+		
+		cmp( ecx, (type blob.blobRec [edi]).length );	// New length?
+		jb noNewLen;
+		
+			mov( ecx, (type blob.blobRec [edi]).length );
+			
+		noNewLen: 
+		mov( ecx, (type blob.blobRec [edi]).wcursor );	// Save as new wcursor.
+		
+		// Compute index of concatenation point:
+		
+		add( eax, edi );	
+		
+		 
+		// Now copy the buffer to the destination blob:
+		
+		sub( eax, ecx );								// length of buffer
+		rep.movsb();
+	
+	#if( @thread )
+	
+	  anyexception
+	
+		mov( dest, edx );
+		thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		push( saveFlags );
+		popfd();
+		reraise( eax );
+	
+	endtry;	
+	mov( dest, edi );
+	thread.leaveCriticalSection( (type blob.blobRec [edi]).criticalSection );
+	
+	#endif
+	
+	mov( saveEAX, eax );
+	mov( saveECX, ecx );
+	mov( saveESI, esi );
+	mov( saveEDI, edi );
+	popfd();
+	leave();
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end catbuf3a;
+
+end blobUnit;
+
+
+
+
+	
+

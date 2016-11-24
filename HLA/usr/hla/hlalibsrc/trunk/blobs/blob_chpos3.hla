@@ -1,0 +1,124 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" );
+#include( "excepts.hhf" );
+#includeOnce( "threads.hhf" );
+
+// chpos3-                                                 
+//                                                         
+// Similar to chpos2 except this routine lets you specify a
+// blob index into the blob from which to start scanning
+// for the character.                                      
+
+
+procedure blob.chpos3( src1:blob.blob; offs:dword; src2:char ); 
+	@noframe;
+var
+	saveECX		:dword;
+	saveEDI		:dword;
+	saveFlags	:dword;
+	
+begin chpos3;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_-4), esp );
+	pushfd();	// Allocates and initializes saveFlags
+	cld();
+	
+	mov( ecx, saveECX );
+	mov( edi, saveEDI );
+	
+	mov( src1, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+		
+	
+	#if( @thread )
+	
+	try
+		thread.enterCriticalSection( (type blob.blobRec [edi]).criticalSection );
+	
+	#endif
+	
+		mov( (type blob.blobRec [edi]).length, ecx );
+		test( ecx, ecx );
+		jz NotFound;
+
+			// If the specified index exceeds the blob
+			// length, raise an exception.  Otherwise, adjust
+			// EDI and ECX by this offset value.
+			
+			mov( offs, eax );
+			cmp( eax, ecx );
+			jna notValueOutOfRange;
+				raise( ex.ValueOutOfRange );
+				
+			notValueOutOfRange:
+			
+			add( eax, edi );
+			sub( eax, ecx );
+
+			// Okay, scan for the specified character:
+			
+			mov( src2, al );
+			repne.scasb();
+			jne NotFound;
+			
+				sub( src1, edi );		// Compute index+1 (edi was inc'd!).
+				lea( eax, [edi-1] );	// Return index in eax.
+				jmp Found;
+
+		NotFound:		
+		mov( -1, eax );		// Deprecated!
+		
+	Found:
+	#if( @thread )
+	
+	  anyexception
+	  
+		mov( src1, ecx );
+		thread.leaveCriticalSection( (type blob.blobRec [ecx]).criticalSection );
+		push( saveFlags );
+		popfd();
+		
+	endtry;
+	mov( src1, ecx );
+	thread.leaveCriticalSection( (type blob.blobRec [ecx]).criticalSection );
+		
+	#endif
+	mov( saveEDI, edi );
+	mov( saveECX, ecx );
+	popfd();
+	cmp( eax, -1 );			// Set carry on success, clear on failure.
+	pop( ebp );
+	ret( _parms_ );	
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end chpos3;
+
+end blobUnit;
+
+
+
+
+	
+

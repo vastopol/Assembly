@@ -1,0 +1,486 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit memory;
+
+#include( "strings.hhf" )
+#include( "../include/mem.hhf" )
+
+
+// realloc2:
+//
+//	Resizes an allocated block.
+//
+//	Making the block smaller is easy.  Just split the
+// block into two pieces (with the first block being
+// the "keeper" of the specified size and the second
+// block being the new free block).
+//
+// Making the block bigger is a bit more work.
+// If there is a free block immediately after the current
+// block, and their combined sizes are sufficient for the
+// request, combine them (possibly forming a smaller free
+// block).  If not, then we've got to allocate a new
+// block of memory large enough to satisfy the request
+// and copy the data from the current block to the new
+// block, and then, finally, free the current block. Note
+// that data copying is done by calling a user-specified
+// callback thunk. The copy-callback thunk is passed
+// the following:
+//
+//	ESI - pointer to source block
+//	EDI - pointer to destination block
+//	ECX - block size
+//
+//	The callback thunk may freely use EAX, EBX, ECX, ESI, and EDI
+//	as it sees fit. The direction flag will be clear.
+//  realloc2 has already allocated a destination
+//	block for the data, and EDI points at this destination block.
+//	The callback thunk *must* copy the data to the specified
+//	destination block (in particular, it must not free that block
+//	and allocate a new one elsewhere).  realloc2 will free the
+//	source block upon return, so the copycallback thunk must
+//	not assume that any data in that block will be preserved (nor
+//	may the routine perform any allocation operations, such as free,
+//	on the source block).
+
+
+
+
+procedure mem.realloc2
+( 
+	memptr:dword; 
+	newsize:dword; 
+	copycallback:thunk 
+); 
+	@nodisplay;
+	@noframe;
+	
+var
+	sizeInBytes	:dword;
+	
+begin realloc2;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	#if( @thread )
+	
+		_hla.memCSenter();
+		
+	#endif
+	
+	push( ebx );
+	push( ecx );
+	mov( memptr, ebx );
+	
+	
+	// Allocation size granularity is 8 bytes, 
+	// guarantee that newsize is a multiple of eight bytes
+	// by extending it, if necessary.  Also, may as well
+	// adjust the size to include meta-data while we're at it.
+	
+	mov( newsize, eax );
+	mov( eax, sizeInBytes );		// Needed if we call malloc.
+	add( @size(memblock)+7, eax );	// Adjust size for metadata and
+	and( $FFFF_FFF8, eax );			//  round up to multiple of 8 bytes.
+	mov( eax, newsize );
+	
+
+	// Sanity check, let's verify that memptr is pointing
+	// someplace halfway decent:
+	
+	test( ebx, ebx );
+	jz AttemptToDerefNULL;	// NULL pointer, complain
+	
+	// Okay, point ebx at the actual memory block structure:
+	
+	sub( @size( memblock ), ebx );
+	cmp( memblkEBX.refCount, 0 );
+	je BlockAlreadyFree;
+	
+	// See if the memory block header is messed up (simple check)
+	
+	mov( memblkEBX.prev, eax );
+	mov( memblkEBX.next, ecx );
+	
+	test( eax, eax );
+	jz eaxIsNULL;
+		cmp( memblkEAX.next, ebx );
+		jne MemoryAllocationCorruption;
+		
+	eaxIsNULL:
+	test( ecx, ecx );
+	jz ecxIsNULL;
+		cmp( memblkECX.prev, ebx );
+		jne MemoryAllocationCorruption;
+		
+	ecxIsNULL:
+	
+	
+	// Okay, that's about as "sane" as we should probably
+	// get here (much more sanity would be inefficient).
+	// Chances are pretty good that EBX is a pointer to
+	// an actual memory block.  Let's do the realloc here.
+	//
+	// Cases:
+	//
+	//	(1) Make the block smaller (easy).
+	//	(2) Merge the block with the next free block (hard, but fast).
+	//	(3) Allocate a new block (easy, but slow).
+	
+	mov( memblkEBX.size, ecx );
+	cmp( ecx, newsize );
+	jnae tryCases2and3;
+	
+		// Case (1) is easy, just split the existing block
+		// into to pieces and make the second half a free
+		// block.  Note, however, that we won't bother with this
+		// if the free'd block would be less than 2*@size(memblock)+8
+		// bytes in size.
+		
+		sub( newsize, ecx );
+		cmp( ecx, @size( memblock ) + 8 );
+		jna blockTooSmallToSplit;
+		
+			// Okay, we can shrink the block down and create
+			// a new free block.		
+
+			mov( newsize, eax );			// Set the old block's new 
+			mov( eax, memblkEBX.size ); 	//  size and point EAX at 
+			add( ebx, eax );				//  the new free block.
+			
+			mov( ecx, memblkEAX.size );		// Fill in the fields
+			mov( ebx, memblkEAX.prev ); 	// of the new block.
+
+			mov( memblkEBX.next, ecx );
+			mov( ecx, memblkEAX.next );
+			mov( eax, memblkEBX.next );
+			test( ecx, ecx );
+			jz dontSetPrev;
+			
+				mov( eax, memblkECX.prev );
+				
+			dontSetPrev:
+			cmp( ebx, listEnd );
+			jne dontSetListEnd;
+			
+				mov( eax, listEnd );
+				
+			dontSetListEnd:
+			
+			mov( 1, memblkEAX.refCount );	// Set to 1 so we can free it.
+			mov( NULL, memblkEAX.nextInList );
+			mov( NULL, memblkEAX.prevInList );
+
+			// Call _hla.free to actually free the
+			// new block we've created, so that
+			// coalescing and other good stuff
+			// can take place:
+			
+			add( @size( memblock ), eax );
+			_hla.free( eax );							
+			
+		blockTooSmallToSplit:
+		lea( eax, [ebx+@size(memblock) ]);		// Return ptr to data.
+		jmp allDone;
+		
+		
+	tryCases2and3:
+
+		// Okay, the block is getting bigger.  Check for case (2)
+		// first (there is a free block immediately after the
+		// current block, and it's large enough to satisfy the
+		// request.  If this fails, then we have case (3) to
+		// deal with.
+		//
+		// First, check to see if there is a free block after
+		// the current block.
+				
+		mov( memblkEBX.next, eax );
+		test( eax, eax );
+		je case3;					// Case 3 if NULL.
+		
+		cmp( memblkEAX.refCount, 0 );
+		jne case3;					// Case 3 if block is not free.
+		
+		mov( eax, ecx );
+		sub( memblkEBX.size, ecx );	// See if the free block
+		cmp( ecx, ebx );			//  immediately follows the
+		jne case3;					//  current block in memory.
+		
+		mov( newsize, ecx );		// See if the free blk's size
+		sub( memblkEBX.size, ecx );	//  is enough to handle the
+		cmp( ecx, memblkEAX.size );	//  reallocation request.
+		ja case3;					// Case 3 if block not big enuf.
+		
+		
+			// Okay, we have case 2.  Let's merge the two blocks.
+			//
+			// Here's the algorithm:
+			//
+			//	1.	Determine if there will be any excess space
+			//		left at the end of the free block (meaning
+			//		that we have to create a new free block).
+			//		If not, just remove the free block from
+			//		the free list and merge the two blocks.
+			//		If so, then create the new free block,
+			//		adjust the size of the original block,
+			//		and we're done.
+
+			push( edx );		// Preserve EDX's value.
+			mov( memblkEAX.size, ecx );
+			add( memblkEBX.size, ecx );
+			sub( newsize, ecx );
+			
+			// ECX is now the number of bytes left over.
+			// If it's @size( memblock )+8 or less, then
+			// just combine the two blocks.
+			
+			cmp( ecx, @size( memblock ) + 8 );
+			jnbe newBlock;
+
+				mov( memblkEAX.next, ecx );
+				mov( ecx, memblkEBX.next );
+				test( ecx, ecx ); 	// ecx <> NULL?
+				jz ecxIsNULL3;
+				
+					mov( ebx, memblkECX.prev );
+					
+				ecxIsNULL3:
+				cmp( eax, listEnd );
+				jne eaxNotListEnd;
+				
+					mov( ebx, listEnd );
+					
+				eaxNotListEnd:				
+				
+				// Remove the second block from the
+				// free list, as it is totally in use now:
+				
+				mov( memblkEAX.prevInList, ecx );
+				mov( memblkEAX.nextInList, edx );
+				test( ecx, ecx );
+				jz ecxWasNULL;
+				
+					mov( edx, memblkECX.nextInList );
+				
+				ecxWasNULL:
+				cmp( eax, freeList );
+				jne eaxNotFree;
+
+					mov( edx, freeList );
+					
+				eaxNotFree:
+				test( edx, edx );
+				jz edxWasNULL;
+				
+					mov( ecx, memblkEDX.prevInList );
+				
+				edxWasNULL:
+				mov( memblkEAX.size, eax );
+				add( eax, memblkEBX.size );
+				jmp BlocksCombined;
+			
+
+			newBlock:
+				
+				// Now create a new free block from the left-over data.
+				// Begin by removing the second block from the free block
+				// list:
+				
+				push( ecx );	// Save leftover block size.
+				mov( memblkEAX.prevInList, ecx );
+				mov( memblkEAX.nextInList, edx );
+				test( ecx, ecx );
+				jz ecxIsNULL2;
+				
+					mov( edx, memblkECX.nextInList );
+				
+				ecxIsNULL2:
+				cmp( eax, freeList );
+				jne eaxNotFree2;
+
+					mov( edx, freeList );
+					
+				eaxNotFree2:
+				test( edx, edx );
+				jz edxIsNULL2;
+				
+					mov( ecx, memblkEDX.prevInList );
+				
+				edxIsNULL:
+				
+				// Now, remove the second block from the block list:
+				
+				mov( memblkEAX.next, edx );
+				mov( edx, memblkEBX.next );
+				test( edx, edx );
+				jz edxIsNULL2;
+				
+					mov( ebx, memblkEDX.prev );
+					
+				edxIsNULL2:
+				cmp( eax, listEnd );
+				jne eaxNotListEnd2;
+				
+					mov( ebx, listEnd );
+					
+				eaxNotListEnd2:
+				
+				// Now create the new free block at the end of
+				// the second block:
+
+				mov( newsize, edx );	// Compute the address of the
+				add( ebx, edx );	 	// new free block.
+				
+				mov( 1, memblkEDX.refCount );	// 1, so we can free later.
+				pop( memblkEDX.size );			// Retrieve leftover blk size.
+				
+				
+				// Insert the new block into the
+				// block list:
+				
+				mov( memblkEBX.next, ecx );
+				mov( edx, memblkEBX.next );
+				mov( ecx, memblkEDX.next );
+				mov( ebx, memblkEDX.prev );
+				test( ecx, ecx );
+				jz ecxIsNULL4;
+				
+					mov( edx, memblkECX.prev );
+					
+				ecxIsNULL4:
+				cmp( ebx, listEnd );
+				jne ebxNotListEnd;
+				
+					mov( edx, listEnd );
+					
+				ebxNotListEnd:
+				
+				// Now call _hla.free to free up the new block
+				// we've created (to handle coalescing, etc.)
+				
+				add( @size( memblock ), edx );
+				_hla.free( edx );
+			
+				// Okay, after all that we can set the new block size:
+				
+				mov( newsize, eax );
+				mov( eax, memblkEBX.size );
+				
+				
+			BlocksCombined:
+			pop( edx );
+			
+			
+			// Return a pointer the block:
+			
+			lea( eax, [ebx + @size( memblock )] );
+			jmp allDone;
+			
+		
+		case3: // Case 3 down here
+
+			// Begin by allocating storage for the new block.
+			// Note that malloc wants the data size, not the
+			// whole block size!
+			
+			mov( sizeInBytes, eax );
+			_hla.alloc1( eax );
+			
+			// Copy the old data block to the beginning of the
+			// new data block.  Note that we don't copy the
+			// meta-data as malloc as already created all the
+			// meta=data we need (except, possibly, refCount).
+			
+			push( esi );
+			push( edi );
+			pushfd();
+			
+			mov( memblkEBX.size, ecx );
+			sub( @size( memblock ), ecx );
+			lea( esi, [ebx+@size(memblock)] );	// Don't copy meta-data!
+			mov( eax, edi );
+			cld();
+			
+			// When allocating a new block, call the copycallback
+			// thunk so the caller can handle readjusting addresses
+			// and what-not.
+			
+			push( eax );
+			push( ebx );
+			copycallback();
+			pop( ebx );
+			pop( eax );
+			
+			popfd();
+			pop( edi );
+			pop( esi );
+			
+			mov( 1, memblkEAX.refCount[-@size(memblock)] );
+			
+			// Okay, free the original data block.
+			
+			add( @size( memblock ), ebx );	// Must adjust for free.
+			_hla.free( ebx );				// Free the original memory block.
+
+			// Note: ptr to new block is still in EAX at this point.				
+					
+	allDone:
+	#if( @thread )
+	
+		_hla.memCSleave();
+		
+	#endif
+			
+	pop( ecx );
+	pop( ebx );
+	leave();
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	#if( @thread )
+	
+		_hla.memCSleave();
+		
+	#endif
+	raise( ex.AttemptToDerefNULL );
+
+BlockAlreadyFree:
+	#if( @thread )
+	
+		_hla.memCSleave();
+		
+	#endif
+	raise( ex.BlockAlreadyFree );
+	
+MemoryAllocationCorruption:
+	#if( @thread )
+	
+		_hla.memCSleave();
+		
+	#endif
+	raise( ex.MemoryAllocationCorruption );
+
+
+end realloc2;
+	
+end memory;
+
+
+
+
+	
+

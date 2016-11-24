@@ -1,0 +1,149 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeOnce( "strings.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "x86.hhf" )
+
+/***************************************************************/
+/*                                                             */
+/* first2,                                                     */
+/* first3,                                                     */
+/* a_first-                                                    */
+/*                                                             */
+/* These routines remove characters from the end of a string.  */
+/* (that is, they return the characters at the start of the    */
+/* string). The first2 routine destructively removes characters*/
+/* from a specified string variable.  The a_start routine      */
+/* allocates storage for a new string and copies the string,   */
+/* minus the deleted portion, to the newly allocated storage.  */
+/* The original string is left unchanged by a_start.           */
+/* The first3 copies the substring to a destination string.	   */
+/*                                                             */
+/* Inputs-                                                     */
+/*                                                             */
+/* dest-   Pointer to string to remove characters from.        */
+/* length- Number of characters to delete from the end         */
+/*         of the string.                                      */
+/*                                                             */
+/***************************************************************/
+
+procedure str.first3
+(
+      s		:string;
+      len	:dword;
+	  dest	:string
+); 
+	@noframe;
+
+var
+	saveECX		:dword;
+	saveESI		:dword;
+	saveEDI		:dword;
+	saveFlags	:dword;
+	
+begin first3;
+      
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_ - 4), esp );
+	stc();			// Assume we return success.
+	pushfd();		// Allocate and initialize saveFlags
+
+	mov( edi, saveEDI );
+	mov( esi, saveESI );
+	mov( ecx, saveECX );
+	cld();
+
+	// verify that s and dest are non-NULL
+
+	mov( s, esi );
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+	mov( dest, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+
+	// The length of the dest string is the
+	// lesser of len and the length of s.
+	
+	xor( x86.flag_carry, saveFlags );	// Assume truncation.
+	mov( len, ecx );
+	cmp( ecx, (type str.strRec [esi]).length );
+	jb gotMin;		// Note: same as JC
+	
+		mov( (type str.strRec [esi]).length, ecx );
+		xor( x86.flag_carry, saveFlags );	// Return success.
+		
+	gotMin:
+	
+	// Make sure the destination string is large enough to
+	// hold the result:
+	
+	cmp( ecx, (type str.strRec [edi]).maxlen );
+	ja StringOverflow;
+	
+	// Save the new string's length:
+	
+	mov( ecx, (type str.strRec [edi]).length );
+	
+	// Okay, copy the substring to the destination:
+	
+	test( %1, ecx );	// First, convert to # of dwords
+	jz noByteMove;		// by moving 1, 2, or 3 bytes manually
+		movsb();
+		sub( 1, ecx );
+		jz allDone;
+	
+	noByteMove:
+	test( %10, ecx  );	// Move a word, if the length is a
+	jz noWordMove;		// multiple of two but not a multiple of four.
+		sub( 2, ecx );
+		movsw();
+		
+	noWordMove:
+	test( ecx, ecx );
+	jz allDone;
+		shr( 2, ecx );
+		rep.movsd();	// Move the remaining data.
+	
+	allDone:
+	mov( 0, (type byte [edi]));	// Zero-terminate the new string.
+	
+	mov( saveEDI, edi );
+	mov( saveESI, esi );
+	mov( saveECX, ecx );
+	popfd();		// Restore direction and set carry appropriately.
+	leave();
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise(ex.AttemptToDerefNULL);
+	
+StringOverflow:
+	raise( ex.StringOverflow );
+
+end first3;
+end stringUnit;
+
+
+
+
+	
+

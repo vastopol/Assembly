@@ -1,0 +1,34 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit LinuxUnit;
+#include( "linux.hhf" )
+
+// sysfs2 - Two parameter version of sysfs.
+
+procedure linux.sysfs3( option:dword; fs_index:dword; var buf:var );
+	@nodisplay;
+begin sysfs3;
+
+	linux.pushregs;
+	mov( linux.sys_sysfs, eax );
+	mov( option, ebx );
+	mov( fs_index, ecx );
+	mov( buf, edx );
+	int( $80 );
+	linux.popregs;	
+	
+end sysfs3;
+
+end LinuxUnit;

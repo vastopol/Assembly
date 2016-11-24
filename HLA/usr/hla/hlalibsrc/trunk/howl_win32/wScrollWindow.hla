@@ -1,0 +1,581 @@
+unit scrollWindow_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( wScrollWindow_t );
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// window_t objects:
+
+
+procedure wScrollWindow_t.create_scrollWindow
+(
+    wwName      	:string;
+    caption     	:string;
+    exStyle     	:dword;
+    style       	:dword; 
+    parent      	:dword;                                     
+    x           	:dword; 
+    y           	:dword;
+    width       	:dword;
+    height      	:dword;
+	scrollWidth		:dword;
+	scrollHeight	:dword;
+    bkgColor    	:dword;
+	hScroll			:boolean;
+	vScroll			:boolean;
+    visible     	:boolean 
+);
+var
+	scrollInfo	:w.SCROLLINFO;
+	
+_begin( wScrollWindow_t, create_scrollWindow );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	push( edi );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wScrollWindow_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	(type wContainer_t [esi]).create_wContainer
+	(
+		wwName,
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height
+	);
+	mov( cl, this.wBase_private.onHeap );
+	howl.setType( window_c );
+	mov( &wScrollWindow_t._VMT_, this._pVMT_ );
+	
+	mov( style, eax );
+	if( vScroll ) then
+	
+		or( w.WS_VSCROLL, eax );
+		
+	endif;
+	if( hScroll ) then
+	
+		or( w.WS_HSCROLL, eax );
+		
+	endif;
+	mov( eax, this.wVisual_private.style );
+	mov( exStyle, eax );
+	mov( eax, this.wVisual_private.exStyle );
+	
+	mov( caption, eax );
+	if( eax <> NULL ) then
+	
+		str.a_cpy( caption );
+		
+	endif;
+	mov( eax, this.window_private.caption );
+	
+	mov( 1, this.wScrollWindow_private.hLineInc );
+	mov( 100, this.wScrollWindow_private.hPageInc );
+		  
+	mov( 1, this.wScrollWindow_private.vLineInc );
+	mov( 100, this.wScrollWindow_private.vPageInc );	  
+	
+	mov( vScroll, al );
+	mov( al, this.wScrollWindow_private.hasVScroll );
+	mov( hScroll, al );
+	mov( al, this.wScrollWindow_private.hasHScroll );
+	
+	
+	// Create the window:
+	
+	w.CreateWindowEx
+	( 
+		exStyle, 
+		howl.Window_t_ClassName, 
+		this.window_private.caption, 
+		this.wVisual_private.style,
+		x,
+		y,
+		width,
+		height,
+		parent,
+		NULL,
+		howl.howlInstance,
+		NULL
+	);
+	mov( eax, this.handle );
+	w.SetWindowLong( eax, w.GWL_USERDATA, esi );
+	
+	mov( NULL, this.window_private.onPaint );
+	this.set_bkgColor( bkgColor );
+	
+	
+	// Create the wide/tall window we'll use to scroll around
+	// inside the window we just created.
+	
+	push( esi );
+	str.a_cpy( wwName );
+	window_t.create_window
+	(
+	    eax,
+	    "",
+	    0,
+	    w.WS_CHILD, 
+	    this.handle,                                     
+	    0, 
+	    0,
+	    scrollWidth,
+	    scrollHeight,
+	    bkgColor,
+	    visible 
+	);
+	mov( esi, eax );
+	pop( esi );
+	mov( eax, this.scrollSurface );
+	this.insertWidget( eax );
+	
+	// Okay, set up the scroll bar information:
+	
+	mov( @size( w.SCROLLINFO ), scrollInfo.cbSize );
+	mov( w.SIF_ALL, scrollInfo.fMask );
+	mov( 0, scrollInfo.nMin );
+	mov( scrollWidth, eax );
+	sub( width, eax );
+	
+	mov( eax, scrollInfo.nMax );
+	mov( width, eax );
+	shr( 1, eax );
+	mov( eax, scrollInfo.nPage );
+	mov( 0, scrollInfo.nPos );
+	mov( 0, scrollInfo.nTrackPos );
+	
+	if( hScroll ) then
+	
+		lea( eax, scrollInfo );
+		w.SetScrollInfo( this.handle, w.SB_HORZ, [eax], true );
+		
+	endif;
+	
+	if( vScroll ) then
+	
+		mov( scrollHeight, eax );
+		sub( height, eax );
+		mov( eax, scrollInfo.nMax );
+		mov( height, eax );
+		shr( 1, eax );
+		mov( eax, scrollInfo.nPage );
+		lea( eax, scrollInfo );
+		w.SetScrollInfo( this.handle, w.SB_VERT, [eax], true );
+		
+	endif;
+	
+	 
+	
+	
+	
+	if( visible ) then
+	
+		w.ShowWindow( this.handle, w.SW_SHOWNORMAL );
+		w.UpdateWindow( this.handle );
+		
+	else
+		
+		w.ShowWindow( this.handle, w.SW_HIDE );
+
+	endif;
+	
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( eax );	
+	
+
+_end( wScrollWindow_t, create_scrollWindow );
+
+
+// destroy-
+//
+//	Deallocates storage for the window and all the windows on
+// the widgets on the window.
+
+method wScrollWindow_t.destroy;;
+_begin( wScrollWindow_t, destroy );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+		
+	push( esi );
+	mov( this.scrollSurface, esi );
+	(type window_t [esi]).destroy();
+	pop( esi );
+	
+	// Manually remove the widgets from the widget list because
+	// we've already destroyed them.
+	
+	mov( 0, this.wContainer_private.numWidgets );
+	mov( NULL, this.wContainer_private.widgetList );
+	mov( NULL, this.wContainer_private.lastWidget );
+	
+	
+	// Delete the container objects and the storage
+	// associated with this wScrollWindow_t object:
+	
+	w.DestroyWindow( this.handle );
+	super.destroy();	
+		
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wScrollWindow_t, destroy );
+
+
+
+method wScrollWindow_t.insertWidget( theWidget:wBase_p );;
+_begin( wScrollWindow_t, insertWidget );
+
+	push( esi );
+	push( edi );
+	
+	mov( this.scrollSurface, esi );
+	(type window_t [esi]).insertWidget( theWidget );
+	
+	pop( edi );
+	pop( esi );
+
+_end( wScrollWindow_t, insertWidget );
+
+
+
+
+
+// Accessors and mutators:
+
+method wScrollWindow_t.get_hLineInc;;
+_begin( wScrollWindow_t, get_hLineInc );
+	
+	mov( this.wScrollWindow_private.hLineInc, eax );
+		
+_end( wScrollWindow_t, get_hLineInc );
+	
+
+
+method wScrollWindow_t.get_hPageInc;;
+_begin( wScrollWindow_t, get_hPageInc );
+	
+	mov( this.wScrollWindow_private.hPageInc, eax );
+		
+_end( wScrollWindow_t, get_hPageInc );
+	
+
+method wScrollWindow_t.set_hLineInc( hLineInc:dword );;
+_begin( wScrollWindow_t, set_hLineInc );
+	
+	push( eax );
+	mov( hLineInc, eax );
+	mov( eax, this.wScrollWindow_private.hLineInc );
+	pop( eax );
+	
+_end( wScrollWindow_t, set_hLineInc );
+	
+
+method wScrollWindow_t.set_hPageInc( hPageInc:dword );;
+_begin( wScrollWindow_t, set_hPageInc );
+	
+	push( eax );
+	mov( hPageInc, eax );
+	mov( eax, this.wScrollWindow_private.hPageInc );
+	pop( eax );
+	
+_end( wScrollWindow_t, set_hPageInc );
+
+
+
+
+
+method wScrollWindow_t.get_vLineInc;;
+_begin( wScrollWindow_t, get_vLineInc );
+	
+	mov( this.wScrollWindow_private.vLineInc, eax );
+		
+_end( wScrollWindow_t, get_vLineInc );
+	
+
+
+method wScrollWindow_t.get_vPageInc;;
+_begin( wScrollWindow_t, get_vPageInc );
+	
+	mov( this.wScrollWindow_private.vPageInc, eax );
+		
+_end( wScrollWindow_t, get_vPageInc );
+	
+
+method wScrollWindow_t.set_vLineInc( vLineInc:dword );;
+_begin( wScrollWindow_t, set_vLineInc );
+	
+	push( eax );
+	mov( vLineInc, eax );
+	mov( eax, this.wScrollWindow_private.vLineInc );
+	pop( eax );
+	
+_end( wScrollWindow_t, set_vLineInc );
+	
+
+method wScrollWindow_t.set_vPageInc( vPageInc:dword );;
+_begin( wScrollWindow_t, set_vPageInc );
+	
+	push( eax );
+	mov( vPageInc, eax );
+	mov( eax, this.wScrollWindow_private.vPageInc );
+	pop( eax );
+	
+_end( wScrollWindow_t, set_vPageInc );
+
+
+
+
+// Generic wScrollWindow_t processMessage method.
+//
+//	Handles the following messages:
+//
+//	w.WM_COMMAND-
+//		Invokes the particular notification handler for the underlying object.
+//
+//	Any Other Message-
+//		Calls the default message handler for the window_t class (which
+//		probably means we're calling the default Windows message handler).			
+
+method wScrollWindow_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);
+var
+	curPosn	:int32;
+    info    :w.SCROLLINFO;
+
+_begin( wScrollWindow_t, processMessage );
+
+	mov( uMsg, eax );
+	if( eax <> w.WM_HSCROLL && eax <> w.WM_VSCROLL ) then
+	
+		super.processMessage( hwnd, uMsg, wParam, lParam );
+		exit processMessage;
+		
+	endif;
+	
+	// Process the HSCROLL/VSCROLL command:
+	
+	mov( @size( w.SCROLLINFO ), info.cbSize );
+	mov( w.SIF_ALL, info.fMask );
+	
+	movzx( (type word wParam), ecx );
+	if( uMsg = w.WM_HSCROLL ) then
+	
+		switch( ecx )
+		
+			case( w.SB_THUMBTRACK )
+			
+				movzx( (type word wParam[2]), eax );
+				mov( eax, curPosn );
+	
+			
+			case( w.SB_RIGHT )
+			
+				w.GetScrollInfo( hwnd, w.SB_HORZ, info );
+				mov( info.nMax, eax );
+				mov( eax, curPosn );
+				
+			case( w.SB_LEFT )
+			
+				w.GetScrollInfo( hwnd, w.SB_HORZ, info );
+				mov( info.nMin, eax );
+				mov( eax, curPosn );
+
+
+			case( w.SB_LINERIGHT )
+			
+				w.GetScrollInfo( hwnd, w.SB_HORZ, info );
+				mov( this.wScrollWindow_private.hLineInc, eax );
+				add( info.nPos, eax );
+				mov( info.nMax, ecx );
+				if( eax > ecx ) then
+				
+					mov( ecx, eax );
+					
+				endif;
+				mov( eax, curPosn );
+											
+			case( w.SB_LINELEFT )
+				
+				w.GetScrollInfo( hwnd, w.SB_HORZ, info );
+				mov( info.nPos, eax );
+				sub( this.wScrollWindow_private.hLineInc, eax );
+				if( (type int32 eax) < info.nMin ) then
+				
+					mov( info.nMin, eax );
+					
+				endif;
+				mov( eax, curPosn );
+				
+											
+			case( w.SB_PAGELEFT )
+			
+				w.GetScrollInfo( hwnd, w.SB_HORZ, info );
+				mov( info.nPos, eax );
+				sub( this.wScrollWindow_private.hPageInc, eax );
+				if( (type int32 eax) < info.nMin ) then
+				
+					mov( info.nMin, eax );
+					
+				endif;
+				mov( eax, curPosn );
+				
+							
+			case( w.SB_PAGERIGHT )
+			
+				w.GetScrollInfo( hwnd, w.SB_HORZ, info );
+				mov( this.wScrollWindow_private.hPageInc, eax );
+				add( info.nPos, eax );
+				mov( info.nMax, ecx );
+				if( eax > ecx ) then
+				
+					mov( ecx, eax );
+					
+				endif;
+				mov( eax, curPosn );
+					
+			default
+				w.DefWindowProc( hwnd, uMsg, wParam, lParam );
+				exit processMessage;
+
+				
+		endswitch;
+		w.SetScrollPos( hwnd, w.SB_HORZ, curPosn, true );
+		mov( this.scrollSurface, esi );
+		mov( curPosn, eax );
+		neg( eax );
+		(type wVisual_t [esi]).set_x( eax );
+			
+	else // must be w.WM_VSCROLL
+	
+		switch( ecx )
+
+			case( w.SB_THUMBTRACK )
+			
+				movzx( (type word wParam[2]), eax );
+				mov( eax, curPosn );
+					
+			
+			case( w.SB_TOP )
+			
+				w.GetScrollInfo( hwnd, w.SB_VERT, info );
+				mov( info.nMax, eax );
+				mov( eax, curPosn );
+					
+				
+			case( w.SB_BOTTOM )
+			
+				w.GetScrollInfo( hwnd, w.SB_VERT, info );
+				mov( info.nMin, eax );
+				mov( eax, curPosn );
+				
+				
+			case( w.SB_LINEUP )
+			
+				w.GetScrollInfo( hwnd, w.SB_VERT, info );
+				mov( info.nPos, eax );
+				sub( this.wScrollWindow_private.hLineInc, eax );
+				if( (type int32 eax) < info.nMin ) then
+				
+					mov( info.nMin, eax );
+					
+				endif;
+				mov( eax, curPosn );
+
+			case( w.SB_LINEDOWN )
+			
+				w.GetScrollInfo( hwnd, w.SB_VERT, info );
+				mov( this.wScrollWindow_private.hLineInc, eax );
+				add( info.nPos, eax );
+				mov( info.nMax, ecx );
+				if( eax > ecx ) then
+				
+					mov( ecx, eax );
+					
+				endif;
+				mov( eax, curPosn );
+
+			case( w.SB_PAGEUP )
+			
+				w.GetScrollInfo( hwnd, w.SB_VERT, info );
+				mov( info.nPos, eax );
+				sub( this.wScrollWindow_private.hPageInc, eax );
+				if( (type int32 eax) < info.nMin ) then
+				
+					mov( info.nMin, eax );
+					
+				endif;
+				mov( eax, curPosn );
+							
+			case( w.SB_PAGEDOWN )
+			
+				w.GetScrollInfo( hwnd, w.SB_VERT, info );
+				mov( this.wScrollWindow_private.hPageInc, eax );
+				add( info.nPos, eax );
+				mov( info.nMax, ecx );
+				if( eax > ecx ) then
+				
+					mov( ecx, eax );
+					
+				endif;
+				mov( eax, curPosn );
+					
+			default
+				w.DefWindowProc( hwnd, uMsg, wParam, lParam );
+				exit processMessage;
+
+		endswitch;
+		w.SetScrollPos( hwnd, w.SB_VERT, curPosn, true );
+		mov( this.scrollSurface, esi );
+		mov( curPosn, eax );
+		neg( eax );
+		(type wVisual_t [esi]).set_y( eax ); 
+	
+	
+	endif;
+		
+_end( wScrollWindow_t, processMessage );
+
+
+
+end	scrollWindow_u;

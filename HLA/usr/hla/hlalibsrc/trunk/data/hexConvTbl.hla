@@ -1,0 +1,60 @@
+unit stdlib_data;
+#include( "stdlibdata.hhf" )
+
+
+// The following objects are accessible from application programs as well
+// as the HLA stdlib code.
+
+namespace stdlib;
+
+  readonly(16)
+
+
+	// HexConvTable-
+	//	The eight-bit index into this table returns the numeric equivalent
+	//	of a hexadecimal character (0..$F) . If the index character value 
+	//	is not a valid hex char, then the table entry contains $FF.
+
+	hexConvTbl:	byte[256] :=
+				[
+					#for( i := 0 to (@uns8( '0' ) - 1) )
+
+						$ff,
+
+					#endfor
+
+					0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+					
+					#for( i := (@uns8( '9' )+1) to (@uns8( 'A' )-1 ))
+
+						$ff,
+
+					#endfor
+
+					$a, $b, $c, $d, $e, $f,
+
+					
+					#for( i := @uns8( 'G' ) to (@uns8( 'a' )-1 ))
+
+						$ff,
+
+					#endfor
+
+					$a, $b, $c, $d, $e, $f,
+
+					
+					#for( i := @uns8( 'g' ) to $fe )
+
+						$ff,
+
+					#endfor
+					$ff
+				];
+
+
+
+end stdlib;
+
+end stdlib_data;
+
+													

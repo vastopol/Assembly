@@ -1,0 +1,110 @@
+unit str_rmvtrailing_unit;
+
+// synopsis:
+//	deletes trailing spaces and tabs
+
+
+//	Version History:
+//	Revision:	3
+//	Author:		Sevag Krikorian
+//	Date:		Oct 09, 2007
+//	Note:		changed to library format, code improvement
+//				bug fix on ret
+//
+//	Revision:	2
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 08, 2007
+//	Note:		removed some unnecessary instructions
+//				updated with renamed cpyzn
+//
+//	Revision:	1
+//	Author:		Sevag Krikorian
+//	Date:		Aug. 31, 2007
+//	Note:		1st release
+
+
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "zstrings.hhf" )
+	#includeOnce( "excepts.hhf" )
+
+
+	procedure str.rmvTrailingSpaces2( src:string; dest: string );
+		@nodisplay; @noframe; @noalignstack;
+		
+		// copy src into dest and remove trailing spaces and
+		// tabs
+		var
+			saveEAX	:dword;
+			saveEBX	:dword;
+			saveECX	:dword;
+			saveEDX	:dword;			
+		
+	begin rmvTrailingSpaces2;
+		
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( eax, saveEAX );
+		mov( ebx, saveEBX );
+		mov( ecx, saveECX );
+		mov( edx, saveEDX );
+		
+		mov( src, ebx );
+		mov( dest, edx );
+		test( ebx, ebx );
+		jz raiseDerefNULL;
+		test( edx, edx );
+		jz raiseDerefNULL;
+		
+		mov( ebx, ecx );
+		add( (type str.strRec[ebx]).length, ebx );
+		sub( 1, ecx );
+		
+		removeLoop:
+			sub( 1, ebx );
+			cmp( ebx, ecx );
+			je doneLoop;
+			mov( [ebx], al );
+			cmp( al, ' ');
+			je removeLoop;
+			cmp( al, stdio.tab );
+			je removeLoop;
+			jmp doneLoop;
+
+		// if ebx = ecx, then we removed the whole string
+		doneLoop:
+		add( 1, ebx );
+		mov( src, eax );
+		sub( eax, ebx );
+		
+		// ebx = size of string we need in dest
+		cmp( ebx, (type str.strRec[edx]).MaxStrLen );
+		ja raiseStringOverflow;
+		
+		// adjust size of dest and copy ebx characters
+		// from eax to edx
+		mov( ebx, (type str.strRec[edx]).length );
+		
+		zstr.cpyn( eax, ebx, edx );
+		
+		mov( saveEAX, eax );
+		mov( saveEBX, ebx );
+		mov( saveECX, ecx );
+		mov( saveEDX, edx );
+		
+		mov( ebp, esp );
+		pop( ebp );
+		ret();
+		
+		raiseDerefNULL:
+			raise( ex.AttemptToDerefNULL );
+		
+		raiseStringOverflow:
+			raise( ex.StringOverflow );
+		
+	end rmvTrailingSpaces2;
+
+
+
+end str_rmvtrailing_unit;

@@ -1,0 +1,248 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+
+#include( "../include/fileiounit.hhf" )
+	
+
+/******************************************************************/
+/*                                                                */
+/* fread,                                                         */
+/* fwrite-                                                        */
+/*                                                                */
+/* General purpose block data I/O routines.                       */
+/* This routines read/write the specified number of bytes from/to */
+/* the specified file.                                            */
+/*																  */
+/* fread returns the number of bytes read in EAX.                 */
+/*                                                                */
+/******************************************************************/
+
+
+
+#if( os.linux )
+
+	procedure fileio.write( Handle:dword; var buffer:var; count:uns32 ); 
+		@nodisplay;
+		@noframe;
+		
+	var
+		BytesWritten: dword;
+		
+	begin write;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		pushfd();
+		cld();
+		
+		push( Handle );
+		push( buffer );
+		push( count );
+		call linux.write;
+		test( eax, eax );
+		jns noWriteErr;
+		
+			cmp( eax, errno.enospc );
+			je DiskFullError;		
+				raise( ex.FileWriteError );
+				
+		noWriteErr:
+		cmp( eax, count );
+		jne DiskFullError;
+		
+		popfd();
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	DiskFullError:
+		raise( ex.DiskFullError );
+				
+	end write;
+
+#elseif( os.freeBSD )
+
+	procedure fileio.write( Handle:dword; var buffer:var; count:uns32 ); 
+		@nodisplay;
+		@noframe;
+		
+	var
+		BytesWritten: dword;
+		
+	begin write;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		pushfd();
+		cld();
+		
+		push( Handle );
+		push( buffer );
+		push( count );
+		call bsd.write;
+		jnc noWriteErr;
+		
+			cmp( eax, errno.enospc );
+			je DiskFullError;		
+				raise( ex.FileWriteError );
+				
+		noWriteErr:
+		cmp( eax, count );
+		jne DiskFullError;
+		
+		popfd();
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	DiskFullError:
+		raise( ex.DiskFullError );
+				
+	end write;
+
+#elseif( os.macOS )
+
+	procedure fileio.write( Handle:dword; var buffer:var; count:uns32 ); 
+		@nodisplay;
+		@noframe;
+		
+	var
+		BytesWritten: dword;
+		
+	begin write;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		pushfd();
+		cld();
+		
+		push( Handle );
+		push( buffer );
+		push( count );
+		call mac.write;
+		jnc noWriteErr;
+		
+			cmp( eax, errno.enospc );
+			je DiskFullError;		
+				raise( ex.FileWriteError );
+				
+		noWriteErr:
+		cmp( eax, count );
+		jne DiskFullError;
+		
+		popfd();
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	DiskFullError:
+		raise( ex.DiskFullError );
+				
+	end write;
+
+#elseif( os.win32 )
+
+	procedure fileio.write( Handle:dword; var buffer:var; count:uns32 ); 
+		@nodisplay;
+		@noframe;
+		
+	const
+		blockSize := 16*1024;
+		
+	var
+		BytesWritten: dword;
+		TotalBytes	: dword;
+		
+	begin write;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		pushfd();
+		cld();
+		
+		// Windows seems to choke on really large writes.
+		// So break the write operation down into a sequence of 64K or
+		// smaller writes:
+		
+		mov( count, ebx );
+		mov( 0, TotalBytes );
+		cmp( ebx, blockSize );
+		jb whileDone;
+		whileBlocks2Write:
+		
+			WriteFile( 0, BytesWritten, blockSize, buffer, Handle );
+			test( eax, eax );
+			jz FileWriteError;
+			
+			sub( blockSize, ebx );
+			add( blockSize, buffer );
+			mov( BytesWritten, eax );
+			add( eax, TotalBytes );
+			cmp( ebx, blockSize );
+			jae whileBlocks2Write;
+			
+		whileDone:
+		test( ebx, ebx );
+		jz writeDone;
+
+			WriteFile( 0, BytesWritten, ebx, buffer, Handle );
+			test( eax, eax );
+			jz FileWriteError;
+			
+			mov( BytesWritten, eax );
+			add( eax, TotalBytes );
+
+		writeDone:
+		mov( TotalBytes, eax );
+		cmp( eax, count );
+		jne DiskFullError;
+		
+		popfd();
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	FileWriteError:
+		raise( ex.FileWriteError );
+				
+	DiskFullError:
+		raise( ex.DiskFullError );
+			
+	end write;
+			
+#else
+
+	#print( "Unknown OS!" )
+	
+#endif
+	
+end FileIOUnit;
+

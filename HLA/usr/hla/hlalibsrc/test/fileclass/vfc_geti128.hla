@@ -1,0 +1,157 @@
+program fgeti128_test;
+#include( "stdlib.hhf" )
+
+readonly
+	max128 :int128 :=  170141183460469231731687303715884105727;
+	min128 :int128 := -170141183460469231731687303715884105728;
+
+var
+	f			:pointer to virtualFile;
+	input128	:int128;
+	
+	procedure cmp128( left:int128; right:int128 );
+	begin cmp128;
+	
+		cld();
+		lea( esi, left );
+		lea( edi, right );
+		mov( 4, ecx );
+		repe.cmpsd();
+		
+	end cmp128;
+	
+begin fgeti128_test;
+
+
+	// Testing fileio.geti128
+	
+	try
+	
+		virtualFile.create();
+		mov( esi, f );
+	
+		f.open( "fc_geti128.data", fileio.r );
+
+		f.geti128( input128 );
+		cmp128( input128, 0 );
+		if( @ne ) then
+		
+			raise($1011);
+		
+		endif;	
+		
+		f.geti128( input128 );
+		cmp128( input128, 1 );
+		if( @ne ) then
+		
+			raise($1012);
+		
+		endif;	
+		
+		f.geti128( input128 );
+		cmp128( input128, -1 );
+		if( @ne ) then
+		
+			raise($1013);
+		
+		endif;	
+		
+		f.geti128( input128 );
+		cmp128( input128, max128 );
+		if( @ne ) then
+		
+			raise($1014);
+		
+		endif;
+
+
+		f.geti128( input128 );
+		cmp128( input128, min128 );
+		if( @ne ) then
+		
+			raise($1015);
+		
+		endif;
+
+
+		
+		try
+		
+			f.geti128( input128 );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise a conversion error.
+			
+		  	raise($1016 );
+			
+		  exception( ex.ConversionError )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	raise($1017 );
+			
+		endtry;
+		f.readLn();	// Clean up after ourselves.
+		
+		
+		try
+		
+			f.geti128( input128 );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	raise($1018 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	raise($1019 );
+			
+		endtry;
+		f.readLn();
+		
+		
+		// Better be at end of file.
+		
+		if( !f.eof()) then
+		
+			raise($1010);
+			
+		endif;
+		stderr.put( "f.geti128 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"f.geti128 failed! eax=", eax, nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+			
+end fgeti128_test;
+
+													

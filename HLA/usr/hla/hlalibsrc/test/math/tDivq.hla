@@ -1,0 +1,184 @@
+// tArithmetic-
+//
+//	Tests the following MATH module functions:
+//
+//	addq, addl, divq, divl, idivq, idivl, imodq, imodl, imulq, imull,
+//	modq, modl, mulq, mull, negq, negl, subq, subl.
+
+program tArithmetic;
+#include( "stdlib.hhf" )
+
+val
+	
+	pwrsOf2_64_c	:uns64[] :=
+		[
+			#for( i := 0 to 63 )
+				1 << i,
+			#endfor
+		];
+	
+		
+		
+	divisors_64_c	:uns64[] :=
+		[
+			#for( i := 1 to 256 )
+				i,
+			#endfor
+			257,
+			65535,
+			65536,
+			65537,
+			16*1024*1024-1,
+			16*1024*1024,
+			16*1024*1024+1,
+			4*1024*1024*1024-1,
+			4*1024*1024*1024,
+			4*1024*1024*1024+1,
+		];
+		
+	idivisors_64_c	:int64[] :=
+		[
+			#for( i := 0 to @elements( divisors_64_c )-1)
+				divisors_64_c[i],
+			#endfor
+			#for( i := 0 to @elements( divisors_64_c )-1)
+				-divisors_64_c[i],
+			#endfor
+		];
+		
+		
+		
+		
+	// Bison limitation! Cannot have thousands of entries in
+	// an array constant. So we'll fill each element individually.
+	
+	quotients_64_c	:uns64[ 64 * @elements( divisors_64_c )];
+			#for( i := 0 to 63 ) 
+				#for( j := 0 to @elements( divisors_64_c )-1 )
+				
+					?quotients_64_c[ i*@elements( divisors_64_c ) + j] :=
+						pwrsOf2_64_c[i] div divisors_64_c[j];
+				
+				#endfor
+			#endfor				
+	
+	iquotients_64_c	:int64[ 64 * @elements( idivisors_64_c )];
+			#for( i := 0 to 63 ) 
+				#for( j := 0 to @elements( idivisors_64_c )-1 )
+				
+					?iquotients_64_c[ i*@elements( idivisors_64_c ) + j] :=
+						pwrsOf2_64_c[i] div idivisors_64_c[j];
+										
+				#endfor
+			#endfor				
+	
+		
+	
+	
+	
+	
+static
+	i64				:int64;
+	u64				:uns64;
+	result64		:uns64;
+	iresult64		:int64;
+	
+	one64			:uns64 := 1;
+	allOnes64		:uns64 := $FFFF_FFFF_FFFF_FFFF;
+	
+	i128			:int128;
+	u128			:uns128;
+	result128		:uns128;
+	iresult128		:int128;
+	
+readonly
+	
+	pwrsOf2_64		:uns64[ @elements( pwrsOf2_64_c ) ] := pwrsOf2_64_c;
+	
+	divisors_64		:uns64[ @elements( divisors_64_c ) ] := divisors_64_c;
+	quotients_64	:uns64[ @elements( quotients_64_c ) ] := quotients_64_c;
+	
+	idivisors_64	:int64[ @elements( idivisors_64_c ) ] := idivisors_64_c;
+	iquotients_64	:int64[ @elements( iquotients_64_c ) ] := iquotients_64_c;
+
+	
+	
+procedure cmp64( index:uns32; testVal1:qword; testVal2:qword; msg:string );
+begin cmp64;
+
+	push( edx );
+	mov( (type dword testVal1), eax );
+	mov( (type dword testVal1[4]), edx );
+	cmp( eax, (type dword testVal2));
+	jne failed;
+	cmp( edx, (type dword testVal2[4]));
+	je succeeded;
+	failed:
+	
+		stderr.put
+		( 
+			"Error: ", msg, nl
+			"testVal1: ", testVal1, nl
+			"testVal2: ", testVal2, nl
+		);
+		conv.setUnderscores( true );
+		stderr.put
+		(
+			"index:    ", index, nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	succeeded:
+	pop( edx );
+	
+end cmp64;
+
+	
+begin tArithmetic;
+	
+	
+	
+	
+	// DIVQ tests:
+	
+	for( mov( 0, edx ); edx < 64; inc( edx )) do
+		
+		for( mov( 0, ecx ); ecx < @elements( divisors_64 ); inc( ecx )) do
+	
+			math.divq( pwrsOf2_64[edx*8], divisors_64[ecx*8], result64 );
+			intmul( @elements( divisors_64 ), edx, esi );
+			add( ecx, esi );  
+			cmp64( edx, result64, quotients_64[ esi*8 ], "divq(1) failed!" );
+			
+		endfor;
+		
+	endfor;
+	stderr.put( "divq tests succeeded!" nl );
+	
+	
+	// IDIVQ tests:
+	
+	for( mov( 0, edx ); edx < 63; inc( edx )) do
+		
+		for( mov( 0, ecx ); ecx < @elements( idivisors_64 ); inc( ecx )) do
+
+			math.idivq( pwrsOf2_64[edx*8], idivisors_64[ecx*8], iresult64 );
+			intmul( @elements( idivisors_64 ), edx, esi );
+			add( ecx, esi );
+			
+			mov( edx, eax );
+			intmul( 1000, eax );
+			add( ecx, eax );  
+			cmp64( eax, iresult64, iquotients_64[ esi*8 ], "idivq(1) failed!" );
+			
+		endfor;
+		
+	endfor;
+	stderr.put( "idivq tests succeeded!" nl );
+	
+	
+	
+	
+end tArithmetic;	

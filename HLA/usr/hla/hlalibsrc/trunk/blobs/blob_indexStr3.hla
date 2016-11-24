@@ -1,0 +1,185 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" );
+#include( "excepts.hhf" );
+#include( "threads.hhf" )
+
+
+// index3-                                                  
+//                                                          
+// This functions searches for the first occurrence of      
+// blob2 within blob1 starting at index position "offs" 
+// within the blob1 string.  It returns the numerical          
+// index (offs..len(blob1)-1) if the string is found.              
+// It returns carry clear and eax = -1 if blob2 does 
+// not appear within blob1.       
+
+
+
+
+
+
+
+
+procedure blob.indexStr3( src1:blob.blob; offs:dword; src2:string ); 
+	@noframe;
+var
+	saveEBX		:dword;
+	saveECX		:dword;
+	saveEDX		:dword;
+	saveESI		:dword;
+	saveEDI		:dword;
+	saveFlags	:dword;
+	 
+begin indexStr3;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_-4), esp );
+	pushfd();	// Allocate and initialize saveFlags
+	
+	mov( edi, saveEDI );
+	mov( esi, saveEDI );
+	mov( edx, saveECX );
+	mov( ecx, saveECX );
+	mov( ebx, saveEBX );
+	cld();
+
+	
+	mov( src2, edi );
+	mov( src1, esi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+
+	#if( @thread )
+	
+	try
+	
+		thread.enterCriticalSection( (type blob.blobRec [esi]).criticalSection );
+	
+	#endif
+	
+		mov( (type blob.blobRec [edi]).length, ebx );
+		
+		// "edx" keeps track of how far into src1 we've scanned.
+		// When this value exceeds the length of src1 we cannot possibly
+		// match the string so we can stop.	  Note that the value is
+		// the initial length of the blob minus the "offs" into the
+		// blob where we start.  If "offs" exceeds the blob's length
+		// then we've got to raise a value out of range exception.
+		
+		mov( (type blob.blobRec [esi]).length, edx );
+		sub( offs, edx );
+		jnc noValueOutOfRange;
+			raise( ex.ValueOutOfRange );
+		
+		noValueOutOfRange:
+		
+		// Start the blob scanning "offs" characters into src1:
+		
+		add( offs, esi );
+		
+		test( ebx, ebx );
+		jne not0;
+		
+			// If the length of src2 is zero, return failure.
+			
+			mov( -1, eax );
+			jmp FoundMatch;
+			
+		not0:
+		cmp( edx, ebx );
+		jb notSubblob;
+
+			sub( ebx, edx );
+			mov( edi, eax );	// Save ptr to src2 so we can reset on failure.
+			repeatUntilEDXLT0:
+				
+				mov( ebx, ecx );
+				mov( eax, edi );
+				push( esi );
+				repe.cmpsb();
+				jne NotFound;
+				
+					// We found the blob, so compute the
+					// index and exit the loop.
+						
+					pop( eax );			// Retrieve ptr into src1.				
+					sub( src1, eax );	// Compute index.
+					jmp FoundMatch;
+					
+				NotFound:
+				
+				// Okay, src2 didn't match at the current position,
+				// try the next byte position in src1.
+				
+				pop( esi );			// Retrieve ptr into src1.
+				inc( esi );			// Bump up by one byte position.
+				dec( edx );			// Are we done yet?
+				jns repeatUntilEDXLT0;
+							
+		notSubblob:
+		
+		// If we get down here, then src2 is not a subblob of src1.
+		
+		mov( -1, eax );		// Deprecated!
+			
+		
+	FoundMatch:
+	#if( @thread )
+	
+	  anyexception
+	
+		mov( src1, edx );
+		thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		push( saveFlags );
+		popfd();
+		reraise( eax );
+		
+	endtry;
+	mov( src1, ecx );
+	thread.leaveCriticalSection( (type blob.blobRec [ecx]).criticalSection );
+		
+	#endif
+
+	mov( saveEDI, edi );
+	mov( saveEDI, esi );
+	mov( saveECX, edx );
+	mov( saveECX, ecx );
+	mov( saveEBX, ebx );
+	popfd();
+	leave();
+	cmp( eax, -1 );		// Set carry on success, clear on failure
+	ret( _parms_ );
+		
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end indexStr3;
+
+
+end blobUnit;
+
+
+
+
+	
+

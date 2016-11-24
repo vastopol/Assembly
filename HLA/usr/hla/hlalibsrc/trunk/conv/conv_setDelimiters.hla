@@ -1,0 +1,64 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+
+
+/**************************************************************/
+/*                                                            */
+/* SetDelimiters-                                             */
+/* GetDelimiters-                                             */
+/*                                                            */
+/* Accessor functions for the Delimiters character set above. */
+/*                                                            */
+/**************************************************************/
+
+procedure conv.setDelimiters( Delims: cset );
+	@noframe;  
+	@nodisplay; 
+	@noalignstack;
+begin setDelimiters;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ecx );
+	push( esi );
+	push( edi );
+	
+	// Always force #0 into the delimiter set:
+	
+	or( 1, (type dword Delims));
+	
+	// Okay, copy the set to the internal copy:
+	
+	mov( 4, ecx );
+	lea( esi, Delims );
+	mov( _hla.get_Delimiters(), edi );
+	rep.movsd();
+	
+	pop( edi );
+	pop( esi );
+	pop( ecx );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+	
+end setDelimiters;
+
+end ConvUnit;

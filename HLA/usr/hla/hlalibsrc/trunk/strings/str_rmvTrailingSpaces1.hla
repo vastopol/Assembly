@@ -1,0 +1,90 @@
+unit str_rmvtrailing_unit;
+
+// synopsis:
+//	deletes trailing spaces and tabs
+
+
+//	Version History:
+//	Revision:	3
+//	Author:		Sevag Krikorian
+//	Date:		Oct 09, 2007
+//	Note:		changed to library format, code improvement
+//				bug fix on ret
+//
+//	Revision:	2
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 08, 2007
+//	Note:		removed some unnecessary instructions
+//				updated with renamed cpyzn
+//
+//	Revision:	1
+//	Author:		Sevag Krikorian
+//	Date:		Aug. 31, 2007
+//	Note:		1st release
+
+
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "excepts.hhf" )
+
+	procedure str.rmvTrailingSpaces1( dest: string );
+		@nodisplay; @noframe; @noalignstack;
+		
+		// removes trailing spaces and tabs from dest
+		// in-place
+		var
+			saveEAX	:dword;
+			saveEBX	:dword;
+			saveECX	:dword;
+			
+		
+	begin rmvTrailingSpaces1;
+		
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( eax, saveEAX );
+		mov( ebx, saveEBX );
+		mov( ecx, saveECX );
+		
+		mov( dest, ebx );
+		test( ebx, ebx );
+		jz raiseDerefNULL;
+		
+		mov( ebx, ecx );
+		add( (type str.strRec[ebx]).length, ebx );
+		sub( 1, ecx );
+		
+		removeLoop:
+			sub( 1, ebx );
+			cmp( ebx, ecx );
+			je doneLoop;
+			mov( [ebx], al );
+			cmp( al, ' ');
+			je removeLoop;
+			cmp( al, stdio.tab );
+			je removeLoop;
+			jmp doneLoop;
+
+		// if ebx = ecx, then we removed the whole string
+		doneLoop:
+		add( 1, ebx );
+		mov( #0, (type byte[ebx]) );
+		mov( dest, eax );
+		sub( eax, ebx );
+		mov( ebx, (type str.strRec[eax]).length );
+		
+		mov( saveEAX, eax );
+		mov( saveEBX, ebx );
+		mov( saveECX, ecx );
+		
+		mov( ebp, esp );
+		pop( ebp );
+		ret( _parms_ );
+		
+		raiseDerefNULL:
+			raise( ex.AttemptToDerefNULL );
+		
+	end rmvTrailingSpaces1;
+
+end str_rmvtrailing_unit;

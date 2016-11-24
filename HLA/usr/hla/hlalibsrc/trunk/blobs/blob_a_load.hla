@@ -1,0 +1,75 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeOnce( "blobs.hhf" );
+#includeOnce( "filesys.hhf" );
+#includeOnce( "fileio.hhf" );
+#includeOnce( "memory.hhf" );
+
+
+
+// blob.a_load-
+//
+//	Loads a file into a blob that this code allocates on the heap.
+// Returns a pointer to the new blob in EAX.
+
+procedure blob.a_load( filename:string ); @noframe;
+var
+	b		:blob.blob;
+	f		:dword;
+	size	:dword;
+	
+begin a_load;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	filesys.size( filename );
+	mov( eax, size );
+	add( 16, eax );				// Just a buffer
+	blob.alloc( eax );
+	mov( eax, b );
+	fileio.open( filename, fileio.r );
+	mov( eax, f );
+	fileio.read( eax, val b, size );
+	fileio.close( f );
+	mov( b, eax );
+	
+	// Set length and wcursor fields:
+	
+	push( size );
+	pop( (type blob.blobRec [eax]).length );
+	push( size );
+	pop( (type blob.blobRec [eax]).wcursor );
+	
+	leave();
+	ret( _parms_ );
+	
+
+end a_load;
+
+
+
+end blobUnit;
+
+
+
+
+	
+

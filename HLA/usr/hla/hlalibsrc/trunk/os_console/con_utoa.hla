@@ -1,0 +1,73 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit consoleUnit;
+
+#include( "excepts.hhf" )
+#include( "console.hhf" )
+
+?@nodisplay := true;
+?@noalignstack := true;
+
+	procedure console.utoa( u:uns32 in eax; dest:dword in ecx );  
+		@noframe;
+		@nodisplay;
+	begin utoa;
+	
+	
+		cmp( eax, 100 );
+		jb lessThan100;
+		
+		
+			cmp( eax, 1000 );
+			jae ValueOutOfRange;
+			push( edx );
+			xor( edx, edx );
+			div( 100, edx:eax );
+			aam();
+			or( $3030, ax );
+			or( '0', dl );
+			xchg( al, ah );
+			shl( 8, eax );
+			mov( dl, al );
+			mov( eax, [ecx] );
+			add( 3, ecx );
+			pop( edx );
+			jmp allDone;
+			
+		lessThan100:
+			cmp( eax, 10 );
+			jb lessThan10;
+						
+			aam();
+			xchg( al, ah );
+			or( $3030, ax );
+			mov( ax, [ecx] );
+			add( 2, ecx );
+			jmp allDone;
+			
+		lessThan10:		
+			or( '0', al );
+			mov( al, [ecx] );
+			inc( ecx );
+			
+		allDone:
+		ret();
+		
+	ValueOutOfRange:
+		raise( ex.ValueOutOfRange );
+
+	end utoa;			
+	
+end consoleUnit;

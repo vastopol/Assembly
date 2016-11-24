@@ -1,0 +1,151 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+#include( "conv.hhf" );
+
+
+/**************************************************************/
+/*                                                            */
+/* str.cats-                                                  */
+/*                                                            */
+/* Concatenates the string "s" to the end of the dest string. */
+/*                                                            */
+/**************************************************************/
+
+procedure str.catsSize( dest:string; s:string; width:int32; fill:char ); 
+	@noframe;
+
+var
+	FillStr:	string;
+	FillData:	char[4116];
+	
+begin catsSize;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+
+	// Get the absolute value of width into ECX:
+	
+	mov( width, ecx );
+	test( ecx, ecx );
+	jns notNeg;
+	
+		neg( ecx );
+		
+	notNeg:
+	
+	// Let's set an arbitrary maximum width of 4096 characters.
+	
+	cmp( ecx, 4096 );
+	ja ValueOutOfRange;	
+	
+	// Compute the maximum of abs(width) and length(s):
+
+	mov( s, ebx );
+	mov( (type str.strRec [ebx]).length, eax );
+	cmp( eax, ecx );
+	jae eaxIsBigger;
+	
+		mov( ecx, eax );
+		
+	eaxIsBigger:
+	
+	// See if the max of the two values above is greater than
+	// the maximum length of the destination string:
+	
+	mov( dest, edx );
+	cmp( eax, (type str.strRec [edx]).maxlen );
+	ja StringOverflow;	
+	
+	// Okay, if length(s) < abs(width) we need to construct
+	// a fill string:
+	
+	cmp( ecx, (type str.strRec [ebx]).length );
+	jbe noPadding;
+
+		sub( (type str.strRec [ebx]).length, ecx );
+		str.init( (type byte FillData), 4116 );	
+		mov( eax, FillStr );
+		str.setstr( fill, ecx, FillStr );
+		
+		
+		// If the width is positive, the fill string needs to go at
+		// the start of the concatenated result.
+		
+		cmp( width, 1 );
+		jl noFillStr;
+		
+			str.cat( FillStr, dest );
+			
+		noFillStr:
+		
+		// Concatenate the user's string:
+		
+		str.cat( s, dest );
+		
+		// If the width is negative, the fill string is at the
+		// end of the concatenated result:
+		
+		cmp( width, -1 );
+		jge AllDone;
+		
+			str.cat( FillStr, dest );
+			jmp AllDone;
+		
+	noPadding:
+	
+		// If length(s) >= abs(width) then we don't use the
+		// fill character.
+		
+		str.cat( s, dest );
+		
+	AllDone: 
+		
+	
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+ValueOutOfRange:	
+	raise( ex.ValueOutOfRange );
+
+StringOverflow:	
+		raise( ex.StringOverflow );
+
+end catsSize;
+
+
+
+end stringUnit;
+
+
+
+
+	
+

@@ -1,0 +1,92 @@
+program isValid_test;
+#include( "stdlib.hhf" )
+
+static
+	baseTime	:time.timerec;
+	endTime		:time.timerec;	
+	
+begin isValid_test;
+
+
+	mov( 0, baseTime );
+	mov( 59, endTime.secs );
+	mov( 59, endTime.mins );
+	mov( 25, endTime.hours );
+	
+	while( mov( baseTime, eax ) <= (type dword endTime) ) do
+	
+		begin continueTest;
+	
+			mov( baseTime.hours, bx );
+			if( bx in 0..23 ) then
+			
+				mov( baseTime.mins, cl );
+				if( cl in 0..59 ) then
+				
+					mov( baseTime.secs, cl );
+					if( cl in 0..59 ) then
+					
+						if( !time.isValid( baseTime )) then
+					
+							stderr.put
+							( 
+								nl nl 
+								"***************************************************" 
+								nl
+								"time.isValid failed!", nl,
+								"Time= '",
+								(type uns8 baseTime.hours),
+								":",
+								(type uns8 baseTime.mins),
+								":",
+								(type uns16 baseTime.secs ),
+								nl
+							);
+							stdout.put( "Press Enter to Continue: " );
+							stdin.readLn();
+							os.exitProcess(1);
+							
+						endif;
+						exit continueTest;
+						
+					endif;
+					
+
+				endif;
+				
+				
+			endif;
+		
+			if( time.isValid( baseTime )) then
+		
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"time.isValid should have failed!", nl,
+					"Time= '",
+					(type uns8 baseTime.hours),
+					":",
+					(type uns8 baseTime.mins),
+					":",
+					(type uns16 baseTime.secs ),
+					nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+
+		end continueTest;
+		add( 1, baseTime.secs );
+		adc( 0, baseTime.mins );
+		adc( 0, baseTime.hours );
+		
+	endwhile;
+	stderr.put( "time.isValid succeeded!" nl );
+	os.exitProcess(0);
+		
+end isValid_test;
+
+													

@@ -1,0 +1,112 @@
+// Test program for the console functions.
+//
+// Not really an automated test program that tests functionality because
+// that's hard to automate in a portable fashion (indeed, impossible).
+//
+// This code *does*, however, call each function to make sure we can call
+// them and return properly from them.
+
+program tConsole;
+#include( "stdlib.hhf" )
+
+begin tConsole;
+
+
+	console.cls();
+	stdout.put( nl nl "Testing Console functions" nl );
+	console.gotoxy( 0, 0 );
+	stdout.put( "1234567890abcdefghijklmnoopqrstuvwxyz" nl );
+	console.gotoxy( 10, 0 );
+	console.clrToEOLN();
+	console.clrToBOLN();	
+	console.gotorc( 1, 0 );
+	stdout.put( "This is line 2" nl );
+	console.gotorc( 1, 0 );
+	console.clrLn();
+	
+	stdout.put
+	( 
+		"This is line 3" nl
+		"This is line 4" nl
+		"This is line 5" nl
+		"This is line 6" nl
+		"This is line 7" nl
+		"This is line 8" nl
+		"This is line 9" nl
+		"This is line 10" nl
+		"This is line 11" nl
+		"This is line 12" nl
+		"This is line 13" nl
+		"This is line 14" nl
+		"This is line 15" nl
+		"This is line 16" nl
+		"This is line 17" nl
+		"This is line 18" nl
+		"This is line 19" nl
+		"This is line 20" nl
+	);
+	console.gotorc( 10, 0 );
+	console.clrToEOScrn();
+	console.clrToBOScrn();
+	
+	console.gotorc( 12, 40 );
+	stdout.put( "^" );
+	console.up();
+	stdout.put( "v" );
+	console.down();
+	stdout.put( ">" );
+	console.right();
+	stdout.put( "<" );
+	console.left();
+	console.left();
+	stdout.put( "." );
+	
+	console.gotorc( 12, 60 );
+	stdout.put( "^" );
+	console.nup(2);
+	stdout.put( "v" );
+	console.ndown(2);
+	stdout.put( ">" );
+	console.nright(2);
+	stdout.put( "<" );
+	console.nleft(2);
+	stdout.put( "." );
+
+	console.scrollDn();
+	console.scrollUp();
+
+	console.setAttrs( console.green, console.red );
+	console.gotorc( 5, 10 );
+	stdout.put( "Red and green" );
+	console.gotorc( 5, 10 );
+	console.deleteChar();
+	console.deleteChars( 6 );
+	console.deleteLine();
+	console.gotorc( 12, 0 );
+	console.deleteLines( 6 );
+
+	console.gotorc( 5, 0 );
+	stdout.put( "Hello world" );
+	console.nleft( 6 );
+	console.insertChar();
+	console.insertChars( 5 );
+	stdout.put( " there" );
+	console.insertLine();
+	console.insertLines( 2 );
+	
+	console.gotorc( 10, 0 );
+	console.saveCursor();
+	stdout.put( "Cursor saved at beginning of line" nl nl );
+	console.restoreCursor();
+	stdout.put( "Should overwrite" nl );
+	#if( os.win32 )
+		console.setAttrs( console.white, console.black );
+	#else
+		console.setAttrs( console.black, console.white );
+	#endif
+	console.cls();
+	stdout.put( "tConsole successful!" nl );
+	
+		
+
+end tConsole;

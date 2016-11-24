@@ -1,0 +1,78 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit socketUnit;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "sockets.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+
+
+
+// baseSocketClass_t.geti128
+//
+//	Reads a 128-bit integer from a socket.
+// Stores the result into the lword pointed at by l.
+
+
+procedure baseSocketClass_t.geti128( var l:lword ); 
+var
+	obj		:dword;
+	c		:char;
+	
+	
+	// Low-level implementation of a thunk procedure:
+	//
+	// Thunk must return a single char in AL from the socket (with carry
+	// flag clear) or return carry flag set if there was an EOF.
+	
+	procedure geti128Thunk( thunksEBPval:dword );
+	begin geti128Thunk;
+	
+		push( ebp );			// Thunks always do this.
+		mov( [esp+8], ebp );	// Retrieve EBP value passed as parameter
+
+			mov( ebp::obj, esi );
+			(type baseSocketClass_t [esi]).read( ebp::c, 1 );
+			cmp( eax, 1 );		// C=1 if EOF (eax=0), 0 if not EOF
+			movzx( ebp::c, eax );
+
+		pop( ebp );				// Restore caller's EBP value
+        ret( _parms_ );			// Return, removing local EBP parm value.
+
+	end geti128Thunk;
+	
+begin geti128;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( esi, obj );
+	
+	push( l );
+	pushd( &geti128Thunk );
+	push( ebp );
+	call hla.geti128;
+	
+	mov( obj, esi );
+	leave();
+	ret( _parms_ );
+
+end geti128;
+	
+end socketUnit;
+

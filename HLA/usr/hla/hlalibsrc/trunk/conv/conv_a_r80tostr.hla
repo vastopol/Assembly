@@ -1,0 +1,86 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "memory.hhf" )
+#includeOnce( "strings.hhf" )
+ 
+/****************************************************************************/
+/*                                                                          */
+/* a_r80ToStr-                                                              */
+/*                                                                          */
+/* Just like r80ToStr except this function allocates storage for the string */
+/* on the heap and returns a pointer to that string in EAX.                 */
+/*                                                                          */
+/****************************************************************************/
+
+
+
+procedure conv.a_r80ToStr
+( 
+	r80:		real80;	
+	width:		uns32; 
+	decimalpts:	uns32; 
+	fill:		char
+);  
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+
+var
+	ediSave		:dword;
+	edxSave		:dword;
+	eaxSave		:dword;
+
+	Exponent:	int32;
+	Sign:		char;
+	Digits:		byte[ 64 ];
+
+begin a_r80ToStr;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( edx, edxSave );
+	mov( edi, ediSave );
+	
+	// Allocate storage for the string:
+	
+	mov( width, edi );
+	str.alloc( edi );
+	mov( eax, eaxSave );
+	
+	// Save away field width as string length.
+	
+	mov( edi, (type str.strRec [eax]).length );
+	
+	// Okay, the string is fine.  Do the conversion.
+
+	movzx( fill, edx );
+	conv.r80ToBuf( r80, width, decimalpts, dl, [eax] );
+		
+	mov( eaxSave, eax );
+	mov( edxSave, edx );
+	mov( ediSave, edi );
+	leave();
+	ret( _parms_ );
+
+
+
+end a_r80ToStr;
+
+end ConvUnit;

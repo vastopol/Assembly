@@ -1,0 +1,130 @@
+unit filesys_toUnixpath_unit;
+
+// procedure a_getFullPathName( partialPath:string );
+//
+//	partialPath contains a (possibly) partial pathname.
+// This function computes the full path to that file (including drive letter
+// on Win32 systems) and creates a new string on the heap containing the
+// full path prefix allon with the partial path name.  This function returns
+// a pointer to that new string in EAX. It is the caller's responsibility to
+// free that storage when the caller is done with it. 
+
+	#includeOnce( "os.hhf" )
+	#includeOnce( "filesys.hhf" )
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "chars.hhf" )
+
+	#if( os.win32 )
+	
+		static
+			wGetFullPathName: procedure
+			(
+				lpFileName: string;
+				nBufferLength: dword;
+				var lpBuffer: var;
+				var lpFilePart: var
+			);
+				@stdcall;
+				@returns( "eax" );
+				@external( "__imp__GetFullPathNameA@16" );
+
+
+
+		procedure filesys.a_getFullPathName( partialPath:string );
+			@noframe;
+			@nodisplay;
+			@noalignstack;
+			
+		var
+			lastNamePart	:dword;
+			fullFileNameBuf	:char[ 1024 ];
+
+		begin a_getFullPathName;
+
+			push( ebp );
+			mov( esp, ebp );
+			sub( _vars_, esp );
+			push( ecx );
+			push( edx );
+			pushfd();
+			cld();
+			
+			mov( 0, fullFileNameBuf[0] );
+			wGetFullPathName
+			( 
+				partialPath, 
+				1024, 
+				fullFileNameBuf, 
+				lastNamePart 
+			);
+			lea( eax, fullFileNameBuf );
+			str.a_cpyz( eax );
+			
+			popfd();
+			pop( edx );
+			pop( ecx );
+			leave();
+			ret( _parms_ );
+
+		end a_getFullPathName;
+	
+	#else
+	
+		procedure filesys.a_getFullPathName( partialPath:string );
+			@noframe;
+			@nodisplay;
+			@noalignstack;
+
+		var
+			fullPathname	:string;
+			fullFileNameBuf	:char[4096];
+
+		begin a_getFullPathName;
+
+			push( ebp );
+			mov( esp, ebp );
+			sub( _vars_, esp );
+			push( ebx );
+			pushfd();
+			cld();
+			
+			str.init( fullFileNameBuf, 4096 );
+			mov( eax, fullPathname );
+			mov( partialPath, ebx );
+			mov( [ebx], al );
+			cmp( al, '/' );
+			je absPath;
+			cmp( al, '\' );
+			je absPath;
+
+				filesys.gwd( fullPathname );
+				filesys.a_joinPaths( fullPathname, partialPath );
+				jmp normalizePath;
+				
+
+			absPath:
+
+				// If the filename contained a leading '/', then
+				// we just copy the input filename and use that
+				// (it's already an absolute path).
+
+				str.a_cpy( partialPath );
+
+
+			// Normalize the pathname to remove "../" and "./" subsequences:
+			
+			normalizePath:
+			
+			filesys.normalize1( eax );
+
+			popfd();
+			pop( ebx );
+			leave();
+			ret( _parms_ );
+
+		end a_getFullPathName;
+	
+	
+	#endif
+
+end filesys_toUnixpath_unit;

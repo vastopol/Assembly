@@ -1,0 +1,86 @@
+unit filePath_unit;
+
+// synopsis
+//	These functions return a filepath up to but not including
+//	the basename.  There is no separation char at the end.
+	
+	#includeOnce( "filesys.hhf" )
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "excepts.hhf" )
+
+
+
+	procedure filesys.extractPath( pathname:string; dest:string );
+		@nodisplay; @noframe; @noalignstack;
+		
+		// copies the pathname sans basename to dest
+		//	RETURNS:
+		//		carry set = true, dest = valid pathname
+		//		carry clear = false, dest = unchanged
+		
+		var
+			saveEAX	:dword;
+			saveESI	:dword;
+			saveEDI	:dword;
+			
+	begin extractPath;
+		
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( eax, saveEAX );
+		mov( esi, saveESI );
+		mov( edi, saveEDI );
+		
+		// sanity check:
+		
+		mov( dest, edi );
+		test( edi, edi );
+		jz radn;
+		
+		// Get the position of the last path separator (if any):
+		
+		filesys.hasPath( pathname );
+		jnc returnFalse;
+		
+		// Okay, process the pathname:
+		// eax = index to last directory separator character.
+		
+		mov( pathname, esi );
+		cmp( eax, (type str.strRec[edi]).maxlen );
+		ja rso;
+		
+		mov( eax, (type str.strRec[edi]).length );
+		zstr.cpyn( esi, eax, edi );
+		
+		// return true
+		
+		stc();
+		jmp done;
+		
+		// If there is no path, return an empty string:
+		
+		returnFalse:
+			mov( 0, (type str.strRec [edi]).length );
+			mov( 0, (type byte [edi]) );
+			clc();
+		
+		done:
+			mov( saveEAX, eax );
+			mov( saveESI, esi );
+			mov( saveEDI, edi );
+			
+			mov( ebp, esp );
+			pop( ebp );
+			ret( _parms_ );
+			
+		radn:
+			raise( ex.AttemptToDerefNULL );	
+		
+		rso:
+			raise( ex.StringOverflow );
+		
+	end extractPath;
+
+end filePath_unit;

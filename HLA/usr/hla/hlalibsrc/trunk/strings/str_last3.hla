@@ -1,0 +1,101 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+/***************************************************************/
+/*                                                             */
+/* last2,                                                      */
+/* last3,                                                      */
+/* a_last-                                                     */
+/*                                                             */
+/* These routines remove characters from the beginning of a    */
+/* string. (that is, they return the characters at the end of  */
+/* the string). The last3 routine destructively removes        */
+/* characters from a specified string variable.  The a_last    */
+/* routine allocates storage for a new string and copies the   */
+/* string, minus the deleted portion, to the newly allocated   */
+/* storage. The last3 function copies the substring to a dest  */
+/* string provided by the caller. The original string is left  */
+/* unchanged by a_last and last3.                              */
+/*                                                             */
+/* Inputs-                                                     */
+/*                                                             */
+/* dest-   Pointer to string to remove characters from.        */
+/* length- Number of characters to delete from the end         */
+/*         of the string.                                      */
+/*                                                             */
+/***************************************************************/
+
+
+procedure str.last3
+(
+      s		:string;
+      len	:dword;
+	  dest	:string
+); 
+	@noframe;
+begin last3;
+      
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ecx );
+	push( edi );
+	
+	// string_length-len is the starting index to use.
+	
+	mov( s, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+	mov( len, ecx );
+	mov( (type str.strRec [edi]).length, eax );
+	cmp( eax, ecx );
+	jae useLen;
+		mov( eax, ecx );
+	useLen:
+	sub( ecx, eax );
+	
+	// min( len, string_length ) is the length to use.
+	// str.substr handles the case where the
+	// length we've specified goes beyond the
+	// end of the string, so we don't need to
+	// worry about that here.
+	
+	str.substr( edi, eax, len, dest );
+
+	pop( edi );
+	pop( ecx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise(ex.AttemptToDerefNULL);
+
+end last3;
+end stringUnit;
+
+
+
+
+	
+

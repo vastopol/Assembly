@@ -1,0 +1,69 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+
+/***********************************************************/
+/*                                                         */
+/* i64ToBuf-                                               */
+/*                                                         */
+/* This routine converts a 64-bit integer to a sequence    */
+/* of characters.  The 64-bit integer is passed on the stk.*/
+/* This routine stores the resulting character sequence    */
+/* into the buffer pointed at by edi.  This routine        */
+/* leaves edi pointing at the first byte beyond the        */
+/* converted character sequence.                           */
+/*                                                         */
+/***********************************************************/
+
+
+procedure conv.i64ToBuf( q:qword; var buf:var in edi );  
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+
+begin i64ToBuf;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( edx );
+	
+	mov( (type dword q), eax );
+	mov( (type dword q[4]), edx );
+	cmp( (type int32 edx), 0 );
+	jnl notNeg;
+	
+		mov( '-', (type char [edi]));
+		inc( edi );
+		neg( edx );
+		neg( eax );
+		sbb( 0, edx );
+		mov( eax, (type dword q ));
+		mov( edx, (type dword q[4]));
+		
+	notNeg:
+	pop( edx );
+	pop( eax );
+	
+	conv.u64ToBuf( q, [edi] );
+	pop( ebp );
+	ret( _parms_ );
+	
+end i64ToBuf;
+
+end ConvUnit;

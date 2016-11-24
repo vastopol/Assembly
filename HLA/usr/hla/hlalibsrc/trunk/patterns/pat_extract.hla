@@ -1,0 +1,80 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit patterns;
+#includeOnce( "../include/pat.hhf" )
+#includeOnce( "patterns.hhf" )
+#includeOnce( "excepts.hhf" )
+
+	
+	
+
+/**************************************************************/
+/*                                                            */
+/* Extract-                                                   */
+/*                                                            */
+/* This procedure creates an HLA string from the characters   */
+/* between EBX and ESI (this corresponds to the last sequence */
+/* matched by a pattern matching routine).                    */
+/*                                                            */
+/* Entry:                                                     */
+/* 	s:		Pointer to string variable to hold result.        */
+/* 	EBX:	Pointer to start of last-matched sequence.        */
+/* 	ESI:	Pointer to end (+1) of last-matched sequence.     */
+/*                                                            */
+/* Exit:                                                      */
+/*                                                            */
+/* 	s:		Contains pointer to newly allocated string.       */
+/*                                                            */
+/* Note: this routine calls stralloc to create the string.    */
+/* You should call strfree to free up the storage when        */
+/* you are done with this string.                             */
+/*                                                            */
+/**************************************************************/
+
+procedure pat.extract( s:string); 
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+	
+begin extract;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	mov( esi, ecx );
+	sub( ebx, ecx );
+	mov( s, eax );
+	cmp( ecx, (type str.strRec [eax]).maxlen );
+	ja StringOverflow;
+	mov( ecx, (type str.strRec [eax]).length );
+
+	push( esi );
+	push( edi );
+	mov( eax, edi );
+	mov( ebx, esi );
+	cld();
+	rep.movsb();
+	mov( 0, (type byte [edi]) );	// Zero terminate the string.
+	pop( edi );
+	pop( esi );
+	pop( ebp );
+	ret( _parms_ );
+	
+StringOverflow:
+	raise( ex.StringOverflow );
+
+end extract;
+
+end patterns;

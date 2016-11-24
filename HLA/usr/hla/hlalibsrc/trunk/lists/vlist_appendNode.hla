@@ -1,0 +1,104 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit lists;
+#include( "lists.hhf" )
+#include( "excepts.hhf" )
+
+
+const
+	nodeEDI: text := "(type node_t [edi])";
+	nodeEAX: text := "(type node_t [eax])";
+	
+
+
+/*************************/
+
+// append_node
+//
+//	This function appends node "n" after node "after"
+//	in the list.  Note that this code does not verify
+//	that "after" is actually in the current list;  it
+//	is the programmer's responsibility to use this
+//	method in an appropriate fashion and only insert
+//	a new node after a node that is truly in the list.
+//
+//	Since this is a method EDI is already wiped
+//	out upon entry.  So this code will not bother 
+//  to preserve it.  This function does return with
+//	ESI still pointing at the list object.
+
+method virtualList_t.appendNode( var n: node_t; var after: node_t );
+	@nodisplay;
+	@noframe;
+	
+begin appendNode;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	// Quick sanity check:
+	
+	cmp( n, NULL );
+	je AttemptToDerefNULL;
+	cmp( after, NULL );
+	je AttemptToDerefNULL;
+	
+
+	push( eax );
+	mov( n, eax );
+	mov( after, edi );
+		
+	// Okay, now EDI points at the node we want to insert
+	// "n" after.
+	
+	push( nodeEDI.Next );		// Save ptr to original "next" node.
+	mov( eax, nodeEDI.Next );
+	mov( edi, nodeEAX.Prev );
+	
+	pop( edi );					// Retrieve ptr to original "next" node.
+	test( edi, edi );
+	jz afterWasLast;			// See if "after" was the last node.
+
+		// If not, append the remainder of the list to
+		// the end of the new node:
+			
+		mov( edi, nodeEAX.Next );	// Like "n" together with the original
+		mov( eax, nodeEDI.Prev );	// "next" node.
+		jmp allDone;
+	
+	afterWasLast:
+	
+		// If "after" was the last node in the list, then we need
+		// to update the "Tail" pointer in the list object.
+		
+		mov( edi, nodeEAX.Next );	// NULL terminate the list.
+		mov( eax, this.Tail );		// Point tail at node "n".
+		
+	allDone:
+	
+	// We just added a node to the list, so bump the node count.
+	
+	inc( this.Cnt );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end appendNode;
+
+
+end lists;

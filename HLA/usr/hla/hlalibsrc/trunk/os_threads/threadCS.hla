@@ -1,0 +1,149 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit threads;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "os.hhf" )
+#includeOnce( "threads.hhf" )
+#includeOnce( "../include/thread_private.hhf" )
+
+#if( os.win32 )
+	#include( "w.hhf" )
+	static
+		align( 4 );
+		
+		threadCS			:w.CRITICAL_SECTION;
+		threadInitialized	:boolean := false;
+			
+	
+#elseif( os.linux | os.freeBSD | os.macOS )
+
+	#if( os.linux )
+		#include( "linux.hhf" )
+	#elseif( os.freeBSD )
+		#include( "bsd.hhf" )
+	#elseif( os.macOS )
+		#include( "mac.hhf" )
+	#endif
+	
+	static
+		align( 4 );
+		threadCS			:pthread_mutex_t;
+		threadInitialized	:boolean := false;
+
+#else
+	#error( "Unsupported OS" )
+#endif
+	
+
+
+
+
+#if( os.win32 )
+
+
+	// Enter Critical Section function. 
+	// In theory, the code that initializes the "threadCS" object
+	// is not thread-safe as it depends upon synchronized access
+	// to the static "threadInitialized" variable.  However, you
+	// can't really have multiple threads running without the first
+	// such thread calling this code before any other (assuming
+	// correct use of threads in the HLA stdlib), so this won't
+	// be a problem.
+
+	procedure _hla.enterCSthread;
+	begin enterCSthread;
+	
+		push( eax );
+		push( ecx );
+		push( edx );
+		
+		// Must auto-initialize the critical section:
+		
+		cmp( threadInitialized, false );
+		jne alreadyInitialized;
+		
+			mov( true, threadInitialized );
+			w.InitializeCriticalSection( threadCS );
+			
+		alreadyInitialized:
+		w.EnterCriticalSection( threadCS );
+		pop( edx );
+		pop( ecx );
+		pop( eax );	
+		ret();
+		
+	end enterCSthread;
+
+	procedure _hla.leaveCSthread;
+	begin leaveCSthread;
+	
+		push( eax );
+		push( ecx );
+		push( edx );
+		w.LeaveCriticalSection( threadCS );
+		pop( edx );
+		pop( ecx );
+		pop( eax );	
+		ret();
+		
+	end leaveCSthread;
+	
+#else
+
+	procedure _hla.enterCSthread;
+	begin enterCSthread;
+	
+		push( eax );
+		push( ecx );
+		push( edx );
+		
+		// Must auto-initialize the critical section:
+		
+		cmp( threadInitialized, false );
+		jne alreadyInitialized;
+		
+			mov( true, threadInitialized );
+			pthread_mutex_init( threadCS, NULL );
+			
+		alreadyInitialized:
+		pthread_mutex_lock( threadCS );	
+		pop( edx );
+		pop( ecx );
+		pop( eax );	
+		ret();
+		
+	end enterCSthread;
+
+	procedure _hla.leaveCSthread;
+	begin leaveCSthread;
+	
+		push( eax );
+		push( ecx );
+		push( edx );
+		pthread_mutex_unlock( threadCS );
+		pop( edx );
+		pop( ecx );
+		pop( eax );	
+		ret();
+		
+	end leaveCSthread;
+	
+#endif
+
+	
+	
+
+end threads;

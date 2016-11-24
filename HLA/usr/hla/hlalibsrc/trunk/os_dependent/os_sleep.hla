@@ -1,0 +1,294 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+
+unit systemUnit;
+#includeOnce( "strings.hhf" )
+#includeOnce( "memory.hhf" )
+#includeOnce( "os.hhf")
+#includeOnce( "sleep.hhf" ) 
+#includeOnce( "excepts.hhf" )
+
+
+#if( os.win32 )
+#include( "w.hhf" )
+
+procedure os.sleep( secs:dword ); @nodisplay; @nostackalign; @noframe;
+begin sleep;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( secs, eax );
+	intmul( 1000, eax );
+	jo ValueOutOfRange;
+	
+	w.Sleep( eax );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+ValueOutOfRange:
+	raise( ex.ValueOutOfRange );
+
+end sleep;
+
+procedure os.mSleep( msecs:dword ); @nodisplay; @nostackalign; @noframe;
+begin mSleep;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.Sleep( msecs );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+end mSleep;
+
+#elseif( os.freeBSD )
+
+#include( "bsd.hhf" )
+	
+procedure os.sleep( secs:dword ); @nodisplay; @nostackalign; @noframe;
+var
+	rgtp	:bsd.timespec;
+	
+begin sleep;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	bsd.pushregs;
+	
+	whileIntr:
+		mov( 0, rgtp.tv_nsec );
+		mov( secs, eax );
+		mov( eax, rgtp.tv_sec );
+		bsd.nanosleep( rgtp, NULL );
+		jnc allDone;
+		cmp( eax, errno.eintr );
+		je whileIntr;
+		jmp AccessViolation;
+		
+	
+	allDone:
+	bsd.popregs;
+	leave();
+	ret( _parms_ );
+	
+AccessViolation:
+	raise( ex.AccessViolation );
+
+end sleep;
+	
+procedure os.mSleep( msecs:dword ); @nodisplay; @nostackalign; @noframe;
+var
+	rgtp	:bsd.timespec;
+	
+begin mSleep;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	bsd.pushregs;
+	
+	mov( msecs, eax );
+	mul( 1_000_000, eax );
+	div( 1_000_000_000, edx:eax );
+	mov( eax, rgtp.tv_sec );
+	mov( edx, rgtp.tv_nsec );
+	whileIntr:
+		bsd.nanosleep( rgtp, NULL );
+		jnc allDone;
+		cmp( eax, errno.eintr );
+		je whileIntr;
+		jmp AccessViolation;
+	
+	allDone:
+	bsd.popregs;
+	leave();
+	ret( _parms_ );
+	
+AccessViolation:
+	raise( ex.AccessViolation );
+
+end mSleep;
+
+
+#elseif( os.macOS )
+
+#include( "mac.hhf" )
+	
+procedure os.sleep( secs:dword ); @nodisplay; @nostackalign; @noframe;
+var
+	rgtp	:mac.timespec;
+	
+begin sleep;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mac.pushregs;
+	
+	whileIntr:
+		mov( 0, rgtp.tv_nsec );
+		mov( secs, eax );
+		mov( eax, rgtp.tv_sec );
+		mac.nanosleep( rgtp, NULL );
+		jnc allDone;
+		cmp( eax, errno.eintr );
+		je whileIntr;
+		jmp AccessViolation;
+		
+	
+	allDone:
+	mac.popregs;
+	leave();
+	ret( _parms_ );
+	
+AccessViolation:
+	raise( ex.AccessViolation );
+
+end sleep;
+	
+procedure os.mSleep( msecs:dword ); @nodisplay; @nostackalign; @noframe;
+var
+	rgtp	:mac.timespec;
+	
+begin mSleep;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mac.pushregs;
+	
+	mov( msecs, eax );
+	mul( 1_000_000, eax );
+	div( 1_000_000_000, edx:eax );
+	mov( eax, rgtp.tv_sec );
+	mov( edx, rgtp.tv_nsec );
+	whileIntr:
+		mac.nanosleep( rgtp, NULL );
+		jnc allDone;
+		cmp( eax, errno.eintr );
+		je whileIntr;
+		jmp AccessViolation;
+	
+	allDone:
+	mac.popregs;
+	leave();
+	ret( _parms_ );
+	
+AccessViolation:
+	raise( ex.AccessViolation );
+
+end mSleep;
+
+
+#elseif( os.linux )
+#include( "linux.hhf" )
+
+procedure _sleep( secs:dword ); @cdecl; @external( "sleep" );
+procedure _nanosleep( var usecs:linux.timespec; var ptr:linux.timespec ); 
+	@cdecl; 
+	@external( "nanosleep" );
+
+	
+procedure os.sleep( secs:dword ); @nodisplay; @nostackalign; @noframe;
+begin sleep;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	_sleep( secs );
+	add( 4, esp );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );		
+	leave();
+	ret( _parms_ );
+	
+AccessViolation:
+	raise( ex.AccessViolation );
+
+end sleep;
+	
+procedure os.mSleep( msecs:dword ); @nodisplay; @nostackalign; @noframe;
+var
+	rgtp	:linux.timespec;
+	
+begin mSleep;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( msecs, eax );
+	mul( 1_000_000, eax );
+	div( 1_000_000_000, edx:eax );
+	mov( eax, rgtp.tv_sec );
+	mov( edx, rgtp.tv_nsec );
+	whileIntr:
+		_nanosleep( rgtp, NULL );
+		add( 8, esp );
+		test( eax, eax );
+		jns allDone;
+		cmp( eax, errno.eintr );
+		je whileIntr;
+		jmp AccessViolation;
+	
+	allDone:
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+AccessViolation:
+	raise( ex.AccessViolation );
+
+end mSleep;
+
+
+
+#endif
+
+
+
+end systemUnit;
+
+
+
+	
+

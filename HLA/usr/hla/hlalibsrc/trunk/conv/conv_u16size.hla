@@ -1,0 +1,81 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+
+/**********************************************************/
+/*                                                        */
+/* u16Size                                                */
+/*                                                        */
+/* This routines compute the minimum number of print      */
+/* positions needed to display an uns16 value.            */
+/* The size, in digits, is returned in the EAX register.  */
+/*                                                        */
+/* Input:                                                 */
+/* 	uValue parameter contains uns16 value.                */
+/* 	                                                      */
+/* Returns                                                */
+/* 	# of digits in the EAX register.                      */
+/*                                                        */
+/**********************************************************/
+
+
+procedure conv.u16Size( uValue:word in ax ); 
+	@nodisplay; 
+	@noframe;
+begin u16Size;
+
+	cmp( eax, 10 );
+	jb one;
+	cmp( eax, 100 );
+	jb two;
+	cmp( eax, 1_000 );
+	jb three;
+	cmp( eax, 10_000 );
+	jb four;
+	
+		mov( 5, eax );
+		_hla.test_OutputUnderscores();
+		jne Add1;
+		ret();
+
+	one:
+		mov( 1, eax );
+		ret();
+
+	two:
+		mov( 2, eax );
+		ret();
+
+	three:
+		mov( 3, eax );
+		ret();
+
+	four:
+		mov( 4, eax );
+		_hla.test_OutputUnderscores();
+		jne Add1;
+		ret();
+
+	Add1:
+		add( 1, eax );
+		ret();
+	
+end u16Size;
+
+end ConvUnit;

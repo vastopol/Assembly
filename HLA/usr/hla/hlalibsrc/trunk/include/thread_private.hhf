@@ -1,0 +1,199 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+#if( ! @defined( thread_private_hhf ))
+?thread_private_hhf := true;
+
+#includeOnce( "os.hhf" )
+#includeOnce( "../include/osargs.hhf" )
+#includeOnce( "datetime.hhf" )
+#includeOnce( "hla.hhf" )
+
+
+procedure quitProgram; external( "QuitMain__hla_" );
+
+#if( os.win32 )
+
+	static
+		TlsAlloc: procedure;
+			@stdcall;
+			@returns( "eax" );
+			external( "__imp__TlsAlloc@0" );
+
+		TlsGetValue: procedure
+		( 
+			dwTlsIndex:	dword
+		);
+			@stdcall;
+			@returns( "eax" );
+			external( "__imp__TlsGetValue@4" );
+			
+		TlsSetValue: procedure
+		( 
+				dwTlsIndex:	dword;  
+				lpTlsValue:	dword
+		);
+			@stdcall;
+			@returns( "eax" );
+			external( "__imp__TlsSetValue@8" );
+			
+#elseif( os.linux | os.freeBSD | os.macOS )
+
+	#if( os.macOS )
+		#includeOnce( "mac.hhf" )
+		
+		const
+			theOS	:= "mac";
+			
+			
+	#elseif( os.linux )
+		#includeOnce( "linux.hhf" )
+		
+		const
+			theOS := "linux";
+			
+		
+	#elseif( os.freeBSD )
+		#includeOnce( "bsd.hhf" )
+		
+		const
+			theOS := "bsd";
+		
+	#endif
+	
+
+
+	type
+		pthread_t					:@text( theOS + ".pthread_t" );
+		pthread_mutex_t				:@text( theOS + ".pthread_mutex_t" );
+		pthread_mutex_attr_t		:@text( theOS + ".pthread_mutex_attr_t" );
+		pthread_attr_t				:@text( theOS + ".pthread_attr_t" );
+		pthread_key_t				:@text( theOS + ".pthread_key_t" );
+		pthread_cond_t				:@text( theOS + ".pthread_cond_t" );
+		pthread_condattr_t			:@text( theOS + ".pthread_condattr_t" );
+									  
+		sembuf						:@text( theOS + ".sembuf" );
+		
+		event_t	:record
+		
+			cond	:pthread_cond_t;
+			mutex	:pthread_mutex_t;
+			signal	:boolean;
+			align( 4 );
+			
+		endrecord;
+		
+	const
+		pthread_create				:text := theOS + ".pthread_create";
+		pthread_exit				:text := theOS + ".pthread_exit";
+		pthread_self				:text := theOS + ".pthread_self";
+		pthread_attr_init			:text := theOS + ".pthread_attr_init";
+		pthread_attr_destroy		:text := theOS + ".pthread_attr_destroy";
+		pthread_attr_detach			:text := theOS + ".pthread_attr_detach";
+		pthread_attr_setdetachstate	:text := theOS + ".pthread_attr_setdetachstate";
+		pthread_attr_setstacksize	:text := theOS + ".pthread_attr_setstacksize";
+		pthread_key_create			:text := theOS + ".pthread_key_create";
+		pthread_key_delete			:text := theOS + ".pthread_key_delete";
+		pthread_getspecific			:text := theOS + ".pthread_getspecific";
+		pthread_setspecific			:text := theOS + ".pthread_setspecific";
+		pthread_mutex_destroy		:text := theOS + ".pthread_mutex_destroy";
+		pthread_mutex_init			:text := theOS + ".pthread_mutex_init";
+		pthread_mutex_lock			:text := theOS + ".pthread_mutex_lock";
+		pthread_mutex_unlock		:text := theOS + ".pthread_mutex_unlock";
+		pthread_cond_init			:text := theOS + ".pthread_cond_init";
+		pthread_cond_destroy		:text := theOS + ".pthread_cond_destroy";
+		pthread_cond_signal			:text := theOS + ".pthread_cond_signal";
+		pthread_cond_broadcast		:text := theOS + ".pthread_cond_broadcast";
+		pthread_cond_wait			:text := theOS + ".pthread_cond_wait";
+		pthread_cond_timedwait		:text := theOS + ".pthread_cond_timedwait";
+		pthread_timeoutError		:text := theOS + ".ETIMEDOUT";
+		ftok						:text := theOS + ".ftok";
+		semctl						:text := theOS + ".semctl";
+		semget						:text := theOS + ".semget";
+		semop						:text := theOS + ".semop";
+
+		
+#endif
+
+namespace _hla;
+
+	const
+		NeedsCmdLn_c		:boolean := @global:true;
+		DateFormat_c		:@global:date.OutputFormat := @global:date.mmddyy;
+		TimeFormat_c		:@global:time.OutputFormat := @global:time.hhmmss24;
+		DateSeparator_c		:char := '/';
+		OutputUnderscores_c	:boolean := @global:false;
+		_argc_c				:uns32 := 0;
+		Delimiters_c:	
+			cset :=	
+				{
+					#0, #9, #10, #13, 
+					' ', 
+					',',
+					';',
+					':'
+				};
+			
+		WordDelims_c		:cset := -{ 'a'..'z', 'A'..'Z', '0'..'9', '_' };
+
+		
+
+	// Thread-Local-Storage definition for thread-based versions of the
+	// library.
+
+	type
+
+		stdlib_tls_t:
+			record
+			
+				MainPgmCoroutine		:@global:hla.coroutineDataStructure;
+				ExceptionPtr			:dword;
+				raiseEAXSave			:dword;
+				raiseECXSave			:dword;
+				raiseEDXSave			:dword;
+			
+				conv_Delimiters			:cset;
+								
+				cl_CommandLine			:string;
+				cl_argc					:dword;
+				cl_argv					:string[ @global:MaxCmdLnParms ];
+				
+				cl_NeedsCmdLn			:boolean;
+				dt_DateFormat			:@global:date.OutputFormat;
+				dt_TimeFormat			:@global:time.OutputFormat;
+				dt_DateSeparator		:char;
+				conv_OutputUnderscores	:boolean;
+				
+				align(4);
+				
+			endrecord;
+			
+	static
+		haveTLShandle	:boolean;		external( "THREAD_HAVETLSHANDLE" );
+
+	procedure enterCSthread; external( "THREAD_THREADCSENTER" );
+	procedure leaveCSthread; external( "THREAD_THREADCSLEAVE" );
+	procedure push_ExceptionPtr; external( "_HLA_PUSH_EXCEPTIONPTR" );
+	procedure get_ExceptionPtrEBP; external( "_HLA_GET_EXCEPTIONPTREBP" );
+	procedure set_ExceptionPtr( exPtr:dword );
+		external( "_HLA_SET_EXCEPTIONPTR" );
+
+	procedure setMainPgmCoroutinePtr; 	
+		external( "_HLA_SETMAINPGMCOROUTINEPTR" );
+
+	
+	
+end _hla;
+
+#endif

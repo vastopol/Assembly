@@ -1,0 +1,206 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 8/17/2006, by Randall Hyde
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "stdlibdata.hhf" )
+#includeOnce( "excepts.hhf" )
+
+/*************************************************************************/
+/*                                                                       */
+/* _hexToBuf32-                                                          */
+/*                                                                       */
+/* On entry:                                                             */
+/* 	EAX contains a numeric value to convert to a hexadecimal string.     */
+/*  ECX contains the number of digits to print (from L.O.->H.O.)         */
+/*    including a count for the underscore if one is to be inserted.     */
+/* 	                                                                     */
+/* 	EDI points at the end of a memory buffer large enough to hold a      */
+/* 	32-bit hexadecimal value (at least 8 bytes if OutputUnderscores is   */
+/*  false, at least 9 bytes if OutputUnderscores is true).               */
+/*                                                                       */
+/* On exit:                                                              */
+/* 	The buffer will contain a string that is the                         */
+/* 	hexadecimal representation of the value and EDI will point at the    */
+/* 	start of the string. If outputUnderscores is true and there are 5 or */
+/*  or more digits to output, this routine will insert an underscore     */
+/*  between the 4th and 5th digits.                                      */
+/*                                                                       */
+/*************************************************************************/
+
+
+
+
+
+procedure conv._hexToBuf32
+( 
+		d		:dword in eax;
+		width	:dword in ecx; 
+	var buffer	:char in edi 
+);
+	@noframe; 
+	@nodisplay; 
+	@noalignstack;
+
+readonly
+	noUSjt	:dword[9] :=
+			[
+				&badWidth,
+				&noUS1,
+				&noUS2,
+				&noUS3,
+				&noUS4,
+				&noUS5,
+				&noUS6,
+				&noUS7,
+				&noUS8
+			];
+
+	hasUSjt	:dword[10] :=
+			[
+				&badWidth,
+				&hasUS1,
+				&hasUS2,
+				&hasUS3,
+				&hasUS4,
+				&badWidth,
+				&hasUS6,
+				&hasUS7,
+				&hasUS8,
+				&hasUS9
+			];
+			
+	
+
+    #macro emit2XDigits( shift, posn );
+        
+        mov( eax, edx );
+        shr( shift, edx );
+        and( $ff, edx );
+        mov( (type word stdlib.hexTbl[edx*2]), dx );
+        mov( dx, [edi-posn] );
+         
+    #endmacro
+
+
+		
+begin _hexToBuf32;
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	
+
+	// If we're outputting underscores, then go handle the output 
+	// using a special version of this routine. (Note: OutputUnderscores is
+	// a global object in the HLA Standard Library.)
+	
+	_hla.test_OutputUnderscores();
+	jne DoUnderscores;
+		
+		// Drop down here if we're not outputting underscores inbetween 
+		// groups of four digits in the number.
+
+		cmp( ecx, 8 );
+		ja badWidth;
+
+		jmp( noUSjt[ecx*4] );
+
+	    noUS8:
+	        emit2XDigits( 24, 7);
+	    noUS6:
+	        emit2XDigits( 16, 5);
+	    noUS4:
+	        emit2XDigits( 8, 3 );
+	    noUS2:
+	        and( $ff, eax );
+	        mov( (type word stdlib.hexTbl[eax*2]), dx );
+	        mov( dx, [edi-1] );
+	        jmp htb32Done;
+	        
+	    noUS7:
+	        emit2XDigits( 20, 6 );
+	    noUS5:
+	        emit2XDigits( 12, 4 );
+	    noUS3:
+	        emit2XDigits( 4, 2 );
+	    noUS1:
+	        and( $f, eax );                     // Strip out unwanted bits.
+	        mov( stdlib.hexDigits[eax], dl );   // Convert digit to hex char.
+	        mov( dl, [edi] );
+			jmp htb32Done;		
+	
+		
+		
+	// Version of the above code that emits underscores between
+	// every four digits.  Yep, repeated code (ugly), but done
+	// because the underscore processing is slower.
+			
+	DoUnderscores:
+
+		cmp( ecx, 9 );
+		ja badWidth;
+		jmp( hasUSjt[ecx*4] );
+
+	    hasUS9:
+	        emit2XDigits( 24, 8);
+	    hasUS7:
+	        emit2XDigits( 16, 6);
+			mov( '_', (type char [edi-4]));
+			
+	    hasUS4:
+	        emit2XDigits( 8, 3 );
+	    hasUS2:
+	        and( $ff, eax );
+	        mov( (type word stdlib.hexTbl[eax*2]), dx );
+	        mov( dx, [edi-1] );
+	        jmp htb32Done;
+	        
+	    hasUS8:
+	        emit2XDigits( 20, 7 );
+	    hasUS6:
+	        mov( eax, edx );
+	        shr( 12, edx );
+	        and( $ff, edx );
+	        mov( (type word stdlib.hexTbl[edx*2]), dx );
+	        mov( dl, [edi-5] );
+			mov( '_', (type char [edi-4]));
+	        mov( dh, [edi-3] );
+		
+
+	    hasUS3:
+	        emit2XDigits( 4, 2 );
+	    hasUS1:
+	        and( $f, eax );                     // Strip out unwanted bits.
+	        mov( stdlib.hexDigits[eax], dl );   // Convert digit to hex char.
+	        mov( dl, [edi] );
+
+	
+htb32Done:
+	sub( ecx, edi );	// Point EDI at the first char in the buffer
+	add( 1, edi );
+
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	ret();
+			
+badWidth:
+	raise( ex.WidthTooBig );		  	
+
+end _hexToBuf32;
+
+end ConvUnit;

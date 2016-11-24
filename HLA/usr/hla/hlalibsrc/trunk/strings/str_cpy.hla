@@ -1,0 +1,99 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+
+/*****************************************************************/
+/*                                                               */
+/* cpy-                                                          */
+/*                                                               */
+/* Copies the source string to the destination string (including */
+/* a zero terminating byte).                                     */
+/*                                                               */
+/*****************************************************************/
+
+procedure str.cpy( src:string; dest:string ); @noframe;
+begin cpy;
+
+	push( ebp );
+	mov( esp, ebp );
+	pushfd();
+	cld();
+	
+	push( ecx );
+	push( esi );
+	push( edi );
+
+	mov( dest, edi );
+	mov( src, esi );
+			
+	// Simple check to make sure both pointers are non-NULL.
+	
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+	// Get the length of the source string and make sure
+	// that the source string will fit in the destination string.
+	
+	mov( (type str.strRec [esi]).length, ecx );
+	cmp( ecx, (type str.strRec [edi]).maxlen );
+	ja StringOverflow;
+
+	
+	// Save as the length of the destination string.
+	
+	mov( ecx, (type str.strRec [edi]).length );
+
+	
+	// Add one byte to the length so we will copy the zero byte.
+	// Also compute the number of dwords to copy (rather than bytes).
+	// Then copy the data.
+	
+	add( 4, ecx );
+	shr( 2, ecx );
+	rep.movsd();
+	
+	pop( edi );
+	pop( esi );
+	pop( ecx );
+	popfd();
+	mov( dest, eax );	// Must return pointer to dest in eax.
+	pop( ebp );
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+StringOverflow:
+		raise( ex.StringOverflow );
+
+end cpy;
+
+
+end stringUnit;
+
+
+
+
+	
+

@@ -1,0 +1,92 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+/***************************************************************/
+/*                                                             */
+/* skipInCset3-                                                */
+/*  Just like skipInCset above, except this routine requires   */
+/*  an additional parameter that specifies the starting        */
+/* 	position in the string from which scanning begins.         */
+/* 		                                                       */
+/***************************************************************/
+		
+procedure str.skipInCset3( src1: string; start:dword; src2:cset ); 
+	@noframe;
+begin skipInCset3;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ecx );
+	push( edi );
+	
+	mov( src1, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+
+	mov( start, ecx );
+	
+	// If the starting position is beyond the end of the string,
+	// raise an exception.
+	
+	cmp( ecx, (type str.strRec [edi]).length );
+	je noMatch;
+	ja StringIndexError;
+	xor( eax, eax );		// Zero out H.O. three bytes of index value.
+	whlLoop:				// Repeat until we run of the start of the str.
+
+		mov( [edi+ecx], al );			// Get the next char in string.
+		bt( eax, (type dword src2) );	// See if a member of the set.
+		jnc allDone;					// Exit loop if it isn't.
+		inc( ecx );						// Move to next character.
+		cmp( ecx, (type str.strRec [edi]).length );
+		jb whlLoop;
+		
+	noMatch:
+	
+		// If we hit the end of the string, adjust ECX so
+		// we return -1 as the function's result:
+
+		or( -1, ecx );
+	 
+	allDone:
+	mov( ecx, eax );
+	pop( edi );
+	pop( ecx );
+	pop( ebp );
+	cmp( eax, -1 );		// Set carry on success, clear if no match.
+	ret( _parms_ );	
+		 
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+		 
+StringIndexError:
+		raise( ex.StringIndexError );
+
+end skipInCset3;
+
+
+end stringUnit;
+
+
+
+
+	
+

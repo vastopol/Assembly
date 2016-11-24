@@ -1,0 +1,44 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#includeOnce( "datetime.hhf" )
+#includeOnce( "../include/datetime_private.hhf" )
+	
+
+// date.setSeparator-
+//
+//	Used to set the separator character used when converting
+// dates to strings. The separator is the character printed between
+// months, days, and years, e.g., 10/20/2007 uses the "/" separator
+// character.
+	
+procedure date.setSeparator( c:char ); 
+	@nodisplay; 
+	@noframe;
+begin setSeparator;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	mov( c, al );
+	_hla.set_DateSeparator( al );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+end setSeparator;
+	
+	
+end DateTime;			

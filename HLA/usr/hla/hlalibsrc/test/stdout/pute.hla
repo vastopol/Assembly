@@ -1,0 +1,182 @@
+program fpute_test;
+#include( "stdlib.hhf" )
+
+static
+	e32		:real32 := 0.0;
+	e64		:real64 := 0.0;
+	e80		:real80 := 0.0;
+	
+	e32a	:real32 := 1.0;
+	e64a	:real64 := 1.0;
+	e80a	:real80 := 1.0;
+	
+	e32b	:real32 := 1.0e-37;
+	e64b	:real64 := 1.0e-307;
+	e80b	:real80 := 1.0e-4094;
+	
+	e32pi	:real32;
+	e64pi	:real64;
+	e80pi	:real80;
+
+	bad_a	:real64 := 1.0e-272;
+	bad_b	:real64 := 1.0e-256;
+
+	
+begin fpute_test;
+
+	stdout.puts( "Outputting zeros:" nl nl );
+	stdout.pute32( e32, 13 );
+	stdout.newln();
+
+	stdout.pute64( e64, 15 );
+	stdout.newln();
+
+	stdout.pute80( e80, 20 );
+	stdout.newln();
+	stdout.newln();
+	stdout.newln();
+
+	stdout.puts( "Real32 Powers of Ten: " nl nl );
+	for( mov( -37, ecx ); (type int32 ecx) < 0; inc( ecx )) do
+
+		stdout.pute32( e32b, 11 );
+		stdout.newln();
+
+		fld( e32b );
+		fld( 10.0 );
+		fmulp();
+		fstp( e32b );
+
+	endfor;
+	fld1();
+	fstp( e32b );
+	for( mov( 0, ecx ); ecx < 38; inc( ecx )) do
+
+		stdout.pute32( e32b, 11 );
+		stdout.newln();
+
+		fld( e32b );
+		fld( 10.0 );
+		fmulp();
+		fstp( e32b );
+
+	endfor;
+	stdout.newln();
+	stdout.newln();
+	stdout.newln();
+
+
+	stdout.puts( "Real64 Powers of Ten: " nl nl );
+	for( mov( -307, ecx ); (type int32 ecx) < 0; inc( ecx )) do
+
+		stdout.pute64( e64b, 15 );
+		stdout.newln();
+
+		fld( e64b );
+		fld( 10.0 );
+		fmulp();
+		fstp( e64b );
+
+	endfor;
+	fld1();
+	fstp( e64b );
+	for( mov( 0, ecx ); ecx < 308; inc( ecx )) do
+
+		stdout.pute64( e64b, 15 );
+		stdout.newln();
+
+		fld( e64b );
+		fld( 10.0 );
+		fmulp();
+		fstp( e64b );
+
+	endfor;
+	stdout.newln();
+	stdout.newln();
+	stdout.newln();
+
+
+	stdout.puts( "Real80 Powers of Ten: " nl nl );
+	for( mov( -4094, ecx ); (type int32 ecx) < 0; inc( ecx )) do
+
+		stdout.pute80( e80b, 18 );
+		stdout.newln();
+
+		fld( e80b );
+		fld( 10.0 );
+		fmulp();
+		fstp( e80b );
+
+	endfor;
+
+	fld1();
+	fstp( e80b );
+	for( mov( 0, ecx ); ecx <= 4095; inc( ecx )) do
+
+		stdout.pute80( e80b, 18 );
+		stdout.newln();
+
+		fld( e80b );
+		fld( 10.0 );
+		fmulp();
+		fstp( e80b );
+
+	endfor;
+	stdout.newln();
+	stdout.newln();
+	stdout.newln();
+
+
+	stdout.puts( "Real32 Powers of Two: " nl nl );
+	for( mov( 0, ecx ); ecx < 127; inc( ecx )) do
+
+		stdout.pute32( e32a, 11 );
+		stdout.newln();
+
+		fld( e32a );
+		fld( 2.0 );
+		fmulp();
+		fstp( e32a );
+
+	endfor;
+	stdout.newln();
+	stdout.newln();
+	stdout.newln();
+
+	stdout.puts( "Real64 Powers of Two: " nl nl );
+	for( mov( 0, ecx ); ecx < 1023; inc( ecx )) do
+
+		stdout.pute64( e64a, 15 );
+		stdout.newln();
+
+		fld( e64a );
+		fld( 2.0 );
+		fmulp();
+		fstp( e64a );
+
+	endfor;
+	stdout.newln();
+	stdout.newln();
+	stdout.newln();
+
+
+
+	stdout.puts( "Real80 Powers of Two: " nl nl );
+	for( mov( 0, ecx ); ecx < 16383; inc( ecx )) do
+
+		stdout.pute80( e80a, 18 );
+		stdout.newln();
+
+		fld( e80a );
+		fld( 2.0 );
+		fmulp();
+		fstp( e80a );
+
+	endfor;
+	stdout.newln();
+	stdout.newln();
+	stdout.newln();
+
+end fpute_test;
+
+													

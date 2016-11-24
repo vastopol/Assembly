@@ -1,0 +1,54 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#include( "conv.hhf" )
+
+
+/*************************************************************/
+/*                                                           */
+/* h16ToStr-                                                 */
+/*                                                           */
+/* Just like h16ToStr except this function allocates storage */
+/* for the string on the heap and returns a pointer to that  */
+/* string in EAX.                                            */
+/*                                                           */
+/*************************************************************/
+
+
+
+procedure conv.a_h16ToStr( w:word; size:dword; fill:char ); 
+	 @nodisplay;
+	 @noframe;
+	 @noalignstack;
+	
+begin a_h16ToStr;
+
+	// Parameters are always multiples of 32 bits. Zero out the
+	// H.O. (indeterminate) value of w and then call dToStr
+	// to do the real work.
+	//
+	// stk+12:	w
+	// stk+8:	size
+	// stk+4:	fill
+	// stk+0:	return address
+
+	mov( 0, (type word [esp+14]));
+	jmp conv.a_h32ToStr;
+
+	
+end a_h16ToStr;
+
+end ConvUnit;

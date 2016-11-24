@@ -1,0 +1,19 @@
+unit stdlib_data;
+#include( "strings.hhf" )
+
+// CmdLnDelimiters-
+//
+//	This character set contains the characters are used to separate
+//	items on a command line.
+
+namespace str;
+
+	readonly
+		CmdLnDelimiters	:cset :=	
+			{ #0, ' ', #9, ',', '<', '>', '|', '\', '/', '-' };
+			
+end str;
+
+end stdlib_data;
+
+													

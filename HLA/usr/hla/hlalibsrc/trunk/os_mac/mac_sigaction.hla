@@ -1,0 +1,104 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit BsdUnit;
+#include( "mac.hhf" )
+
+	
+// trampoline-
+//
+//	Special handler needed by Mac OSX
+
+procedure trampoline
+(
+	__sigaction_u	:mac.__sigaction_u;
+	sigstyle		:dword;
+	sig				:dword;
+	sinfo			:mac.pSiginfo_t;
+	uctx			:mac.pUcontext_t
+); @cdecl; @nodisplay; @noframe; 
+begin trampoline;
+
+	push( ebp );
+	mov( esp, ebp );
+
+	push( uctx );
+	push( sinfo );
+	push( sig );
+	call( __sigaction_u.__sa_sigaction_t );
+
+	pushd( mac.UC_FLAVOR );
+	push( uctx );
+	push( sig );
+	mov( mac.sys_sigreturn, eax );
+	int( $80 );		// Never returns.	
+	
+end trampoline;
+	
+
+// sigaction - Set up a signal handler.
+
+procedure mac.sigaction
+(
+		sig		:dword;
+	var	act		:mac.sigaction_t;
+	var	oact	:mac.sigaction_t
+);
+	@nodisplay; @noframe;
+	
+var
+	espSave	:dword;
+	sa		:mac.__sigaction;
+	sap		:dword;
+	
+begin sigaction;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mac.pushregs;
+	mov( esp, espSave );
+	
+	mov( NULL, sap );
+	cmp( act, NULL );
+	je NULLsa;
+	
+		mov( act, esi );
+		mov( (type mac.sigaction_t [esi]).__sa_sigaction.__sa_handler_t, eax );
+		mov( eax, sa.__sigaction.__sa_handler_t );
+		mov( (type mac.sigaction_t [esi]).sa_mask, eax );
+		mov( eax, sa.sa_mask );
+		mov( (type mac.sigaction_t [esi]).sa_flags, eax );
+		mov( eax, sa.sa_flags );
+		mov( &trampoline, sa.sa_tramp );
+		lea( eax, sa );
+		mov( eax, sap );
+		
+	NULLsa:	
+
+	push( oact );
+	push( sap );
+	push( sig );
+	push( eax ); 		// Dummy Return
+	mov( mac.sys_sigaction, eax );
+	int( $80 );
+	
+	mov( espSave, esp );
+	mac.popregs;
+	leave();
+	ret( _parms_ );		
+	
+end sigaction;
+
+end BsdUnit;

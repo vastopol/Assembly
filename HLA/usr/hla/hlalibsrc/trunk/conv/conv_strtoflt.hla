@@ -1,0 +1,81 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "strings.hhf" )
+
+
+/****************************************************/
+/*                                                  */
+/* StrToFlt-                                        */
+/*                                                  */
+/* Converts a string to a floating point value.     */
+/* Sequence of characters corresponding to floating */
+/* point value can be found starting at character   */
+/* position "index" within the string "s".          */
+/*                                                  */
+/* This routine returns the floating point value on */
+/* the top of the FPU stack.                        */
+/*                                                  */
+/* Usual exceptions (see StrToiXXX and StrTouXXX    */
+/* routines for details).                           */
+/*                                                  */
+/****************************************************/
+
+
+procedure conv.strToFlt( s:string; index:dword ); 
+	 @nodisplay;
+	 @noframe; 
+	 @noalignstack;
+	 
+begin strToFlt;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( esi );
+	mov( s, esi );
+	test( esi, esi );
+	jz refNULL;
+		
+	// Get the starting index and make sure it does not
+	// exceed the string length.
+	
+	mov( index, eax );
+	cmp( eax, (type str.strRec [esi]).length );
+	ja strIndexErr;
+	
+	add( eax, esi );		// Point at start of FP string.
+	conv.atof();
+	
+	pop( esi );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+
+strIndexErr:
+	raise( ex.StringIndexError );
+
+refNULL:
+	raise( ex.AttemptToDerefNULL );
+
+	
+end strToFlt;
+
+
+end ConvUnit;

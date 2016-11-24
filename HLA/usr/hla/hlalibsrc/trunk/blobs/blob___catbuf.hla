@@ -1,0 +1,106 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" )
+#include( "strings.hhf" )
+#include( "excepts.hhf" )
+#include( "memory.hhf" )
+
+
+
+
+
+// blob.__catbuf-
+//
+//	Used to write a sequence of bytes to a blob at the blob's wcursor position.
+// Like blob._catbuf, except there is no critical section processing.
+
+procedure blob.__catbuf( dest:blob.blob; buf:dword; len:dword ); @noframe;
+begin __catbuf;
+
+	push( ebp );
+	mov( esp, ebp );
+	pushfd();
+	cld();
+	
+	push( eax );
+	push( ecx );
+	push( esi );
+	push( edi );
+	
+	// Compute new length and verify that the destination blob
+	// can hold the result.	 Note that we concatenate the string
+	// to the blob starting at the wcursor position:
+	
+	mov( dest, edi );
+	mov( (type blob.blobRec [edi]).wcursor, ecx );
+	mov( ecx, eax ); 							//Save for later.
+	
+	add( len, ecx );
+	cmp(  ecx, (type blob.blobRec [edi]).maxlen );
+	ja BlobOverflow;	
+		
+	// Set the new wcursor position to be the end of string we're about
+	// to copy. If the new wcursor value is beyond the length of the blob,
+	// then set the length to this value as well.
+	
+	mov( ecx, (type blob.blobRec [edi]).wcursor );
+	cmp( ecx, (type blob.blobRec [edi]).length );
+	jb noNewLen;
+	
+		mov( ecx, (type blob.blobRec [edi]).length );
+		
+	noNewLen:
+		
+	
+	// Okay, the destination blob can hold the result.
+	// Concatenate the source string to the end of the dest blob.
+	// Note: unfortunately, we cannot copy DWORDs here because the
+	// dynamic lengths of the source and destination strings could
+	// cause an overflow.  Furthermore, we don't know if the dest
+	// (concat) address is dword-aligned, so there may be little
+	// benefit to this.  
+	
+	
+	mov( len, ecx );
+	add( eax, edi );		// Start storing source at wcursor.
+	mov( buf, esi );
+	rep.movsb();			// Copy source to the end of dest.
+	
+	pop( edi );
+	pop( esi );
+	pop( ecx );
+	pop( eax );
+	popfd();
+	pop( ebp );
+	ret( _parms_ );
+	
+BlobOverflow:	
+	raise( ex.BlobOverflow );
+
+end __catbuf;
+
+
+
+end blobUnit;
+
+
+
+
+	
+

@@ -1,0 +1,501 @@
+// howlMain.hla-
+//
+// This is the main program "stub" that we'll use as a "library" module
+// for win32 development (encapsulates all the common code present in
+// a typical win32 main program).
+
+unit wMain_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#includeOnce( "howl.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+	
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+
+static
+	mte_criticalSection					:w.CRITICAL_SECTION;
+	mte_msgDoneHandle					:dword;
+	mainThreadID						:dword;
+	howl.threadedMsg_t_ClassName		:string := "threadedMsg_t_className";
+	howl.threadedMsgAsync_t_ClassName	:string := "threadedMsgAsync_t_className";
+	
+
+procedure howl.mainThreadExecute( wndHandle:dword; codeToExecute:thunk );
+begin mainThreadExecute;
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	
+	w.GetCurrentThreadId();
+	if( eax = mainThreadID ) then
+	
+		// If howl.mainThreadExecute was called from the main thread,
+		// then just do a w.SendMessage operation:
+
+		w.SendMessage
+		( 
+			wndHandle, 
+			howl.threadedMsg_g, 
+			(type dword codeToExecute),		// Pass the thunk in two pieces 
+			(type dword codeToExecute[4])	// in wParam and lParam 
+		);
+	
+	else
+	
+		
+		w.EnterCriticalSection( mte_criticalSection );
+		
+			w.ResetEvent( mte_msgDoneHandle );
+			w.PostMessage
+			( 
+				wndHandle, 
+				howl.threadedMsg_g, 
+				(type dword codeToExecute),		// Pass the thunk in two pieces 
+				(type dword codeToExecute[4])	// in wParam and lParam 
+			);
+			
+			// Wait until this message is processed before returning:
+			
+			w.WaitForSingleObject( mte_msgDoneHandle, w.INFINITE );
+			
+		w.LeaveCriticalSection( mte_criticalSection );
+		
+	endif;
+	
+		
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+end mainThreadExecute;
+	
+
+procedure howl.mainThreadAsyncExecute( wndHandle:dword; codeToExecute:thunk );
+begin mainThreadAsyncExecute;
+
+	push( eax );
+	push( ecx );
+	push( edx ) ;
+	
+	w.PostMessage
+	( 
+		wndHandle, 
+		howl.threadedMsgAsync_g, 
+		NULL,	// Force EBP to NULL 
+		(type dword codeToExecute[4]) 
+	);
+			
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+end mainThreadAsyncExecute;
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//	Here's HOWL's window procedure:
+
+
+procedure howl_WndProc
+(
+	hwnd	:dword;
+	uMsg	:uns32; 
+	wParam	:dword;
+	lParam	:dword  
+);
+var
+	r	:w.RECT;
+	th	:thunk;
+	
+_begin( howl_WndProc );
+
+	// If there isn't an object associated with
+	// this WndProc call, then just do the default
+	// window processing:
+	
+	w.GetWindowLong( hwnd, w.GWL_USERDATA );
+	if( eax = NULL ) then
+	
+		w.DefWindowProc( hwnd, uMsg, wParam, lParam );
+		exit howl_WndProc;
+		
+	endif;
+	
+	
+	// Save the important registers so all the processMessage
+	// methods won't have to:
+	
+	push( ebx );
+	push( esi );
+	push( edi );
+	
+	// Save the object pointer in THIS (esi):
+	
+	mov( eax, esi );
+	
+	
+	// Special case test for threaded messages:
+	
+
+	mov( uMsg, eax );
+	if( eax = howl.threadedMsg_g ) then
+		
+		// Set up the thunk:
+		
+		mov( wParam, eax );
+		mov( eax, (type dword th ));
+		mov( lParam, eax );
+		mov( eax, (type dword th[4]));
+		
+		// Call the thunk:
+		
+		th();
+		
+		// Tell the caller we're done:
+		
+		w.SetEvent( mte_msgDoneHandle );
+		
+		pop( edi );
+		pop( esi );
+		pop( ebx );
+		exit howl_WndProc;
+		
+	elseif( eax = howl.threadedMsgAsync_g ) then
+		
+		// Set up the thunk:
+		
+		mov( wParam, eax );
+		mov( eax, (type dword th ));
+		mov( lParam, eax );
+		mov( eax, (type dword th[4]));
+		
+		// Call the thunk:
+		
+		th();
+				
+		pop( edi );
+		pop( esi );
+		pop( ebx );
+		exit howl_WndProc;
+		
+	// It's a whole lot easier to handle w.WM_DESTROY here rather than
+	// in all the individual classes:
+	
+	elseif( eax = w.WM_DESTROY ) then
+	
+		(type window_t [esi]).onClose();
+		
+		// Shouldn't actually get here, but...
+		
+		pop( edi );
+		pop( esi );
+		pop( ebx );
+		exit howl_WndProc;
+		
+	else
+	
+		// Special case to check for the CTRCOLORxxxx messages:
+		
+		switch( eax )
+		
+			case
+			( 
+				w.WM_CTLCOLOREDIT,
+				w.WM_CTLCOLORSCROLLBAR,
+				w.WM_CTLCOLORLISTBOX 
+			) 
+	
+				// This is destined for an editBox/passwdBox/textEdit control.
+				// But hwnd points at the parent window. We need to send the
+				// command to the editor's processMessage function.
+					
+				w.GetWindowLong( lParam, w.GWL_USERDATA );
+				if( eax = NULL ) then
+			
+					w.DefWindowProc( hwnd, uMsg, wParam, lParam );
+				
+				else
+
+					mov( eax, esi );
+					(type wBase_t [esi]).processMessage
+					( 
+						lParam, 
+						uMsg, 
+						wParam, 
+						lParam 
+					);
+					
+				endif;
+				pop( edi );
+				pop( esi );
+				pop( ebx );
+				exit howl_WndProc;
+				
+			case( w.WM_CTLCOLORBTN )
+			
+				// If it's a button object, just return the background brush:
+				
+				w.GetWindowLong( lParam, w.GWL_USERDATA );
+				if( eax = NULL ) then
+			
+					w.DefWindowProc( hwnd, uMsg, wParam, lParam );
+				
+				else
+				
+					mov( (type wVisual_t [eax]).wVisual_private.bkgBrush, eax );
+					pop( edi );
+					pop( esi );
+					pop( ebx );
+					exit howl_WndProc;
+					
+				endif;
+				
+		endswitch;
+		
+	endif;
+	
+	// In all other cases, ESI points at the object to which this message
+	// is directed. Call the message handler for that particular object:
+	
+	(type wBase_t [esi]).processMessage( hwnd, uMsg, wParam, lParam );
+	
+	pop( edi );
+	pop( esi );
+	pop( ebx );
+		
+_end( howl_WndProc );
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+
+
+// Here's the main program for the application.
+
+procedure HowlMainApp;
+var
+	bkgBrush	:dword;
+	
+_begin( HowlMainApp );		
+
+	// Get this process' handle:
+	
+	w.GetModuleHandle( NULL );
+	mov( eax, howl.howlInstance );
+	
+	w.InitCommonControls();
+	
+	///////////////////////////////////////////////////////////////////////////
+	//
+	// Register a class for various objects:
+
+
+	// window_t objects:
+	
+	mov( @size( w.WNDCLASSEX ), howl.wc_howl.cbSize );
+	mov( w.CS_HREDRAW | w.CS_VREDRAW, howl.wc_howl.style );
+	mov( &howl_WndProc, howl.wc_howl.lpfnWndProc );
+	mov( NULL, howl.wc_howl.cbClsExtra );
+	
+	// Set aside 4 extra bytes per window:
+	//
+	//	0..3:	Pointer to object associated with this window
+
+	mov( 4, howl.wc_howl.cbWndExtra );
+	
+	// The application is responsible for painting the window's background:
+	
+	mov( NULL, howl.wc_howl.hbrBackground );
+	
+	
+	mov( NULL, howl.wc_howl.lpszMenuName );
+	mov( howl.Window_t_ClassName, eax );
+	mov( eax, howl.wc_howl.lpszClassName );
+	mov( howl.howlInstance, eax );
+	mov( eax, howl.wc_howl.hInstance );
+	
+	// Get the icons and cursor for this application:
+	
+	w.LoadIcon( NULL, val w.IDI_APPLICATION );
+	mov( eax, howl.wc_howl.hIcon );
+	mov( eax, howl.wc_howl.hIconSm );
+	
+	w.LoadCursor( NULL, val w.IDC_ARROW );
+	mov( eax, howl.wc_howl.hCursor );
+
+	// Okay, register this window with Windows so it
+	// will start passing messages our way.  Once this
+	// is accomplished, create the window and display it.
+	
+	w.RegisterClassEx( howl.wc_howl );
+
+
+
+	
+	// Let's create system-wide unique message numbers that
+	// the threadedMsg_WndProc can use to identify threadedMsg
+	// and threadedMsgAsync messages:
+	
+	w.RegisterWindowMessage( howl.threadedMsg_t_ClassName );
+	mov( eax, howl.threadedMsg_g );
+	
+	w.RegisterWindowMessage( howl.threadedMsgAsync_t_ClassName );
+	mov( eax, howl.threadedMsgAsync_g );
+	
+	
+	// Force the user data to NULL so that we can trap the message
+	// in the default section of the WndProc:
+	
+	w.SetWindowLong( eax, w.GWL_USERDATA, NULL );
+	
+	// Initialize the critical section object we're going to use
+	// for mainThreadExecute:
+	
+	w.InitializeCriticalSection( mte_criticalSection );
+	
+	// Initialize the event object we're going to use to synchronize
+	// mainThreadExecute calls:
+	
+	w.CreateEvent( NULL, false, false, NULL );
+	mov( eax, mte_msgDoneHandle );
+
+	// We need to get the main thread's ID so we can check to
+	// see if howl.mainThreadExecute was called from the main
+	// thread or from some child thread:
+	
+	w.GetCurrentThreadId();
+	mov( eax, mainThreadID );
+	
+	
+	/////////////////////////////////////////////////////
+	//
+	// Have the application actually create the window -
+	// It may want to supply different parameters to
+	// w.CreateWindowEx, etc.
+
+	appStart();
+	
+	// Here's the event loop that processes messages
+	// sent to our window.  On return from GetMessage,
+	// break if EAX contains false and then quit the
+	// program.
+	
+	try
+
+		forever
+		
+			w.GetMessage( howl.msg_howl, NULL, 0, 0 );
+			breakif( eax == 0 );
+			
+			// When a message arrives, determine what form the
+			// associated object's handle is on and then
+			// call w.IsDialogMessage with that form's handle
+			// in order to process keystrokes on the form.
+			//
+			// Get the pointer to the object associated with
+			// the current handle (no IsDialogMessage call if
+			// there is no object, i.e., the return value is NULL):
+			
+			w.GetWindowLong( howl.msg_howl.hwnd, w.GWL_USERDATA );
+			
+			if( eax = NULL ) then
+			
+				// We could have a control on a dialog box we don't
+				// have control over (e.g., a find or open dialog box),
+				// so search for the parent window and see if we can
+				// get an object pointer from that window.
+				
+				mov( howl.msg_howl.hwnd, esi );
+				forever
+				
+					w.GetParent( esi );
+					mov( eax, esi );
+					breakif( eax = NULL );
+					w.GetWindowLong( eax, w.GWL_USERDATA );
+					breakif( eax <> NULL );
+					
+				endfor;
+				
+			endif;
+			
+			// Is this object on a parent form?  If so, get the
+			// parent form's handle:
+			
+			if( eax <> NULL ) then
+
+				mov( (type wBase_t [eax]).wBase_private.parentForm, eax );
+				if( eax <> NULL ) then
+				
+					mov( (type wBase_t [eax]).handle, eax );
+					
+				endif;
+				
+			endif;
+			if
+			( 
+					eax = NULL
+				||	!w.IsDialogMessage( eax, howl.msg_howl ) 
+			) then
+			 
+				w.TranslateMessage( howl.msg_howl );
+				w.DispatchMessage( howl.msg_howl );
+				
+			endif;
+			
+		endfor;
+
+	  anyexception
+
+		// If there was an unhandled exception, give the
+		// application the opportunity to do any necessary
+		// clean-up before aborting execution.
+
+		appException( eax, ebx, ecx, edx, edi );
+
+	endtry;
+
+	// Before quitting, give the user application an opportunity
+	// to clean things up:
+	
+	appTerminate();
+	
+
+	// Delete the critical section and event objects we created earlier:
+	
+	w.DeleteCriticalSection( mte_criticalSection );
+	w.CloseHandle( mte_msgDoneHandle );
+	
+	// The message handling inside Windows has stored
+	// the program's return code in the wParam field
+	// of the message.  Extract this and return it
+	// as the program's return code.
+	
+	mov( howl.msg_howl.wParam, eax );
+	w.ExitProcess( eax );	
+				
+_end( HowlMainApp );
+
+end wMain_u;
+

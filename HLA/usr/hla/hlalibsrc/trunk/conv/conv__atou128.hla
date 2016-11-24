@@ -1,0 +1,176 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )		
+#includeOnce( "excepts.hhf" )
+
+
+/*****************************************************/
+/*                                                   */
+/* atou128-                                          */
+/*                                                   */
+/* ASCII to uns128.                                  */
+/*                                                   */
+/* ESI points at a string containing decimal digits. */
+/* This function converts that string to a 128-bit   */
+/* unsigned integer.                                 */
+/*                                                   */
+/* Returns the 128-bit integer value in              */
+/* EDX:ECX:EBX:EAX.                                  */
+/*                                                   */
+/* On entry, ESI must point at at least one legal    */
+/* decimal digit character.                          */
+/*                                                   */
+/* A legal delimiter character (see the Delimiters   */
+/* cset above) must terminate the string of digits,  */
+/* otherwise this routine raises an exception.       */
+/*                                                   */
+/* If the string of digits corresponds to a value    */
+/* too large for 128 bits, this routine raises an    */
+/* exception.                                        */
+/*                                                   */
+/* If any character in the string of digits has its  */
+/* H.O. bit set, this routine raises an exception.   */
+/*                                                   */
+/* This routine is primarily intended for use by the */
+/* StrToXXX128 routines.						     */
+/*                                                   */
+/*****************************************************/
+
+
+procedure _atou128; 
+	@nodisplay; 
+	@noframe;
+
+	procedure _accX10; 
+		@nodisplay; 
+		@noframe;
+	begin _accX10;
+	
+		// Compute EDX:ECX:EBX:EDI * 10
+	
+		push( eax );
+	
+		shl( 1, edi );
+		rcl( 1, ebx );
+		rcl( 1, ecx );
+		rcl( 1, edx );
+		jc Overflow;
+
+		push( edx );
+		push( ecx );
+		push( ebx );
+		push( edi );
+		
+		shl( 1, edi );
+		rcl( 1, ebx );
+		rcl( 1, ecx );
+		rcl( 1, edx );
+		jc Overflow;
+		
+		shl( 1, edi );
+		rcl( 1, ebx );
+		rcl( 1, ecx );
+		rcl( 1, edx );
+		jc Overflow;
+		
+		pop( eax );
+		add( eax, edi );
+		pop( eax );
+		adc( eax, ebx );
+		pop( eax );
+		adc( eax, ecx );
+		pop( eax );
+		adc( eax, edx );
+		jc Overflow;
+		
+		pop( eax ); 
+		ret();
+		
+	Overflow:
+		raise( ex.ValueOutOfRange );
+		
+	end _accX10;
+		
+begin _atou128;
+
+	push( edi );
+	xor( eax, eax );	// Init H.O. three bytes of EAX to zero.
+	mov( eax, edx );	// Initialize EDX:ECX:EBX:EDI with zero.
+	mov( eax, ecx );
+	mov( eax, ebx );
+	mov( eax, edi );
+	
+	
+	// For each legal character that ESI points at, repeat
+	// the following until we encounter a delimiter or
+	// illegal character.
+	
+	mov( [esi], al );		// Get the first character (which must be a digit).
+	whileDigits:
+		cmp( al, '0' );
+		jb convError;
+		cmp( al, '9' );
+		ja convError;
+
+		
+		// Okay, we've got a digit, so add it into EDX:ECX.
+		
+		_accX10();	// EDX:ECX:EBX:EDI * 10.
+		and( $f, al );
+		add( eax, edi );
+		adc( 0, ebx );
+		adc( 0, ecx );
+		adc( 0, edx );
+		jc Overflow;
+		
+		// Move on to the next character:
+		
+		NextChar;
+
+		// Repeat until we hit a delimiter character
+
+		cmp( eax, $80 );
+		jae IllegalChar;
+		
+		push( edi );
+		push( eax );
+		mov( _hla.get_Delimiters(), edi );
+		pop( eax );
+		bt( eax, (type dword [edi] ));
+		pop( edi );
+		jnc whileDigits;
+		
+		
+	// Return 128-bit result in EDX:ECX:EBX:EAX
+	
+	mov( edi, eax );
+	pop( edi );
+	ret();
+
+convError:
+	raise( ex.ConversionError );
+
+Overflow:		
+	raise( ex.ValueOutOfRange );
+
+IllegalChar:
+	raise( ex.IllegalChar );
+	
+end _atou128;
+
+
+end ConvUnit;

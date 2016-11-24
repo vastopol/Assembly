@@ -1,0 +1,57 @@
+unit str_rmvword_unit;
+
+// synopsis
+//	remove first or last word from a string
+//	return result as desired
+//	zero length strings return zero in EAX.
+
+
+//	Version History:
+//
+//	Revision:	2
+//	Author:		Sevag Krikorian
+//	Date:		Oct. 10, 2007
+//	Note:		changed to library format
+//				cpyzn is now zstr.cpyn
+//
+//	Revision:	1
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 07, 2007
+//	Note:		1st release
+//				contents:
+//				a_rmv1stWord1		a_rmv1stWord2
+//				a_rmvLastWord1		a_rmvLastWord2
+//				rmv1stWord2			rmv1stWord3
+//				rmvLastWord2		rmvLastWord3
+//				utility procedure "removeWord" used by all the functions above
+//				shared utility procedure "cpyzn" 
+
+	
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "excepts.hhf" )
+
+
+	procedure str.a_rmvLastWord1( s:string );
+		@nodisplay; @noframe; @noalignstack;
+
+		// removes last word from string
+		// returns result in a string allocated on the heap
+
+	begin a_rmvLastWord1;
+		
+		push( ebp );
+		mov( esp, ebp );
+		
+		str._removeWord( s, true, NULL, NULL );
+		
+		pop( ebp );
+		ret( _parms_ );
+		
+		raiseDerefNULL:
+			raise( ex.AttemptToDerefNULL );
+			
+
+	end a_rmvLastWord1;
+
+
+end str_rmvword_unit;

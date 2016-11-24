@@ -1,0 +1,168 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit mathUnit;
+
+#include( "math.hhf" )
+#include( "excepts.hhf" )
+
+
+/***********************************************/
+/*                                             */
+/* div128-                                     */
+/*                                             */
+/* Unsigned, full, 128-bit division.           */
+/* Utility function used by the divl, idivl,   */
+/* modl, and imodl library modules.            */
+/*                                             */
+/***********************************************/
+
+
+procedure math.div128
+( 
+    	Dividend:   lword; 
+    	Divisor:    lword; 
+    var QuotAdrs:   lword; 
+    var RmndrAdrs:  lword 
+);  @nodisplay;
+	@noframe;
+
+const
+    Quotient: text := "Dividend";   // Use the Dividend as the Quotient.
+
+var
+    Remainder: dword[4];
+
+begin div128;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+    push( eax );
+    push( ecx );
+    push( edi );
+	
+	// Check for division by zero:
+	
+	mov( (type dword Divisor), eax );
+	or( (type dword Divisor[4]), eax );
+	or( (type dword Divisor[8]), eax );
+	or( (type dword Divisor[12]), eax );
+	if( @z ) then
+	
+		raise( ex.DivideError );
+		
+	endif;
+    
+    mov( 0, eax );              // Set the remainder to zero.
+    mov( eax, Remainder[0*1] );
+    mov( eax, Remainder[1*4] );
+    mov( eax, Remainder[2*4] );
+    mov( eax, Remainder[3*4] );
+
+    mov( 128, ecx );            // Count off 128 bits in ECX.
+    repeatUntilECX0:
+
+        // Compute Remainder:Quotient := Remainder:Quotient SHL 1:
+
+        shl( 1, (type dword Dividend[0*4]) );	// See the section on extended
+        rcl( 1, (type dword Dividend[1*4]) );	// precision shifts to see how
+        rcl( 1, (type dword Dividend[2*4]) );	// this code shifts 128 bits to
+        rcl( 1, (type dword Dividend[3*4]) );	// the left by one bit.
+        rcl( 1, (type dword Remainder[0*4]) );
+        rcl( 1, (type dword Remainder[1*4]) );
+        rcl( 1, (type dword Remainder[2*4]) );
+        rcl( 1, (type dword Remainder[3*4]) );
+
+        // Do a 64-bit comparison to see if the remainder
+        // is greater than or equal to the divisor.
+
+        mov( Remainder[3*4], eax );
+        cmp( eax, (type dword Divisor[3*4]) );
+        ja doRemainder;
+        jb noRemainder;
+        mov( Remainder[2*4], eax );
+        cmp( eax, (type dword Divisor[2*4]) );
+        ja doRemainder;
+        jb noRemainder;
+        mov( Remainder[1*4], eax );
+        cmp( eax, (type dword Divisor[1*4]) );
+        ja doRemainder;
+        jb noRemainder;
+
+        mov( Remainder[0*4], eax );
+        cmp( eax, (type dword Divisor[0*4]) );
+        jb noRemainder;
+
+		doRemainder:
+		
+            // Remainder := Remainder - Divisor
+
+            mov( (type dword Divisor[0*4]), eax );
+            sub( eax, Remainder[0*4] );
+            mov( (type dword Divisor[1*4]), eax );
+            sbb( eax, Remainder[1*4] );
+            mov( (type dword Divisor[2*4]), eax );
+            sbb( eax, Remainder[2*4] );
+            mov( (type dword Divisor[3*4]), eax );
+            sbb( eax, Remainder[3*4] );
+
+            // Quotient := Quotient + 1;
+
+            add( 1, (type dword Quotient[0*4]) );
+            adc( 0, (type dword Quotient[1*4]) );
+            adc( 0, (type dword Quotient[2*4]) );
+            adc( 0, (type dword Quotient[3*4]) );
+
+        noRemainder:
+        dec( ecx );
+		jnz repeatUntilECX0;
+
+
+
+    // Okay, copy the quotient (left in the Dividend variable)
+    // and the remainder to their return locations.
+    
+    mov( QuotAdrs, edi );
+    mov( (type dword Quotient[0*4]), eax );
+    mov( eax, [edi] );
+    mov( (type dword Quotient[1*4]), eax );
+    mov( eax, [edi+4] );
+    mov( (type dword Quotient[2*4]), eax );
+    mov( eax, [edi+8] );
+    mov( (type dword Quotient[3*4]), eax );
+    mov( eax, [edi+12] );
+    
+    mov( RmndrAdrs, edi );
+    mov( Remainder[0*4], eax );
+    mov( eax, [edi] );
+    mov( Remainder[1*4], eax );
+    mov( eax, [edi+4] );
+    mov( Remainder[2*4], eax );
+    mov( eax, [edi+8] );
+    mov( Remainder[3*4], eax );
+    mov( eax, [edi+12] );
+         
+    pop( edi );
+    pop( ecx );
+    pop( eax );
+	leave();
+	ret( _parms_ );
+            
+end div128;
+
+
+
+end mathUnit;

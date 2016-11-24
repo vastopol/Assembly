@@ -1,0 +1,55 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+
+/***********************************************************/
+/*                                                         */
+/* i8ToBuf,	u8ToBuf,                                       */
+/* i16ToBuf,	u16ToBuf,                                  */
+/* i32ToBuf,	u32ToBuf,                                  */
+/* i64ToBuf-                                               */
+/*                                                         */
+/* These routines convert integers of their respective     */
+/* sizes to a sequence of characters.  The 8, 16, and      */
+/* 32-bit integers are passed in al, ax, or eax            */
+/* (respectively).  64-bit values are passed on the stack. */
+/* These routines store the resulting character sequence   */
+/* into the buffer pointed at by edi.  These routines      */
+/* leave edi pointing at the first byte beyond the         */
+/* converted character sequence.                           */
+/*                                                         */
+/* These routines preserve eax.                            */
+/*                                                         */
+/***********************************************************/
+
+
+procedure conv.u16ToBuf( u16 :word in ax; var buf:var in edi ); 
+	@nodisplay; 
+	@noframe;
+
+begin u16ToBuf;
+
+	push( eax );
+	movzx( ax, eax );
+	conv.u32ToBuf( eax, [edi] );
+	pop( eax );
+	ret();
+
+end u16ToBuf;
+
+end ConvUnit;

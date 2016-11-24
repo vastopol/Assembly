@@ -1,0 +1,81 @@
+unit str_rmvchar_unit;
+
+
+// synopsis
+//	remove first or last character from a string
+//	return result in EAX.
+//	zero length strings return zero in EAX.
+
+
+//	Version History:
+//
+//	Revision:	3
+//	Author:		Sevag Krikorian
+//	Date:		Oct 09, 2007
+//	Note:		changed to library format, code improvement
+//
+//	Revision:	2
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 06, 2007
+//	Note:		updated with renamed cpyzn
+//
+//	Revision:	1
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 06, 2007
+//	Note:		1st release
+
+	#include( "strings.hhf" )
+	#include( "excepts.hhf" )
+
+	procedure str.rmv1stChar1( s:string );
+		@nodisplay; @noframe; @noalignstack;
+	
+		//  This function deletes the first character from the string (in-place).
+		//	It returns the character removed in AL.
+
+	
+	begin rmv1stChar1;
+		
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( ebx );
+
+		mov( s, ebx );
+		test( ebx, ebx );
+		jz raiseDerefNULL;
+		
+		movzx( (type byte[ebx]), eax );
+		push( eax );
+		
+		// no need to test for length, if we have a zero,
+		// return zero
+		
+		test( al, al );
+		jz done;
+		
+		_repmovs:
+			add( 1, ebx );
+			mov( [ebx], al );
+			mov( al, [ebx-1] );
+			test( al, al );
+			jnz _repmovs;
+		
+		mov( s, ebx );
+		sub( 1, (type str.strRec[ebx]).length );
+		
+		done:
+		pop( eax );	// return char in AL
+		
+		pop( ebx );
+		
+		pop( ebp );
+		ret( _parms_ );
+		
+		raiseDerefNULL:
+			raise( ex.AttemptToDerefNULL );
+		
+	end rmv1stChar1;
+
+
+end str_rmvchar_unit;

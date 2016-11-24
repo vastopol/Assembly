@@ -1,0 +1,91 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit lists;
+#include( "lists.hhf" )
+#include( "excepts.hhf" )
+#include( "memory.hhf" )
+
+
+
+/*************************/
+
+
+// list_t.destroy-
+//
+// This method traverses the list and calls the destructor
+// for each node in the list.  Presumably that destructor
+// frees up any allocated storage associated with the node.
+//
+// Once this routine frees all the nodes in the list, it
+// will free the storage associated with the list itself.
+//
+// Since this is a method, this code assumes that it can
+// wipe out the values in esi and edi.
+
+method virtualList_t.destroy; @nodisplay; @noframe;
+begin destroy;
+
+	push( eax );	// Use this as a cursor through the list of nodes.
+	push( esi );	// Save "this" for later;
+	
+	mov( this.Head, eax );
+	test( eax, eax );
+	jz whileDone;
+	whileEAXnotNULL:
+	
+		// Note: this code must compute the pointer to the next
+		// node in the list *before* freeing the current node
+		// because there is no guarantee that the data that the
+		// destroy method frees up will still hold a valid Next
+		// pointer upon return.
+		
+		push( (type node_t [eax]).Next );
+		(type node_t [eax]).destroy();
+		pop( eax );
+		test( eax, eax );
+		jnz whileEAXnotNULL;
+		
+	whileDone:
+	
+	// Okay, we've freed each node in the list, now determine
+	// if we need to free the list object itself:
+	
+	pop( esi );		// Retrieve ptr to list object.
+	mem.isInHeap( esi );
+	test( eax, eax );
+	jnz notInHeap;
+	
+		mem.free( esi );
+		jmp allDone;
+
+	notInHeap:
+	
+		// Clear the Next and Prev pointers and set the node
+		// count to zero:
+		
+		mov( NULL, this.Head );
+		mov( NULL, this.Tail );
+		mov( 0, this.Cnt );
+		
+	allDone:	
+	pop( eax );
+	ret();
+	
+end destroy;
+
+
+
+
+end lists;

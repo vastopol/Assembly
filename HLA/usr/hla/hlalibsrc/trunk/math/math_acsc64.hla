@@ -1,0 +1,54 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit mathUnit;
+
+#include( "math.hhf" )
+
+
+/*****************************************************************/
+/*                                                               */
+/*   ACSC(x)-  Computes the arccosecant of st(0) and leaves the  */
+/*             result in st(0).                                  */
+/*             abs(X) must be greater than one.                  */
+/*             There must be at least two free registers for     */
+/*             this function to operate properly.                */
+/*                                                               */
+/* 	acsc(x) = atan(sqrt(1/(x*x-1)))                              */
+/*                                                               */
+/*****************************************************************/
+
+
+
+procedure math.acsc64( r:real64 ); @nodisplay; @noframe;
+begin acsc64;
+
+		fld( (type real64 [esp+4]) );
+
+		fld( st0 );		// Compute x*x
+		fmulp();		// 
+		fld1();			// Compute x*x-1
+		fsubp();		// 
+		fld1();			// Compute 1/(x*x-1)
+		fdivrp();		// 
+		fsqrt();		// Compute sqrt(1/(x*x-1))
+		fld1();			// 
+		fpatan();		// Compute atan of above.
+		ret( _parms_ );
+
+end acsc64;
+
+
+
+end mathUnit;

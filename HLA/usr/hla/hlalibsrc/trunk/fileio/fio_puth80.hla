@@ -1,0 +1,67 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+
+#include( "../include/fileiounit.hhf" )
+#include( "../include/conversions.hhf" )
+
+
+/*****************************************************/
+/*                                                   */
+/* fputh80-                                          */
+/*                                                   */
+/* Outputs a tbyte to a file as a hexadecimal string.*/
+/*                                                   */
+/*****************************************************/
+
+
+procedure fileio.puth80( Handle:dword; tb:tbyte ); @noframe; @nodisplay;
+var
+	eaxSave		:dword;
+	ediSave		:dword;
+	buffer		:char[64];
+
+begin puth80;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( eax, eaxSave );
+	mov( edi, ediSave );
+
+
+	lea( edi, buffer );
+	conv.h80ToBuf( tb, [edi] );
+	
+	// Compute the number of characters produced and
+	// write the character(s) to the specified file:
+	
+	lea( eax, buffer );
+	sub( eax, edi );
+	fileio.write( Handle, [eax], edi );
+	
+	mov( eaxSave, eax );
+	mov( ediSave, edi );
+	leave();
+	ret( _parms_ );
+		
+end puth80;
+		
+		
+
+	
+end FileIOUnit;
+

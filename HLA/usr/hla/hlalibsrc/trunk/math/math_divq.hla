@@ -1,0 +1,113 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit mathUnit;
+
+#include( "math.hhf" )
+
+/*********************************************************/
+/*                                                       */
+/* divq( left, right, dest -                             */
+/*                                                       */
+/* Computes dest := left div right where all the         */
+/* operands are 64-bit operands.  Does a quick check     */
+/* to see if it can do a 64/32 division vs. a full       */
+/* 64/64 bit division.                                   */
+/*                                                       */
+/*********************************************************/
+
+
+procedure math.divq( left:qword; right:qword; var dest:qword );
+	@nodisplay;
+	@noalignstack;
+	@noframe;
+	
+var
+	Remainder:qword;
+	
+begin divq;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	// First, check to see if the H.O. dword of the divisor (right)
+	// is zero.  If so, we can do a 64/32 bit division using the
+	// div instruction (which is faster).
+	
+	cmp( (type dword right[4]), 0 );
+	jne fullDivision;
+	
+		
+		// Okay, we can safely do a 128/32 bit division here.
+		// Note that if the divisor is zero, the system will
+		// raise the ex.DivideError exception, so we don't
+		// have to check here.
+		
+		push( eax );
+		push( ebx );
+		push( edx );
+		
+		mov( (type dword right), ebx );
+		mov( (type dword left[4]), edx );
+		test( edx, edx );
+		jnz fullDiv;
+		
+			// We can do a 32/32 bit division!
+					
+			mov( (type dword left), eax );
+			div( ebx );
+			mov( dest, ebx );
+			
+			mov( eax, [ebx] );
+			mov( 0, (type dword [ebx+4]));
+			jmp div32Done;
+			
+		fullDiv:
+		
+			// We have to do a full 64/32 bit division
+			
+			push( ecx );
+			mov( (type dword left[4]), eax );
+			xor( edx, edx );
+			div( ebx );
+			mov( dest, ecx );
+			mov( eax, [ecx+4] );
+			
+			mov( (type dword left), eax );
+			div( ebx );
+			mov( eax, [ecx] );
+			
+			pop( ecx );
+			
+		div32Done:			   
+		pop( edx );
+		pop( ebx );
+		pop( eax );
+		jmp divDone;	
+			
+	fullDivision: // Must do a full 64/64 division.
+	
+		// Note: divisor is not zero at this point.
+		
+		math.div64( left, right, dest, Remainder );
+	
+	divDone:
+	leave();
+	ret( _parms_ );
+	
+	
+end divq;
+	
+end mathUnit;

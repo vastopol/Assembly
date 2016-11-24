@@ -1,0 +1,155 @@
+unit filesys_joinpaths_unit;
+
+// synopsis
+//	Given two strings, this will concatenate them and put an 
+//	appropriate OS-dependent file separator character between
+//  them. E.g., joinPaths( "abc", "def" ) will produce "abc/def" 
+//	or "abc\def" (depending on the OS).
+//	If a file separator character already appears at the end of
+//	leftPath, this code will not add another one,
+//	i.e., joinPaths( "abc/", "def" ) should produce "abc/def",
+//	not "abc//def".
+//	Also, this function should translate any errant path characters
+//	to the form appropriate to the current OS, e.g., under Windows,
+//	joinPaths( "abc/", "def") should be converted to "abc\def".
+
+
+	#includeOnce( "filesys.hhf" )
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "excepts.hhf" )
+	#includeOnce( "chars.hhf" )
+
+
+	procedure filesys.joinPaths( leftPath:string; rightPath:string; dest:string );
+		@noframe; @nodisplay; @noalignstack;
+		
+	begin joinPaths;
+	
+		push( ebp );
+		mov( esp, ebp );
+		push( eax );
+		push( ebx );
+		push( ecx );
+		
+		mov( leftPath, ebx );
+		mov( (type str.strRec [ebx]).length, eax );
+		mov( rightPath, ebx );
+		add( (type str.strRec [ebx]).length, eax );
+		add( 1, eax );
+		mov( dest, ebx );
+		cmp( eax, (type str.strRec [ebx]).maxlen );
+		ja stringOverflow;
+		
+		str.cpy( leftPath, ebx );
+		
+		// If there is a directory path separator character at the
+		// of the of the leftPath string we just copied, delete it.
+		
+		mov( (type str.strRec [ebx]).length, ecx );
+		test( ecx, ecx );
+		jz justRightPath;
+		
+				mov( [ebx+ecx-1], al );
+				cmp( al, '/' );
+				je hasDirSep1;
+					cmp( al, '\' );
+					jne noDirSep;
+					
+					// Okay, there is a directory separator at the end
+					// of the leftPath string. If there is one at the
+					// beginning of the rightPath string, then delete
+					// the end at the end of the leftPath string.
+					// In either case, we do *not* concatenate another
+					// directory separator character to the end of the
+					// path string we're creating.
+					
+				hasDirSep1:
+					mov( rightPath, eax );
+					cmp( (type str.strRec [eax]).length, 0 );
+					je noRightPath;
+					
+					mov( [eax], al );
+					cmp( al, '/' );
+					je deleteSepChar1;
+					cmp( al, '\' );
+					jne  justRightPath;
+					
+						// The leftPath has a directory separator
+						// and the rightPath string has a directory
+						// separator. Delete the one at the end of
+						// the leftPath (in dest) so that when we
+						// join them there will only be one directory
+						// separator character.
+						
+					deleteSepChar1:
+						mov( 0, (type char [ebx+ecx-1]));
+						sub( 1, (type str.strRec [ebx]).length );
+						jmp justRightPath;
+					
+				 
+				
+			noDirSep:
+			
+			// If the rightPath doesn't begin with a directory separator
+			// character and it isn't the empty string, then we need to add 
+			// a directory separator character here.
+			
+			mov( rightPath, ebx );
+			mov( (type str.strRec [ebx]).length, ecx );
+			test( ecx, ecx );
+			jz justRightPath;
+			
+				mov( [ebx], al );
+				cmp( al, '/' );
+				je justRightPath;
+				cmp( al, '\' );
+				je justRightPath;
+				
+					str.catc( dest, chars.dir_sep );
+			
+		justRightPath:
+		
+		// Okay, append the rightPath to our destination string:
+		
+		str.cat( rightPath, dest );
+		
+		
+		noRightPath:
+		
+		// Replace all '/' and '\' chars by chars.dir_sep
+		// assertion: we know the string is at least length 1 here.
+		
+		mov( dest, ebx );
+		sub( 1, ebx );
+		jmp intoLoop;
+		replaceDirChars:
+			cmp( al, '/' );
+			je replaceChar;
+				cmp( al, '\' );
+				jne intoLoop;
+				
+			replaceChar:
+				mov( chars.dir_sep, (type char [ebx]) );
+			
+		intoLoop:
+			add( 1, ebx );
+			mov( [ebx], al );
+			cmp( al, 0 );
+			jne replaceDirChars;
+		
+		pop( ecx );	
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+			
+		
+	stringOverflow:
+		raise( ex.StringOverflow );
+			
+		
+	end joinPaths;
+
+
+
+end filesys_joinpaths_unit;

@@ -1,0 +1,113 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit charSets;
+
+#include( "cset.hhf" )
+#include( "memory.hhf" )
+#include( "strings.hhf" )
+#include( "excepts.hhf" )
+
+
+
+/*************************************************/
+/*                                               */
+/* unionStr2-                                    */
+/*                                               */
+/* Unions in the characters from a string into   */
+/* a character set starting at a specified index */
+/* into the string.                              */
+/*                                               */
+/*************************************************/
+
+
+procedure cs.unionStr2( s:string; offs:uns32; var dest:cset ); 
+	@nodisplay; 
+	@noframe;
+const
+	_s		:text	:= "(type string [esp+24])";
+	_offs	:text	:= "(type uns32 [esp+20])";
+	_dest	:text	:= "(type dword [esp+16])";
+	
+begin unionStr2;
+
+	push( eax );
+	push( ebx );
+	push( ecx );
+	
+	// Stack at this point:
+	//
+	//	esp+24	s:string
+	//	esp+20	offs:uns32
+	//	esp+16	dest:dword
+	//	esp+12	return address
+	//	esp+8	eax
+	//	esp+4	ebx
+	//	esp		ecx
+	
+	mov( _dest, ebx );
+	mov( _s, ecx );
+	test( ebx, ebx );
+	jz NULLptr;
+	test( ecx, ecx );
+	jz NULLptr;
+	
+	// Check the offset against the length and
+	// raise an exception if offs is out of range.
+	// Adjust the string pointer by offs if offs
+	// is within range:
+	
+	// Verify that the offset is within the length of the
+	// string and then adjust our string pointer by that amount.
+	
+	mov( _offs, eax );
+	cmp( eax, (type str.strRec [ecx]).length );
+	jge indexError;
+	add( eax, ecx );
+	
+	// Union in the characters from the string:
+	
+	xor( eax, eax );
+	mov( [ecx], al );
+	cmp( al, 0 );
+	jz atEOS;
+	whileNotAtEOS:
+	
+		bts( eax, [ebx] );
+		inc( ecx );
+		mov( [ecx], al );
+		cmp( al, 0 );
+		jnz whileNotAtEOS;
+		
+	atEOS:
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	ret( _parms_ );
+	
+NULLptr:
+	raise( ex.AttemptToDerefNULL );
+
+indexError:
+	raise( ex.StringIndexError );
+
+end unionStr2;
+
+end charSets;
+
+
+
+
+	
+

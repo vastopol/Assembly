@@ -1,0 +1,81 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit patterns;
+#include( "../include/pat.hhf" )
+
+	
+	
+
+/*******************************************************/
+/*                                                     */
+/* FirstNiChar-                                        */
+/*                                                     */
+/* Like ExactlyNChar above, except this code doesn't   */
+/* require that the n+1th character not be equal to c. */
+/*                                                     */
+/*******************************************************/
+
+procedure pat.firstNiChar( c:char; n:uns32 ); @nodisplay; @noframe;
+begin firstNiChar;
+
+	push( ebp );		// must do this ourselves since noframe
+	mov( esp, ebp );	// is specified as an option.
+	
+	mov( esi, ebx );
+	
+	// Are there at least "n" characters left in the string?
+
+	mov( edi, eax );
+	sub( esi, eax );
+	cmp( eax, n );
+	jb pat_fail_;
+
+	// Okay, if possible match "n" characters.
+
+	mov( c, al );
+	UCase( al );
+	mov( n, ecx );
+	test( ecx, ecx );
+	jz whileDone;
+	whileECXne0:
+
+		mov( [esi], ah );
+		UCase( ah );
+		cmp( al, ah );
+		jne pat_fail_2;
+		inc( esi );
+		dec( ecx );
+		jne whileECXne0;
+
+	whileDone:
+	
+	// Okay, we've matched "n" characters, return success.	
+	// Since this routine doesn't have to handle backtracking,
+	// a simple return indicates success.
+
+
+	pop( ebp );
+	ret( _parms_ );
+		
+		
+pat_fail_2:
+		mov( ebx, esi );
+pat_fail_:
+	pat._fail_( pat.FailTo );
+
+end firstNiChar;
+
+
+end patterns;

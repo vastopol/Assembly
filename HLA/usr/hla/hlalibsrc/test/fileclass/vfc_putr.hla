@@ -1,0 +1,174 @@
+program fputr_test;
+#include( "stdlib.hhf" )
+
+static
+	f		:pointer to virtualFile;
+	r32		:real32 := 0.0;
+	r64		:real64 := 0.0;
+	r80		:real80 := 0.0;
+	r32a	:real32 := 1.0;
+	r64a	:real64 := 1.0;
+	r80a	:real80 := 1.0;
+	r32b	:real32 := 1.0e-6;
+	r64b	:real64 := 1.0e-15;
+	r80b	:real80 := 1.0e-18;
+	r80c	:real80 := 1.0e-18;
+	r80d	:real80 := 1.0e-18;
+	r80pi	:real80;
+
+
+	
+begin fputr_test;
+
+	virtualFile.create();
+	mov( esi, f );
+	
+	f.openNew( "vfc_putr.txt" );
+
+	f.puts( "Outputting zeros:" nl nl );
+	f.putr32( r32, 6, 2, ' ' );
+	f.newln();
+
+	f.putr64( r64, 8, 4, ' ' );
+	f.newln();
+
+	f.putr80( r80, 10, 6, ' ' );
+	f.newln();
+	f.newln();
+	f.newln();
+
+	f.puts( "Real32 Powers of Ten: " nl nl );
+	for( mov( -6, ecx ); (type int32 ecx) < 0; inc( ecx )) do
+
+		f.putr32( r32b, 11, 6, ' ' );
+		f.newln();
+
+		fld( r32b );
+		fld( 10.0 );
+		fmulp();
+		fstp( r32b );
+
+	endfor;
+
+	fld1();
+	fstp( r32b );
+	for( mov( 0, ecx ); ecx < 10; inc( ecx )) do
+
+		f.putr32( r32b, 14, 2, ' ' );
+		f.newln();
+
+		fld( r32b );
+		fld( 10.0 );
+		fmulp();
+		fstp( r32b );
+
+	endfor;
+	f.newln();
+	f.newln();
+	f.newln();
+
+
+	f.puts( "Real64 Powers of Ten: " nl nl );
+	for( mov( -15, ecx ); (type int32 ecx) < 0; inc( ecx )) do
+
+		f.putr64( r64b, 18, 15, ' ' );
+		f.newln();
+
+		fld( r64b );
+		fld( 10.0 );
+		fmulp();
+		fstp( r64b );
+
+	endfor;
+
+	fld1();
+	fstp( r64b );
+	for( mov( 0, ecx ); ecx < 15; inc( ecx )) do
+
+		f.putr64( r64b, 32, 15, ' ' );
+		f.newln();
+
+		fld( r64b );
+		fld( 10.0 );
+		fmulp();
+		fstp( r64b );
+
+	endfor;
+	f.newln();
+	f.newln();
+	f.newln();
+
+
+	f.puts( "Real80 Powers of Ten: " nl nl );
+	for( mov( -18, ecx ); (type int32 ecx) < 0; inc( ecx )) do
+
+		f.putr80( r80b, 21, 12, ' ' );
+		f.newln();
+
+		fld( r80b );
+		fld( 10.0 );
+		fmulp();
+		fstp( r80b );
+
+	endfor;
+
+	fld1();
+	fstp( r80b );
+	for( mov( 0, ecx ); ecx < 18; inc( ecx )) do
+
+		f.putr80( r80b, 21, 1, ' ' );
+		f.newln();
+
+		fld( r80b );
+		fld( 10.0 );
+		fmulp();
+		fstp( r80b );
+
+	endfor;
+	f.newln();
+	f.newln();
+	f.newln();
+
+
+
+	f.puts( "Real80 Digit Sums: " nl nl );
+	fld( r80c );
+	fstp( r80b );
+	for( mov( 0, ecx ); ecx < 18; inc( ecx )) do
+
+		f.putr80( r80b, 21, 12, ' ' );
+		f.newln();
+
+		fld( r80b );
+		fld( 10.0 );
+		fmulp();
+
+		fld( r80c );
+		fld( r80d );
+		faddp();
+		fld( st0 );
+		fstp( r80d );
+		faddp();
+		fstp( r80b );
+
+	endfor;
+	f.newln();
+	f.newln();
+	f.newln();
+
+
+	// Output values in a field width that is too small so
+	// we can test the "####" output:
+
+	f.putr32( 123456789.0, 10, 4, ' ' );
+	f.newln();
+	f.putr64( 123456789.0, 10, 4, ' ' );
+	f.newln();
+	f.putr80( 123456789.0, 10, 4, ' ' );
+	f.newln();
+
+	f.close();
+
+end fputr_test;
+
+													

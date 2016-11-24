@@ -1,0 +1,84 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeOnce( "blobs.hhf" );
+#includeOnce( "filesys.hhf" );
+#includeOnce( "fileio.hhf" );
+#includeOnce( "memory.hhf" );
+
+
+
+// blob.a_loadExtended-
+//
+//	Loads a file into a blob that this code allocates on the heap.
+// Extends the size of the blob by the value specified by the
+// extend parameter. Points wcursor to the end of the file.
+// Returns a pointer to the new blob in EAX.
+
+procedure blob.a_loadExtended( filename:string; extend:dword ); @noframe;
+var
+	f		:dword;
+	size	:dword;
+	
+begin a_loadExtended;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( ebx );
+	
+	filesys.size( filename );
+	mov( eax, size );
+	add( extend, eax );			// Add the specified extension
+	add( 16, eax );				// Just a buffer
+	blob.alloc( eax );
+	mov( eax, ebx );
+	
+	// Read the blob data from the file:
+	
+	fileio.open( filename, fileio.r );
+	mov( eax, f );
+	fileio.read( eax, [ebx], size );
+	fileio.close( f );
+	
+	// Set length and wcursor to the file size. Set rcursor to zero:
+	
+	mov( size, eax );
+	mov( eax, (type blob.blobRec [ebx]).length );
+	mov( eax, (type blob.blobRec [ebx]).wcursor );
+	mov( 0, (type blob.blobRec [ebx]).rcursor );
+	
+	// Return pointer to blob in EAX:
+	
+	mov( ebx, eax );
+	pop( ebx );
+	leave();
+	ret( _parms_ );
+	
+
+end a_loadExtended;
+
+
+
+end blobUnit;
+
+
+
+
+	
+

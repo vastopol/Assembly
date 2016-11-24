@@ -1,0 +1,70 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+
+#include( "../include/fileiounit.hhf" )
+#include( "../include/conversions.hhf" )
+#include( "stdlibdata.hhf" )
+
+
+/******************************************/
+/* 	                                      */
+/* fputb-                                 */
+/*                                        */
+/* Writes a byte as a two-digit hex value */
+/* to the specified file.                 */
+/*                                        */
+/******************************************/
+
+
+procedure fileio.putb( Handle:dword; h:byte ); @noframe; @nodisplay;
+var
+	eaxSave		:dword;
+	ecxSave		:dword;
+	edxSave		:dword;
+	ediSave		:dword;
+	buffer		:word;
+
+begin putb;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( eax, eaxSave );
+	mov( edi, ediSave );
+
+	// Note: for putb, we're going to force the size to 2 print
+	// positions, zero extend h to 32 bits, and then call
+	// _hexToBuf32Size to do the actual work.
+
+	movzx( h, eax );
+	mov( (type word stdlib.hexTbl[eax*2]), ax );
+	mov( ax, buffer );
+	lea( edi, buffer );
+	fileio.write( Handle, [edi], 2 );
+	
+	mov( eaxSave, eax );
+	mov( ediSave, edi );
+	leave();
+	ret( _parms_ );
+		
+end putb;
+		
+		
+
+	
+end FileIOUnit;
+

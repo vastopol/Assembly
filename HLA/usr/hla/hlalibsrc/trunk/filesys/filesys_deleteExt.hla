@@ -1,0 +1,148 @@
+unit filesys_fileName_unit;
+	
+// synopsis
+//
+//	filesys.deleteExt:
+//
+//	given a path name, separate the path/base filename from
+//	return it (without the ".ext" extension).
+//
+//	Note:
+//                                    extension
+//                                      ---
+//              path/basename
+//      -------------------------------
+//		..../pathstuff/basename.not_ext.ext
+//                     --------------------
+//                          filename
+//
+//  path/base = "..../pathstuff/basename.not_ext"
+//  basename  = "basename.not_ext"
+//  filename  = "basename.not_ext.ext"
+//	extension = "ext"
+//
+//
+//	Version History:
+//
+//	Revision:	1
+//	Author:		Randall Hyde
+//	Date:		1/30/2008
+
+	
+	#includeOnce( "filesys.hhf" )
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "chars.hhf" )
+	#includeOnce( "excepts.hhf" )
+	
+	
+	// Returns carry set if a base name was copied.
+	// Returns carry clear if there was no filename to copy
+	// (failure occurs if either the path ends with "/" or 
+	// the path is the empty string).
+		
+	procedure filesys.deleteExt( pathname:string; dest:string );
+		@nodisplay; @noalignstack; @noframe;
+
+		var
+			saveEAX	:dword;
+			saveEBX	:dword;
+			saveESI	:dword;
+			
+	begin deleteExt;
+		
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( eax, saveEAX );
+		mov( ebx, saveEBX );
+		mov( esi, saveESI );
+		
+		// Sanity checks:
+		
+		mov( pathname, ebx );
+		test( ebx, ebx );
+		jz radn;
+		
+		cmp( dest, NULL );
+		jz radn;
+		
+		
+		// Search backward from the end of the string for the
+		// first directory separator. Note the position of the
+		// first '.' we encounter, if any. 
+		//
+		// Note that we allow either Windows or Unix path separator 
+		// characters here.	This means that Unix filenames cannot have 
+		// '\' characters in them (which is probably a good idea, anyway).
+		
+		mov( ebx, esi );
+		add( (type str.strRec[esi]).length, ebx );
+		cmp( ebx, esi );
+		je noExt;			// Return empty string if it's an empty string.
+		
+		rscan:
+			sub( 1, ebx );
+			mov( [ebx], al );
+			cmp( al, '/' );
+			je noExt;
+			cmp( al, '\' );
+			je noExt;
+			cmp( al, '.' );
+			je foundAPeriod;
+			
+			cmp( ebx, esi );
+			ja rscan;
+			
+	 	// If we didn't find a '.' in the filename, or if the filename
+		// begins with a '.', then just return the whole pathname:
+				
+		noExt:
+			str.cpy( pathname, dest ); 
+			jmp done;
+			
+		// If we encounter a '.' in the filename, we have to check for
+		// two special cases:
+		//
+		//	1. The period is at the beginning of the filename string
+		//	2. A directory path separator character immediately precedes the
+		//	   the period.
+		//
+		//	In either case, we don't treat the following characters as an
+		//	extension. The period is part of the base name and it begins
+		//	the base name.
+		
+		foundAPeriod:
+			cmp( ebx, esi );
+			jbe noExt;	
+							
+			cmp( (type byte [ebx-1]), '/' );
+			je noExt;
+			cmp( (type byte [ebx-1]), '\' );
+			je noExt;
+			
+			// EBX points at the '.' in the filename.
+			// Extract everything in the string up to the period:
+			
+			sub( esi, ebx );
+			str.substr( pathname, 0, ebx, dest );			
+		
+		done:
+			mov( saveEAX, eax );
+			mov( saveEBX, ebx );
+			mov( saveESI, esi );
+			
+			mov( ebp, esp );
+			pop( ebp );
+			ret( _parms_ );
+		
+		radn:
+			raise( ex.AttemptToDerefNULL );
+			
+		rso:
+			raise( ex.StringOverflow );
+		
+	end deleteExt;
+
+	
+end filesys_fileName_unit;

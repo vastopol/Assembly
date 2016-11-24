@@ -1,0 +1,58 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileClass;
+?@NoStackAlign := true;
+?@NoDisplay := true;
+?@NoFrame := true;		
+
+#include( "excepts.hhf" )
+#include( "sockets.hhf" )
+
+
+/**************************************************/
+/*                                                */
+/* getc-                                          */
+/*                                                */
+/* Reads a single character from the socket. Will */
+/* raise EOF if timeout occurs.                   */
+/*                                                */
+/**************************************************/
+
+
+procedure baseSocketClass_t.getc; 
+var
+	c:			byte;
+
+begin getc;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	this.read( c, 1 );
+	cmp( eax, 1 );		// EOF?
+	jne EOFerror;
+		
+	movzx( c, eax );
+	leave();
+	ret();
+
+EOFerror:
+	raise( ex.EndOfFile );
+				
+end getc;
+
+
+end FileClass;

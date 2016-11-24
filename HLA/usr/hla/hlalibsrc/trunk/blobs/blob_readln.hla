@@ -1,0 +1,111 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeOnce( "blobs.hhf" )
+#includeOnce( "stdio.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "threads.hhf" )
+
+// blob.readln-                                                       
+//                                                             
+// Skips rcursor to the beginning of the next line.
+
+procedure blob.readLn( src:blob.blob ); @noframe;
+begin readLn;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	push( ecx );
+	
+	mov( src, ebx );
+	test( ebx, ebx );
+	jz AttemptToDerefNULL;
+	
+	
+	
+	#if( @thread )
+	try
+	
+		thread.enterCriticalSection
+		( 
+			(type blob.blobRec [ebx]).criticalSection 
+		);
+	
+	#endif
+	
+		// Search for a linefeed starting at the rcursor position:
+		
+		mov( (type blob.blobRec [ebx]).rcursor, ecx );
+		
+		// Quietly ignore EOF errors:
+		
+		cmp( ecx, (type blob.blobRec [ebx]).length );
+		jae AtEOF;
+			
+		// Okay, skip all characters to the first NL sequence, or
+		// until EOF.
+		
+		sub( 1, ecx );
+		CopyChars:
+		
+			add( 1, ecx );		 
+			cmp( ecx, (type blob.blobRec [ebx]).length );
+			jae AtEOF;
+			
+			mov( (type byte [ebx+ecx]), al );
+			cmp( al, stdio.lf );
+			jne CopyChars;
+					
+			add( 1, ecx );
+			
+		AtEOF:
+			mov( ecx, (type blob.blobRec [ebx]).rcursor );
+		
+	
+	#if( @thread )
+	
+	  anyexception
+	
+		mov( src, edx );
+		thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		reraise( eax );
+		
+	endtry;
+	thread.leaveCriticalSection( (type blob.blobRec [ebx]).criticalSection );
+		
+	#endif
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end readLn;
+
+end blobUnit;
+
+
+
+
+	
+

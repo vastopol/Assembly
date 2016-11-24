@@ -1,0 +1,88 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "excepts.hhf" )
+
+	
+// addHours-
+//
+//	This procedure adds an arbitrary number of
+// hours to a time. It returns the number of
+// overflow days in EAX.
+
+procedure time.addHours( hours:uns32; var HMS:time.timerec ); 
+	@nodisplay; 
+	@noframe;
+begin addHours;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ebx );
+	push( edx );
+	
+	mov( HMS, ebx );
+	movzx( (type time.timerec [ebx]).hours, edx );
+	add( hours, edx );
+	jc invalidTime;
+	
+	// If there are more than two day's
+	// worth of hours, then skip the
+	// optimized code.
+	
+	xor( eax, eax );	// Assume no overflow days.
+	cmp( edx, 48 );
+	jae slowComputation;
+	
+		// If less than one day of hours,
+		// then we're done.
+		
+		cmp( edx, 24 );
+		jb fastComputation;
+
+			// More than a day, but less than two days:
+				
+			sub( 24, edx );		
+			mov( 1, eax );	// One overflow day.
+			
+		fastComputation:
+			mov( dx, (type time.timerec [ebx]).hours );
+			pop( edx );
+			pop( ebx );
+			pop( ebp );
+			ret( _parms_ );
+	
+	// Down here, we've got two or more days. So compute everything
+	// to hours, do the addition, and then convert the result back to
+	// a time.
+	
+	slowComputation:
+		
+		xor( eax, eax );
+		xchg( eax, edx );
+		div( 24, edx:eax );
+		mov( dx, (type time.timerec[ebx]).hours );
+		
+		pop( edx );
+		pop( ebx );
+		pop( ebp );
+		ret( _parms_ );
+
+invalidTime:
+	raise( ex.InvalidTime );
+					
+end addHours;
+	
+end DateTime;			

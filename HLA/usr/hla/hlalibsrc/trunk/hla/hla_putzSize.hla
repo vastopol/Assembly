@@ -1,0 +1,147 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit hlaUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "hla.hhf" );
+#include( "strings.hhf" );
+#include( "zstrings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+#include( "conv.hhf" );
+
+// putzSize-                                                  
+// 	Emits a zstring using a minimum field width for the zstring.                     
+
+
+	
+procedure hla.putzSize( putstr:thunk; zs:zstring; width:int32; fill:char ); 
+	@noframe;
+
+var
+	FillStr:	string;
+	ResultStr	:string;
+	FillData:	char[4116];
+	ResultData	:char[8300];
+	
+begin putzSize;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	
+	str.init( ResultData, 8300 );
+	mov( eax, ResultStr );
+
+	// Get the absolute value of width into ECX:
+	
+	mov( width, ecx );
+	test( ecx, ecx );
+	jns notNeg;
+	
+		neg( ecx );
+		
+	notNeg:
+	
+	// Let's set an arbitrary maximum width of 4096 characters.
+	
+	cmp( ecx, 4096 );
+	ja ValueOutOfRange;	
+	
+	// Compute the maximum of abs(width) and length(s):
+
+	zstr.len( zs );
+	mov( eax, ebx );
+	cmp( eax, ecx );
+	jae eaxIsBigger;
+	
+		mov( ecx, eax );
+		
+	eaxIsBigger:
+	
+	
+	// Okay, if length(s) < abs(width) we need to construct
+	// a fill string:
+	
+	cmp( ecx, ebx );
+	jbe noPadding;
+
+		sub( ebx, ecx );
+		str.init( (type byte FillData), 4116 );	
+		mov( eax, FillStr );
+		str.setstr( fill, ecx, FillStr );
+		
+		
+		// If the width is positive, the fill string needs to go at
+		// the start of the concatenated result.
+		
+		cmp( width, 1 );
+		jl noFillStr;
+		
+			str.cats( ResultStr, FillStr );
+			
+		noFillStr:
+		
+		// Concatenate the user's string:
+		
+		str.catz( zs, ResultStr );
+		
+		// If the width is negative, the fill string is at the
+		// end of the concatenated result:
+		
+		cmp( width, -1 );
+		jge AllDone;
+		
+			str.cats( ResultStr, FillStr );
+			jmp AllDone;
+		
+	noPadding:
+	
+		// If length(s) >= abs(width) then we don't use the
+		// fill character.
+		
+		str.cpyz( zs, ResultStr );
+		
+	AllDone: 
+		
+	mov( ResultStr, eax );
+	putstr();
+	
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+ValueOutOfRange:	
+	raise( ex.ValueOutOfRange );
+
+end putzSize;
+
+
+
+end hlaUnit;
+
+
+
+
+	
+

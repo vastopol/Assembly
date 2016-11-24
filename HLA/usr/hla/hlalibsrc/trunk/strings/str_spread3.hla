@@ -1,0 +1,134 @@
+unit spread_unit;
+
+
+// synopsis
+//	Given a string s, this function "spreads" the string out
+//	to length "toWidth" by injecting extra spaces into the
+//	string whereever spaces currently exist. This is done to 
+//	create a "fully justified" line of text.
+//	The function does not modify s if its length is greater
+//	than toWidth characters. If the length of s is less than
+//	75% of toWidth, then it just pads the string with spaces
+//	(on the end). Raises an ex.StringOverflow exception if the
+//	string's maxlen value is less than toWidth.
+
+//	Version History:
+//	Revision:	4
+//	Author:		Sevag Krikorian
+//	Date:		Oct. 13, 2007
+//	Note:		finished revision, now returns clc/stc
+//
+//	Revision:	3
+//	Author:		Sevag Krikorian
+//	Date:		Oct. 11, 2007
+//	Note:		changed to library format
+//				removed PadSpaces procedure- now uses zstr.cpySize
+//
+//	Revision:	2
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 06, 2007
+//	Note:		removed some unnecessary instructions
+//
+//	Revision:	1
+//	Author:		Sevag Krikorian
+//	Date:		Aug 16, 2007
+//	Note:		1st release
+//
+
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "zstrings.hhf" )
+	#includeOnce( "excepts.hhf" )
+
+
+	
+
+
+
+	procedure str.spread3( s:string; toWidth:dword; dest:string );
+		@nodisplay; @noframe; @noalignstack;
+		
+		// perform spread on 's', copy to 'dest'
+		var
+			saveEAX	:dword;
+			saveEBX	:dword;
+			saveECX	:dword;
+			saveEDX	:dword;
+			saveEDI	:dword;
+
+	begin spread3;
+		
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		mov( eax, saveEAX );
+		mov( ebx, saveEBX );
+		mov( ecx, saveECX );
+		mov( edx, saveEDX );
+		mov( edi, saveEDI );
+		
+		mov( s, ebx );
+		test( ebx, ebx );
+		jz raiseDerefNull;
+		
+		// if length of s is >= toWidth, nothing to spread
+		mov( (type str.strRec[ebx]).length, eax );
+		cmp( eax, toWidth );
+		jae returnFalse;
+		
+		mov( dest, ecx );
+		mov( (type str.strRec[ecx]).MaxStrLen, ecx );
+		cmp( toWidth, ecx );
+		ja raiseStringOverflow;
+		
+		// if length of s < 75% of toWidth, just pad spaces
+		mov( toWidth, ecx);
+		lea( edx, [eax + eax*2] );
+		lea( eax, [eax + edx*8] );
+		shl( 2, eax);
+		xor( edx, edx );
+		idiv( ecx );
+	
+		cmp( eax, 75 );
+		jb doPadSpaces;
+		
+		// do spread
+		
+		str._spread( s, dest, toWidth );
+		stc();
+		jmp done;
+
+		
+		// setup for padding spaces at end of dest
+		doPadSpaces:
+			mov( toWidth, ecx );
+			mov( dest, edi );
+			mov( ecx, (type str.strRec[edi]).length );
+			zstr.cpySize( (type zstring s), ecx, ' ', edi );
+			mov( edi, eax );
+			stc();
+			jmp done;
+		
+		returnFalse:
+			clc();
+		
+		done:
+			mov( saveEAX, eax );
+			mov( saveEBX, ebx );
+			mov( saveECX, ecx );
+			mov( saveEDX, edx );
+			mov( saveEDI, edi );
+			mov( ebp, esp );
+			pop( ebp );
+			ret( _parms_ );
+		
+		raiseDerefNull:
+			raise( ex.AttemptToDerefNULL );
+
+		raiseStringOverflow:
+			raise( ex.StringOverflow );
+
+		
+	end spread3;
+	
+
+end spread_unit;

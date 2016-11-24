@@ -1,0 +1,71 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#includeOnce( "datetime.hhf" )
+#includeOnce( "dtClass.hhf" )
+#includeOnce( "memory.hhf" )
+#includeOnce( "../include/datetime_private.hhf" )
+
+?@noframe := true;
+?@nodisplay := true;
+
+readonly
+	align( 4 );
+	vmt( virtualTimeClass_t );
+
+
+
+// virtualTimeClass_t.create-
+//
+//	Constructor for the time class.
+//	On entry, if ESI is NULL (meaning this was called as a class
+//	procedure rather than via an object), then this function
+//	allocates storage for a new timeClass object.
+//
+// This function sets up the VMT pointer for the object and
+// initializes the fields of a timeClass object with reasonable
+// (non-illegal) values.
+
+procedure virtualTimeClass_t.create;
+begin create;
+
+	push( eax );
+
+	// Allocate storage if the class constructor was called:
+	
+	if( esi = NULL ) then
+	
+		mov( malloc( @size( timeClass ) ), esi );
+		
+	endif;
+	
+	// Initialize the pointer to the VMT:
+	
+	mov( &virtualTimeClass._VMT_, this._pVMT_ );
+	
+	// Provide an initial time value that is valid:
+	
+	mov( 0, this.theTime );
+	_hla.get_TimeFormat();
+	mov( al, this.timeFmt );
+	
+	
+	pop( eax );
+	ret();
+	
+
+end create;
+	
+end DateTime;			

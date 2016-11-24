@@ -1,0 +1,101 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" );
+
+	
+	// daysBetween-
+	//
+	//	This function returns the number of days between two dates.
+	
+	procedure date._daysBetween
+	( 
+		first:date.daterec; 
+		last:date.daterec 
+	); 	@nodisplay; @noframe;
+	begin _daysBetween;
+	
+		push( ebp );
+		mov( esp, ebp );
+		
+		// Note: date._dayNumber and
+		// date._toJulian both validate dates, there
+		// is no need to do that here.
+		//
+		//date.validate( first );
+		//date.validate( last  );
+
+		
+		// If first > last, then swap them:
+		
+		push( ebx );
+		mov( first, eax );
+		mov( last, ebx );
+		cmp( eax, ebx );
+		jbe dontSwap;
+		
+			mov( ebx, first );
+			mov( eax, last  );
+			xchg( eax, ebx  );
+			
+		dontSwap:
+		
+		// Okay, there are two cases to worry about:
+		//
+		//	(1) Both dates are in the same year.
+		//	(2) The two dates are in separate years.
+		//
+		// In case (1), we can produce the result more optimally
+		// by calling date._dayNumber on the two dates and computing
+		// the difference between the day numbes. In the second (more
+		// general) case, we have to call the more expensive
+		// Julian day number function and compute the difference
+		// between the two Julian day number values.
+		
+		mov( first.year, ax );
+		cmp( ax, last.year );
+		jne differentYears;
+		
+			// The two dates are in the same year
+			// So just compute the day number of
+			// both of them and subtract the two.
+			
+			
+			date._dayNumber( first );
+			mov( eax, ebx );
+			date._dayNumber( last );
+			sub( ebx, eax );
+			jmp allDone;
+			
+			
+		differentYears:
+		
+			// The two dates are in separate years.  Just compute the
+			// Julian day number of the two dates and take their difference:
+			
+			date._toJulian( last );
+			mov( eax, ebx );
+			date._toJulian( first );
+			sub( eax, ebx );
+			mov( ebx, eax );
+			
+		allDone:
+		pop( ebx );	
+		pop( ebp );
+		ret( _parms_ );
+				
+	end _daysBetween;
+	
+end DateTime;			

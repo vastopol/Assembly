@@ -1,0 +1,86 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit patterns;
+#includeOnce( "../include/pat.hhf" )
+#includeOnce( "patterns.hhf" )
+#includeOnce( "misctypes.hhf" )
+
+	
+	
+
+/**********************************************************************/
+/*                                                                    */
+/* MatchWord-                                                         */
+/*                                                                    */
+/* Just like MatchStr, except the character following the matched	  */
+/* string has to be a delimiter character (member of WordDelims cset) */
+/*                                                                    */
+/**********************************************************************/
+
+
+
+
+procedure pat.matchWord( s:string ); @nodisplay; @noframe;
+begin matchWord;
+
+	push( ebp );		// must do this ourselves since noframe
+	mov( esp, ebp );	// is specified as an option.
+	cld();
+	mov( esi, ebx );
+	
+	mov( s, edx );
+	mov( (type str.strRec [edx]).length, ecx );
+	mov( edi, eax );
+	sub( esi, eax );
+	
+	// If there aren't enough chars left, then fail.
+	
+	cmp( ecx, eax );
+	ja fail1;
+
+	push( edi );
+	mov( edx, edi );
+	repe.cmpsb();
+	pop( edi );
+	jne fail2;		// Fail if strings are not equal.
+
+	// The character immediately after the last character
+	// matched must be a member of the WordDelims cset, or
+	// we need to be at the end of the string.
+
+	cmp( esi, edi );
+	jae succeed;
+		xor( eax, eax );
+		mov( [esi], al );
+		bt( eax, (type dword pat.WordDelims) );
+		jnc fail2;
+		
+	succeed:
+		
+	// Since this routine doesn't have to handle backtracking,
+	// a simple return indicates success.
+
+	pop( ebp );
+	ret( _parms_ );
+		
+fail2:	
+	mov( ebx, esi );
+fail1:
+	pat._fail_( pat.FailTo );
+
+end matchWord;
+
+
+end patterns;

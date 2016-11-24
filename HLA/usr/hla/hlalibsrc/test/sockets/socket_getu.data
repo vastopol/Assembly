@@ -1,0 +1,25 @@
+   1
+4294967295
+2147483647
+
+conversionError
+
+5_000_000_000
+
+   0
+1
+65535
+32767
+
+conversion error
+
+65536
+
+   0
+1
+255
+127
+
+conversion error
+
+256

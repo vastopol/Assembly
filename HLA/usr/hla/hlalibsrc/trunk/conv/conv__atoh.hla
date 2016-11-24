@@ -1,0 +1,104 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "stdlibdata.hhf" )
+#includeOnce( "../include/conversions.hhf" )		
+#includeOnce( "excepts.hhf" )
+
+
+/**************************************************************/
+/*                                                            */
+/* _atoh-                                                     */
+/*                                                            */
+/* ESI points at a sequence of characters that represent      */
+/* a hexadecimal value.  This function converts that sequence */
+/* to the numeric equivalent and returns the result in        */
+/* EDX:EAX.  ESI is left pointing at the first non-hex        */
+/* character.  See atou and atoi for more details on this     */
+/* routine.                                                   */
+/*                                                            */
+/**************************************************************/
+
+
+
+procedure _atoh; @nodisplay; @noframe;	
+begin _atoh;
+
+	push( edi );
+	push( ecx );
+	mov( _hla.get_Delimiters(), edi );
+	
+	xor( edx, edx );	// Initialize EDX:ECX with zero.
+	xor( ecx, ecx );
+		
+	// The first (non-delimiter) character *must* be a legal hex digit.
+	
+	movzx( (type byte [esi]), eax );	
+	
+	// For each legal character that ESI points at, repeat
+	// the following until we encounter a delimiter or
+	// illegal character.
+	
+
+	repeatUntilNotHexDigit:
+	
+		// Verify that we've got a hex digit (and convert the character
+		// to a number if we do).
+
+		mov( stdlib.hexConvTbl[eax], al );
+		cmp( al, $ff );
+		je convErr;
+		
+		// Okay, we've got a hex digit, so add it into EDX:ECX.
+		
+		cmp( edx, $1000_0000 );
+		jae Overflow;
+		shld( 4, ecx, edx );
+		shl( 4, ecx );
+		or( eax, ecx );
+			
+			
+		// Move on to the next character:
+		
+		NextChar;
+		cmp( eax, $80 );
+		ja illChar;
+		bt( eax, (type dword [edi] ));		// Delimiters
+		jnc repeatUntilNotHexDigit;
+
+		
+		
+		
+	// Return 64-bit result in EDX:EAX
+	
+	mov( ecx, eax );
+	pop( ecx );
+	pop( edi );
+	ret();
+	
+Overflow:
+	raise( ex.ValueOutOfRange );
+
+convErr:
+	raise( ex.ConversionError );
+
+illChar:
+	raise( ex.IllegalChar );
+	
+end _atoh;
+
+
+end ConvUnit;

@@ -1,0 +1,103 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" );
+#include( "strings.hhf" );
+#includeOnce( "threads.hhf" );
+
+// catsub5-                                                
+//                                                         
+// Extracts a substring from the first string operand and  
+// concatentates it to the end of the blob specified by  
+// the second operand.                              
+//                                                         
+// catsub4-                                                
+// Concatenates the substring to the end of the dest       
+// blob (the second blob operand).                  
+//                                                         
+// catsub5-                                                
+// Concatenates the substring of src2 (the first string    
+// operand) to the end of the src1 string (the second      
+// string operand), and stores the result into blob dest.       
+//                                                         
+// a_catsub-                                               
+// Like catsub5, except it creates a new blob on the heap
+// rather than storing the string in a destination string. 
+
+
+ 
+procedure blob.catsub5
+(
+	src2	:string; 
+	start	:dword; 
+	len		:dword;
+	src1	:string; 
+	dest	:blob.blob 
+); @noframe;
+begin catsub5;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	
+	#if( @thread )
+	
+	try
+
+		mov( dest, eax );
+		thread.enterCriticalSection( (type blob.blobRec [eax]).criticalSection );
+	
+	#endif
+	
+	
+		// Begin by copying the src1 string to the destination blob:
+	
+		mov( src1, eax );
+		blob.__catbuf( dest, eax, (type str.strRec [eax]).length );
+		
+
+		// Now call the str.catsub4 function to do the real work:
+		
+		blob._catsub( src2, start, len, dest );
+		
+	#if( @thread )
+	
+	  anyexception
+	  
+		mov( dest, edx );
+		thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		reraise( eax );
+		
+	endtry;
+	mov( dest, eax );
+	thread.leaveCriticalSection( (type blob.blobRec [eax]).criticalSection );
+	
+	#endif
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+end catsub5;
+
+end blobUnit;
+
+
+
+
+	
+

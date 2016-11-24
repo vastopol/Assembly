@@ -1,0 +1,119 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit mathUnit;
+
+#include( "math.hhf" )
+
+/*****************************************************************/
+/*                                                               */
+/* shrq( count, dest ) -                                         */
+/*                                                               */
+/* Computes dest := dest >> count.                               */
+/* Dest is a 64-bit operand, count is a dword operand.           */
+/* Carry flag will contain the last bit shifted out.             */
+/* Zero flag will be set if the 64-bit result is zero.           */
+/* Sign flag will be clear.                                      */
+/*                                                               */
+/* Overflow flag is set if there is a sign change on the         */
+/* last bit shifted (does not indicate an overflow for the       */
+/* entire number, only for the last shift).                      */
+/*                                                               */
+/* (All flag settings are identical to a left shift by one bit). */
+/*                                                               */
+/*****************************************************************/
+
+
+
+procedure math.shrq( count:dword; source:qword; var dest:qword );
+	@nodisplay;
+	@noalignstack;
+	@noframe;
+begin shrq;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	mov( dest, edx );
+	
+	mov( count, ecx );
+	test( ecx, ecx );
+	jz allDone;
+	
+		// If it's 64 bits or less, do the shift (note: 64 bit
+		// shifts set the operand to zero, but we still have to
+		// deal with the carry out of the last bit).
+		
+		cmp( ecx, 64 );
+		jae justZero;
+				
+			// Do one less than the shift count because we'll do the
+			// last shift manually.
+			
+			dec( ecx );
+			
+			// Shift (count-1) bit positions:
+			
+			mov( (type dword source), ebx );
+			mov( (type dword source[4]), eax );
+			shrd( cl, eax, ebx );
+			shr( cl, eax );
+			
+			
+			// Do the last bit shift as a multiprecision
+			// single bit shift so we get the carry and sign flags.
+			
+			shr( 1, eax );
+			mov( eax, [edx+4] );
+			rcr( 1, ebx );
+			mov( ebx, (type dword [edx]));
+			
+			// Carry and overflow flags are set properly, but zero and
+			// sign flags are not.  The following gymnastics set the
+			// sign and zero flags appropriately.
+			
+			pushfd();			// Save the carry and overflow flag values.
+			and( $3f, (type byte [esp]));	// Clears SF, ZF on stack.
+			or( [edx], eax );				// Sets ZF if result is zero.
+			setz( al );						// Put ZF in bit #0 of al.
+			shl( 6, al );					// Put in ZF position (bit 6).
+			or( al, [esp] );				// Merge with flags on stack.
+			popfd();
+			jmp allDone;
+			
+		justZero:
+		
+			// If it's more than 64 bits, clear the
+			// carry, overflow, and sign bits, set the zero bit,
+			// and set the result to zero:
+			
+			xor( eax, eax );
+			mov( eax, [edx] );
+			mov( eax, [edx+4] );
+			
+			
+	allDone:
+	pop( edx );	
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+end shrq;
+
+end mathUnit;

@@ -1,0 +1,82 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit BsdUnit;
+#include( "mac.hhf" )
+#include( "zstrings.hhf" )
+
+// getcwd - Gets the current working directory.
+
+procedure mac.getcwd( var buf:var; size:mac.size_t );
+	@nodisplay; @noframe;
+var
+	ebxSave	:dword;
+	ecxSave	:dword;
+	edxSave	:dword;
+	ediSave	:dword;
+	esiSave	:dword;
+	fd		:dword;
+	bigBuf	:byte[ 4096 ];	// Bigger than any path will be.
+	
+begin getcwd;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( ebx, ebxSave );
+	mov( ecx, ecxSave );
+	mov( edx, edxSave );
+	mov( esi, esiSave );
+	mov( edi, ediSave );
+
+	mac.open2( ".", mac.O_RDONLY );
+	mov( eax, fd );
+	
+	lea( ebx, bigBuf );
+	push( ebx );	// Address of path location
+	pushd( 50 );	// F_GETPATH command to fcntl
+	push( eax );	// fd
+	push( eax );	// Dummy return address
+	mov( mac.sys_fcntl, eax );
+	int( $80 );
+	
+	mov( 0, bigBuf[4095] );
+	lea( esi, bigBuf );
+	zstr.len( esi );
+	
+	cmp( eax, size );
+	jb sizeOk;
+	
+		mov( size, eax );
+		dec( eax );
+		
+	sizeOk:
+	mov( eax, ecx );
+	mov( buf, edi );
+	mov( 0, (type byte [edi+ecx]));	// zero-terminate
+	rep.movsb();
+	
+	mac.close( fd );
+
+	mov( ebxSave, ebx );
+	mov( ecxSave, ecx );
+	mov( edxSave, edx );
+	mov( esiSave, esi );
+	mov( ediSave, edi );
+	leave();
+	ret( _parms_ );	
+	
+end getcwd;
+
+end BsdUnit;

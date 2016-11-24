@@ -1,0 +1,124 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+
+
+
+
+/****************************************************************/
+/*                                                              */
+/* trim,                                                        */
+/* a_trim-                                                      */
+/*                                                              */
+/* Similar to delspace and a_delspace;  these routines, however,*/
+/* remove all leading *and* trailing spaces from a string.      */
+/*                                                              */
+/****************************************************************/
+
+procedure str.a_trim( src: string ); @noframe;
+begin a_trim;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( edi );
+	push( esi );
+	
+	mov( src, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+		
+	mov( edi, eax );	// Save so we can compute index of 1st non-blank char.
+	
+	// Skip over all leading spaces.
+	
+	dec( edi );
+	repeatWhlWS:
+	
+		inc( edi );
+		cmp( (type char [edi]), ' ' );
+		je repeatWhlWS;
+		cmp( (type char [edi]), stdio.tab );
+		je repeatWhlWS;
+	
+	
+	// Remove the leading spaces by taking the substring
+	// consisting of all characters beyond the last
+	// leading space.
+	
+	mov( eax, esi );
+	add( (type str.strRec [esi]).length, esi );	// Point at end of string
+
+	// Now locate the last non-blank character in the string.
+	
+	cmp( edi, esi );
+	je emptyString;
+	
+		repeatUntilNotBlank:
+		
+			cmp( esi, edi );
+			jbe endRepeatLoop;
+			dec( esi );
+			
+			cmp( (type char [esi]), ' ');
+			je repeatUntilNotBlank;
+			cmp( (type char [esi]), stdio.tab );
+			je repeatUntilNotBlank;
+		
+		endRepeatLoop:
+		
+		// Okay, edi points at the start of the substring we want to keep,
+		// esi points at the end of the substring we want to keep.  Remove
+		// the excess spaces.
+		
+		sub( edi, esi );	// Compute length of substring.
+		inc( esi );
+		sub( eax, edi );	// Compute starting index of substring.
+		
+		str.a_substr( eax, edi, esi );
+		jmp allDone;
+		
+	emptyString:
+	
+		// If we get to this point, then the string is empty.
+		// Either it was an empty string to begin with or it contained
+		// nothing but spaces to begin with.  Set the destination
+		// operand to the empty string.
+		
+		str.a_cpy( "" );
+		
+	allDone:
+	pop( esi );
+	pop( edi );
+	pop( ebp );
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+		
+end a_trim;
+
+end stringUnit;
+
+
+
+
+	
+

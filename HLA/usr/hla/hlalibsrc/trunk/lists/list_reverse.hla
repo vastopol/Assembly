@@ -1,0 +1,69 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit lists;
+#include( "lists.hhf" )
+
+const
+	nodeEAX	:text := "(type node_t [eax])";
+	
+// list_t.reverse-
+//
+// This function reverses all the nodes in the list.
+// The head becomes the tail, the tail becomes the head,
+// and all the nodes inbetween get adjusted appropriately.
+
+procedure list_t.reverse; 
+	@nodisplay;
+	@noframe;
+begin reverse;
+
+	push( eax );
+	push( ebx );
+	push( ecx );
+	
+	cmp( this.Cnt, 2 );
+	jb alreadyReversed;
+	
+		mov( this.Head, eax );
+		whileNotEndOfList:
+			mov( nodeEAX.Next, ebx );
+			mov( nodeEAX.Prev, ecx );
+			mov( ecx, nodeEAX.Next );
+			mov( ebx, nodeEAX.Prev );
+			mov( ebx, eax );
+			test( eax, eax );
+			jnz whileNotEndOfList;
+						
+			
+		// Okay, all that's left to do is swap the
+		// head and tail pointers:
+		
+		mov( this.Head, eax );
+		mov( this.Tail, ebx );
+		mov( ebx, this.Head );
+		mov( eax, this.Tail );
+		
+	alreadyReversed:
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	ret();
+	
+	
+end reverse;
+
+
+
+end lists;

@@ -1,0 +1,53 @@
+unit stdlib_data;
+#include( "stdlibdata.hhf" )
+
+
+// The following objects are accessible from application programs as well
+// as the HLA stdlib code.
+
+namespace stdlib;
+
+  readonly(16)
+
+	// hexTbl-
+	//	An eight-bit index into this table of words returns the two-character
+	//	sequence that corresponds to the pair of hexadecimal characters for
+	//	that byte value.
+	//	
+	// Generate a table of the following two character strings:
+	// 00, 01, 02, 03, ... FD, FE, FF:
+	
+    hexTbl  :byte[512] :=
+            [
+                ?i:byte := 0;
+                #while(i <= 254)
+                    #if( i < $10 )
+                        ?s1 := '0';
+                    #else
+                        ?s1 := 
+							@uppercase
+							(
+								char( @substr( string(byte(i)), 0, 1) ), 
+								0
+							);
+                    #endif
+					s1,
+					?s2 := 
+                    	@uppercase
+						( 
+							char( @substr( string(byte(i)), 1, 1) ), 
+							0
+						);
+					s2,
+                    ?i := i + 1;
+                #endwhile
+                'F', 'F'
+            ]; 
+
+
+
+end stdlib;
+
+end stdlib_data;
+
+													

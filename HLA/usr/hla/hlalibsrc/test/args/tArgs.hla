@@ -1,0 +1,702 @@
+program tArgs;
+#include( "stdlib.hhf" )
+const
+	argsFailed	:= 123456789;
+	
+static
+	globalSet	:cset;
+	localSet	:cset;
+	
+begin tArgs;
+
+	try
+	
+		arg.c();
+		switch( eax )
+		
+			case( 1 )
+		
+				// Called with no arguments, we run the test suite
+				
+				os.system( "tArgs Single_Cmdln_Arg" );
+				if( eax <> 0 ) then
+				
+					raise( argsFailed );
+					
+				endif;
+				
+				os.system( "tArgs 0 Testing_arg.v" );
+				if( eax <> 0 ) then
+				
+					raise( argsFailed );
+					
+				endif;
+				
+				os.system( "tArgs 1 Testing_arg.a_v" );
+				if( eax <> 0 ) then
+				
+					raise( argsFailed );
+					
+				endif;
+				
+				os.system( "tArgs 2 Testing_arg.cmdLn" );
+				if( eax <> 0 ) then
+				
+					raise( argsFailed );
+					
+				endif;
+				
+				os.system( "tArgs 3 Testing_arg.a_cmdLn" );
+				if( eax <> 0 ) then
+				
+					raise( argsFailed );
+					
+				endif;
+				
+				os.system( "tArgs 4 Testing_arg.c 4thArg" );
+				if( eax <> 0 ) then
+				
+					raise( argsFailed );
+					
+				endif;
+				
+				os.system( "tArgs 5 Testing_arg.c 4thArg 5thArg" );
+				if( eax <> 0 ) then
+				
+					raise( argsFailed );
+					
+				endif;
+				
+				os.system( "tArgs 6 Testing_arg.c 4thArg 5thArg 6thArg" );
+				if( eax <> 0 ) then
+				
+					raise( argsFailed );
+					
+				endif;
+				
+				os.system( "tArgs 7 Testing_arg.delete" );
+				if( eax <> 0 ) then
+				
+					raise( argsFailed );
+					
+				endif;
+				
+				os.system( "tArgs 8 Testing_arg.destroy" );
+				if( eax <> 0 ) then
+				
+					raise( argsFailed );
+					
+				endif;
+				
+				os.system( "tArgs 9 Testing_arg.args 1 2 3 4 5 6 7" );
+				if( eax <> 0 ) then
+				
+					raise( argsFailed );
+					
+				endif;
+				
+				os.system( "tArgs 10 -a -b -c -d -e -f -g Testing_arg.globalOptions" );
+				if( eax <> 0 ) then
+				
+					raise( argsFailed );
+					
+				endif;
+				
+				os.system( "tArgs 11 -a -b -c Testing_arg.localOptions -d -e -f -g Testing_arg.localOptions2" );
+				if( eax <> 0 ) then
+				
+					raise( argsFailed );
+					
+				endif;
+				
+				os.system( "tArgs 12 4 5 6 7" );
+				if( eax <> 0 ) then
+				
+					raise( argsFailed );
+					
+				endif;
+				stderr.put( "tArgs succeeded!" nl );	
+			
+			case( 2 )
+			
+				// Only one call specifies a single cmdln arg:
+				
+				arg.v( 1 );
+				if( str.ne( eax, "Single_Cmdln_Arg" )) then
+				
+					stderr.put
+					(
+						"tArgs failed with single argument: '", 
+						(type string eax ), 
+						"'" nl 
+					);
+					raise( argsFailed );
+					
+				endif;
+				exit tArgs;
+				
+			case( 3, 4, 5, 6, 7, 9, 10, 11 )
+			
+				// 2-10 arg tests take the form:
+				//
+				//	tArgs <n> <argument>
+				//
+				// where <n> specifies a test to perform
+				
+				arg.v(1);
+				try
+				
+					conv.strToi32( eax, 0 );
+				
+				  anyexception
+				  
+				  	arg.v(1);
+				  	stderr.put
+					( 
+						"tArgs failed! Expected a numeric value as 1st argument" nl
+						"cmdLn: '",
+						(type string eax), 
+						"'" nl
+					);
+					raise( argsFailed );
+				  
+				endtry;
+				
+				// Select the test based on the value of the 
+				// first command-line parm.
+				
+				switch( eax );
+				
+					case( 0 )
+					
+						// Test 0: check out arg.v.
+						//
+						// tArgs 0 Testing_arg.v
+						
+						arg.v(0);
+						if( str.ne( eax, "tArgs" )) then
+						
+							stderr.put
+							(
+								"tArgs 0 failed(1): '", 
+								(type string eax ), 
+								"'" nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						arg.v(1);
+						if( str.ne( eax, "0" )) then
+						
+							stderr.put
+							(
+								"tArgs 0 failed(2): '", 
+								(type string eax ), 
+								"'" nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						arg.v(2);
+						mov( eax, ebx );
+						if( str.ne( eax, "Testing_arg.v" )) then
+						
+							stderr.put
+							(
+								"tArgs 0 failed(3): '", 
+								(type string eax ), 
+								"'" nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						
+						// Try exceeding the number of arguments:
+						
+						try
+						
+							arg.v(3);
+							stderr.put
+							(
+								"tArgs 0 failed: expected "
+								"ValueOutOfRange exception" 
+								nl 
+							);
+							raise( argsFailed );
+							
+						  exception( ex.ValueOutOfRange )
+						  
+						  	// This is what we expect.
+							
+						  anyexception
+						
+							stderr.put
+							(
+								"tArgs 0 failed: Unexpected exception, EAX=", 
+								eax, 
+								nl 
+							);
+							raise( argsFailed );
+							
+						endtry;
+						stderr.put( "tArgs 0 succeeded!" nl );
+				
+					case( 1 )
+					
+						// Test 1: check out arg.a_v:
+						
+						arg.a_v(2);
+						mov( eax, ebx );
+						if( str.ne( eax, "Testing_arg.a_v" )) then
+						
+							stderr.put
+							(
+								"tArgs 1 failed: '", 
+								(type string eax ), 
+								"'" nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						if( !str.isInHeap( ebx )) then
+						
+							stderr.put
+							(
+								"tArgs 1 failed! Value not on heap!" nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						str.free( ebx );
+						stderr.put( "tArgs 1 succeeded!" nl );
+						
+					case( 2 )
+					
+						// Test 2: check out arg.cmdLn:
+						
+						arg.cmdLn();
+						if( str.ne( eax, "tArgs 2 Testing_arg.cmdLn" )) then
+						
+							stderr.put
+							(
+								"tArgs 2 failed: '", 
+								(type string eax ), 
+								"'" nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						stderr.put( "tArgs 2 succeeded!" nl );
+						
+						
+					case( 3 )
+					
+						// Test 3: check out arg.a_cmdLn:
+						
+						arg.a_cmdLn();
+						mov( eax, ebx );
+						if( str.ne( eax, "tArgs 3 Testing_arg.a_cmdLn" )) then
+						
+							stderr.put
+							(
+								"tArgs 2 failed: '", 
+								(type string eax ), 
+								"'" nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						if( !str.isInHeap( ebx )) then
+						
+							stderr.put
+							(
+								"tArgs 3 failed! Value not on heap!" nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						str.free( ebx );
+						stderr.put( "tArgs 3 succeeded!" nl );
+						
+					case( 4 )
+						arg.cmdLn();
+						if( str.ne( eax, "tArgs 4 Testing_arg.c 4thArg" )) then
+						
+							stderr.put
+							(
+								"tArgs 4 failed: '", 
+								(type string eax ), 
+								"'" nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						stderr.put( "tArgs 4 succeeded!" nl );
+				
+					case( 5 )
+						arg.cmdLn();
+						if( str.ne( eax, "tArgs 5 Testing_arg.c 4thArg 5thArg" )) then
+						
+							stderr.put
+							(
+								"tArgs 5 failed: '", 
+								(type string eax ), 
+								"'" nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						stderr.put( "tArgs 5 succeeded!" nl );
+						
+					case( 6 )
+						arg.cmdLn();
+						if( str.ne( eax, "tArgs 6 Testing_arg.c 4thArg 5thArg 6thArg" )) then
+						
+							stderr.put
+							(
+								"tArgs 6 failed: '", 
+								(type string eax ), 
+								"'" nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						stderr.put( "tArgs 6 succeeded!" nl );
+				
+				
+					
+					case( 7 )
+					
+						// Test 7: check out arg.delete:
+
+						arg.delete( 1 );
+						arg.c();
+						if( arg.c() <> 2 ) then
+						
+							stderr.put
+							(
+								"tArgs 7 failed! Argc value incorrect=",
+								(type uns32 eax),
+								nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						arg.c();
+						if( eax <> 2 ) then
+						
+							stderr.put
+							(
+								"tArgs 7 failed(1): argc=", 
+								(type uns32 eax ), 
+								", expected 2" nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						arg.v(1);
+						if( str.ne( eax, "Testing_arg.delete" )) then
+						
+							stderr.put
+							(
+								"tArgs 7 failed(2): '", 
+								(type string eax ), 
+								"'" nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						
+						// arg.delete(2) should now fail:
+						
+						try
+						
+							arg.delete(2);
+							stderr.put
+							(
+								"tArgs 7 failed(3): expected ex.ValueOutOfRange "
+								"exception" nl 
+							);
+							raise( argsFailed );
+							
+
+						  exception( ex.ValueOutOfRange )
+						  
+						  	// This is what we expect.
+						  
+						  anyexception
+						  
+							stderr.put
+							(
+								"tArgs 7 failed(3): expected ex.ValueOutOfRange "
+								"exception, got exception eax=", eax, nl 
+							);
+							raise( argsFailed );
+							
+						endtry;
+						
+						// Just to be sure, delete everything:
+						
+						arg.delete( 0 );
+						arg.c();
+						if( arg.c() <> 1 ) then
+						
+							stderr.put
+							(
+								"tArgs 7 failed(3)! Argc value incorrect=",
+								(type uns32 eax),
+								nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						
+						// Deleting the final argument is not defined.
+						
+						
+						stderr.put( "tArgs 7 succeeded!" nl );
+						
+					
+					case( 8 )
+					
+						// Test 8: check out arg.destroy:
+
+						arg.delete( 1 );
+						arg.c();
+						if( arg.c() <> 2 ) then
+						
+							stderr.put
+							(
+								"tArgs 8 failed! Argc value incorrect=",
+								(type uns32 eax),
+								nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						arg.v(1);
+						if( str.ne( eax, "Testing_arg.destroy" )) then
+						
+							stderr.put
+							(
+								"tArgs 8 failed: '", 
+								(type string eax ), 
+								"'" nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						arg.destroy();
+						arg.c();
+						if( arg.c() <> 3 ) then
+						
+							stderr.put
+							(
+								"tArgs 8 failed(2)! Argc value incorrect=",
+								(type uns32 eax),
+								nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						arg.v(1);
+						if( str.ne( eax, "8" )) then
+						
+							stderr.put
+							(
+								"tArgs 8 failed(2): '", 
+								(type string eax ), 
+								"'" nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						stderr.put( "tArgs 8 succeeded!" nl );
+						
+					case( 9 )	
+					
+						readonly
+							args_strs :string[10] :=
+							[
+								"tArgs",
+								"9",
+								"Testing_arg.args",
+								"1",
+								"2",
+								"3",
+								"4",
+								"5",
+								"6",
+								"7"
+							];
+						endreadonly;
+						xor( ebx, ebx );
+						foreach arg.args() do
+						
+							mov( eax, ecx );
+							if( str.ne( eax, args_strs[ebx*4] )) then
+							
+								stderr.put
+								( 
+									"arg.args failed!" nl
+									"Iteration:   ", (type uns32 ebx), nl
+									"Expected:   '", args_strs[ebx*4], "'" nl
+									"Encountered '", (type string ecx), "'" nl
+								);
+								raise( argsFailed );
+								
+							endif;
+							if( !str.isInHeap( ecx )) then
+							
+								stderr.put
+								(
+									"tArgs 9 failed! Value not on heap!" nl 
+								);
+								raise( argsFailed );
+								
+							endif;
+							str.free( ecx );
+							inc( ebx );
+							
+						endfor; 
+						stderr.put( "tArgs 9 succeeded!" nl );
+					
+					case( 10 )	// Test arg.globalOptions 
+					
+						cs.empty( globalSet );
+						foreach arg.globalOptions( {'a'..'g'} ) do
+						
+							movzx( (type byte [eax+1]), ebx );
+							bts( ebx, globalSet );
+						
+						endfor;
+						if( cs.ne( globalSet, {'a'..'g'}) ) then
+						
+							stderr.put
+							(
+								"tArgs 10 failed: {", 
+								globalSet, 
+								"}" nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						stderr.put( "tArgs 10 succeeded!" nl );
+								
+						
+					case( 11 )	// Test arg.localOptions 
+					
+						cs.empty( localSet );
+						foreach arg.localOptions( 2, {'a'..'g'} ) do
+						
+							movzx( (type byte [eax+1]), ebx );
+							bts( ebx, localSet );
+						
+						endfor;
+						if( cs.ne( localSet, {'a'..'c'}) ) then
+						
+							stderr.put
+							(
+								"tArgs 11 failed: {", 
+								localSet, 
+								"}" nl 
+							);
+							raise( argsFailed );
+							
+						endif;
+						stderr.put( "tArgs 11 succeeded!" nl );
+						
+						
+					case( 12 )
+					
+						// Testing arg.cmdLn with quotes and apostrophes
+						
+						readonly
+						
+							tArgs12	:string[6] :=
+								[
+									"tArgs",
+									"12",
+									"4",
+									"5",
+									"6",
+									"7"
+								];
+								
+						endreadonly;
+						xor( ebx, ebx );
+						foreach arg.args() do
+						
+							mov( eax, ecx );
+							if( str.ne( eax, tArgs12[ebx*4] )) then
+							
+								stderr.put
+								( 
+									"tArgs 12 failed!" nl
+									"Iteration:   ", (type uns32 ebx), nl
+									"Expected:   '", tArgs12[ebx*4], "'" nl
+									"Encountered '", (type string ecx), "'" nl
+								);
+								raise( argsFailed );
+								
+							endif;
+							if( !str.isInHeap( ecx )) then
+							
+								stderr.put
+								(
+									"tArgs 12 failed! Value not on heap!" nl 
+								);
+								raise( argsFailed );
+								
+							endif;
+							str.free( ecx );
+							inc( ebx );
+							
+						endfor; 
+						stderr.put( "tArgs 12 succeeded!" nl );
+				
+										
+					default
+					
+					arg.v(1);
+				  	stderr.put
+					( 
+						"tArgs failed! Unexpected test selector value" nl
+						"cmdLn: '",
+						(type string eax), 
+						"'" nl
+					);
+					raise( argsFailed );
+				  
+				endswitch;
+				
+				
+			default
+			
+				stderr.put( "tArgs failed! Unexpected number of arguments!" nl );
+				stderr.put( "arg.c = ", (type uns32 eax), nl );
+				arg.cmdLn();
+				stderr.put( "CmdLn: '", (type string eax), "'" nl );
+				for( mov( 0, ebx ); ebx < arg.c(); inc( ebx )) do
+				
+					arg.v( ebx );
+					stdout.put( "arg[", (type uns32 ebx), "] = '", (type string eax), "'" nl );
+					
+				endfor;
+				
+				raise( argsFailed );
+				
+		endswitch;
+		
+	exception( argsFailed )
+	
+		stdout.put( "tArgs failed! Press Enter to continue: " );
+		stdin.readLn();
+		os.exitProcess( 1 );
+		
+	endtry;
+	
+	stdout.put( "tArgs Succeeded!" nl );
+					
+	
+end tArgs;

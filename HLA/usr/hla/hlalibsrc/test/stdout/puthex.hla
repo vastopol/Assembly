@@ -1,0 +1,1187 @@
+program fputhex_test;
+#include( "stdlib.hhf" )
+
+var
+	i			:int32;
+
+static
+	tbVal		:tbyte;
+	tbVal2		:tbyte;
+	
+begin fputhex_test;
+
+	mov( $1234_5678, eax );
+	mov( eax, (type dword tbVal ));
+	mov( eax, (type dword tbVal[4] ));
+	mov( $90ab, (type word tbVal[8] ));
+	
+	mov( eax, (type dword tbVal2));
+	mov( 0, (type dword tbVal2[4]));
+	mov( 0, (type word tbVal2[8])); 
+
+	conv.setUnderscores( false );
+
+	stdout.puttb( tbVal );	
+	stdout.newln();
+	stdout.puttb( tbVal2 );	
+	stdout.newln();
+	stdout.newln();
+
+	stdout.puttbSize( tbVal, 30, '.' );	
+	stdout.newln();
+	stdout.puttbSize( tbVal, -30, '.' );	
+	stdout.newln();
+	stdout.newln();
+
+	stdout.puttbSize( tbVal2, 12, '.' );	
+	stdout.newln();
+	stdout.puttbSize( tbVal2, -12, '.' );	
+	stdout.newln();
+	stdout.newln();
+
+	conv.setUnderscores( true );
+	
+	stdout.puttb( tbVal );	
+	stdout.newln();
+	stdout.puttb( tbVal2 );	
+	stdout.newln();
+	stdout.puttbSize( tbVal, 30, '.' );	
+	stdout.newln();
+	stdout.puttbSize( tbVal, -30, '.' );	
+	stdout.newln();
+	stdout.puttbSize( tbVal2, 12, '.' );	
+	stdout.newln();
+	stdout.puttbSize( tbVal2, -12, '.' );	
+	stdout.newln();
+	stdout.newln();
+
+	stdout.putb( 0 );
+	stdout.newln();
+	stdout.putb( 1 );
+	stdout.newln();
+	stdout.putb( $7f );
+	stdout.newln();
+	stdout.putb( $80 );
+	stdout.newln();
+	stdout.putb( $FF );
+	stdout.newln();
+	stdout.newln();
+
+	for( mov( -10, i); i<=10; inc(i)) do
+
+		stdout.putbSize( 0, i, '.' );
+		stdout.newln();
+		stdout.putbSize( $10, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+	stdout.newln();
+
+	stdout.putw( 0 );
+	stdout.newln();
+	stdout.putw( $10 );
+	stdout.newln();
+	stdout.putw( $200 );
+	stdout.newln();
+	stdout.putw( $7fff );
+	stdout.newln();
+	stdout.putw( $8000 );
+	stdout.newln();
+	stdout.putw( $FFFF );
+	stdout.newln();
+	stdout.newln();
+
+	for( mov( -10, i); i<=10; inc(i)) do
+
+		stdout.putwSize( 0, i, '.' );
+		stdout.newln();
+		stdout.putwSize( $10, i, '.' );
+		stdout.newln();
+		stdout.putwSize( $100, i, '.' );
+		stdout.newln();
+		stdout.putwSize( $1000, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+	stdout.newln();
+
+	stdout.putd( 0 );
+	stdout.newln();
+	stdout.putd( $10 );
+	stdout.newln();
+	stdout.putd( $200 );
+	stdout.newln();
+	stdout.putd( $3000 );
+	stdout.newln();
+	stdout.putd( $4_0000 );
+	stdout.newln();
+	stdout.putd( $50_0000 );
+	stdout.newln();
+	stdout.putd( $600_0000 );
+	stdout.newln();
+	stdout.putd( $7000_0000 );
+	stdout.newln();
+	stdout.putd( $7fff_ffff );
+	stdout.newln();
+	stdout.putd( $8000_0000 );
+	stdout.newln();
+	stdout.putd( $FFFF_FFFF );
+	stdout.newln();
+	stdout.newln();
+	for( mov( -10, i); i<=10; inc(i)) do
+
+		stdout.putdSize( 0, i, '.' );
+		stdout.newln();
+		stdout.putdSize( $10, i, '.' );
+		stdout.newln();
+		stdout.putdSize( $100, i, '.' );
+		stdout.newln();
+		stdout.putdSize( $1000, i, '.' );
+		stdout.newln();
+		stdout.putdSize( $1_0000, i, '.' );
+		stdout.newln();
+		stdout.putdSize( $10_0000, i, '.' );
+		stdout.newln();
+		stdout.putdSize( $100_0000, i, '.' );
+		stdout.newln();
+		stdout.putdSize( $1000_0000, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+	stdout.newln();
+
+	stdout.putq( 0 );
+	stdout.newln();
+	stdout.putq( $10 );
+	stdout.newln();
+	stdout.putq( $200 );
+	stdout.newln();
+	stdout.putq( $3000 );
+	stdout.newln();
+	stdout.putq( $4_0000 );
+	stdout.newln();
+	stdout.putq( $50_0000 );
+	stdout.newln();
+	stdout.putq( $600_0000 );
+	stdout.newln();
+	stdout.putq( $7000_0000 );
+	stdout.newln();
+	stdout.putq( $8_0000_0000 );
+	stdout.newln();
+	stdout.putq( $90_0000_0000 );
+	stdout.newln();
+	stdout.putq( $A00_0000_0000 );
+	stdout.newln();
+	stdout.putq( $B000_0000_0000 );
+	stdout.newln();
+	stdout.putq( $C_0000_0000_0000 );
+	stdout.newln();
+	stdout.putq( $D0_0000_0000_0000 );
+	stdout.newln();
+	stdout.putq( $E00_0000_0000_0000 );
+	stdout.newln();
+	stdout.putq( $F000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putq( $7fff_ffff_ffff_ffff );
+	stdout.newln();
+	stdout.putq( $8000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putq( $FFFF_FFFF_FFFF_FFFF );
+	stdout.newln();
+	stdout.newln();
+
+	for( mov( -20, i); i<=20; inc(i)) do
+
+		stdout.putqSize( 1, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $10, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $100, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $1000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $1_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $10_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $100_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $1000_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $1_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $10_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $100_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $1000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $1_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $10_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $100_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $1000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+	stdout.newln();
+
+	stdout.putl( 0 );
+	stdout.newln();
+	stdout.putl( $10 );
+	stdout.newln();
+	stdout.putl( $200 );
+	stdout.newln();
+	stdout.putl( $3000 );
+	stdout.newln();
+	stdout.putl( $4_0000 );
+	stdout.newln();
+	stdout.putl( $50_0000 );
+	stdout.newln();
+	stdout.putl( $600_0000 );
+	stdout.newln();
+	stdout.putl( $7000_0000 );
+	stdout.newln();
+	stdout.putl( $8_0000_0000 );
+	stdout.newln();
+	stdout.putl( $90_0000_0000 );
+	stdout.newln();
+	stdout.putl( $A00_0000_0000 );
+	stdout.newln();
+	stdout.putl( $B000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $C_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $D0_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $E00_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $F000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $1_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $20_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $300_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $4000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $5_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $60_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $700_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $8000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $9_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $A0_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $B00_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $C000_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $D_0000_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $E0_0000_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $F00_0000_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $1000_0000_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $7fff_ffff_ffff_ffff_ffff_ffff_ffff_ffff );
+	stdout.newln();
+	stdout.putl( $8000_0000_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF );
+	stdout.newln();
+	stdout.newln();
+
+	for( mov( -40, i); i<=40; inc(i)) do
+
+		stdout.putlSize( 0, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $10, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $100, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $10_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $100_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $10_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $100_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $10_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $100_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $10_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $100_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $10_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $100_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $10_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $100_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1_0000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $10_0000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $100_0000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1000_0000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+	stdout.newln();
+
+	conv.setUnderscores( false );
+
+
+	stdout.putb( 0 );
+	stdout.newln();
+	stdout.putb( $7f );
+	stdout.newln();
+	stdout.putb( $80 );
+	stdout.newln();
+	stdout.putb( $FF );
+	stdout.newln();
+	stdout.newln();
+
+	for( mov( -10, i); i<=10; inc(i)) do
+
+		stdout.putbSize( 0, i, '.' );
+		stdout.newln();
+		stdout.putbSize( $10, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+
+	stdout.putw( 0 );
+	stdout.newln();
+	stdout.putw( $7fff );
+	stdout.newln();
+	stdout.putw( $8000 );
+	stdout.newln();
+	stdout.putw( $FFFF );
+	stdout.newln();
+	stdout.newln();
+
+	for( mov( -10, i); i<=10; inc(i)) do
+
+		stdout.putwSize( 0, i, '.' );
+		stdout.newln();
+		stdout.putwSize( $10, i, '.' );
+		stdout.newln();
+		stdout.putwSize( $100, i, '.' );
+		stdout.newln();
+		stdout.putwSize( $1000, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+
+	stdout.putd( 0 );
+	stdout.newln();
+	stdout.putd( $7fff_ffff );
+	stdout.newln();
+	stdout.putd( $8000_0000 );
+	stdout.newln();
+	stdout.putd( $FFFF_FFFF );
+	stdout.newln();
+	stdout.newln();
+
+	for( mov( -10, i); i<=10; inc(i)) do
+
+		stdout.putdSize( 0, i, '.' );
+		stdout.newln();
+		stdout.putdSize( $10, i, '.' );
+		stdout.newln();
+		stdout.putdSize( $100, i, '.' );
+		stdout.newln();
+		stdout.putdSize( $1000, i, '.' );
+		stdout.newln();
+		stdout.putdSize( $1_0000, i, '.' );
+		stdout.newln();
+		stdout.putdSize( $10_0000, i, '.' );
+		stdout.newln();
+		stdout.putdSize( $100_0000, i, '.' );
+		stdout.newln();
+		stdout.putdSize( $1000_0000, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+	stdout.newln();
+
+	stdout.putq( 0 );
+	stdout.newln();
+	stdout.putq( $7fff_ffff_ffff_ffff );
+	stdout.newln();
+	stdout.putq( $8000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putq( $FFFF_FFFF_FFFF_FFFF );
+	stdout.newln();
+	stdout.newln();
+
+	for( mov( -20, i); i<=20; inc(i)) do
+
+		stdout.putqSize( 0, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $10, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $100, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $1000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $1_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $10_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $100_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $1000_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $1_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $10_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $100_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $1000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $1_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $10_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $100_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putqSize( $1000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+	stdout.newln();
+
+	stdout.putl( 0 );
+	stdout.newln();
+	stdout.putl( $7fff_ffff_ffff_ffff_ffff_ffff_ffff_ffff );
+	stdout.newln();
+	stdout.putl( $8000_0000_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.putl( $FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF );
+	stdout.newln();
+
+	for( mov( -40, i); i<=40; inc(i)) do
+
+		stdout.putlSize( 0, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $10, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $100, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $10_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $100_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $10_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $100_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $10_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $100_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $10_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $100_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $10_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $100_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $10_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $100_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1_0000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $10_0000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $100_0000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.putlSize( $1000_0000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+	stdout.newln();
+	stdout.newln();
+	stdout.newln();
+
+
+////////////////////////////////////
+
+	stdout.put( "******************************************" nl nl );
+	 
+	mov( $1234_5678, eax );
+	mov( eax, (type dword tbVal ));
+	mov( eax, (type dword tbVal[4] ));
+	mov( $90ab, (type word tbVal[8] ));
+	
+	mov( eax, (type dword tbVal2));
+	mov( 0, (type dword tbVal2[4]));
+	mov( 0, (type word tbVal2[8])); 
+
+	conv.setUnderscores( true );
+
+	stdout.put( "puth80: " nl );
+	
+	stdout.puth80( tbVal );	
+	stdout.newln();
+	stdout.puth80( tbVal2 );	
+	stdout.newln();
+	stdout.newln();
+
+	stdout.puth80Size( tbVal, 30, '.' );	
+	stdout.newln();
+	stdout.puth80Size( tbVal, -30, '.' );	
+	stdout.newln();
+	stdout.newln();
+
+	stdout.puth80Size( tbVal2, 12, '.' );	
+	stdout.newln();
+	stdout.puth80Size( tbVal2, -12, '.' );	
+	stdout.newln();
+	stdout.newln();
+
+	conv.setUnderscores( true );
+	
+	stdout.puth80( tbVal );	
+	stdout.newln();
+	stdout.puth80( tbVal2 );	
+	stdout.newln();
+	stdout.puth80Size( tbVal, 30, '.' );	
+	stdout.newln();
+	stdout.puth80Size( tbVal, -30, '.' );	
+	stdout.newln();
+	stdout.puth80Size( tbVal2, 12, '.' );	
+	stdout.newln();
+	stdout.puth80Size( tbVal2, -12, '.' );	
+	stdout.newln();
+	stdout.newln();
+
+	stdout.put( "puth8: " nl );
+
+	stdout.puth8( 0 );
+	stdout.newln();
+	stdout.puth8( 1 );
+	stdout.newln();
+	stdout.puth8( $7f );
+	stdout.newln();
+	stdout.puth8( $80 );
+	stdout.newln();
+	stdout.puth8( $FF );
+	stdout.newln();
+	stdout.newln();
+
+	for( mov( -10, i); i<=10; inc(i)) do
+
+		stdout.puth8Size( 0, i, '.' );
+		stdout.newln();
+		stdout.puth8Size( $10, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+	stdout.newln();
+
+	stdout.put( "puth16: " nl );
+	stdout.puth16( 0 );
+	stdout.newln();
+	stdout.puth16( $10 );
+	stdout.newln();
+	stdout.puth16( $200 );
+	stdout.newln();
+	stdout.puth16( $7fff );
+	stdout.newln();
+	stdout.puth16( $8000 );
+	stdout.newln();
+	stdout.puth16( $FFFF );
+	stdout.newln();
+	stdout.newln();
+
+	for( mov( -10, i); i<=10; inc(i)) do
+
+		stdout.puth16Size( 0, i, '.' );
+		stdout.newln();
+		stdout.puth16Size( $10, i, '.' );
+		stdout.newln();
+		stdout.puth16Size( $100, i, '.' );
+		stdout.newln();
+		stdout.puth16Size( $1000, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+	stdout.newln();
+
+	stdout.put( "puth32: " nl );
+	stdout.puth32( 0 );
+	stdout.newln();
+	stdout.puth32( $10 );
+	stdout.newln();
+	stdout.puth32( $200 );
+	stdout.newln();
+	stdout.puth32( $3000 );
+	stdout.newln();
+	stdout.puth32( $4_0000 );
+	stdout.newln();
+	stdout.puth32( $50_0000 );
+	stdout.newln();
+	stdout.puth32( $600_0000 );
+	stdout.newln();
+	stdout.puth32( $7000_0000 );
+	stdout.newln();
+	stdout.puth32( $7fff_ffff );
+	stdout.newln();
+	stdout.puth32( $8000_0000 );
+	stdout.newln();
+	stdout.puth32( $FFFF_FFFF );
+	stdout.newln();
+	stdout.newln();
+	for( mov( -10, i); i<=10; inc(i)) do
+
+		stdout.puth32Size( 0, i, '.' );
+		stdout.newln();
+		stdout.puth32Size( $10, i, '.' );
+		stdout.newln();
+		stdout.puth32Size( $100, i, '.' );
+		stdout.newln();
+		stdout.puth32Size( $1000, i, '.' );
+		stdout.newln();
+		stdout.puth32Size( $1_0000, i, '.' );
+		stdout.newln();
+		stdout.puth32Size( $10_0000, i, '.' );
+		stdout.newln();
+		stdout.puth32Size( $100_0000, i, '.' );
+		stdout.newln();
+		stdout.puth32Size( $1000_0000, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+	stdout.newln();
+				 
+	stdout.put( "puth64: " nl );
+	stdout.puth64( 0 );
+	stdout.newln();
+	stdout.puth64( $10 );
+	stdout.newln();
+	stdout.puth64( $200 );
+	stdout.newln();
+	stdout.puth64( $3000 );
+	stdout.newln();
+	stdout.puth64( $4_0000 );
+	stdout.newln();
+	stdout.puth64( $50_0000 );
+	stdout.newln();
+	stdout.puth64( $600_0000 );
+	stdout.newln();
+	stdout.puth64( $7000_0000 );
+	stdout.newln();
+	stdout.puth64( $8_0000_0000 );
+	stdout.newln();
+	stdout.puth64( $90_0000_0000 );
+	stdout.newln();
+	stdout.puth64( $A00_0000_0000 );
+	stdout.newln();
+	stdout.puth64( $B000_0000_0000 );
+	stdout.newln();
+	stdout.puth64( $C_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth64( $D0_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth64( $E00_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth64( $F000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth64( $7fff_ffff_ffff_ffff );
+	stdout.newln();
+	stdout.puth64( $8000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth64( $FFFF_FFFF_FFFF_FFFF );
+	stdout.newln();
+	stdout.newln();
+
+	for( mov( -20, i); i<=20; inc(i)) do
+
+		stdout.puth64Size( 1, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $10, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $100, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $1000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $1_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $10_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $100_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $1000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $1_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $10_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $100_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $1000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $1_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $10_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $100_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $1000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+	stdout.newln();
+		  
+	stdout.put( "puth128: " nl );
+	stdout.puth128( 0 );
+	stdout.newln();
+	stdout.puth128( $10 );
+	stdout.newln();
+	stdout.puth128( $200 );
+	stdout.newln();
+	stdout.puth128( $3000 );
+	stdout.newln();
+	stdout.puth128( $4_0000 );
+	stdout.newln();
+	stdout.puth128( $50_0000 );
+	stdout.newln();
+	stdout.puth128( $600_0000 );
+	stdout.newln();
+	stdout.puth128( $7000_0000 );
+	stdout.newln();
+	stdout.puth128( $8_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $90_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $A00_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $B000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $C_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $D0_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $E00_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $F000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $1_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $20_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $300_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $4000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $5_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $60_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $700_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $8000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $9_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $A0_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $B00_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $C000_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $D_0000_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $E0_0000_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $F00_0000_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $1000_0000_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $7fff_ffff_ffff_ffff_ffff_ffff_ffff_ffff );
+	stdout.newln();
+	stdout.puth128( $8000_0000_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF );
+	stdout.newln();
+	stdout.newln();
+
+	for( mov( -40, i); i<=40; inc(i)) do
+
+		stdout.puth128Size( 0, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $10, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $100, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $10_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $100_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $10_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $100_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $10_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $100_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $10_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $100_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $10_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $100_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $10_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $100_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1_0000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $10_0000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $100_0000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1000_0000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+	stdout.newln();
+
+	conv.setUnderscores( true );
+
+
+	stdout.put( "puth8_: " nl );
+	
+	stdout.puth8( 0 );
+	stdout.newln();
+	stdout.puth8( $7f );
+	stdout.newln();
+	stdout.puth8( $80 );
+	stdout.newln();
+	stdout.puth8( $FF );
+	stdout.newln();
+	stdout.newln();
+
+	for( mov( -10, i); i<=10; inc(i)) do
+
+		stdout.puth8Size( 0, i, '.' );
+		stdout.newln();
+		stdout.puth8Size( $10, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+
+	stdout.put( "puth16_: " nl );
+	stdout.puth16( 0 );
+	stdout.newln();
+	stdout.puth16( $7fff );
+	stdout.newln();
+	stdout.puth16( $8000 );
+	stdout.newln();
+	stdout.puth16( $FFFF );
+	stdout.newln();
+	stdout.newln();
+
+	for( mov( -10, i); i<=10; inc(i)) do
+
+		stdout.puth16Size( 0, i, '.' );
+		stdout.newln();
+		stdout.puth16Size( $10, i, '.' );
+		stdout.newln();
+		stdout.puth16Size( $100, i, '.' );
+		stdout.newln();
+		stdout.puth16Size( $1000, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+
+	stdout.put( "puth32_: " nl );
+	stdout.puth32( 0 );
+	stdout.newln();
+	stdout.puth32( $7fff_ffff );
+	stdout.newln();
+	stdout.puth32( $8000_0000 );
+	stdout.newln();
+	stdout.puth32( $FFFF_FFFF );
+	stdout.newln();
+	stdout.newln();
+
+	for( mov( -10, i); i<=10; inc(i)) do
+
+		stdout.puth32Size( 0, i, '.' );
+		stdout.newln();
+		stdout.puth32Size( $10, i, '.' );
+		stdout.newln();
+		stdout.puth32Size( $100, i, '.' );
+		stdout.newln();
+		stdout.puth32Size( $1000, i, '.' );
+		stdout.newln();
+		stdout.puth32Size( $1_0000, i, '.' );
+		stdout.newln();
+		stdout.puth32Size( $10_0000, i, '.' );
+		stdout.newln();
+		stdout.puth32Size( $100_0000, i, '.' );
+		stdout.newln();
+		stdout.puth32Size( $1000_0000, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+	stdout.newln();
+
+	stdout.put( "puth64_: " nl );
+	stdout.puth64( 0 );
+	stdout.newln();
+	stdout.puth64( $7fff_ffff_ffff_ffff );
+	stdout.newln();
+	stdout.puth64( $8000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth64( $FFFF_FFFF_FFFF_FFFF );
+	stdout.newln();
+	stdout.newln();
+
+	for( mov( -20, i); i<=20; inc(i)) do
+
+		stdout.puth64Size( 0, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $10, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $100, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $1000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $1_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $10_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $100_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $1000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $1_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $10_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $100_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $1000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $1_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $10_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $100_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth64Size( $1000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+	stdout.newln();
+
+	stdout.put( "puth128_: " nl );
+	stdout.puth128( 0 );
+	stdout.newln();
+	stdout.puth128( $7fff_ffff_ffff_ffff_ffff_ffff_ffff_ffff );
+	stdout.newln();
+	stdout.puth128( $8000_0000_0000_0000_0000_0000_0000_0000 );
+	stdout.newln();
+	stdout.puth128( $FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF );
+	stdout.newln();
+
+	for( mov( -40, i); i<=40; inc(i)) do
+
+		stdout.puth128Size( 0, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $10, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $100, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $10_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $100_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $10_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $100_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $10_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $100_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $10_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $100_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $10_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $100_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $10_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $100_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1_0000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $10_0000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $100_0000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.puth128Size( $1000_0000_0000_0000_0000_0000_0000_0000, i, '.' );
+		stdout.newln();
+		stdout.newln();
+
+	endfor;
+	stdout.newln();
+	stdout.newln();
+	stdout.newln();
+
+
+end fputhex_test;
+
+													

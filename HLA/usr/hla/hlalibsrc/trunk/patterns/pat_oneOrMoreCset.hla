@@ -1,0 +1,183 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit patterns;
+#includeOnce( "../include/pat.hhf" )
+#includeOnce( "patterns.hhf" )
+#includeOnce( "misctypes.hhf" )
+	
+	
+/************************************************************/
+/*                                                          */
+/* OneOrMoreCset-                                           */
+/*                                                          */
+/* Matches one or more characters in a string from          */
+/* the specified character set.                             */
+/*                                                          */
+/* Disposition:	Eager                                       */
+/* BackTrackable:	Yes                                     */
+/*                                                          */
+/* Entry Parameters:                                        */
+/*                                                          */
+/* 	ESI:	Pointer to sequence of characters to match.     */
+/* 	EDI:	Pointer to byte beyond last char to match.      */
+/* 	cst:	Character set to match with.                    */
+/*                                                          */
+/* Exit Parameters (if success):                            */
+/*                                                          */
+/*  EBX:	Points at the start of matched sequence.		*/
+/* 	ESI:	Points at first character not in cst.           */
+/* 	EDI:	Unchanged from entry value.                     */
+/*                                                          */
+/* Exit Parameters (if failure):                            */
+/*                                                          */
+/* 	EDI:	Unchanged from entry value.                     */
+/*                                                          */
+/* Unless noted, assume all other registers can be modified */
+/* by this code.                                            */
+/*                                                          */
+/************************************************************/
+
+		
+procedure pat.oneOrMoreCset( cst:cset ); 
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+	
+var
+	cursor: 	misc.pChar;		// Save last matched posn here.
+	startPosn:	misc.pChar; 	// Save start of str here.
+	endStr:		misc.pChar;		// End of string goes here.
+	espSave:	dword;			// To clean stk after back trk.
+	FailToSave:	pat.FailRec;	// Save global FailTo value here.
+	
+begin oneOrMoreCset;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	// If some routine after this one fails and transfers
+	// control via backtracking to this code, the stack
+	// will be a mess.  So save esp so we can clean up
+	// the stack if backtracking is necessary.
+	
+	mov( esp, espSave );
+	
+	// Save the pointer to the start of the string
+	// to match.  This is used as a "fence" value
+	// to prevent backtracking past the start of
+	// the string if things go really wrong.
+	
+	mov( esi, startPosn );
+	mov( esi, ebx );
+
+	// Save pointer to end of string to match.
+	// This is needed to restore this value when
+	// backtracking occurs.
+
+	mov( edi, endStr );
+	
+	// Okay, eagerly match as many characters in
+	// the character set as possible.
+	
+	xor( eax, eax );
+	dec( esi );
+	repeatUntilNC:
+	
+		inc( esi );					// Move to next char in string.
+		cmp( esi, edi );			// Stop at end of string.
+		jae repeatDone;
+		mov( [esi], al );			// Get the char to test.
+		bt( eax, (type dword cst));	// See if in cst.
+		jc repeatUntilNC;
+		
+	repeatDone:
+	
+	// So we can easily back track, save a pointer
+	// to the first non-matching character.
+	
+	mov( esi, cursor );
+	
+	
+	// If we matched at least one character, then
+	// succeed by jumping to the return address, without
+	// cleaning up the stack (we need to leave our
+	// activation record laying around in the event
+	// backtracking is necessary).
+
+	cmp( esi, ebx );
+	jna fail1;
+	
+		pat._success_( FailToSave, FailToHere );
+		
+	fail1:
+	
+	// If we get down here, we didn't match at
+	// least one character.  So transfer control
+	// to the previous routine that supported
+	// backtracking.
+	
+	mov( startPosn, esi );
+	pat._fail_( pat.FailTo );		
+
+
+
+
+	// If someone after us fails and invokes
+	// backtracking, control is transfered to
+	// this point.  First, we need to restore
+	// ESP to clean up the junk on the stack.
+	// Then we back up one character, failing
+	// if we move beyond the beginning of the
+	// string.  If we don't fail, we jump to
+	// the code following the call to this
+	// routine (having backtracked one character).
+	
+	FailToHere:
+
+		mov( espSave, esp );	// Clean up stack.		
+		mov( cursor, esi );		// Get last posn we matched.
+		dec( esi );				// Back up to prev matched char.
+		mov( endStr, edi );
+		mov( startPosn, ebx );
+		cmp( esi, ebx );
+		jbe fail2;
+	
+		// If we drop down here, there is at least one
+		// character left in the string that we've
+		// matched, so call the next matching routine
+		// (by jumping to the return address) to continue
+		// the pattern match.
+		
+		mov( esi, cursor );
+		mov( [ebp+4], eax );
+		mov( [ebp], ebp );
+		jmp( eax );
+
+
+fail2:
+	// We've backed up to the beginning of
+    // the string.  So we won't be able to
+	// match at least one character.		
+
+	mov( ebx, esi );
+	mov( FailToSave.ebpSave, pat.FailTo.ebpSave );
+	mov( FailToSave.jmpAdrs, pat.FailTo.jmpAdrs );
+	pat._fail_( pat.FailTo );
+	
+end oneOrMoreCset;
+
+
+end patterns;

@@ -1,0 +1,43 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "dtClass.hhf" )
+#include( "excepts.hhf" )
+
+?@noframe := true;
+?@nodisplay := true;
+
+// dateClass_t.today-
+//
+// Sets the object's date to the current system date.
+
+procedure dateClass_t.today;
+begin today;
+
+	test( esi, esi );
+	jz badObj;
+	
+	date.today( this.theDate );
+	ret();
+	
+badObj:
+	raise( ex.BadObjPtr );
+	
+end today;
+	
+	
+	
+end DateTime;			

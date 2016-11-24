@@ -1,0 +1,593 @@
+// tArrays-
+//
+//	Tests the arrays module.
+
+
+program tArrays;
+#include( "stdlib.hhf" )
+
+const
+	tArraysFailed := 123456789;
+	
+static
+	sbArray	:byte[128] :=[ #for( i := 0 to 127 ) i, #endfor ];
+	dbArray	:array.dArray( byte, 1 );
+	
+	swArray	:word[128] :=[ #for( i := 0 to 127 ) i, #endfor ];
+	dwArray	:array.dArray( word, 1 );
+	
+	sdArray	:dword[128] :=[ #for( i := 0 to 127 ) i, #endfor ];
+	ddArray	:array.dArray( dword, 1 );
+	
+	sqArray	:qword[128] :=[ #for( i := 0 to 127 ) i, #endfor ];
+	dqArray	:array.dArray( qword, 1 );
+	
+	slArray	:lword[16,16] :=[ #for( i := 0 to 255 ) i, #endfor ];
+	dlArray	:array.dArray( lword, 2 );
+	
+	sdw2cpy	:dword[ 16, 16, 16 ] :=
+			[
+				#for( i := 0 to 4095 )
+					i,
+				#endfor
+			];
+			
+	ddw2cpy	:array.dArray( dword, 3 );
+	
+	sdw2reduce	:dword[16,16,16];
+	sreduced	:dword[16,16];
+	ddw2reduce	:array.dArray( dword, 3 );
+	reduced		:array.dArray( dword, 2 );
+	
+	sxpose		:dword[16,16] :=
+					[
+						#for( i := 0 to 15 )
+						  #for( j := 0 to 15 )
+						  	i*16+j,
+						  #endfor
+						#endfor
+					];
+					
+	xposeDest	:dword[16,16];
+					
+	sxposeRslt	:dword[16,16] :=
+					[
+						#for( i := 0 to 15 )
+						  #for( j := 0 to 15 )
+						  	j*16+i,
+						  #endfor
+						#endfor
+					];
+					
+	dxpose		:array.dArray( dword, 2 );
+	dxposeRslt	:array.dArray( dword, 2 );
+						
+
+// Test the lookup table generation here:	
+	
+readonly
+	luTable : 
+	    array.lookupTable
+	    (
+			dword,			// Data type
+	        $ff,			// Default value for empty holes.
+	        10: 9, 
+	        11: 10, 
+	        12: 0, 
+	        13: 5, 
+	        14: 12, 
+	        15: 8, 
+	        16: 16, 
+	        18: 14 15, 
+	        19: 6 7 11 13, 
+	        20: 1 
+	    );
+
+
+	luTableResult:dword[17] :=
+		[
+			12,			// from 12:0
+			20,			// from 20:1
+			$ff,
+			$ff,
+			$ff,
+			13,			// from 13:5
+			19,			// from 19:6 7 11 13
+			19,			//  "    "   "   "
+			15,			// from 15:8
+			10,			// from 10:9
+			11,			// from 11:10
+			19,			// from 19:6 7 11 13
+			14,			// from 14:12
+			19,			// from 19:6 7 11 13
+			18,			// from 18:14 15
+			18,			// from 18:14 15
+			16			// from 16:16
+	];
+
+
+
+
+	
+procedure verifyReduction( orig:dword; reduced:dword; msg:string );
+begin verifyReduction;
+
+	// Verify that the reduction actually worked:
+	
+	for( mov( 0, ebx ); ebx < 16; inc( ebx )) do
+	
+		for( mov( 0, ecx ); ecx < 16; inc( ecx )) do
+		
+			mov( 0, eax );
+			for( mov( 0, edx ); edx < 16; inc( edx )) do
+			
+				intmul( 256, ebx, esi );
+				intmul( 16, ecx, edi );
+				add( edi, esi );
+				add( edx, esi );
+				
+				mov( orig, edi );
+				add( [edi+esi*4], eax );
+				
+			endfor;
+			intmul( 16, ebx, edi );
+			add( ecx, edi );
+			shl( 2, edi );
+			add( reduced, edi );
+			if( eax <> [edi] ) then
+			
+				stderr.put
+				(
+					"array.reduce failed! ", msg, nl
+					"  eax     = ", eax, nl
+					"  reduced = ", (type dword [edi]), nl
+					"  ebx     = ", ebx, nl
+					"  ecx     = ", ecx, nl
+				);
+				raise( tArraysFailed );
+				
+			endif;
+		
+		endfor;
+		
+	endfor;
+
+end verifyReduction;
+
+
+	
+
+begin tArrays;
+			  
+	try
+				  
+		// Byte test:
+		
+		array.daAlloc( dbArray, 128 );
+		for( mov( 0, edx ); edx < 128; inc( edx )) do
+		
+			array.index( eax, dbArray, edx );
+			mov( dl, [eax] );
+			
+		endfor;
+		
+		mov( 0, edx );
+		foreach array.element( dbArray ) do
+		
+			cmp( al, sbArray[edx]);
+			if( al <> sbArray[edx] ) then
+			
+				mov( sbArray[edx], bl );
+				stdout.put( "al=", al, " bl=", bl, nl );
+				stderr.put
+				(
+					"Error: array.element(byte) failed!" nl
+				);
+				raise( tArraysFailed );
+				
+			endif;
+			inc( edx );
+			
+		endfor;
+		array.daFree( dbArray );
+		
+		
+		// Word test:
+		
+		array.daAlloc( dwArray, 128 );
+		for( mov( 0, edx ); edx < 128; inc( edx )) do
+		
+			array.index( eax, dwArray, edx );
+			mov( dx, [eax] );
+			
+		endfor;
+		
+		mov( 0, edx );
+		foreach array.element( dwArray ) do
+		
+			if( ax <> swArray[edx*2] ) then
+			
+				stderr.put
+				(
+					"Error: array.element(word) failed!" nl
+				);
+				raise( tArraysFailed );
+				
+			endif;
+			inc( edx );
+			
+		endfor;
+		array.daFree( dwArray );
+		
+		
+		
+		// DWord test:
+		
+		array.daAlloc( ddArray, 128 );
+		for( mov( 0, edx ); edx < 128; inc( edx )) do
+		
+			array.index( eax, ddArray, edx );
+			mov( edx, [eax] );
+			
+		endfor;
+		
+		mov( 0, edx );
+		foreach array.element( ddArray ) do
+		
+			if( eax <> sdArray[edx*4] ) then
+			
+				stderr.put
+				(
+					"Error: array.element(dword) failed!" nl
+				);
+				raise( tArraysFailed );
+				
+			endif;
+			inc( edx );
+			
+		endfor;
+		array.daFree( ddArray );
+		
+		
+		
+		// QWord test:
+		
+		array.daAlloc( dqArray, 128 );
+		for( mov( 0, edx ); edx < 128; inc( edx )) do
+		
+			array.index( eax, dqArray, edx );
+			mov( edx, [eax] );
+			mov( 0, (type dword [eax+4]) );
+			
+		endfor;
+		
+		mov( 0, ecx );
+		foreach array.element( dqArray ) do
+			if
+			( 
+					eax <> (type dword sqArray[ecx*8])
+				||	edx <> (type dword sqArray[ecx*8+4]) 
+			) then
+			
+				stderr.put
+				(
+					"Error: array.element(qword) failed!" nl
+				);
+				raise( tArraysFailed );
+				
+			endif;
+			inc( ecx );
+			
+		endfor;
+		array.daFree( dqArray );
+		stderr.put( "array.element/index succeeded!" nl );
+		
+		
+		
+		
+		// LWord test:
+		
+		array.daAlloc( dlArray, 16, 16 );
+		for( mov( 0, edx ); edx < 16; inc( edx )) do
+		
+			for( mov( 0, ecx ); ecx < 16; inc( ecx )) do
+		
+				array.index( eax, dlArray, edx, ecx );
+				intmul( 16, edx, ebx );
+				add( ecx, ebx );
+				mov( ebx, [eax] );
+				mov( 0, (type dword [eax+4]) );
+				mov( 0, (type dword [eax+8]) );
+				mov( 0, (type dword [eax+12]) );
+				
+			endfor;
+			
+		endfor;
+		
+		mov( 0, ecx );
+		foreach array.element( dlArray ) do
+		
+			mov( [eax], esi );
+			mov( [eax+4], edi );
+			mov( [eax+8], ebx );
+			mov( [eax+12], edx );
+			if
+			( 
+					esi <> (type dword slArray[ecx])
+				||	edi <> (type dword slArray[ecx+4]) 
+				||	ebx <> (type dword slArray[ecx+8]) 
+				||	edx <> (type dword slArray[ecx+12]) 
+			) then
+			
+				stderr.put
+				(
+					"Error: array.element(lword) failed!" nl
+				);
+				raise( tArraysFailed );
+				
+			endif;
+			add( 16, ecx );
+			
+		endfor;
+		array.daFree( dlArray );
+		
+		
+		// Test array.cpy
+		
+		array.daAlloc( ddw2cpy, 16, 16, 16 );
+		array.cpy( sdw2cpy, ddw2cpy );
+		lea( esi, sdw2cpy );
+		mov( ddw2cpy.dataPtr, edi );
+		mov( 4096, ecx );
+		repe.cmpsd();
+		if( @ne ) then
+		
+			stderr.put
+			(
+				"Error: array.cpy failed!" nl
+			);
+			raise( tArraysFailed );
+			
+		endif;
+		array.daFree( ddw2cpy );
+		stderr.put( "array.cpy succeeded!" nl );
+		
+		
+		// Test array.reduce
+		
+		array.daAlloc( ddw2reduce, 16, 16, 16 );
+		array.daAlloc( reduced, 16, 16 );
+		array.reduce( ddw2reduce, reduced )
+		
+				// Execute before reduction:
+			
+				array.cpy( sdw2cpy, ddw2reduce );
+			
+			array.beforeRow
+			
+				// instrs to execute before each row is reduced
+				
+				xor( edx, edx );		// Maintain sum here
+			
+			array.reduction
+			
+				// Compute the sum of each row:
+				
+				mov( ddw2reduce.dataPtr, eax );
+				add( [eax+esi], edx );
+			
+			array.afterRow
+			
+				// Store the result away into the destination array:
+				
+				mov( reduced.dataPtr, eax );
+				mov( edx, [eax+edi] );
+			
+		array.endreduce
+		verifyReduction( ddw2reduce.dataPtr, reduced.dataPtr, "dyn/dyn" );
+		
+		array.daAlloc( ddw2reduce, 16, 16, 16 );
+		array.reduce( ddw2reduce, sreduced )
+		
+				// Execute before reduction:
+			
+				array.cpy( sdw2cpy, ddw2reduce );
+			
+			array.beforeRow
+			
+				// instrs to execute before each row is reduced
+				
+				xor( edx, edx );		// Maintain sum here
+			
+			array.reduction
+			
+				// Compute the sum of each row:
+				
+				mov( ddw2reduce.dataPtr, eax );
+				add( [eax+esi], edx );
+			
+			array.afterRow
+			
+				// Store the result away into the destination array:
+				
+				mov( edx, sreduced[edi] );
+			
+		array.endreduce
+		verifyReduction( ddw2reduce.dataPtr, &sreduced, "dyn/stat" );
+		
+		array.daAlloc( reduced, 16, 16 );
+		array.reduce( sdw2reduce, reduced )
+		
+				// Execute before reduction:
+			
+			
+			array.beforeRow
+			
+				// instrs to execute before each row is reduced
+				
+				xor( edx, edx );		// Maintain sum here
+			
+			array.reduction
+			
+				// Compute the sum of each row:
+				
+				add( sdw2reduce[esi], edx );
+			
+			array.afterRow
+			
+				// Store the result away into the destination array:
+				
+				mov( reduced.dataPtr, eax );
+				mov( edx, [eax+edi] );
+			
+		array.endreduce
+		verifyReduction( &sdw2reduce, reduced.dataPtr, "stat/dyn" );
+		
+		
+		array.reduce( sdw2reduce, sreduced )
+		
+				// Execute before reduction:
+			
+			
+			array.beforeRow
+			
+				// instrs to execute before each row is reduced
+				
+				xor( edx, edx );		// Maintain sum here
+			
+			array.reduction
+			
+				// Compute the sum of each row:
+				
+				add( sdw2reduce[esi], edx );
+			
+			array.afterRow
+			
+				// Store the result away into the destination array:
+				
+				mov( edx, sreduced[eax+edi] );
+			
+		array.endreduce
+		verifyReduction( &sdw2reduce, &sreduced, "stat/stat" );
+		array.daFree( ddw2reduce );
+		array.daFree( reduced );
+		stderr.put( "array.reduce succeeded!" nl );
+		
+		
+		// Check out the transpose function here
+		
+		array.daAlloc( dxpose, 16, 16 );		
+		array.daAlloc( dxposeRslt, 16, 16 );
+		array.cpy( sxpose, dxpose );
+		array.transpose( dxpose, dxposeRslt );
+		lea( edi, sxposeRslt );
+		mov( dxposeRslt.dataPtr, esi );
+		mov( 256, ecx );
+		repe.cmpsd();
+		if( @ne ) then
+			
+			stderr.put
+			(
+				"Error: array.transpose(dyn/dyn) failed!" nl
+			);
+			raise( tArraysFailed );
+			
+		endif;
+			
+		
+		array.cpy( sxpose, dxpose );
+		array.transpose( dxpose, xposeDest );
+		mov( &sxposeRslt, edi );
+		mov( &xposeDest, esi );
+		mov( 256, ecx );
+		repe.cmpsd();
+		if( @ne ) then
+			
+			stderr.put
+			(
+				"Error: array.transpose(dyn/stat) failed!" nl
+			);
+			raise( tArraysFailed );
+			
+		endif;
+			
+		array.cpy( sxpose, dxpose );
+		array.transpose( dxpose, sxposeRslt );
+		mov( &sxposeRslt, edi );
+		mov( &xposeDest, esi );
+		mov( 256, ecx );
+		repe.cmpsd();
+		if( @ne ) then
+			
+			stderr.put
+			(
+				"Error: array.transpose(dyn/stat) failed!" nl
+			);
+			raise( tArraysFailed );
+			
+		endif;
+			
+		
+		array.transpose( sxpose, xposeDest );
+		mov( &sxposeRslt, edi );
+		mov( &xposeDest, esi );
+		mov( 256, ecx );
+		repe.cmpsd();
+		if( @ne ) then
+			
+			stderr.put
+			(
+				"Error: array.transpose(stat/stat) failed!" nl
+			);
+			raise( tArraysFailed );
+			
+		endif;
+		array.daFree( dxpose );
+		array.daFree( dxposeRslt );
+		stderr.put( "array.transpose test succeeded!" nl );
+			
+		
+		// Just print to see if it blows up.
+		
+		array.print( sxpose );			
+		stderr.put( "array.print test succeeded!" nl );
+					
+					
+		// Check out the lookup table generation:
+		
+		#if( @arity( luTable ) <> @arity( luTableResult ))
+		
+			stderr.put
+			(
+				"Error: lookup table generation failed! (arity mismatch)" nl
+			);
+			raise( tArraysFailed );
+			
+		#endif
+		mov( &luTable, esi );
+		mov( &luTableResult, edi );
+		mov( @size( luTableResult ), ecx );
+		repe.cmpsb();
+		if( @ne ) then
+
+		
+			stderr.put
+			(
+				"Error: lookup table generation failed! (element mismatch)" nl
+			);
+			raise( tArraysFailed );
+			
+		endif;
+		stderr.put( "lookup table test succeeded!" nl );
+		
+	exception( tArraysFailed )
+	
+		stdout.put( "tArrays test failed, press enter to continue: " );
+		stdin.readLn();
+		raise( tArraysFailed );
+		
+	endtry;
+	stderr.put( "tArrays test succeeded!" nl );
+	
+	
+end tArrays;	

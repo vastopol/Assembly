@@ -1,0 +1,898 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit mmap_unit;
+#include( "mmap.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "fileio.hhf" )
+
+#include( "os.hhf" )
+#include( "memory.hhf" )
+
+#if( !( os.win32 | os.linux | os.freeBSD | os.macOS ))
+	#error( "This code is valid only for Windows, Mac OSX, Linux, or FreeBSD" )
+#endif
+
+#if( os.win32 )
+
+	#include( "w.hhf" )
+
+#endif
+
+#if( os.linux )
+	#include( "linux.hhf" )
+	namespace w;
+		const
+			INVALID_HANDLE_VALUE := -1;
+			
+	end w;
+#endif
+
+
+#if( os.freeBSD )
+	#include( "bsd.hhf" )
+	namespace w;
+		const
+			INVALID_HANDLE_VALUE := -1;
+			
+	end w;
+	
+#endif
+
+
+#if( os.macOS )
+	#include( "mac.hhf" )
+	namespace w;
+		const
+			INVALID_HANDLE_VALUE := -1;
+			
+	end w;
+	
+#endif
+
+
+
+
+readonly
+	vmt( mmap_t );
+
+
+// create-	Constructor for the mmap class.
+// 			The purpose of this procedure is to initialize
+//			an mmap_t object (allocate storage if ESI contains
+//			null upon entry).
+
+procedure mmap_t.create; @nodisplay; @noframe;
+begin create;
+
+	push( eax );
+
+	// If this was a class call (i.e., mmap_t.create())
+	// then ESI will contain NULL and we need to allocate
+	// storage for the object.
+
+	xor( eax, eax );			// EAX = false
+	test( esi, esi );
+	jnz haveObj;
+
+		malloc( @size( mmap_t ) );
+		mov( eax, esi );
+		mov( true, al );
+
+	haveObj:
+
+	// Set the _malloc_ field to true or false, depending
+	// on whether we've allocated storage dynamically:
+
+	mov( al, this._malloc_ );
+
+
+	// Initialize the VMT pointer field:
+
+	mov( &mmap_t._VMT_, this._pVMT_ );
+	
+	// Initialize the other fields to NULL or zero:
+
+	mov( NULL, this._filename_ );
+	mov( 0, this.fileSize );
+	mov( NULL, this.filePtr );
+	mov( NULL, this.endFilePtr );
+	mov( w.INVALID_HANDLE_VALUE, this._handle_ );
+	mov( false, this._open_ );
+	mov( false, this._opennew_ );
+	pop( eax );
+	ret();
+
+end create;
+
+
+
+
+// mmap_t.openNew-
+//		This method opens a new file for memory mapping.
+//		If the file already exists, then this call raises
+//		an exception.
+
+method mmap_t.openNew( filename:string; maxSize:dword ); @nodisplay; @noframe;
+var
+	handle:			dword;
+
+	// Cleanup is a utility routine that cleans up
+	// the object if there was an error while attempting
+	// to open the memory mapped file object.
+
+	procedure cleanup; @nodisplay; @noframe;
+	begin cleanup;
+
+		// Free the storage allocated at the beginning
+		// of the openNew call:
+
+		strfree( this._filename_ );
+
+		// Reinitialize all the object fields to their
+		// default values:
+
+		this.create();
+		ret();
+
+	end cleanup;
+	
+begin openNew;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+
+	push( eax );	// We call Win32 API routines, and they
+	push( ecx );	//  trash these registers.
+	push( edx );
+												  
+	assert( esi <> NULL );
+
+	// Begin by setting up the filename for this object:
+
+	str.a_cpy( filename );
+	mov( eax, this._filename_ );
+
+	// Initialize the file length field with the length
+	// value passed as a parameter:
+
+	mov( maxSize, eax );
+	mov( eax, this.fileSize );
+
+
+	// Okay, create a file mapping now.
+
+	#if( os.win32 )
+	
+		// Create the file, it must not already exist:
+
+		w.CreateFile
+		( 
+			this._filename_, 
+			w.GENERIC_READ | w.GENERIC_WRITE,
+			w.FILE_SHARE_READ | w.FILE_SHARE_WRITE,
+			NULL,
+			w.CREATE_ALWAYS,
+			w.FILE_ATTRIBUTE_NORMAL,
+			NULL
+		);
+		cmp( eax, w.INVALID_HANDLE_VALUE );
+		je badOpen;
+		mov( eax, handle );
+		w.CreateFileMapping
+		(
+			handle,
+			NULL,
+			w.PAGE_READWRITE,	// openNew is always read/write
+			0,
+			maxSize,
+			NULL				// Don't provide an internal name.
+		);
+		mov( eax, this._handle_ );
+		test( eax, eax );
+		jz badOpen2;
+		
+		// Finally, map the file into memory:
+
+		w.MapViewOfFile
+		(
+			this._handle_,
+			w.FILE_MAP_READ | w.FILE_MAP_WRITE,
+			0,
+			0,
+			0
+		);
+		mov( eax, this.filePtr );
+		test( eax, eax );
+		jz badOpen3;
+		add( maxSize, eax );
+		mov( eax, this.endFilePtr );
+		w.CloseHandle( handle );
+
+	#elseif( os.linux )
+	
+		try
+			fileio.openNew( this._filename_ );
+			mov( eax, handle );
+			
+			// Must expand the file to the max size:
+			
+			fileio.seek4( handle, 0, maxSize, fileio.fromBOF );
+			fileio.truncate( handle );
+			fileio.close( handle );
+			
+			fileio.open( this._filename_, fileio.rw );
+			mov( eax, handle );
+			
+		  anyexception
+		  
+			cleanup();
+		  	raise( ex.FileOpenFailure );
+			
+		endtry;
+		mov( handle, eax );	
+		mov( eax, this._handle_ );
+		linux.mmap
+		( 
+			NULL, 
+			maxSize, 
+			linux.prot_read | linux.prot_write, 
+			linux.map_shared | linux.map_populate,
+			eax,
+			0
+		);
+
+		test( eax, eax );
+		js badOpen;
+		mov( eax, this.filePtr );
+		add( maxSize, eax );
+		mov( eax, this.endFilePtr );
+		
+	
+	#elseif( os.freeBSD )
+	
+		bsd.open3
+		( 
+			filename, 
+			bsd.O_WRONLY | bsd.O_CREAT, 
+			$1c0   // Ignores third parameter
+		);
+		mov( eax, handle );
+		jc badOpen;
+
+		// Must expand the file to the max size.
+		// Note: per FreeBSD documentation, we need to
+		// first expand the file to the maximum size by
+		// writing zeros to prevent severe file fragmentation
+		// (slow startup, but better performance later on).
+		
+		mov( maxSize, ecx );
+		mem.zalloc( ecx );
+		push( eax );		// Parameter to mem.free
+		bsd.write( handle, [eax], maxSize );
+		jc badOpen;
+		call mem.free; 		// Note that parameter was pushed earlier.
+		
+		// Truncate the file to the max size:
+		
+		mov( maxSize, eax );
+		xor( edx, edx );
+		bsd.ftruncate( handle, edx:eax );
+		bsd.close( handle );
+		
+		
+		// Reopen for reading and writing:
+		
+		bsd.open3
+		( 
+			filename, 
+			bsd.O_RDWR, 
+			$1c0   // Ignores third parameter
+		);
+		mov( eax, handle );
+		mov( eax, this._handle_ );
+		jc badOpen;
+
+		// Map the file into memory:
+		
+		
+		bsd.mmap
+		( 
+			0, 
+			maxSize, 
+			bsd.PROT_READ | bsd.PROT_WRITE | bsd.PROT_EXEC,
+			bsd.MAP_SHARED,
+			handle,
+			0
+		);
+		jc badOpen;
+
+		mov( eax, this.filePtr );
+		add( maxSize, eax );
+		mov( eax, this.endFilePtr );
+		
+	
+	#elseif( os.macOS )
+	
+		mac.open3
+		( 
+			filename, 
+			mac.O_WRONLY | mac.O_CREAT, 
+			$1c0   // Ignores third parameter
+		);
+		mov( eax, handle );
+		jc badOpen;
+
+		// Must expand the file to the max size.
+		// Note: per FreeBSD documentation, we need to
+		// first expand the file to the maximum size by
+		// writing zeros to prevent severe file fragmentation
+		// (slow startup, but better performance later on).
+		
+		mov( maxSize, ecx );
+		mem.zalloc( ecx );
+		push( eax );		// Parameter to mem.free
+		mac.write( handle, [eax], maxSize );
+		jc badOpen;
+		call mem.free; 		// Note that parameter was pushed earlier.
+		
+		// Truncate the file to the max size:
+		
+		mov( maxSize, eax );
+		xor( edx, edx );
+		mac.ftruncate( handle, edx:eax );
+		mac.close( handle );
+		
+		
+		// Reopen for reading and writing:
+		
+		mac.open3
+		( 
+			filename, 
+			mac.O_RDWR, 
+			$1c0   // Ignores third parameter
+		);
+		mov( eax, handle );
+		mov( eax, this._handle_ );
+		jc badOpen;
+
+		// Map the file into memory:
+		
+		
+		mac.mmap
+		( 
+			0, 
+			maxSize, 
+			mac.PROT_READ | mac.PROT_WRITE | mac.PROT_EXEC,
+			mac.MAP_SHARED,
+			handle,
+			0
+		);
+		jc badOpen;
+
+		mov( eax, this.filePtr );
+		add( maxSize, eax );
+		mov( eax, this.endFilePtr );
+		
+	
+	#endif
+	mov( true, this._open_ );	
+	mov( true, this._opennew_ );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+
+#if( os.win32 )
+
+badOpen3:
+	w.CloseHandle( this._handle_ );
+badOpen2:
+	w.CloseHandle( handle );
+badOpen:
+	cleanup();
+	raise( ex.FileOpenFailure );
+	
+#elseif( os.linux | os.freeBSD | os.macOS )
+
+badOpen:
+	fileio.close( handle );
+	cleanup();
+	raise( ex.FileOpenFailure );
+	
+#elseif( os.macOS )
+
+	#print( "still have to write mmap_t.openNew" )
+
+#endif
+
+end openNew;
+
+
+
+// mmap_t.open-
+//		This method opens an existing file for memory mapping.
+//		If the file does not already exist, then this call raises
+//		an exception.
+
+method mmap_t.open( filename:string; Access:fileio.accessMode ); 
+	@nodisplay;
+	@noframe;
+	
+var
+	handle:			dword;
+
+	#if( os.win32 )
+		
+		fileData:	w.BY_HANDLE_FILE_INFORMATION;
+		
+	#elseif( os.linux )
+	
+		fileData:	linux.stat64_t;
+		
+	#elseif( os.freeBSD )
+	
+		fileData:	bsd.stat_t;
+		
+	#elseif( os.macOS )
+	
+		fileData:	mac.stat_t;
+		
+	#endif
+
+	procedure cleanup; @nodisplay; @noframe;
+	begin cleanup;
+
+		strfree( this._filename_ );
+		this.create();
+		ret();
+
+	end cleanup;
+	
+begin open;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+												  
+	assert( esi <> NULL );
+	assert( filename <> NULL );
+
+	// Copy the filename into the object:
+	
+	str.a_cpy( filename );
+	mov( eax, this._filename_ );
+
+	// Open the file, it must already exist:
+
+	try
+	
+		fileio.open( this._filename_, Access );
+		mov( eax, handle );
+
+	  anyexception
+	  
+		cleanup();
+		raise( eax );
+		
+	endtry;
+
+	// Get the information (specifically, the size) for this file:
+
+	#if( os.win32 )
+	
+		w.GetFileInformationByHandle( eax, fileData );
+		test( eax, eax );
+		jz badInfo;
+	
+
+		// See if the file is just too big to map into memory:
+		// (Max: 2GB!)
+	
+		mov( fileData.nFileSizeLow, edx );
+		cmp( fileData.nFileSizeHigh, 0 );
+		jne badSize;
+		test( edx, edx );
+		js badSize;	
+
+	#elseif( os.linux )
+	
+		linux.fstat( handle, fileData );
+		mov( (type dword fileData.st_size), edx );
+		cmp( (type dword fileData.st_size[4]), 0 );
+		jnz badOpen;
+		test( edx, edx );
+		js badSize;	
+		
+		
+	#elseif( os.freeBSD )
+	
+		bsd.fstat( handle, fileData );
+		mov( (type dword fileData.st_size), edx );
+		cmp( (type dword fileData.st_size[4]), 0 );
+		jnz badOpen;
+		test( edx, edx );
+		js badSize;	
+				
+		
+	#elseif( os.macOS )
+	
+		mac.fstat( handle, fileData );
+		mov( (type dword fileData.st_size), edx );
+		cmp( (type dword fileData.st_size[4]), 0 );
+		jnz badOpen;
+		test( edx, edx );
+		js badSize;	
+				
+		
+	#endif
+	mov( edx, this.fileSize );
+
+	// Okay, create a file mapping now.
+
+	#if( os.win32 )
+	
+		mov( w.PAGE_READONLY, eax );
+		cmp( Access, fileio.r );
+		je noWriting;
+
+			mov( w.PAGE_READWRITE, eax );
+
+		noWriting:
+		w.CreateFileMapping
+		(
+			handle,
+			NULL,
+			eax,
+			0,
+			0,
+			NULL
+		);
+		mov( eax, this._handle_ );
+		test( eax, eax );
+		jz badMapping; 
+
+		// Finally, map the file into memory:
+
+		mov( w.FILE_MAP_READ, eax );
+		cmp( Access, fileio.r );
+		je noWriting2;
+
+			or( w.FILE_MAP_WRITE, eax );
+
+		noWriting2:
+		w.MapViewOfFile
+		(
+			this._handle_,
+			eax,
+			0,
+			0,
+			0
+		);
+		mov( eax, this.filePtr );
+		test( eax, eax );
+		jz badView;
+		add( fileData.nFileSizeLow, eax );
+
+		mov( eax, this.endFilePtr );
+		fileio.close( handle );
+
+	#elseif( os.linux )
+
+		mov( linux.prot_read, eax );
+		cmp( Access, fileio.r );
+		je noWriting;
+
+			or( linux.prot_write, eax );
+
+		noWriting:
+		mov( handle, edx );	
+		mov( edx, this._handle_ );
+		linux.mmap
+		( 
+			NULL, 
+			this.fileSize, 
+			eax, 
+			linux.map_shared,
+			edx,
+			0
+		);
+		test( eax, eax );
+		js badOpen;
+		mov( eax, this.filePtr );
+		add( this.fileSize, eax );
+		mov( eax, this.endFilePtr );
+		
+	#elseif( os.freeBSD )
+
+		mov( bsd.PROT_READ | bsd.PROT_EXEC, eax );
+		cmp( Access, fileio.r );
+		je noWriting;
+
+			or( bsd.PROT_WRITE, eax );
+
+		noWriting:
+		mov( handle, edx );	
+		mov( edx, this._handle_ );
+		bsd.mmap
+		( 
+			NULL, 			// Let the system pick the address.
+			this.fileSize,	// Size of our allocation.
+			eax,			// Memory protection attributes
+			bsd.MAP_SHARED,	// Mapping type
+			edx,			// File descriptor			
+			0				// No offset into our file.
+		);
+		
+		jc badOpen;
+		add( 40, esp );
+		mov( eax, this.filePtr );
+		add( this.fileSize, eax );
+		mov( eax, this.endFilePtr );
+	
+	#elseif( os.macOS )
+
+		mov( mac.PROT_READ | mac.PROT_EXEC, eax );
+		cmp( Access, fileio.r );
+		je noWriting;
+
+			or( mac.PROT_WRITE, eax );
+
+		noWriting:
+		mov( handle, edx );	
+		mov( edx, this._handle_ );
+		pushd( 0 );					// offset (high)
+		pushd( 0 );					// offset (low)
+		push( handle );				// fd
+		pushd( mac.MAP_SHARED );	// flags
+		pushd( eax );				// prot
+		push( this.fileSize );		// len
+		pushd( 0 );					// addr
+		mov( mac.sys_mmap, eax );
+		push( eax );					// Dummy return/stack restore
+		int( $80 );
+		jc badOpen;
+		add( 40, esp );
+		mov( eax, this.filePtr );
+		add( this.fileSize, eax );
+		mov( eax, this.endFilePtr );
+	
+	#endif
+	mov( true, this._open_ );
+	mov( false, this._opennew_ );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+
+#if( os.win32 )
+
+badView:
+	fileio.close( handle );
+	fileio.close( this._handle_ );
+	cleanup();
+	raise( ex.FileOpenFailure );
+
+	
+badMapping:
+	w.CloseHandle( handle );
+	cleanup();
+	raise( ex.FileOpenFailure );
+
+badInfo:
+	w.CloseHandle( handle );
+	cleanup();
+	raise( ex.FileReadError );
+
+badSize:
+	w.CloseHandle( handle );
+	cleanup();
+	raise( ex.FileOpenFailure );
+	
+		
+#elseif( os.linux | os.freeBSD | os.macOS )
+
+badOpen:
+	fileio.close( handle );
+	cleanup();
+	raise( ex.FileOpenFailure );
+	
+badSize:
+	fileio.close( handle );
+	cleanup();
+	raise( ex.FileOpenFailure );
+	
+#elseif( os.macOS )
+
+	#print( "Still need to do mmap.open for macOS" )
+	
+		
+#endif
+	
+
+end open;
+
+
+
+// mmap_t.close-
+//		This method closes an open mmap_t object.
+
+method mmap_t.close; @nodisplay; @noframe;
+begin close;
+
+	push( eax );
+	push( ecx );
+	push( edx );
+
+	assert( esi <> NULL );
+	assert( this._filename_ <> NULL );
+
+	// Unmap the file and close all the handles
+	// (Technically, we probably don't really need
+	// to leave the handles open all this time...)
+
+	#if( os.win32 )
+	
+		w.UnmapViewOfFile( this.filePtr );
+		fileio.close( this._handle_ );
+
+	#elseif( os.linux )
+	
+		linux.munmap( this.filePtr, this.fileSize );
+		fileio.close( this._handle_ );
+
+	#elseif( os.freeBSD )
+	
+		bsd.munmap( this.filePtr, this.fileSize );
+		fileio.close( this._handle_ );
+		
+		// FreeBSD seems to round the file size up to
+		// the next 4K boundary. Can't have that.
+		
+		push( this._filename_ );
+		pushd( 0 );
+		push( this.fileSize );
+		call bsd.truncate;
+		jc badClose;
+
+	#elseif( os.macOS )
+
+		mac.munmap( this.filePtr, this.fileSize );
+		fileio.close( this._handle_ );
+		
+		// BSD seems to round the file size up to
+		// the next 4K boundary. Can't have that.
+		
+		push( this._filename_ );
+		pushd( 0 );
+		push( this.fileSize );
+		call mac.truncate;
+		jc badClose;
+
+	#endif
+	
+
+	
+	strfree( this._filename_ );
+	
+	// Call this.create() in order to initialize
+	// all the fields to their default values.
+
+	this.create();
+
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	ret();
+	
+#if( os.freeBSD | os.macOS )
+
+badClose:
+	raise( ex.FileCloseError );
+	
+#endif
+
+end close;
+
+
+
+
+// mmap_t.getFileName-
+//		Accessor function that returns the filename string in EAX
+
+method mmap_t.getFileName; @nodisplay; @noframe;
+begin getFileName;
+
+	mov( this._filename_, eax );
+	ret();
+
+end getFileName;
+
+
+
+
+// mmap_t.getOpen-
+//		Accessor function that returns the open flag in EAX
+
+method mmap_t.getOpen; @nodisplay; @noframe;
+begin getOpen;
+
+	movzx( this._open_, eax );
+	ret();
+
+end getOpen;
+
+
+
+
+// mmap_t.getMalloc-
+//		Accessor function that returns the dynamic allocation flag in EAX
+
+method mmap_t.getMalloc; @nodisplay; @noframe;
+begin getMalloc;
+
+	movzx( this._malloc_, eax );
+	ret();
+
+end getMalloc;
+
+
+
+
+// mmap_t.destroy-
+//		This is the destructor for the mmap_t class.
+
+method mmap_t.destroy; @nodisplay; @noframe;
+begin destroy;
+
+	assert( esi <> NULL );
+
+	// Safety check: if someone calls this with the object
+	// still open, we've got to close the file mapping object
+	// and deallocate the filename strings.
+
+	cmp( this._open_, false );
+	je dontClose;
+
+		this.close();
+
+	dontClose:
+
+	// If storage for this object is allocated on the heap,
+	// free it at this point:
+
+	cmp( this._malloc_, false );
+	je dontFree;
+
+		free( esi );
+
+	dontFree:
+	ret();
+	
+end destroy;
+
+
+
+end mmap_unit;

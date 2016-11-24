@@ -1,0 +1,96 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "stdlibdata.hhf" )
+#includeOnce( "conv.hhf" )
+
+
+/************************************************************************/
+/*                                                                      */
+/* h16ToBuf,                                                            */
+/*                                                                      */
+/* This routine converts the value passed in w to a sequence of         */
+/* characters that form the hexadecimal representation of the value.    */
+/* It stores the  character output starting at the location specified   */
+/* by the EDI register.  Note that the buffer pointed at by EDI must be */
+/* large enough to hold the result (up to two bytes), no checking is    */
+/* done.                                                                */
+/*                                                                      */
+/* Unlike wToBuf, this routine will produce only the minimum number of  */
+/* characters needed for the hexadecimal representation of w.           */
+/*                                                                      */
+/************************************************************************/
+
+
+procedure conv.h16ToBuf( w:word in ax; var buffer:var in edi );  
+	@nodisplay; 
+	@noalignstack; 
+	@noframe;
+	
+const
+	bw	:text := "(type byte [esp+4])";
+	 
+begin h16ToBuf;
+
+	push( eax );
+	push( ebx );
+	
+	movzx( bw[1], ebx );
+	test( ebx, ebx );
+	jz noByte1;
+	cmp( ebx, $0F );
+	ja doLast4Digits;
+
+		mov( stdlib.hexDigits[ebx], al );
+		mov( al, [edi] );
+		add( 1, edi );
+		jmp doLast2Digits;
+			
+	noByte1:
+		movzx( bw[0], ebx );
+		cmp( ebx, $0F );
+		ja doLast2Digits_a;
+
+			mov( stdlib.hexDigits[ebx], al );
+			mov( al, [edi] );
+			add( 1, edi );
+
+			pop( ebx );
+			pop( eax );
+			ret();
+
+	doLast4Digits:
+		movzx( bw[1], ebx );
+		mov( (type word stdlib.hexTbl[ebx*2]), ax );
+		mov( ax, [edi] );
+		add( 2, edi );
+
+	doLast2Digits:
+		movzx( bw[0], ebx );
+	doLast2Digits_a:
+		mov( (type word stdlib.hexTbl[ebx*2]), ax );
+		mov( ax, [edi] );
+		add( 2, edi );
+
+		pop( ebx );
+		pop( eax );
+		ret();
+
+							
+end h16ToBuf;
+
+end ConvUnit;

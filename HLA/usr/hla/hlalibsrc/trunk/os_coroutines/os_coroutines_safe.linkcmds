@@ -1,0 +1,4 @@
+cor_ret_safe.o
+cor_call_safe.o
+cor_free_safe.o
+cor_create_safe.o

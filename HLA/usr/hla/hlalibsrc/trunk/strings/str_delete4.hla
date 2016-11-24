@@ -1,0 +1,183 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeOnce( "strings.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "x86.hhf" )
+
+
+//  delete4,                                                  
+//                                                            
+//  This routine removes characters from a string.           
+//  The delete4 routine creates a new string that
+//	it stores into the string object pointed at by
+//	the dest argument.         
+//                                                            
+//  Inputs-                                                   
+//                                                            
+//  	s-   	Pointer to string to remove characters from.      
+//  	start-  Starting position to begin deleting characters.   
+//  	length- Number of characters to delete.
+//
+//	Returns-
+//
+//		dest-	Pointer to string object that will receive the new string
+//		carry-	Set if len chars are removed from the string stored in dest,
+//				Clear if fewer than len chars are removed.                   
+
+
+
+
+
+
+procedure str.delete4
+(
+	s		:string;
+	start	:dword;
+	len		:dword;
+	dest	:string
+);  @noframe;
+var
+	saveEAX		:dword;
+	saveECX		:dword;
+	saveESI		:dword;
+	saveEDI		:dword;
+	saveFlags	:dword;
+	
+begin delete4;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_-4), esp );
+	stc();						// Assume we return success
+	pushfd();					// Allocate and initialize saveFlags
+	cld();
+	mov( edi, saveEDI );
+	mov( esi, saveESI );
+	mov( ecx, saveECX );
+	mov( eax, saveEAX );
+	
+	// Verify that src and dest are non-NULL.
+	
+	mov( dest, edi );
+	test( edi, edi );
+	jz attemptToDerefNULL;
+	
+	mov( s, esi );
+	test( esi, esi );
+	jz attemptToDerefNULL;
+
+	// Compute the length of the resulting string.
+	// First off, if start > length(s), then the
+	// length is the length of the dest string.
+	//
+	// Otherwise, if (start+length) < length(s), then the
+	//	result length is length(s) - length,
+	//	otherwise the result length is length(s) - start.
+	
+	mov( start, eax );
+	mov( (type str.strRec [esi]).length, ecx );
+	cmp( eax, ecx );
+	ja StringIndex;
+	je lenOK;
+	
+		add( len, eax );
+		cmp( eax, ecx );
+		ja subStart;
+		
+			sub( len, ecx );
+			jmp lenOK;
+			
+		subStart:
+			and( !x86.flag_carry, saveFlags );		// Return length underflow.
+			sub( start, ecx );
+			
+		
+	lenOK:
+	
+	// Verify that the destination string is large enough to hold the result.
+	
+	cmp( ecx, (type str.strRec [edi]).maxlen );
+	ja StringOverflow;
+	
+	// Set the final length of the string:
+	
+	mov( ecx, (type str.strRec [edi]).length );
+	
+	
+	// If start <> 0, then we need to copy some data from the beginning
+	// of the dest string to our newly allocated storage.
+	
+	mov( start, ecx );
+	test( ecx, ecx );
+	jz NoMove;
+
+		// Move "start" chars from dest to the new string.
+		
+		rep.movsb();
+		
+	NoMove:
+	
+	// If start+length is less than length( s ), then we need to move
+	// some characters from the end of s to dest.
+	
+	mov( start, eax );
+	add( len, eax );
+	mov( s, esi );
+	mov( (type str.strRec [esi]).length, ecx );
+	cmp( eax, ecx );
+	jae noCharsFromSrc;
+	
+		add( eax, esi );		// Point at new source for string.
+		sub( eax, ecx );		// Compute remaining chars to copy.
+		jz NoMove2;
+		
+			rep.movsb();
+			
+		NoMove2:
+		
+	noCharsFromSrc:
+	mov( 0, (type byte [edi] ));	// Emit zero terminating byte;
+		
+	mov( saveEDI, edi );
+	mov( saveESI, esi );
+	mov( saveECX, ecx );
+	mov( saveEAX, eax );
+	popfd();
+	leave();
+	ret( _parms_ );
+
+attemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+StringIndex:
+	raise( ex.StringIndexError );
+	
+StringOverflow:
+	raise( ex.StringOverflow );
+	
+end delete4;
+
+
+end stringUnit;
+
+
+
+
+	
+

@@ -1,0 +1,49 @@
+program test_isSpace;
+#include( "stdlib.hhf" )
+
+static
+	charset:char[256] :=
+		[
+			#for( i := 0 to 254 )
+				char(i),
+			#endfor
+			#255
+		];
+		
+	results:boolean[256] :=
+		[
+			#for( i := 0 to 127 )
+				char(i) in { ' ', #10, #13, #9 },
+			#endfor
+			#for( i := 128 to 255 )
+				false,
+			#endfor
+		];
+		
+begin test_isSpace;
+
+	
+	for( mov( 0, ecx ); ecx<256; inc(ecx) )do
+
+		chars.isSpace( charset[ecx] );
+		if( al <> results[ecx] ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"chars.isSpace failed! al=", al, " ecx=", ecx, nl
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		
+	endfor;
+	stderr.put( "chars.isSpace succeeded!" nl );
+	os.exitProcess(0);
+		
+end test_isSpace;

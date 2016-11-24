@@ -1,0 +1,70 @@
+program extract_test;
+#include( "stdlib.hhf" )
+
+		
+const
+	cs_c :cset[] :=
+		[
+			#for( i := 0 to 126 )
+				 {char(0)..char(i)},
+			#endfor
+			{ #0..#$7f }
+		];
+		
+		
+static
+	cstest		:cset;
+	ccs 		:cset[ @elements( cs_c ) ] := cs_c;
+	
+begin extract_test;
+
+	for( mov( 0, ecx ); ecx<@elements( cs_c ); inc(ecx) )do
+	
+		intmul( @size( cset ), ecx, edx );
+		cs.cpy( ccs[edx], cstest );
+		for( mov( 0, edx ); edx <= ecx; inc( edx )) do
+		
+			cs.extract( cstest );
+			if( eax <> edx ) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"cs.extract #1 failed!  ecx=", ecx, " edx=", edx, 
+					" eax=", eax, nl,										
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+
+			endif;
+			
+		endfor;
+
+		cs.extract( cstest );
+		if( eax <> -1 ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"cs.extract #2 failed!  ecx=", ecx, " eax=", eax, nl,
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif;
+			
+	endfor;
+	stderr.put( "cs.extract succeeded!" nl );
+	os.exitProcess(0);
+		
+end extract_test;
+
+													

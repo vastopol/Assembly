@@ -1,0 +1,92 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+/********************************************************/
+/*                                                      */
+/* delLeadingSpaces1,                                   */
+/* delLeadingSpaces2,                                   */
+/* a_delLeadingSpaces-                                  */
+/*                                                      */
+/* Deletes any leading spaces from a string.            */
+/*                                                      */
+/* delLeadingSpace1 is destructive, it modifies the     */
+/* string passed as a  parameter.                       */
+/*                                                      */
+/* delLeadingSpace2 is nondestructive, it copies the    */
+/* source to the dest string (w/o leading spaces).      */
+/*                                                      */
+/* a_delLeadingSpace makes a copy of the string before  */
+/* trimming any leading spaces.                         */
+/*                                                      */
+/********************************************************/
+
+
+procedure str.delLeadingSpaces2( src: string; dest:string ); @noframe;
+begin delLeadingSpaces2;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( edi );
+	push( eax );
+	
+	mov( src, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+		
+	mov( edi, eax );	// Save so we can compute index of 1st non-blank char.
+	
+	// Skip over all leading spaces.
+	
+	dec( edi );
+	repeatWhlWS:
+	
+		inc( edi );
+		cmp( (type char [edi]), ' ' );
+		je repeatWhlWS;
+		cmp( (type char [edi]), stdio.tab );
+		je repeatWhlWS;
+	
+	
+	// Remove the leading spaces by taking the substring
+	// consisting of all characters beyond the last
+	// leading space.
+	
+	sub( eax, edi );	// Compute index of first non-blank.
+	str.substr( src, edi, (type str.strRec [eax]).length, dest );
+	
+	pop( eax );
+	pop( edi );
+	pop( ebp );
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end delLeadingSpaces2;
+
+end stringUnit;
+
+
+
+
+	
+

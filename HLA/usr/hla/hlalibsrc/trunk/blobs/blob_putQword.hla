@@ -1,0 +1,103 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+#include( "conv.hhf" );
+#includeOnce( "threads.hhf" )
+
+
+// str.putQword-                                               
+//                                                         
+// Concatenates the qword value "q" to the end of the blob.
+
+procedure blob.putQword( b:blob.blob; q:qword ); @noframe;
+begin putQword;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	push( eax );
+	push( ebx );
+	mov( b, ebx );
+	test( ebx, ebx );
+	jz AttemptToDerefNULL;
+	
+	#if( @thread )
+	
+	try
+	
+		thread.enterCriticalSection( (type blob.blobRec [ebx]).criticalSection );
+	
+	#endif
+
+		mov( (type blob.blobRec [ebx]).wcursor, eax );
+		add( 8, eax );
+		cmp( eax, (type blob.blobRec [ebx]).maxlen );
+		jna noBlobOverflow;
+			raise( ex.BlobOverflow );
+			
+		noBlobOverflow:
+		
+		cmp( eax, (type blob.blobRec [ebx]).length );
+		jb noNewLen;
+
+			mov( eax, (type blob.blobRec [ebx]).length );
+			
+		noNewLen:
+		mov( eax, (type blob.blobRec [ebx]).wcursor );
+		
+		add( eax, ebx );
+		mov((type dword q), eax );
+		mov( eax, [ebx-8] );
+		mov((type dword q[4]), eax );
+		mov( eax, [ebx-4] );
+		
+	#if( @thread )
+	
+	  anyexception
+	
+		mov( b, edx );
+		thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		reraise( eax );
+		
+	endtry;
+	mov( b, ebx );
+	thread.leaveCriticalSection( (type blob.blobRec [ebx]).criticalSection );
+		
+	#endif
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end putQword;
+
+
+
+end blobUnit;
+
+
+
+
+	
+

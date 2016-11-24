@@ -1,0 +1,97 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+/******************************************************************/
+/*                                                                */
+/* setstr-                                                        */
+/*                                                                */
+/* Copies the source character "cnt" times into the destination   */
+/* string.                                                        */
+/*                                                                */
+/******************************************************************/
+
+
+procedure str.setstr
+( 
+	src:char; 
+	cnt:uns32; 
+	dest:string 
+); @noframe; 
+begin setstr;
+
+	push( ebp );
+	mov( esp, ebp );
+	pushfd();
+	push( edi );
+	push( ecx );
+	push( eax );
+	cld();
+	
+	// Verify that dest is non-NULL.
+		
+	mov( dest, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+	// See if the destination string is big enough to hold this string.
+	
+	mov( cnt, ecx );
+	cmp( ecx, (type str.strRec [edi]).maxlen );
+	ja StringOverflow;
+
+	mov( ecx, (type str.strRec [edi]).length);	// Save away new str length.
+	mov( src, al );
+	test( ecx, ecx );
+	jz NoSet;
+	
+		// TODO: See if a discrete instruction implementation
+		// would be faster.
+		
+		rep.stosb();
+		
+	NoSet:
+	mov( 0, al );	// Zero terminate the string.
+	stosb();
+	
+	pop( eax );
+	pop( ecx );
+	pop( edi );
+	popfd();
+	pop( ebp );
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+StringOverflow:
+	raise( ex.StringOverflow );
+
+end setstr;
+
+
+end stringUnit;
+
+
+
+
+	
+

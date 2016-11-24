@@ -1,0 +1,68 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit charSets;
+
+#include( "cset.hhf" );
+
+
+/*************************************************/
+/*                                               */
+/* removeChar-                                   */
+/*                                               */
+/* Removes the specified character from the set. */
+/*                                               */
+/*************************************************/
+
+procedure cs.removeChar( c:char; var dest:cset ); 
+	@nodisplay; 
+	@noframe;
+const
+	_c		:text := "(type char [esp+16])";
+	_dest	:text := "(type dword [esp+12])";
+	
+begin removeChar;
+
+	push( eax );
+	push( ebx );
+	
+	// Stack at this point:
+	//
+	//	esp+16	c:char
+	//	esp+12	dest:dword
+	//	esp+8	return address
+	//	esp+4	eax
+	//	esp		ebx
+	
+	mov( _dest, ebx );
+	
+	// Clear the single character from the cset:
+	
+	movzx( _c, eax );
+	btr( eax, [ebx] );
+	
+	pop( ebx );
+	pop( eax );
+	ret( _parms_ );
+	
+end removeChar;
+
+
+end charSets;
+
+
+
+
+	
+

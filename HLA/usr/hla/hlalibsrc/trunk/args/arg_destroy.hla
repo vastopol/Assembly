@@ -1,0 +1,91 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+
+unit argsUnit;
+
+#includeOnce( "../include/osargs.hhf" )
+#includeOnce( "memory.hhf" )
+
+?@nodisplay := true;
+?@noframe := true;
+
+
+/***********************************************/
+/*                                             */
+/* arg.destroy-                                */
+/*                                             */
+/* Deletes all the internal strings and resets */
+/* the command-line processing state to "not   */
+/* initialized".                               */
+/*                                             */
+/***********************************************/
+
+
+procedure arg.destroy;
+var
+	argc	:dword;
+		 
+begin destroy;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	push( eax );
+	_hla.get_NeedsCmdLn();
+	cmp( al, false );
+	jne noDestroy;
+	
+		// Free the storage associated with the
+		// entry we're deleting:
+
+		_hla.get_argc();
+		mov( eax, argc );
+		
+		xor( eax, eax );
+		cmp( eax, argc );
+		je whileDone;
+		whileArgsLeft:
+			
+			push( eax );
+			_hla.get_argv( eax );
+			str.free( eax );
+			
+			pop( eax );
+			_hla.set_argv( NULL, eax );	// Mark as free
+			add( 1, eax );
+			cmp( eax, argc );
+			jb whileArgsLeft;
+			
+
+		whileDone:
+		_hla.get_CommandLine();
+		cmp( eax, NULL );
+		je noDestroy;
+			
+			str.free( eax );
+			_hla.set_CommandLine( NULL );
+
+	noDestroy:
+	_hla.set_argc( 0 );
+	_hla.set_NeedsCmdLn( true );
+	pop( eax );
+	leave();
+	ret();
+
+end destroy;
+
+
+end argsUnit;

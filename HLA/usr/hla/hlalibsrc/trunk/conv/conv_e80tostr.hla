@@ -1,0 +1,106 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "strings.hhf" )
+
+
+
+/*************************************************************/
+/*                                                           */
+/* e80ToStr-                                                 */
+/*                                                           */
+/* Converts a REAL80 IEEE floating point number to the       */
+/* corresponding string of digits.  Note that this           */
+/* function always emits the string using scientific 		 */
+/* notation, use the r80ToStr routine for decimal notation.	 */
+/*                                                           */
+/* On Entry:                                                 */
+/*                                                           */
+/* r80-		Real80 value to convert.                         */
+/*                                                           */
+/* width-		Field width for the number (note that this   */
+/* 			is an *exact* field width, not a minimum         */
+/* 			field width).                                    */
+/*                                                           */
+/* fill-		Padding character if the number is smaller   */
+/* 			than the specified field width.                  */
+/* 			                                                 */
+/* buffer-		r80ToStr stores the resulting characters in  */
+/* 			this string.                                     */
+/* 			                                                 */
+/* On Exit:                                                  */
+/*                                                           */
+/* Buffer contains the newly formatted string.  If the       */
+/* formatted value does not fit in the width specified,      */
+/* e80ToStr will store "#" characters into this string.      */
+/*                                                           */
+/* If width is larger than the maximum length of the         */
+/* string specified by buffer, this routine will raise       */
+/* an exception.                                             */
+/*                                                           */
+/* Current limitation:                                       */
+/*                                                           */
+/* Unlike the integer to string conversions, this routine    */
+/* always right justifies the number in the specified        */
+/* string.  Width must be a positive number, negative        */
+/* values are illegal (actually, they are treated as         */
+/* *really* big positive numbers which will always raise     */
+/* a string overflow exception.                              */
+/*                                                           */
+/*************************************************************/
+
+procedure conv.e80ToStr
+(
+	r80: 		real80;
+	width:		uns32;
+	buffer:		string
+);  
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+
+
+begin e80ToStr;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( edi );
+	
+	mov( width, eax );
+	mov( buffer, edi );
+	cmp( eax, (type str.strRec [edi]).maxlen );
+	ja strOvfl;
+	mov( eax, (type str.strRec [edi]).length );	// Set the string's length
+	mov( 0, (type byte [edi+eax]));				// Zero-terminate the string
+	conv.eToBuf( r80, eax, [edi], 4 );			// Produce the string data
+	
+	pop( edi );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+
+
+strOvfl:
+	raise( ex.StringOverflow );
+	
+end e80ToStr;
+
+
+end ConvUnit;

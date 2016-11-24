@@ -1,0 +1,75 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit StdInput;
+#include( "../include/stdinunit.hhf" )
+#include( "os.hhf" )
+
+
+static
+
+	/*
+	** HasStdInHandle- 
+	**	This variable is set to true the first
+	**	time this code obtains the standard input handle from
+	**	Windows.  This ensures that the call to Windows is made
+	**	only once rather than on each output.
+	**
+	** StdInHandle-
+	**	This code stores the standard input handle obtained from
+	**	Windows in this variable.
+	**
+	** InputBuffer- Array containing data read from the standard
+	**				input.  All the stdin routines extract their
+	**				data from this buffer.
+	**
+	** InputIndex-	Index into InputBuffer that indicates where
+	**				the next character is to be taken from.
+	**
+	** CharsInBuf:	Indicates the total number of characters read
+	**				into the InputBuffer array.
+	**
+	** NeedsInput-	Indicates that the buffer is empty and a new
+	**				line of text must be read from the standard
+	**				input device before further input processing
+	**				occurs.
+	*/ 
+
+	HasStdInHandle :	boolean	:= false;
+	
+	#if( os.linux | os.freeBSD | os.macOS )
+	
+		StdInHandle :		dword	:= 0;
+		
+	#elseif( os.win32 )
+	
+		StdInHandle :		dword	:= -1;
+		
+	#endif
+
+	InputIndex :		dword	:= 0;
+	CharsInBuf:			dword	:= 0;
+	NeedsInput :		boolean	:= true;
+	
+	InputBuffer :		byte[ 1024 ] := 1024 dup [0];
+
+
+
+end StdInput;
+
+
+
+
+	
+

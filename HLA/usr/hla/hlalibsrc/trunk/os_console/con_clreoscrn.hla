@@ -1,0 +1,189 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit consoleUnit;
+
+#include( "console.hhf" )
+#includeonce( "os.hhf" )
+#includeonce( "stdout.hhf" )
+
+
+?@nodisplay := true;
+?@noalignstack := true;	
+
+#if( os.linux | os.freeBSD | os.macOS )
+	
+
+
+	// clrToEOScrn - Clears from the cursor to the end of the screen
+	//
+	// Linux:
+	// ANSI ESC sequence is ESC "[J"
+
+	procedure console.clrToEOScrn; @noframe;
+	readonly
+		clrEOLNScrnStr:byte; @nostorage;
+				byte #$1b "[J";
+				
+	begin clrToEOScrn;
+	
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+
+		stdout.write( &clrEOLNScrnStr, 3 );
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		ret();
+		
+	end clrToEOScrn;
+
+	
+#elseif( os.win32 )
+
+	#include( "stdout.hhf" )
+	
+	type 
+	 	COORD: record
+			x: word;
+			y: word;
+		endrecord;
+
+
+	 	SMALL_RECT: record
+			Left: word;
+			Top: word;
+			Right: word;
+			Bottom: word;
+		endrecord;
+	
+		CONSOLE_SCREEN_BUFFER_INFO: record
+
+			dwSize: COORD;
+			dwCursorPosition: COORD;
+			wAttributes: word;
+			srWindow: SMALL_RECT;
+			dwMaximumWindowSize: COORD;
+			
+		endrecord;
+		
+	static
+		FillConsoleOutputAttribute: procedure
+		( 
+				hConsoleOutput			:dword; 
+				wAttribute				:word; 
+				nLength					:dword; 
+				dwWriteCoord			:COORD; 
+			var	lpNumberOfAttrsWritten	:dword
+		);
+			@stdcall;
+			@returns( "eax" );
+			@external( "__imp__FillConsoleOutputAttribute@20" );
+
+		FillConsoleOutputCharacter: procedure
+		( 
+			hConsoleOutput:				dword; 
+			cCharacter:					char; 
+			nLength:					dword; 
+			dwWriteCoord:				COORD; 
+			var	lpNumberOfAttrsWritten:	dword
+		);
+			@stdcall;
+			@returns( "eax" );
+			@external( "__imp__FillConsoleOutputCharacterA@20" );
+
+			
+		GetConsoleScreenBufferInfo: procedure
+		( 
+				handle:	dword; 
+			var csbi:	CONSOLE_SCREEN_BUFFER_INFO
+		);
+			@stdcall;
+			@returns( "eax" );
+			@external( "__imp__GetConsoleScreenBufferInfo@8" );
+		
+	
+
+	
+	
+	procedure console.clrToEOScrn; @noframe;
+	var
+		handle			:dword;
+		size			:dword;
+		charsWritten	:dword;
+		csbi			:CONSOLE_SCREEN_BUFFER_INFO;
+		
+	begin clrToEOScrn;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		pushad();
+		
+		stdout.handle();
+		mov( eax, handle );
+		
+		// Compute the number of character positions left on the 
+		// current console.
+		
+		GetConsoleScreenBufferInfo( handle, csbi );
+		movzx( csbi.dwSize.x, eax );
+		movzx( csbi.dwSize.y, ebx );
+		intmul( ebx, eax );
+		mov( eax, size );
+
+		movzx( csbi.dwCursorPosition.x, eax );
+		movzx( csbi.dwCursorPosition.y, ebx );
+		intmul( ebx, eax );
+		sub( eax, size );
+
+		
+		// Fill the remainder of the screen with blanks:
+		
+		FillConsoleOutputCharacter
+		(
+			handle, 
+			' ', 
+			size, 
+			csbi.dwCursorPosition, 
+			charsWritten
+		);
+		
+		// Set the screen attributes:
+		
+		movzx( csbi.wAttributes, eax );
+		FillConsoleOutputAttribute
+		(
+			handle,
+			ax,
+			size,
+			csbi.dwCursorPosition,
+			charsWritten
+		);
+		
+		popad();
+		leave();
+		ret();
+			
+	end clrToEOScrn;
+	
+
+#endif
+	
+end consoleUnit;

@@ -1,0 +1,93 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "stdlibdata.hhf" )
+#includeOnce( "conv.hhf" )
+
+/*************************************************************/
+/*                                                           */
+/* h80Size                                                   */
+/*                                                           */
+/* This routine computes the minimum number of print         */
+/* positions needed to display a tbyte value  The size,      */
+/* in digits, is returned in the EAX register.               */
+/*                                                           */
+/* Input (qsize):                                            */
+/* 	tbVal-		Contains the value to compute the size of.   */
+/* 	                                                         */
+/* Returns:                                                  */
+/* 	EAX-	1..24 denoting the number of hexadecimal digits  */
+/* 			needed to represent this value.                  */
+/*                                                           */
+/*************************************************************/
+
+
+procedure conv.h80Size( tbVal: tbyte ); 
+	 @nodisplay;
+	 @noframe; 
+	 @noalignstack;
+begin h80Size;
+
+	push( ebp );
+	mov( esp, ebp );
+
+	movzx( (type word tbVal[8]), eax );
+	test( eax, eax );
+	jz qSize;
+
+		// There are four bits for each digit,
+		// so divide the number of bits by four
+		// to compute the number of digits we need.
+		
+		bsr( eax, eax );
+		shr( 2, eax );
+
+		// Add in 16 digits because this is the H.O. word:
+
+		add( 16, eax );
+		
+		// For each 4 characters (plus one) in the number, add an extra
+		// character position for the underscore, but only if the global
+		// boolean "OutputUnderscores" is true.
+
+		chkUnderScores:
+			push( eax );
+			cmp( _hla.get_OutputUnderscores(), false );
+			pop( eax );
+			je noExtraCharPositions;
+
+				push( ecx );
+				mov( eax, ecx );
+				shr( 2, ecx );
+				add( ecx, eax );
+				pop( ecx );
+
+		noExtraCharPositions:
+			add( 1, eax );		// Because even zero requires a single position.
+			pop( ebp );
+			ret( _parms_ );
+
+	// If the H.O. word was zero, call qSize to do all the work:
+
+	qSize:
+		conv.h64Size( (type qword tbVal ));
+		pop( ebp );
+		ret( _parms_ );
+	
+end h80Size;
+
+end ConvUnit;

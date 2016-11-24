@@ -1,0 +1,807 @@
+// This program tests the pattern-matching string functions.
+
+
+program patStrs_test;
+#include( "stdlib.hhf" )
+	
+static
+	extraction	:str.strvar(256);
+	
+begin patStrs_test;
+
+
+	//	procedure matchStr( s:string );
+	
+	// Positive test
+	
+	pat.match( "aaaab" );
+	
+		pat.matchStr( "aaaa" );
+		pat.extract( extraction );
+		pat.oneChar( 'b' );
+		if( str.ne( extraction, "aaaa" )) then
+		
+		  	stderr.put( "pat.matchStr failed(1)!" nl );
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+		
+		endif;
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchStr failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaab" );
+	
+		pat.matchStr( "aaa" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchStr failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaab" );
+	
+		pat.matchStr( "a" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchStr failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	// Test a failure case
+	
+	pat.match( "aaaab" );
+	
+		pat.matchStr( "b" );
+	  	stderr.put( "pat.matchStr failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect.
+	  
+	pat.endmatch;
+	
+	// Check a case with back tracking:
+	
+	
+	pat.match( "aaaab" );
+	
+		pat.oneOrMoreCset( {'a', 'b'} );
+		pat.matchStr( "a" );
+		pat.oneChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchStr failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.matchStr succeeded!" nl );
+
+
+
+
+
+	//	procedure matchToStr( s:string );
+	//  Positive tests
+	
+	pat.match( "aaaab" );
+	
+		pat.matchToStr( "aaaa" );
+		pat.extract( extraction );
+		pat.oneChar( 'b' );
+		if( str.ne( extraction, "aaaa" )) then
+		
+		  	stderr.put( "pat.matchToStr failed(1)!" nl );
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+		
+		endif;
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchToStr failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaab" );
+	
+		pat.matchToStr( "aaa" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchToStr failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaab" );
+	
+		pat.matchToStr( "ab" );
+		pat.extract( extraction );
+		if( str.ne( extraction, "aaaab" )) then
+		
+		  	stderr.put( "pat.matchToStr failed(1c)!" nl );
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+		
+		endif;
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchToStr failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	// Test a failure case
+	
+	pat.match( "aaaab" );
+	
+		pat.matchToStr( "c" );
+	  	stderr.put( "pat.matchToStr failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect.
+	  
+	pat.endmatch;
+	
+	// Check a case with back tracking:
+	
+	
+	pat.match( "aaaab" );
+	
+		pat.oneOrMoreCset( {'a', 'b'} );
+		pat.matchToStr( "ab" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchToStr failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.matchToStr succeeded!" nl );
+
+
+
+
+
+	//	procedure upToStr( s:string );
+	//  Positive tests
+	
+	pat.match( "aaaab" );
+	
+		pat.upToStr( "aaaa" );
+		pat.extract( extraction );
+		pat.matchStr( "aaaab" );
+		if( str.ne( extraction, "" )) then
+		
+		  	stderr.put( "pat.upToStr failed(1)!" nl );
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+		
+		endif;
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.upToStr failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaab" );
+	
+		pat.upToStr( "aaa" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.upToStr failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaab" );
+	
+		pat.upToStr( "ab" );
+		pat.extract( extraction );
+		if( str.ne( extraction, "aaa" )) then
+		
+		  	stderr.put( "pat.upToStr failed(1c)!" nl );
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+		
+		endif;
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.upToStr failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	// Test a failure case
+	
+	pat.match( "aaaab" );
+	
+		pat.upToStr( "c" );
+	  	stderr.put( "pat.upToStr failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect.
+	  
+	pat.endmatch;
+	
+	// Check a case with back tracking:
+	
+	
+	pat.match( "aaaab" );
+	
+		pat.oneOrMoreCset( {'a', 'b'} );
+		pat.upToStr( "ab" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.upToStr failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.upToStr succeeded!" nl );
+
+
+
+
+
+
+
+
+	//	procedure matchiStr( s:string );
+	
+	// Positive test
+	
+	pat.match( "aaaab" );
+	
+		pat.matchiStr( "aaaa" );
+		pat.extract( extraction );
+		pat.oneChar( 'b' );
+		if( str.ne( extraction, "aaaa" )) then
+		
+		  	stderr.put( "pat.matchiStr failed(1)!" nl );
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+		
+		endif;
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchiStr failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaab" );
+	
+		pat.matchiStr( "aaa" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchiStr failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaab" );
+	
+		pat.matchiStr( "a" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchiStr failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	// Test a failure case
+	
+	pat.match( "aaaab" );
+	
+		pat.matchiStr( "b" );
+	  	stderr.put( "pat.matchiStr failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect.
+	  
+	pat.endmatch;
+	
+	// Check a case with back tracking:
+	
+	
+	pat.match( "aaaab" );
+	
+		pat.oneOrMoreCset( {'a', 'b'} );
+		pat.matchiStr( "a" );
+		pat.oneChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchiStr failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.matchiStr succeeded!" nl );
+
+
+
+
+
+	//	procedure matchToiStr( s:string );
+	//  Positive tests
+	
+	pat.match( "aaaab" );
+	
+		pat.matchToiStr( "aaaa" );
+		pat.extract( extraction );
+		pat.oneChar( 'b' );
+		if( str.ne( extraction, "aaaa" )) then
+		
+		  	stderr.put( "pat.matchToiStr failed(1)!" nl );
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+		
+		endif;
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchToiStr failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaab" );
+	
+		pat.matchToiStr( "aaa" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchToiStr failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaab" );
+	
+		pat.matchToiStr( "ab" );
+		pat.extract( extraction );
+		if( str.ne( extraction, "aaaab" )) then
+		
+		  	stderr.put( "pat.matchToiStr failed(1c)!" nl );
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+		
+		endif;
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchToiStr failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	// Test a failure case
+	
+	pat.match( "aaaab" );
+	
+		pat.matchToiStr( "c" );
+	  	stderr.put( "pat.matchToiStr failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect.
+	  
+	pat.endmatch;
+	
+	// Check a case with back tracking:
+	
+	
+	pat.match( "aaaab" );
+	
+		pat.oneOrMoreCset( {'a', 'b'} );
+		pat.matchToiStr( "ab" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchToiStr failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.matchToiStr succeeded!" nl );
+
+
+
+
+
+	//	procedure upToiStr( s:string );
+	//  Positive tests
+
+	pat.match( "aaaab" );
+	
+		pat.upToiStr( "aaaa" );
+		pat.extract( extraction );
+		pat.matchStr( "aaaab" );
+
+		if( str.ne( extraction, "" )) then
+		
+		  	stderr.put( "pat.upToiStr failed(1)!" nl );
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+		
+		endif;
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.upToiStr failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaab" );
+	
+		pat.upToiStr( "aaa" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.upToiStr failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaaab" );
+	
+		pat.upToiStr( "ab" );
+		pat.extract( extraction );
+		if( str.ne( extraction, "aaa" )) then
+		
+		  	stderr.put( "pat.upToiStr failed(1c)!" nl );
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+		
+		endif;
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.upToiStr failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	// Test a failure case
+	
+	pat.match( "aaaab" );
+	
+		pat.upToiStr( "c" );
+	  	stderr.put( "pat.upToiStr failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect.
+	  
+	pat.endmatch;
+	
+	// Check a case with back tracking:
+	
+	
+	pat.match( "aaaab" );
+	
+		pat.oneOrMoreCset( {'a', 'b'} );
+		pat.upToiStr( "ab" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.upToiStr failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.upToiStr succeeded!" nl );
+
+
+
+
+
+	//	procedure matchWord( s:string );
+	
+	// Positive test
+	
+	pat.match( "aaaa b" );
+	
+		pat.matchWord( "aaaa" );
+		pat.oneChar( ' ' );
+		pat.oneChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchWord failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaa ab" );
+	
+		pat.matchWord( "aaa" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchWord failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "a aaab" );
+	
+		pat.matchWord( "a" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchWord failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	// Test a failure case
+	
+	pat.match( "aaaab" );
+	
+		pat.matchWord( "aaaa" );
+	  	stderr.put( "pat.matchWord failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect.
+	  
+	pat.endmatch;
+	
+	// Check a case with back tracking:
+	
+	
+	pat.match( "aaa a b" );
+	
+		pat.oneOrMoreCset( {'a', 'b', ' '} );
+		pat.matchWord( "a" );
+		pat.oneChar( ' ' );
+		pat.oneChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchWord failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.matchWord succeeded!" nl );
+
+
+
+
+	//	procedure matchiWord( s:string );
+	
+	// Positive test
+	
+	pat.match( "aaaa b" );
+	
+		pat.matchiWord( "aaaa" );
+		pat.oneChar( ' ' );
+		pat.oneChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchiWord failed(1a)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "aaa ab" );
+	
+		pat.matchiWord( "aaa" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchiWord failed(1b)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "a aaab" );
+	
+		pat.matchiWord( "a" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchiWord failed(1c)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "AAAA b" );
+	
+		pat.matchiWord( "aaaa" );
+		pat.oneChar( ' ' );
+		pat.oneChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchiWord failed(1d)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "AAA ab" );
+	
+		pat.matchiWord( "aaa" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchiWord failed(1e)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	pat.match( "A aaab" );
+	
+		pat.matchiWord( "a" );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchiWord failed(1f)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	
+	// Test a failure case
+	
+	pat.match( "AAAAB" );
+	
+		pat.matchiWord( "aaaa" );
+	  	stderr.put( "pat.matchiWord failed(2)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  pat.if_failure
+	  
+	  	// This is what we expect.
+	  
+	pat.endmatch;
+	
+	// Check a case with back tracking:
+	
+	
+	pat.match( "aaa A b" );
+	
+		pat.oneOrMoreCset( {'a', 'b', ' ', 'A'} );
+		pat.matchiWord( "a" );
+		pat.oneChar( ' ' );
+		pat.oneChar( 'b' );
+		
+	  pat.if_failure
+	  
+	  	stderr.put( "pat.matchiWord failed(3)!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	  
+	pat.endmatch;
+	stderr.put( "pat.matchiWord succeeded!" nl );
+
+	stderr.put( "tStrs test suite succeeded!" nl );
+
+end patStrs_test;
+
+													

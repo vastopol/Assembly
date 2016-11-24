@@ -1,0 +1,347 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "stdlibdata.hhf" )
+
+/********************************************************************/
+/*                                                                  */
+/* FPDigits-                                                        */
+/*                                                                  */
+/* Used to convert a floating point number on the FPU stack (ST(0)) */
+/* to a string of digits.                                           */
+/*                                                                  */
+/* Entry Conditions:                                                */
+/*                                                                  */
+/* ST(0)-	80-bit number to convert.                               */
+/* EDI-	Points at array of at least 18 bytes where FPDigits         */
+/* 		stores the output string.                                   */
+/* 		                                                            */
+/* Exit Conditions:                                                 */
+/*                                                                  */
+/* [EDI]-	Covnerted digits are found here.                        */
+/* eax-	Contains exponent of the number.                            */
+/* bl-		Contains the sign of the mantissa (" " or "-").         */
+/*                                                                  */
+/********************************************************************/
+
+procedure FPDigits; @noframe; @nodisplay;
+
+readonly
+	align( 4 );
+
+	TenTo17	:	Real80	:= 1.0e+17;
+	
+	// PotTblN- Hold powers of ten raised to negative powers of two.
+	
+	PotTblN	:	real80[ 14 ] :=
+				[
+					1.0,
+					1.0e-1,
+					1.0e-2,
+					1.0e-4,
+					1.0e-8,
+					1.0e-16,
+					1.0e-32,
+					1.0e-64,
+					1.0e-128,
+					1.0e-256,
+					1.0e-512,
+					1.0e-1024,
+					1.0e-2048,
+					1.0e-4096
+				];
+				
+				
+					
+	// PotTblP- Hold powers of ten raised to positive powers of two.
+	
+	PotTblP	:	real80[ 14 ] :=
+				[
+					1.0,
+					1.0e+1,
+					1.0e+2,
+					1.0e+4,
+					1.0e+8,
+					1.0e+16,
+					1.0e+32,
+					1.0e+64,
+					1.0e+128,
+					1.0e+256,
+					1.0e+512,
+					1.0e+1024,
+					1.0e+2048,
+					1.0e+4096
+				];
+				
+	// ExpTbl- Integer equivalents to the powers in the tables above.
+	
+	align( 4 );
+	ExpTab	:	uns32[ 14 ] :=
+				[
+					0,
+					1,
+					2,
+					4,
+					8,
+					16,
+					32,
+					64,
+					128,
+					256,
+					512,
+					1024,
+					2048,
+					4096
+				];
+				
+	
+
+begin FPDigits;
+
+	/*
+	** Special case if the number is zero.
+	*/
+	
+	fldz();
+	fcomp();
+	fstsw( ax );
+	sahf();
+	jnz fpdNotZero;
+
+		/*
+		** The number is zero, output it as a special case.
+		*/
+		
+		fstp( (type real80 [edi]) );	// Remove the zero from the stack.
+		mov( $30303030, eax );			// "0000"
+		stosd();
+		stosd();
+		stosd();
+		stosd();
+		stosd();
+		stosd();
+		xor( edx, edx );		// Return an exponent of zero.
+		mov( ' ', bl );			// Sign is positive.
+		jmp fpdDone;
+		
+	fpdNotZero:
+
+
+	/*
+	** If the number is not zero, then fix the sign of the value.
+	*/
+	
+	mov( ' ', bl );				// Assume it's positive.
+	jbe WasPositive;			// Flags still set from sahf above.
+	
+		fabs();					// Deal only with positive numbers.
+		mov( '-', bl );			// Set the sign return result.
+		
+	WasPositive:
+
+	/*
+	** Get the number between one and ten so we can figure out what the
+	** exponent is.  Begin by checking to see if we have a positive
+	** or negative exponent.
+	*/
+	
+	xor( edx, edx );			// Initialize exponent to zero.
+	fld1();
+	fcomp();
+	fstsw( ax );
+	sahf();
+	jbe PosExp;
+
+		/*
+		** We've got a value between zero and one, exclusive, at this point.
+		** That means this number has a negative exponent.  Multiply the
+		** number by an appropriate power of ten until we get it in the
+		** range 1..10.
+		*/
+		
+		mov( @size( PotTblN ), esi );	// Index just beyond the last element.
+		mov( @size( ExpTab  ), ecx );	// Ditto.
+		
+		CmpNegExp:
+		
+			sub( 10, esi );					// Move to previous array element.
+			sub( 4, ecx  );
+			jz test1;
+
+				fld( PotTblN[ esi ] );		// Get current power of ten.
+				fcomp();					// Compare against value on NOS.
+				fstsw( ax );
+				sahf();
+				jbe	CmpNegExp;				// Repeat while Table >= value.
+				
+				mov( ExpTab[ ecx ], eax );
+				test( eax, eax );
+				jz didAllDigits;
+
+					sub( eax, edx );
+					fld( PotTblP[ esi ] );
+					fmulp();
+					jmp	CmpNegExp;
+
+			// If the remainder is *exactly* 1.0, then we can branch
+			// on to InRange1_10, otherwise, we still have to multiply
+			// by 10.0 because we've overshot the mark a bit.
+
+			test1:
+				fld1();
+				fcomp();
+				fstsw( ax );
+				sahf();
+				je InRange1_10;
+			
+		didAllDigits:
+			
+		/*
+		** If we get to this point, then we've indexed through
+		** all the elements in the PotTblN and it's time to stop.
+		*/
+		
+		fld( PotTblP[ 10 ] );	// 10.0
+		fmulp();
+		dec( edx );
+		jmp InRange1_10;
+		
+		
+		
+	/*
+	** At this point, we've got a number that is one or greater.
+	** Once again, our task is to get the value between one and ten.
+	*/
+	
+	PosExp:
+	
+		mov( @size( PotTblP ), esi );	// Index just beyond the last element.
+		mov( @size( ExpTab  ), ecx );	// Ditto.
+
+		CmpPosExp:
+
+			sub( 10, esi );				// Move to previous element of PotTblP
+			sub( 4, ecx  );				// Move to previous element of ExpTbl
+			fld( PotTblP[ esi ] );
+			fcomp();
+			fstsw( ax );
+			sahf();
+			ja CmpPosExp;
+			mov( ExpTab[ ecx ], eax );
+			if( eax != 0 ) then
+			
+				add( eax, edx );
+				fld( PotTblP[ esi ] );
+				fdivp();
+				jmp CmpPosExp;
+				
+			endif;
+
+			
+	InRange1_10:
+	
+	
+	/*
+	** Okay, at this point the number is in the range 1 <= x < 10,
+	** Let's multiply it by 1e+18 to put the most sigificant digit
+	** into the 18th print position.  Then convert the result to
+	** a BCD value and store away in memory.
+	*/
+	
+	sub( 20, esp );		// Make room for BCD result.
+	fld( TenTo17 );
+	fmulp();
+	
+	// We need to check the floating-point result to make sure it
+	// is not outside the range we can legally convert to a BCD value.
+	//
+	// Illegal values will be in the range:
+	//
+	//  >999,999,999,999,999,999 ..<1,000,000,000,000,000,000
+	//	$403a_de0b_6b3a_763f_ff01..$403a_de0b_6b3a_763f_ffff
+	//
+	// Should one of these values appear, round the result up to
+	//
+	//	$403a_de0b_6b3a_7640_0000
+	
+	fstp( (type real80 [esp]));
+	cmp( (type word [esp+8]), $403a );
+	jne noRounding;
+	
+		cmp( (type dword [esp+4]), $de0b_6b3a );
+		jne noRounding;
+		
+			mov( [esp], eax );
+			cmp( eax, $763f_ff01 );
+			jb noRounding;
+			cmp( eax, $7640_0000 );
+			//je noRounding;
+			jae TooBig;
+			
+				fld( TenTo17 );
+				inc( edx );	// Bump exponent by 1 as this is really 10^18. 
+				jmp didRound;
+				
+			// If we get down here, there was some problems getting the
+			// value in the range 1 <= x <= 10 above and we've got a value
+			// that is 10e+18 or slightly larger. We need to compensate for
+			// that here.
+			
+			TooBig:
+			
+				fld( (type real80 [esp]) );
+				fld( PotTblP[ 10 ] );		// /10
+				fdivp();
+				inc( edx );					// Adjust exponent due to fdiv.
+				jmp didRound;
+			
+				
+	noRounding:
+		fld( (type real80 [esp]) );
+	didRound:	
+	fbstp( (type tbyte [esp]) );
+
+	
+	/*
+	** The data on the stack contains 18 BCD digits.  Convert these
+	** to ASCII characters and store them at the destination location
+	** pointed at by edi.
+	*/
+	
+	mov( 8, ecx );
+	repeat
+	
+		movzx( (type byte [esp+ecx]), eax );
+		mov( (type word stdlib.hexTbl[ eax*2 ]), ax );
+		mov( ax, [edi] );
+		add( 2, edi );
+		dec( ecx );
+		
+	until( (type int32 ecx) < 0 );
+	
+	add( 20, esp );			// Remove BCD data from stack.
+
+fpdDone:
+	mov( edx, eax );		// Return exponent in EAX.
+	ret();
+		
+		
+end FPDigits;
+
+
+
+end ConvUnit;

@@ -1,0 +1,62 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+
+#include( "../include/fileiounit.hhf" )
+
+procedure fileio.flush( Handle:dword); @nodisplay; @noframe;
+begin flush;
+
+	push( ebp );
+	mov( esp, ebp );
+	pushfd();
+	cld();
+	#if( os.linux )
+	
+		linux.fsync( Handle );
+		
+	#elseif( os.freeBSD )
+	
+		bsd.fsync( Handle );
+		
+	#elseif( os.macOS )
+	
+		mac.fsync( Handle );
+		
+	#elseif( os.win32 )
+	
+		push( eax );
+		push( ecx );
+		push( edx );
+		FlushFileBuffers( Handle );
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		
+	#else
+	
+		#print( "Unknown OS!")
+		
+	#endif
+	popfd();
+	pop( ebp );
+	ret( _parms_ );
+	
+end flush;
+
+	
+end FileIOUnit;
+

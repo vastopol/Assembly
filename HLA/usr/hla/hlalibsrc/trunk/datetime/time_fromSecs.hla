@@ -1,0 +1,87 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "excepts.hhf" )
+
+	
+// secsToHMS-
+//
+//	This procedure converts a time in seconds (up to 235,929,600)
+//  into an HMS format.
+//
+//	This function returns the number of overflow days in EAX.
+
+procedure time.fromSecs( seconds:uns32; var HMS:time.timerec ); 
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+var
+	edxSave	:dword;
+	ebxSave	:dword;
+	rtnVal	:dword;
+	
+begin fromSecs;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( ebx, ebxSave );
+	mov( edx, edxSave );
+	mov( 0, rtnVal );		// Assume no 24-hour overflow
+	
+	mov( HMS, ebx );
+	
+	// Determine if we have a 24-hour overflow.
+	
+	mov( seconds, eax );
+	cmp( eax,  24*3600 );
+	jb noOverflow;
+	
+		xor( edx, edx );
+		div( 24*3600, edx:eax );
+		mov( eax, rtnVal );	// # of overflow days
+		mov( edx, eax );	// # of seconds in last day.
+	
+		
+	noOverflow:
+	
+	// Compute the number of hours as seconds/3600:
+	
+	xor( edx, edx );
+	div( 3600, edx:eax );
+	mov( ax, (type time.timerec [ebx]).hours );
+	
+	// Compute the number of minutes as (above remainder)/60:
+	
+	mov( edx, eax );
+	xor( edx, edx );
+	div( 60, edx:eax );
+	mov( al, (type time.timerec [ebx]).mins );
+	
+	// The remainder will be the seconds:
+	
+	mov( dl, (type time.timerec [ebx]).secs );
+	
+	mov( ebxSave, ebx );
+	mov( edxSave, edx );
+	mov( rtnVal, eax );
+	leave();
+	ret( _parms_ );
+
+					
+end fromSecs;
+	
+end DateTime;			

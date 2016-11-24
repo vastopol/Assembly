@@ -1,0 +1,54 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit BsdUnit;
+#include( "bsd.hhf" )
+
+static
+	c_errno	:int32;	@external( "h_errno" );
+	
+procedure _gethostbyaddr( addr:dword; len:dword; _type:dword );
+	@cdecl;
+	@external( "gethostbyaddr" );
+	
+	
+
+// bsd.gethostbyaddr- Gets a hostent data structure using the host address.
+
+procedure bsd.gethostbyaddr( addr:dword; len:dword; _type:dword );
+	@nodisplay; @noframe;
+begin gethostbyaddr;
+
+	push( ebp );
+	mov( esp, ebp );
+	bsd.pushregs;
+	_gethostbyaddr( addr, len, _type );
+	add( 12, esp );
+	bsd.popregs;
+	test( eax, eax );
+	jz badRslt;
+	clc();
+	leave();
+	ret( _parms_ );
+	
+badRslt:
+	mov( c_errno, eax );
+	stc();
+	leave();
+	ret( _parms_ );
+	
+		
+end gethostbyaddr;
+
+end BsdUnit;

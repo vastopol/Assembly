@@ -1,0 +1,277 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+#include( "../include/fileiounit.hhf" )
+
+
+/************************************************************/
+/*                                                          */
+/* fgets-                                                   */
+/* a_fgets-                                                 */
+/*                                                          */
+/* These routines read a line of text from the specified    */
+/* file and store the text into a string.  The a_fgets      */
+/* routine allocates storage for the string on the heap     */
+/* and returns a pointer to the string in the EAX register. */
+/*                                                          */
+/************************************************************/
+
+
+#if( os.linux | os.freeBSD | os.macOS )
+#include( "stdlib.hhf" )
+
+procedure fileio.gets( Handle:dword; s:string ); @nodisplay; @noframe;
+var
+	Index:		uns32;
+	bytesRead:	dword;
+	c:			byte;
+	
+	procedure ReadChar; @nodisplay; @noframe; @returns( "al" );
+	begin ReadChar;
+	
+		/*
+		** Okay, read a single character from the
+		** specified file.
+		*/
+		
+		#if( os.linux )
+		
+			linux.read( ebp::Handle, ebp::c, 1 );
+			test( eax, eax );
+			js FileReadError;
+			jnz notEOF;
+			
+		#elseif( os.freeBSD )
+		
+			bsd.read( ebp::Handle, ebp::c, 1 );
+			jc FileReadError;
+			test( eax, eax );
+			jnz notEOF;
+			
+		#elseif(  os.macOS )
+		
+			mac.read( ebp::Handle, ebp::c, 1 );
+			jc FileReadError;
+			test( eax, eax );
+			jnz notEOF;
+			
+		#endif
+		
+			// If eof occurs in the middle of
+			// an input line, treat the eof
+			// as though it were an eoln.
+			//		
+			// If we're at the BOLN, then raise an
+			// EOF exception:
+			
+			cmp( ebp::Index, 0 );
+			je EOF;
+			mov( #$a, ebp::c );
+				
+		notEOF:
+		mov( ebp::c, al );
+		ret();
+		
+	EOF:
+		raise( ex.EndOfFile );
+	
+	FileReadError:
+		raise( ex.FileReadError );
+	
+	end ReadChar;
+
+	
+begin gets;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	push( eax );
+	push( ebx );
+	push( edi );
+		
+	// Initialize string length to zero.
+	
+	mov( 0, Index );
+	repeatUntilEOS:
+	
+		ReadChar();
+				
+		// If the current character is a line feed, then
+		// terminate reading characters from the file.
+		
+		cmp( al, stdio.lf );
+		je doneReading;
+		
+		// If it's not a lf, then append this character
+		// to the end of the string and check for overflow.
+		
+		mov( Index, ebx );
+		mov( s, edi );
+		mov( al, [edi+ebx] );
+		inc( Index );
+		inc( ebx );
+		cmp( ebx, (type str.strRec [edi]).maxlen );
+		jb repeatUntilEOS;
+		
+	
+	// Zero terminate the string and store away the
+	// length of the string.
+	
+	doneReading:
+	mov( Index, ebx );
+	mov( s, edi );
+	mov( 0, (type byte [edi+ebx]));
+	mov( ebx, (type str.strRec [edi]).length );
+	
+	pop( edi );
+	pop( ebx );
+	pop( eax );
+	leave( );
+	ret( _parms_ );
+	
+end gets;
+
+#elseif( os.win32 )
+
+	procedure fileio.gets( Handle:dword; s:string ); @nodisplay;
+	var
+		Index:		uns32;
+		bytesRead:	dword;
+		c:			byte;
+		
+		procedure ReadChar; @nodisplay; @noframe; @returns( "al" );
+		var
+			
+		begin ReadChar;
+		
+			ReadFile
+			( 
+				0, 
+				ebp::bytesRead, 
+				1, 
+				ebp::c, 
+				ebp::Handle 
+			);
+			test( eax, eax );
+			jz FileReadError;
+			
+			// Check for EOF.
+			// If eof occurs in the middle of
+			// an input line, treat the eof
+			// as though it were an eoln.
+			
+			cmp( ebp::bytesRead, 0 );
+			jne notEOF;
+			
+				cmp( ebp::Index, 0 );
+				je EOF;
+				mov( #$a, ebp::c );
+					
+			notEOF:
+			mov( ebp::c, al );
+			ret();
+			
+		FileReadError:
+			raise( ex.FileReadError );
+		
+		EOF:
+			raise( ex.EndOfFile );
+			
+		end ReadChar;
+
+		
+	begin gets;
+
+		pushad();
+		pushfd();
+		cld();
+		
+		// Initialize string length to zero.
+		
+		mov( 0, Index );
+		repeatUntilEndOfInput:
+		
+			
+			// If the character read was a return,
+			// read one more character to see if
+			// we're at the end of the line.  If so,
+			// don't include the return as part of the
+			// string we've read.
+			
+			ReadChar();
+			cmp( al, stdio.cr );
+			jne tryLF;
+			
+				ReadChar();
+				cmp( al, stdio.lf );
+				je tryLF;
+				
+					// If we found a cr without a lf following
+					// it, emit the cr to the string.
+					
+					mov( Index, ebx );
+					mov( s, edi );
+					mov( stdio.cr, (type char [edi+ebx] ));
+					inc( Index );
+
+					// Stop input operation if line is too long.
+					
+					inc( ebx );
+					cmp( ebx, (type str.strRec [edi]).maxlen );
+					jae endOfInput;					
+					
+				
+			tryLF:
+			
+			// If the current character is a line feed, then
+			// terminate reading characters from the file.
+			
+			cmp( al, stdio.lf );
+			je endOfInput;
+			
+			// If it's not a lf, then append this character
+			// to the end of the string and check for overflow.
+			
+			mov( Index, ebx );
+			mov( s, edi );
+			mov( al, [edi+ebx] );
+			inc( Index );
+			inc( ebx );
+			cmp( ebx, (type str.strRec [edi]).maxlen );
+			jb repeatUntilEndOfInput;
+			
+		// length of the string.
+		
+		endOfInput:
+		mov( Index, ebx );
+		mov( s, edi );
+		mov( 0, (type byte [edi+ebx]));
+		mov( ebx, (type str.strRec [edi]).length );
+		
+		popfd();
+		popad();
+		
+	end gets;
+	
+#else
+
+	#print( "Unknown OS!" )
+
+#endif
+	
+end FileIOUnit;
+

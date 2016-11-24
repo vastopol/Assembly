@@ -1,0 +1,48 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#include( "conv.hhf" )
+
+
+/****************************************************************/
+/*                                                              */
+/* h8Size                                                       */
+/*                                                              */
+/* This routine computes the minimum number of print            */
+/* positions needed to display a byte value in hexadecimal form.*/
+/* The size, in digits, is returned in the EAX register.        */
+/*                                                              */
+/* Input (bsize):                                               */
+/* 	AL-		Contains the value to compute the size of.          */
+/* 	                                                            */
+/* Returns:                                                     */
+/* 	EAX-	1 if AL<$10, 2 if AL >= $10.                        */
+/*                                                              */
+/****************************************************************/
+
+
+procedure conv.h8Size( bValue:byte in al ); @nodisplay; @noframe;
+begin h8Size;
+
+	cmp( al, $10 );
+	setae( al );
+	inc( al );
+	and( %11, eax );
+	ret();
+	
+end h8Size;
+
+end ConvUnit;

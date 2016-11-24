@@ -1,0 +1,134 @@
+unit wRectangle_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( wRectangle_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wRectangle objects here:
+
+
+					
+procedure wRectangle_t.create_wRectangle
+(
+	wrName		:string;
+	parent		:dword;
+	x			:dword; 
+	y			:dword;
+	width		:dword;
+	height		:dword;
+	lineColor	:dword;
+	fillColor	:dword 
+);;
+	
+_begin( wRectangle_t, create_wRectangle );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wRectangle_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	
+	// We're going to create a wFilledFrame object here.
+	
+	(type wFilledFrame_t [esi]).create_wFilledFrame
+	(
+		wrName,
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height,
+		lineColor,
+		fillColor,
+		fillColor
+	);
+	mov( cl, this.wBase_private.onHeap );
+	
+	// Set up the wRectangle specific fields here:
+		
+	howl.setType( wRectangle_c );
+	mov( &wRectangle_t._VMT_, this._pVMT_ );
+		
+		
+	pop( edx );
+	pop( ecx );			   
+	pop( eax );
+	
+_end( wRectangle_t, create_wRectangle );
+
+
+
+
+// processMessage draws the actual rectangle
+// when a WM_PAINT message comes along
+
+method wRectangle_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);
+var
+	r			:w.RECT;
+	hdc			:dword;
+	ps			:w.PAINTSTRUCT;
+
+_begin( wRectangle_t, processMessage );
+
+	if( uMsg = w.WM_PAINT ) then
+	
+		w.BeginPaint( this.handle, ps );
+			
+			mov( eax, hdc );
+			
+			mov( 0, r.left );
+			mov( this.wVisual_private.width, eax );
+			mov( eax, r.right );
+			
+			mov( 0, r.top );
+			mov( this.wVisual_private.height, eax );
+			mov( eax, r.bottom );
+												   			
+			// Fill the wRectangle's window with the background color:
+			
+			w.FillRect( hdc, r, this.wFilledFrame_private._fillBrush );
+			
+			// Frame the rectangle with the line color:
+			
+			w.FrameRect( hdc, r, this.wFilledFrame_private._lineBrush );
+						
+			
+		w.EndPaint( this.handle, ps );
+		exit processMessage;
+		
+	endif;
+	super.processMessage( hwnd, uMsg, wParam, lParam );
+	
+_end( wRectangle_t, processMessage );
+
+end	wRectangle_u;

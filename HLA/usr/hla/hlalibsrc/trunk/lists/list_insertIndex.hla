@@ -1,0 +1,83 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit lists;
+#include( "lists.hhf" )
+#include( "excepts.hhf" )
+
+
+
+const
+	nodeEDI: text := "(type node_t [edi])";
+	nodeEAX: text := "(type node_t [eax])";
+	
+
+
+// insertIndex
+//
+//	This function insert node "n" before the
+//	"posn"-th node in the list.  If "posn" has
+//	a value greater than the number of nodes in
+//	the list, then this function simply appends
+//	"n" to the end of the list.
+//
+//	Since this is a method, EDI is already wiped
+//	out upon entry.  So this code will not bother 
+//  to preserve it.  This function does return with
+//	ESI still pointing at the list object.
+
+
+procedure list_t.insertIndex( var n:node_t; posn: dword ); 
+	@nodisplay;
+	@noframe;
+	
+begin insertIndex;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	// Quick sanity check:
+	
+	cmp( n, NULL );
+	je AttemptToDerefNULL;
+	
+	cmp( posn, 0 );
+	jna firstNode;
+	
+		// This is the second or later node in the list.
+		// We'll cheat and decrement the posn value and
+		// then call append_index to do the actual work:
+		
+		dec( posn );
+		this.appendIndex( n, posn );
+		jmp allDone;
+		
+		
+	firstNode:
+	
+		this.insertFirst( n );		
+	
+	allDone:
+	
+	pop( ebp );
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end insertIndex;
+
+
+
+end lists;

@@ -1,0 +1,88 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit memory;
+
+
+#include( "strings.hhf" )
+#include( "../include/mem.hhf" )
+
+// stralloc2:
+//
+//	Allocate storage for an HLA string object.
+//	The size parameter specifies the number of characters.
+//	The callback parameter is a thunk that is called after storage
+//	for the string is allocated.
+//
+//	Must call malloc with size+8+? since we need to reserve space
+//	for the maxlen the curlen fields as well as space for a	zero
+//	terminating byte.  Note that HLA strings must always be dword
+//	aligned;  this code depends upon the fact that malloc always
+//	returns a pointer that is aligned on an 8-byte boundary in order
+//	to accomplish this.  HLA strings are always at least
+//	12 bytes long (including storage for the zero terminating byte).
+//	Hence the extra logic that *may* extend the size of the allocated
+//	storage.
+
+procedure str.alloc2( size:dword; callback:thunk ); 
+	@nodisplay;
+	@noframe;
+begin alloc2;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		push( esi );
+		push( edi );
+		
+		mov( size, eax );
+		add( 12, eax );		// 9 bytes for maxlen, curlen, and zero byte and
+		and( !3, eax );		//  round up to next dword multiple.
+		
+		mem.alloc( eax );
+		mov( size, ecx );
+
+		mov( size, ebx );		// Get maxlen value.
+		mov( ebx, [eax] ); 		// Store into maxlen field of string object.
+		xor( ebx, ebx );		// Zero out ebx.
+		 
+		mov( ebx, [eax+4] );	// Current string length is zero.
+		mov( bl, [eax+8] );		// Zero terminate the string.
+
+		callback();				// Invoke the thunk provided by the caller.
+
+		add( 8, eax );			// Return pointer to start of characters.
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( ebp );
+		ret( _parms_ );
+		
+
+end alloc2;
+
+
+
+
+end memory;
+
+
+
+
+	
+

@@ -1,0 +1,88 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit patterns;
+#includeOnce( "../include/pat.hhf" )
+#includeOnce( "patterns.hhf" )
+
+	
+	
+/**************************************************************/
+/*                                                            */
+/* PeekCset-                                                  */
+/*                                                            */
+/* Matches a single character in the specified character set. */
+/* Does not advance the string pointer.                       */
+/*                                                            */
+/* Disposition:	Eager/lazy abivalent                          */
+/* BackTrackable:	No.                                       */
+/*                                                            */
+/* Entry Parameters:                                          */
+/*                                                            */
+/* 	ESI:	Pointer to sequence of characters to match.       */
+/* 	EDI:	Pointer to byte beyond last char to match.        */
+/* 	cst:	Character set to match with.                      */
+/*                                                            */
+/* Exit Parameters (if success):                              */
+/*                                                            */
+/*  EBX:	ESI's value.									  */
+/* 	ESI:	Unchanged from entry value.                       */
+/* 	EDI:	Unchanged from entry value.                       */
+/*                                                            */
+/* Exit Parameters (if failure):                              */
+/* 														      */
+/* EDI:	Unchanged from original entry value.			      */
+/* ESI:	Unchanged from original entry value.			      */
+/*                                                            */
+/*                                                            */
+/* Unless noted, assume all other registers can be modified   */
+/* by this code.                                              */
+/*                                                            */
+/**************************************************************/
+
+
+
+
+
+procedure pat.peekCset( cst:cset ); @nodisplay; @noframe;
+begin peekCset;
+
+	push( ebp );		// must do this ourselves since noframe
+	mov( esp, ebp );	// is specified as an option.
+	
+	// Okay, match a single char in the character set.
+	
+	xor( eax, eax );
+	cmp( esi, edi );
+	jae fail1;
+	mov( [esi], al );
+	bt( eax, (type dword cst ));
+	jnc fail1;
+	
+	// Since this routine doesn't have to handle backtracking,
+	// a simple return indicates success.
+
+	mov( esi, ebx );
+	pop( ebp );
+	ret( _parms_ );
+	
+fail1:
+	pat._fail_( pat.FailTo );		
+
+		
+end peekCset;
+
+
+
+end patterns;

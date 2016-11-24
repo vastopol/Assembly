@@ -1,0 +1,12 @@
+ch_isgraphic_safe.o
+ch_isascii_safe.o
+ch_isspace_safe.o
+ch_isalphanum_safe.o
+ch_isxdigit_safe.o
+ch_isdigit_safe.o
+ch_toupper_safe.o
+ch_isctrl_safe.o
+ch_isupper_safe.o
+ch_tolower_safe.o
+ch_isalpha_safe.o
+ch_islower_safe.o

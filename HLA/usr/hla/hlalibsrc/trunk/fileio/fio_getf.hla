@@ -1,0 +1,86 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+#include( "../include/fileiounit.hhf" )
+
+// modified 2-1-2003 to deal with EOF on input
+// as a delimiter.
+
+
+
+procedure fileio.getf( Handle:dword ); @noframe; @nodisplay;
+var
+	Delims	:cset;
+	buffer	:byte[ 256 ];
+		
+begin getf;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	push( eax );
+	push( esi );
+	
+	conv.getDelimiters( Delims );
+	
+	// Skip over any leading delimiters:
+	
+	repeat
+	
+		fileio.getc( Handle );
+		bt( eax, (type dword Delims) );
+		
+	until( @nc );
+	
+	// Grab all the input characters until we
+	// encounter a delimiter or overrun the
+	// buffer.
+	
+	xor( esi, esi );
+	mov( al, buffer[esi] );
+	inc( esi );
+	
+	whileMoreChars:
+	
+		fileio.eof( Handle );
+		cmp( al, true );
+		je noMoreChars;
+		fileio.getc( Handle );
+		bt( eax, (type dword Delims) );
+		jc noMoreChars;
+	
+		mov( al, buffer[esi] );
+		inc( esi );
+		cmp( esi, 254 );
+		jae convErr;
+		jmp whileMoreChars;
+		
+	noMoreChars:
+	mov( 0, buffer[esi] );	// Provide a delimiter for atof.
+	lea( esi, buffer );
+	conv.atof();	
+	
+	pop( esi );
+	pop( eax );
+	leave( );
+	ret( _parms_ );
+	
+convErr:
+	raise( ex.ConversionError );
+
+end getf;
+end FileIOUnit;
+

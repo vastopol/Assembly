@@ -1,0 +1,75 @@
+unit rpcUnit;
+
+#includeOnce( "rpc.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "sockets.hhf" )
+#includeOnce( "excepts.hhf" )
+
+procedure rpc.rpcClientThread( objectPtr:dword );
+var
+	rpcClientTimeout	:uns32;
+	ipAdrs				:dword;
+	timeout				:thunk;
+	
+begin rpcClientThread;
+
+	try
+	
+		sock.hostAdrs();
+		mov( eax, ipAdrs );
+		mov( 10_000, rpcClientTimeout );
+		
+		thunk timeout :=
+		#{
+		
+			// On entry to thunk, EAX contains the address of the 
+			// timeout variable. Set this as desired for the timeout 
+			// (0.1 seconds, in this case).
+			
+			if( eax <> NULL ) then
+			
+				// Timeout is 0.1 seconds while waiting for
+				// connection:
+				
+				mov( 100_000, (type hla.timeval [eax]).tv_usec );
+				
+			endif;
+			xor( eax, eax );  			// don't time out
+			dec( rpcClientTimeout );	// Check timeout counter.
+			if( @z ) then
+			
+				inc( eax );				// force timeout
+			
+			endif;
+			
+		}#;
+			
+		mov( objectPtr, esi );
+		lea( edi, (type rpcBase_t [esi]).server );
+		
+		// Load EBX with the address of the connected method
+		// so we can pass this to the start method as the
+		// "Connected" procedure address.
+		
+		mov( (type rpcBase_t [esi]).clientConnectedAdrs, ebx );
+		(type server_t [edi]).start
+		(
+			ipAdrs,
+			(type rpcBase_t [esi]).rcvPort,
+			timeout,
+			ebx,
+			esi
+		);
+		
+	  anyexception
+	  
+	  	mov( objectPtr, esi );
+		mov( eax, (type rpcBase_t [esi]).clientConnectCode );
+		thread.setEvent( (type rpcBase_t [esi]).clientConnectEvent );
+	  
+	endtry;
+	
+end rpcClientThread;
+
+
+end rpcUnit;

@@ -1,0 +1,313 @@
+unit str_rmvword_unit;
+
+// synopsis
+//	remove first or last word from a string
+//	return result as desired
+//	zero length strings return zero in EAX.
+
+
+//	Version History:
+//
+//	Revision:	2
+//	Author:		Sevag Krikorian
+//	Date:		Oct. 10, 2007
+//	Note:		changed to library format
+//				cpyzn is now zstr.cpyn
+//
+//	Revision:	1
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 07, 2007
+//	Note:		1st release
+//				contents:
+//				a_rmv1stWord1		a_rmv1stWord2
+//				a_rmvLastWord1		a_rmvLastWord2
+//				rmv1stWord2			rmv1stWord3
+//				rmvLastWord2		rmvLastWord3
+//				utility procedure "removeWord" used by all the functions above
+//				shared utility procedure "cpyzn" 
+
+//
+// utility procedure called by rmvxWordn routines
+//	s			=	source string
+//	lastWord	=	if true, removes last word
+//	wordStr		=	destination for removed word
+//				=	0, allocate string on heap and return in EAX
+//	remainder	=	destination to store string with word removed, 
+//						or initial is not modified
+//				=	0, modify original string
+//
+//	Returns		
+//		carry clear = success
+//						EAX = pointer to string if it was allocated on HEAP
+//						wordStr and remainder are valid, if appropriate
+//		carry set	= failure
+//						wordStr, remainder are invalid
+
+	
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "zstrings.hhf" )
+	#includeOnce( "excepts.hhf" )
+	#includeOnce( "chars.hhf" )
+	#includeOnce( "memory.hhf" )
+
+	procedure str._removeWord
+	( 
+		s			:string; 
+		lastWord	:boolean; 
+		wordStr		:string; 
+		remainder	:string 
+	);
+		@nodisplay; @noframe; @noalignstack;
+		
+		
+	begin _removeWord;
+		
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( ebx );
+		push( ecx );
+		push( edx );
+		push( esi );
+		push( edi );
+		
+		mov( s, esi );
+		test( esi, esi );
+		jz raiseDerefNULL;
+		
+		mov( lastWord, al );
+		test( al, al );
+		jnz _doTail;
+		
+		call skipLeadingDelims;
+		
+		// get the first word start and end positions
+		mov( esi, edi );	// edi = start pos
+		sub( 1, esi );
+		xor( ecx, ecx );
+		xor( eax, eax );
+		
+		_getFirstWord:
+		
+			add( 1, esi );
+			mov( [esi], cl );
+			test( cl, cl );
+			jz _gotWord;
+			bt( ecx, chars.WhiteSpaceCset );
+			jnc _getFirstWord;
+			
+		jmp _gotWord;
+
+		
+		// remove last word
+		_doTail:
+
+		add( (type str.strRec[esi]).length, esi );
+		mov( s, edx );
+		call skipTrailingDelims;
+		
+		// here, if esi = s, nothing more to do
+		cmp( esi, edx );
+		je returnFalse;
+		
+		// get the last word start and end positions
+		
+		//add( 1, esi );	// esi = end pos
+		mov( esi, edi );
+		xor( ecx, ecx );
+		add( 1, edi );
+		_getLastWord:
+		
+			sub( 1, edi );
+			cmp( edi, edx );
+			je _doneLastWord;
+			mov( [edi], cl );
+			bt( ecx, chars.WhiteSpaceCset );
+			jnc _getLastWord;
+			
+		_doneLastWord:
+		
+		cmp( edi, edx );
+		je _gotWord;
+		
+		// went back too far
+		add( 1, edi );
+		
+		// fall through to _gotWord
+
+		_gotWord:
+				
+			// here, edi = start of word, esi = end of word
+			// if edi = esi we are at end of string and nothing
+			// more to return
+				
+			mov( esi, ecx );
+			sub( edi, ecx );
+			jz returnFalse;
+	
+			// ecx = number of bytes we need in wordStr
+			mov( wordStr, edx );
+			test( edx, edx );
+			jnz _noAlloc;
+			
+				// wordStr = 0, we need to allocate memory
+				str.alloc( ecx );
+				mov( eax, edx );
+				jmp _doneAlloc;
+			
+			// see if we have enough space in wordStr
+			_noAlloc:
+		
+				cmp( ecx, (type str.strRec[edx]).maxlen );
+				ja raiseStringOverflow;
+			
+			_doneAlloc:
+	
+			// edx = dest, edi = source, ecx = len
+			// copy the string
+			mov( ecx, (type str.strRec[edx]).length );
+			zstr.cpyn( edi, ecx, edx );
+			
+			
+			// determine if original string must be modified, or
+			// we have a valid remainder
+			mov( remainder, ebx );
+			test( ebx, ebx );
+			jz _modifyOriginal;
+	
+				// do not modify original, copy remainder into "remainder"
+				
+				cmp( lastWord, 0 );
+				je _fromFirst;
+				
+				// from last, edi =  end of new string
+				mov( s, esi );
+				sub( esi, edi );
+				jmp _checkSize;
+				
+				// first see how much total space we need
+				// esi = start of new string
+				
+				_fromFirst:
+				
+				mov( s, edi );
+				add( (type str.strRec[edi]).length, edi );
+				sub( esi, edi );
+				
+				// see if remainder can hold the data
+				_checkSize:
+				
+				cmp( edi, (type str.strRec[ebx]).MaxStrLen );
+				ja raiseStringOverflow;
+				
+				mov( edi, (type str.strRec[ebx]).length );
+				zstr.cpyn( esi, edi, ebx );
+				
+			jmp _returnSuccess;
+			
+			
+			// modify original string by removing first word
+			// esi = new start of string		
+			_modifyOriginal:
+			
+				// adjust length of original string
+				// we need to work it out again due to possible leading
+				// or trailing delimiters in the original string
+				cmp( lastWord, 0 );
+				je _firstWord;
+					
+					mov( s, esi );
+					add( (type str.strRec[esi]).length, esi );
+					sub( edi, esi );
+					mov( s, ebx );
+					sub( esi, (type str.strRec[ebx]).length );
+					mov( #0, (type byte[edi]) );
+					jmp _returnSuccess;
+				
+				_firstWord:
+				
+					mov( s, edi );
+					mov( esi, ecx );
+					sub( edi, ecx );
+					sub( ecx, (type str.strRec[edi]).length );
+					
+					sub( 1, esi );
+					sub( 1, edi );
+					_repmovs:
+						add( 1, esi );
+						add( 1, edi );
+						mov( [esi], al );
+						mov( al, [edi] );
+						test( al, al );
+						jnz _repmovs;
+			
+			jmp _returnSuccess;
+			
+		returnFalse:
+			clc();
+			jmp done;
+		
+		_returnSuccess:
+
+			// if wordStr was zero, return it in EAX
+			mov( wordStr, eax );
+			test( eax, eax );
+			jnz _retTrue;
+			
+			// edx = pointer to allocated string
+			mov( edx, eax );
+			
+			_retTrue:
+			stc();
+		
+		done:
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		
+		pop( ebp );
+		ret( _parms_ );
+		
+		// skip over leading delimiters
+		// esi = source		
+		skipLeadingDelims:
+			sub( 1, esi );
+			xor( eax, eax );
+			_skip:
+				add( 1, esi ); 
+				mov( [esi], al );
+				test( al, al );  // we don't want to scan beyond zero
+				jz _done;
+				bt( eax, chars.WhiteSpaceCset );
+				jc _skip;
+			_done:
+		ret();
+		
+		// skip over trailing delimiters
+		// esi = source
+		// edx = beginning of string
+		skipTrailingDelims:
+			xor( eax, eax );
+			add( 1, esi );
+			_skip2:
+				sub( 1, esi );
+				cmp( esi, edx );
+				je _done2;
+				mov( [esi], al );
+				bt( eax, chars.WhiteSpaceCset );
+				jc _skip2;
+			_done2:
+		ret();
+		
+
+		raiseDerefNULL:
+			raise( ex.AttemptToDerefNULL );
+			
+		raiseStringOverflow:
+			raise( ex.StringOverflow );
+		
+	end _removeWord;
+
+end str_rmvword_unit;

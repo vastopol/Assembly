@@ -1,0 +1,72 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+
+unit argsUnit;
+
+#includeOnce( "../include/osargs.hhf" )
+#includeOnce( "strings.hhf" )
+
+
+?@nodisplay 	:= true;
+?@noframe 		:= false;
+?@nostackalign 	:= true;
+
+
+/***************************************************************/
+/*                                                             */
+/* arg.args-                                                   */
+/*                                                             */
+/* This iterator returns each of the command line arguments,   */
+/* as their own string, on each iteration of the foreach loop. */
+/*                                                             */
+/***************************************************************/
+
+iterator arg.args;
+var
+	argIndex:	dword;
+
+begin args;
+
+	push( eax );
+	_hla.get_NeedsCmdLn();
+	cmp( al, false );
+	je hasCmdLn;
+	
+		arg.cmdLn();
+		
+	hasCmdLn:
+	xor( eax, eax );
+	mov( eax, argIndex );
+	_hla.get_argc();
+	cmp( eax, argIndex );
+	je iteratorDone;
+		forEachArg:
+
+			_hla.get_argv( argIndex );
+			str.a_cpy( eax );			// User's responsibility to free this!
+			yield();
+			add( 1, argIndex );
+			_hla.get_argc();
+			cmp( eax, argIndex );
+			ja forEachArg;
+		
+	iteratorDone:
+	pop( eax );
+	
+end args;
+
+
+
+end argsUnit;

@@ -1,0 +1,17 @@
+
+#if( ! @defined( stdlibdata_hhf ))
+?stdlibdata_hhf := true;
+
+namespace stdlib;
+
+readonly
+	hexCS		:cset;		external( "STDLIB_HEXCS" );
+	hexConvTbl	:byte[256]; external( "STDLIB_HEXCONVTBL" );
+	hexDigits	:char[16];	external( "STDLIB_HEXDIGITS" ); 
+	hexTbl		:char[512];	external( "STDLIB_HEXTBL" ); 
+
+
+end stdlib;
+
+#endif
+

@@ -1,0 +1,86 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit threads;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "os.hhf" )
+#includeOnce( "threads.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "memory.hhf" )
+#includeOnce( "../include/thread_private.hhf" )
+
+#if( os.win32 )
+	#include( "w.hhf" )
+#elseif( os.linux )
+	#include( "linux.hhf" )
+#elseif( os.freeBSD )
+	#include( "bsd.hhf" )
+#elseif( os.macOS )
+	#include( "mac.hhf" )
+#else
+	#error( "Unsupported OS" )
+#endif
+
+// thread.createCriticalSection-
+//
+//	Creates a critical section object and
+// returns a handle to that object in EAX.
+
+#if( os.win32 )
+
+	procedure thread.createCriticalSection;
+	begin createCriticalSection;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( ecx );
+		push( edx );
+		
+		mem.alloc( @size( w.CRITICAL_SECTION ));
+		push( eax );
+		w.InitializeCriticalSection( [eax] );
+		pop( eax );
+		pop( edx );
+		pop( ecx );
+		leave();
+		ret();
+		
+	end createCriticalSection;
+
+
+#elseif( os.linux | os.freeBSD | os.macOS )
+
+	procedure thread.createCriticalSection;
+	begin createCriticalSection;
+
+		mem.alloc( @size( pthread_mutex_t ));
+		push( eax );
+		pthread_mutex_init( [eax],  NULL );
+		pop( eax );
+		ret();
+		
+	end createCriticalSection;
+
+
+	
+#else
+
+	#error( "Unknown OS!" )
+	
+#endif
+
+
+end threads;

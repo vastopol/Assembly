@@ -1,0 +1,115 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "excepts.hhf" );
+
+
+	
+// fromWinFileTime-
+//
+//	This procedure converts a Windows FILETIME
+//	data type to stdlib date and time values.
+//  Windows FILETIMEs are the number of
+//	100ns periods since midnight, Jan 1, 1601.
+//
+//  Note that this function does not consider
+//	leap seconds.
+
+procedure time.fromWinFileTime
+( 
+		winTime	:qword; 
+	var HMS		:time.timerec; 
+	var DMY		:date.daterec 
+);
+	@nodisplay; 
+	@noframe;
+const
+	jan1_1601 := $00232F16;	// Julian day # for 1/1/1601
+	
+var
+	eaxSave	:dword;
+	ebxSave	:dword;
+	ecxSave	:dword;
+	edxSave	:dword;
+	
+begin fromWinFileTime;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( edx, edxSave );
+	mov( ecx, ecxSave );
+	mov( ebx, ebxSave );
+	mov( eax, eaxSave );
+	
+	// FILETIME is given in 100ns periods.
+	// So the first thing we've got to do
+	// is divide the time by 10,000,000 to
+	// get seconds:
+	
+	xor( edx, edx );
+	mov( (type dword winTime[4]), eax );
+	div( 10_000_000, edx:eax );
+	mov( eax, ebx );
+	mov( (type dword winTime), eax );
+	div( 10_000_000, edx:eax );
+	
+	// If the remainder is greater than 5,000,000
+	// then round up to the next second.
+	
+	cmp( edx, 5_000_000 );
+	cmc();
+	adc( 0, eax );
+	adc( 0, ebx );
+	
+	// Okay, ebx:eax now contains the
+	// number of seconds since jan 1, 1601.
+	// A division by 86,000 (the number of
+	// seconds in a day) gives us the number
+	// of days since jan 1, 1601 and the number
+	// of seconds since midnight:
+	
+	mov( eax, ecx );
+	mov( ebx, eax );
+	xor( edx, edx );
+	div( 60*60*24, edx:eax );
+	mov( eax, ebx );
+	mov( ecx, eax );
+	div( 60*60*24, edx:eax );
+ 
+	// Okay, edx contains the number of seconds
+	// since midnight and eax contains the number
+	// of days since jan 1, 1601.
+	
+	add( jan1_1601, eax );
+	jc invalidDate;
+	
+	date.fromJulian( eax, DMY );
+	time.fromSecs( edx, HMS ); 
+	
+	mov( edxSave, edx );
+	mov( ecxSave, ecx );
+	mov( ebxSave, ebx );
+	mov( eaxSave, eax );
+	leave();
+	ret( _parms_ );
+	
+invalidDate:
+	raise( ex.InvalidDate );
+					
+end fromWinFileTime;
+	
+end DateTime;			

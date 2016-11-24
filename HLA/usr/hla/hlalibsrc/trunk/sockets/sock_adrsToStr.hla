@@ -1,0 +1,51 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit sockets;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "sockets.hhf" )
+#includeOnce( "strings.hhf" )
+
+
+// sock.adrsToStr-
+//
+//	Converts a dword containing a network address (in Big Endian format)
+// to a string of the form "ddd.ddd.ddd.ddd".
+
+procedure sock.adrsToStr( a:dword; s:string );
+begin adrsToStr;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	str.put
+	( 
+		s, 
+		(type uns8 a[0]), 
+		'.',  
+		(type uns8 a[1]), 
+		'.',  
+		(type uns8 a[2]), 
+		'.',  
+		(type uns8 a[3])
+	);  
+	leave();
+	ret( _parms_ );	
+	
+	
+end adrsToStr;
+
+
+end sockets;

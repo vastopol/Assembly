@@ -1,0 +1,98 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+
+
+
+
+/*************************************************************/
+/*                                                           */
+/* lower,                                                    */
+/* a_lower-                                                  */
+/*                                                           */
+/* Just like upper and aupper above except, of course, these */
+/* routines translate upper case characters to lower case    */
+/* rather than vice versa.                                   */
+/*                                                           */
+/*************************************************************/
+
+procedure str.a_lower( src: string ); @noframe;
+begin a_lower;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( edi );
+	push( esi );
+	
+	mov( src, esi );
+	test( esi, esi );
+	jz attemptToDerefNULL;
+	
+	// Allocate a new string to hold the result.
+
+	mov( (type str.strRec [esi]).length, edi );
+	stralloc( edi );
+	
+	// Since the new string will be the same length as the src string,
+	// store the src string length into the length field of the newly
+	// allocated string storage.
+	
+	mov( edi, (type str.strRec [eax]).length );
+	
+	mov( eax, edi );	// Copy converted characters starting here.
+	push( eax );		// Save for use as return value.
+	
+	repeatUntilALeq0:
+	
+		mov( [esi], al );
+		
+		cmp( al, 'A' );
+		jb notUpperCase;
+		cmp( al, 'Z' );
+		ja notUpperCase;
+		
+			or( $20, al );		// Magic UC->lc translation.
+			
+		notUpperCase:
+		mov( al, [edi] );
+		inc( esi );
+		inc( edi );
+		cmp( al, 0 );
+		jne repeatUntilALeq0;
+	
+	pop( eax );			// Return pointer to new string.
+	pop( esi );
+	pop( edi );
+	pop( ebp );
+	ret( _parms_ );
+
+attemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );	
+	
+end a_lower;
+
+end stringUnit;
+
+
+
+
+	
+

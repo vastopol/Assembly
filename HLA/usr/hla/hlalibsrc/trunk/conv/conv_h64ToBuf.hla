@@ -1,0 +1,166 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "stdlibdata.hhf" )
+#includeOnce( "conv.hhf" )
+
+
+/************************************************************************/
+/*                                                                      */
+/* h64ToBuf,                                                            */
+/*                                                                      */
+/* This routine converts the value passed in q to a sequence of         */
+/* characters that form the hexadecimal representation of the value.    */
+/* It stores the  character output starting at the location specified   */
+/* by the EDI register.  Note that the buffer pointed at by EDI must be */
+/* large enough to hold the result (up to two bytes), no checking is    */
+/* done.                                                                */
+/*                                                                      */
+/* Unlike qToBuf, this routine will produce only the minimum number of  */
+/* characters needed for the hexadecimal representation of q.           */
+/*                                                                      */
+/************************************************************************/
+
+
+procedure conv.h64ToBuf( q:qword; var buffer:var in edi );  
+	@nodisplay; 
+	@noalignstack; 
+	@noframe;
+	
+begin h64ToBuf;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+
+	cmp( (type dword q[4]), 0 );
+	jne doFullQWord;
+
+		mov( (type dword q), eax );
+		conv.h32ToBuf( eax, [edi] );
+		pop( ebx );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ );
+
+	doFullQWord:
+
+	
+	movzx( (type byte q[7]), ebx );
+	test( ebx, ebx );
+	jz noByte7;
+	
+		cmp( ebx, $f );
+		ja all16Digits;
+		
+			mov( stdlib.hexDigits[ebx], al );
+			mov( al, [edi] );
+			add( 1, edi );
+			jmp doLast14Digits;
+
+		all16Digits:
+			mov( (type word stdlib.hexTbl[ebx*2]), ax );
+			mov( ax, [edi] );
+			add( 2, edi );
+
+		doLast14Digits:
+			movzx( (type byte q[6]), ebx );
+			mov( (type word stdlib.hexTbl[ebx*2]), ax );
+			mov( ax, [edi] );
+			add( 2, edi );
+
+		_doLast12Digits:
+			Output_();
+
+		doLast12Digits:
+			movzx( (type byte q[5]), ebx );
+			mov( (type word stdlib.hexTbl[ebx*2]), ax );
+			mov( ax, [edi] );
+			add( 2, edi );
+
+		doLast10Digits:
+			movzx( (type byte q[4]), ebx );
+			mov( (type word stdlib.hexTbl[ebx*2]), ax );
+			mov( ax, [edi] );
+			add( 2, edi );
+
+		_doLast8Digits:
+			Output_();
+
+		doLast8Digits:
+			movzx( (type byte q[3]), ebx );
+			mov( (type word stdlib.hexTbl[ebx*2]), ax );
+			mov( ax, [edi] );
+			movzx( (type byte q[2]), ebx );
+			mov( (type word stdlib.hexTbl[ebx*2]), ax );
+			mov( ax, [edi+2] );
+			add( 4, edi );
+
+			Output_();
+		
+			movzx( (type byte q[1]), ebx );
+			mov( (type word stdlib.hexTbl[ebx*2]), ax );
+			mov( ax, [edi] );
+			movzx( (type byte q[0]), ebx );
+			mov( (type word stdlib.hexTbl[ebx*2]), ax );
+			mov( ax, [edi+2] );
+			add( 4, edi );
+
+			pop( ebx );
+			pop( eax );
+			pop( ebp );
+			ret( _parms_ );
+
+	noByte7:
+		movzx( (type byte q[6]), ebx );
+		test( ebx, ebx );
+		jz noByte6;
+		cmp( ebx, $0F );
+		ja doLast14Digits;
+
+			mov( stdlib.hexDigits[ebx], al );
+			mov( al, [edi] );
+			add( 1, edi );
+			jmp _doLast12Digits;
+
+			
+	noByte6:
+		movzx( (type byte q[5]), ebx );
+		test( ebx, ebx );
+		jz noByte5;
+		cmp( ebx, $0F );
+		ja doLast12Digits;
+
+			mov( stdlib.hexDigits[ebx], al );
+			mov( al, [edi] );
+			add( 1, edi );
+			jmp doLast10Digits;
+
+	noByte5:
+		movzx( (type byte q[4]), ebx );
+		cmp( ebx, $0F );
+		ja doLast10Digits;
+
+			mov( stdlib.hexDigits[ebx], al );
+			mov( al, [edi] );
+			add( 1, edi );
+			jmp _doLast8Digits;
+							
+end h64ToBuf;
+
+end ConvUnit;

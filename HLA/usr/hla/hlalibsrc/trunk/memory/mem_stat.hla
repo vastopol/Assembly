@@ -1,0 +1,93 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit memory;
+
+
+#include( "strings.hhf" )
+#include( "../include/mem.hhf" )
+
+// mem.stat:
+//
+//	Returns the following statistics about the
+// heap region:
+//
+// EAX - Total amount of space reserved for the heap.
+// EBX - Total amount of free space available in the heap.
+// ECX - Largest contiguous block of free space available.
+// EDX - Number of blocks on the heap.
+// EDI - Number of free blocks on the heap.
+
+
+procedure mem.stat; @nodisplay; @noframe;
+const
+	memblk	:text := "(type memblock [esi])";
+	
+begin stat;
+
+	#if( @thread )
+	
+		_hla.memCSenter();
+		
+	#endif
+	push( esi );
+	mov( listHead, esi );
+	xor( eax, eax );
+	xor( ebx, ebx );
+	xor( ecx, ecx );
+	xor( edx, edx );
+	xor( edi, edi );
+	jmp enterWhile;
+	whileESInotNULL:
+	
+		inc( edx );					// Bump block count by one.
+		add( memblk.size, eax );	// Bump up heap size appropriately.
+		cmp( memblk.refCount, 0 );
+		jne refCntNot0;
+		
+			inc( edi );					// Bump # of free blocks.
+			add( memblk.size, EBX );	// Bump up free space.
+			cmp( ecx, memblk.size );
+			jnbe ecxNotLEmemblkSize;
+			
+				mov( memblk.size, ecx );
+				
+			ecxNotLEmemblkSize:
+			
+		refCntNot0:
+		mov( memblk.next, esi );
+	enterWhile:
+		test( esi, esi );
+		jnz whileESInotNULL;
+
+	pop( esi );
+	#if( @thread )
+	
+		_hla.memCSleave();
+		
+	#endif
+	ret();
+
+end stat;
+
+
+
+
+end memory;
+
+
+
+
+	
+

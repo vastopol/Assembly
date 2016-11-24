@@ -1,0 +1,74 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+
+
+/***********************************************************/
+/*                                                         */
+/* i8Size                                                 */
+/*                                                         */
+/* This routine computes the minimum number of print       */
+/* positions needed to display an int8 value.              */
+/* The size, in digits, is returned in the EAX register.   */
+/*                                                         */
+/* Input:                                                  */
+/* 	iValue parameter contains int8 value.                  */
+/* 	                                                       */
+/* Returns:                                                */
+/* 	Digit count in EAX.                                    */
+/*                                                         */
+/***********************************************************/
+
+
+procedure conv.i8Size( iValue:byte in al ); @nodisplay; @noframe;
+begin i8Size;
+
+	// No need to check OutputUnderscores as
+	// the result is always three digits or less.
+
+	cmp( al, 0 );
+	jl negativeValue;
+	
+		cmp( al, 10 );
+		jb one;
+		cmp( al, 100 );
+		jb two;
+
+		three:
+			mov( 3, eax );
+			ret();
+		
+	negativeValue:
+		cmp( al, -10 );
+		jg two;
+		cmp( al, -100 );
+		jg three;
+		mov( 4, eax );
+		ret();
+
+	two:
+		mov( 2, eax );
+		ret();
+
+	one:
+		mov( 1, eax );
+		ret();
+
+end i8Size;
+
+end ConvUnit;

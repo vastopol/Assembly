@@ -1,0 +1,112 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "excepts.hhf" )
+
+	
+// toWinFileTime-
+//
+//	This procedure converts a stdlib date/time to
+//  the number of 100-nanosecond intervals since 
+//  January 1, 1601. It returns the 64-bit result
+//  in EDX:EAX.
+
+procedure time.toWinFileTime( DMY:date.daterec; HMS:time.timerec ); 
+	@nodisplay; 
+	@noframe;
+const
+	jan1_1601 := $00232F16;	// Julian day # for 1/1/1601
+	
+var
+	ebxSave	:dword;
+	ecxSave	:dword;
+	ediSave	:dword;
+	
+begin toWinFileTime;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( edi, ediSave );
+	mov( ecx, ecxSave );
+	mov( ebx, ebxSave );
+	
+	date.toJulian( DMY );
+	sub( jan1_1601, eax );
+	js invalidDate;
+	
+	// Convert days since 1/1/1601
+	// to seconds (producing a 64-bit 
+	// value in edx:ebx):
+	
+	mul( 60*60*24, eax );
+	mov( eax, ebx );
+	
+	// Convert time since midnight
+	// to seconds:
+	
+	movzx( HMS.hours, eax );
+	intmul( 60, eax );
+	movzx( HMS.mins, ecx );
+	add( ecx, eax );
+	intmul( 60, eax );
+	movzx( HMS.secs, ecx );
+	add( ecx, eax );
+	
+	// Add the seconds since 1/1/1601
+	// and the seconds since midnight together:
+	
+	add( ebx, eax );
+	adc( 0, edx );
+	
+	// Now we've got seconds since 1/1/1601,
+	// convert to 100 nanosecond periods
+	// by multiplying by 10,000,000
+	
+	mov( edx, ecx );
+	xor( edx, edx );
+	mul( 10_000_000, eax );
+	mov( eax, ebx );
+	mov( edx, edi );
+	mov( ecx, eax );
+	mul( 10_000_000, eax );
+	
+	// If there is an overflow beyond 64 bits
+	// raise an invalid date exception:
+	
+	or( edx, edx );
+	jnz invalidDate;
+	
+	// Return the 64-bit result in EDX:EAX
+	
+	mov( eax, edx );
+	add( edi, edx );
+	jc invalidDate;
+	
+	mov( ebx, eax );
+	
+	mov( ediSave, edi );
+	mov( ecxSave, ecx );
+	mov( ebxSave, ebx );
+	leave();
+	ret( _parms_ );
+	
+invalidDate:
+	raise( ex.InvalidDate );
+					
+end toWinFileTime;
+	
+end DateTime;			

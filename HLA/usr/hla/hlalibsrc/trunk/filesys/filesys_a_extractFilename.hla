@@ -1,0 +1,56 @@
+unit filePath_unit;
+
+// a_extractFilename-
+//
+//	Extracts the filename portion of a pathname sequence.
+//	Allocates storage for the filename on the heap and returns
+//	a pointer to that newly allocated filename in EAX and the
+//	carry flag set.
+//
+//	If this function fails because there is no filename component,
+//	it clears the carry flag and returns a pointer to an empty string
+//	(allocated on the heap) in EAX.
+	
+	#includeOnce( "filesys.hhf" )
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "excepts.hhf" )
+	#includeOnce( "memory.hhf" )
+	
+
+
+	procedure filesys.a_extractFilename( pathname:string );
+		@nodisplay; @noframe; @noalignstack;
+	
+	begin a_extractFilename;
+		
+		push( ebp );
+		mov( esp, ebp );
+
+		mov( pathname, eax );
+		test( eax, eax );				// Sanity check
+		jz AttemptToDerefNull;
+		
+		mov( (type str.strRec [eax]).length, eax );
+		test( eax, eax );				// No pathname if zero-length string.
+		jz returnFalse;
+		
+			str.alloc( eax );
+			filesys.extractFilename( pathname, eax );
+			jc returnTrue;
+			str.free( eax );		// No need to keep this storage 
+		
+		returnFalse:
+			str.alloc( 1 );			// Creates an empty string.
+			clc();					// Return failure (no filename present).
+			
+		returnTrue:
+			leave();
+			ret( _parms_ );
+		
+	AttemptToDerefNull:
+		raise( ex.AttemptToDerefNULL );
+		
+	end a_extractFilename;
+
+
+end filePath_unit;

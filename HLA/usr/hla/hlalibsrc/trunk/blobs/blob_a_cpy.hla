@@ -1,0 +1,107 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+#include( "threads.hhf" );
+
+
+
+// a_cpy-                                                       
+//                                                              
+// Allocates enough storage to hold a copy of the source blob   
+// and then copies the source blob to the allocated storage.  
+// Returns a pointer to the allocated storage in eax (note: must
+// use "blob.free" to free up the string allocated via a_cpy).   
+
+
+procedure blob.a_cpy( src:blob.blob ); @noframe;
+begin a_cpy;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	// Get the current length of the source blob and allocate
+	// storage for a blob that will be this length.
+
+	mov( src, eax );
+	test( eax, eax );
+	jz attemptToDerefNULL;
+	
+	#if( @thread )
+	try
+	
+		thread.enterCriticalSection
+		( 
+			(type blob.blobRec [eax]).criticalSection 
+		);
+			
+	#endif
+	
+		push( (type blob.blobRec [eax]).rcursor );		// Save for later.
+		push( (type blob.blobRec [eax]).wcursor );		// Save for later.
+		mov( (type blob.blobRec [eax]).length, eax );
+		blob.alloc( eax );
+		
+		// Set the cursors to the same positions as the source string.
+		
+		pop( (type blob.blobRec [eax]).wcursor );
+		pop( (type blob.blobRec [eax]).rcursor );
+		
+		// Copy the source blob to this newly allocated storage.
+		
+		blob._cpy( src, eax );	// Special version with no critical section.
+	
+	#if( @thread )
+	
+	  anyexception
+	
+		mov( src, edx );
+		thread.leaveCriticalSection
+		( 
+			(type blob.blobRec [edx]).criticalSection 
+		);
+		reraise( eax );
+		
+	endtry;
+	push( eax );
+	mov( src, eax );
+	thread.leaveCriticalSection
+	( 
+		(type blob.blobRec [eax]).criticalSection 
+	);
+	pop( eax );
+		
+	#endif
+	pop( ebp );
+	ret( _parms_ );
+	
+attemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end a_cpy;
+
+
+end blobUnit;
+
+
+
+
+	
+

@@ -1,0 +1,2073 @@
+program internalFuncs_test;
+#include( "stdlib.hhf" )
+#include( "../../trunk/include/conversions.hhf" )
+
+const	 
+	printCmps := false;
+
+readonly
+	qw0							:qword  := 0;
+	lw0							:lword  := 0;
+
+	_0							:string := "0";
+	_1							:string := "1";
+	_127						:string := "127";
+	_128						:string := "128";
+	_255						:string := "255";
+	_256						:string := "256";
+	_32767						:string := "32767";
+	_32768						:string := "32768";
+	_65535						:string := "65535";
+	_65536						:string := "65536";
+	_2147483647					:string := "2147483647";
+	_2147483648					:string := "2147483648";
+	_4294967295					:string := "4294967295";
+	_4294967296					:string := "4294967296";
+	_9223372036854775807		:string := "9223372036854775807";
+	_9223372036854775808		:string := "9223372036854775808";
+	_18446744073709551615		:string := "18446744073709551615";
+	_18446744073709551616		:string := "18446744073709551616";
+
+	_170141183460469231731687303715884105727 :string :=
+							"170141183460469231731687303715884105727";
+
+	_170141183460469231731687303715884105728 :string :=
+							"170141183460469231731687303715884105728";
+
+	_340282366920938463463374607431768211455 :string :=
+							"340282366920938463463374607431768211455";
+
+	_340282366920938463463374607431768211456 :string :=
+							"340282366920938463463374607431768211456";
+
+
+      			        _32_767	:string :=                     "32_767";
+      			        _32_768	:string :=                     "32_768";
+      			        _65_535	:string :=                     "65_535";
+      			        _65_536	:string :=                     "65_536";
+	             _2_147_483_647	:string :=              "2_147_483_647";
+	             _2_147_483_648	:string :=              "2_147_483_648";
+	             _4_294_967_295	:string :=              "4_294_967_295";
+	             _4_294_967_296	:string :=              "4_294_967_296";
+	 _9_223_372_036_854_775_807	:string :=  "9_223_372_036_854_775_807";
+	 _9_223_372_036_854_775_808	:string :=  "9_223_372_036_854_775_808";
+	_18_446_744_073_709_551_615	:string := "18_446_744_073_709_551_615";
+	_18_446_744_073_709_551_616	:string := "18_446_744_073_709_551_616";
+
+	_170_141_183_460_469_231_731_687_303_715_884_105_727 :string :=
+						"170_141_183_460_469_231_731_687_303_715_884_105_727";
+
+	_170_141_183_460_469_231_731_687_303_715_884_105_728 :string :=
+						"170_141_183_460_469_231_731_687_303_715_884_105_728";
+
+	_340_282_366_920_938_463_463_374_607_431_768_211_455 :string :=
+						"340_282_366_920_938_463_463_374_607_431_768_211_455";
+
+	_340_282_366_920_938_463_463_374_607_431_768_211_456 :string :=
+						"340_282_366_920_938_463_463_374_607_431_768_211_456";
+
+
+	_4_0						:string := "    0";
+	_4_1						:string := "    1";
+	_4_127						:string := "    127";
+	_4_128						:string := "    128";
+	_4_255						:string := "    255";
+	_4_256						:string := "    256";
+	_4_32767					:string := "    32767";
+	_4_32768					:string := "    32768";
+	_4_65535					:string := "    65535";
+	_4_65536					:string := "    65536";
+	_4_2147483647				:string := "    2147483647";
+	_4_2147483648				:string := "    2147483648";
+	_4_4294967295				:string := "    4294967295";
+	_4_4294967296				:string := "    4294967296";
+	_4_9223372036854775807		:string := "    9223372036854775807";
+	_4_9223372036854775808		:string := "    9223372036854775808";
+	_4_18446744073709551615		:string := "    18446744073709551615";
+	_4_18446744073709551616		:string := "    18446744073709551616";
+
+	_4_170141183460469231731687303715884105727 :string :=
+							"    170141183460469231731687303715884105727";
+
+	_4_170141183460469231731687303715884105728 :string :=
+							"    170141183460469231731687303715884105728";
+
+	_4_340282366920938463463374607431768211455 :string :=
+							"    340282366920938463463374607431768211455";
+
+	_4_340282366920938463463374607431768211456 :string :=
+							"    340282366920938463463374607431768211456";
+
+
+
+	                    _4_32_767	:string :=                     "    32_767";
+	                    _4_32_768	:string :=                     "    32_768";
+	                    _4_65_535	:string :=                     "    65_535";
+	                    _4_65_536	:string :=                     "    65_536";
+	             _4_2_147_483_647	:string :=              "    2_147_483_647";
+	             _4_2_147_483_648	:string :=              "    2_147_483_648";
+	             _4_4_294_967_295	:string :=              "    4_294_967_295";
+	             _4_4_294_967_296	:string :=              "    4_294_967_296";
+	 _4_9_223_372_036_854_775_807	:string :=  "    9_223_372_036_854_775_807";
+	 _4_9_223_372_036_854_775_808	:string :=  "    9_223_372_036_854_775_808";
+	_4_18_446_744_073_709_551_615	:string := "    18_446_744_073_709_551_615";
+	_4_18_446_744_073_709_551_616	:string := "    18_446_744_073_709_551_616";
+
+	_4_170_141_183_460_469_231_731_687_303_715_884_105_727 :string :=
+					"    170_141_183_460_469_231_731_687_303_715_884_105_727";
+
+	_4_170_141_183_460_469_231_731_687_303_715_884_105_728 :string :=
+					"    170_141_183_460_469_231_731_687_303_715_884_105_728";
+
+	_4_340_282_366_920_938_463_463_374_607_431_768_211_455 :string :=
+					"    340_282_366_920_938_463_463_374_607_431_768_211_455";
+
+	_4_340_282_366_920_938_463_463_374_607_431_768_211_456 :string :=
+					"    340_282_366_920_938_463_463_374_607_431_768_211_456";
+
+
+
+	                   _m4_0	:string :=                    "0    ";
+	                   _m4_1	:string :=                    "1    ";
+	                 _m4_127	:string :=                  "127    ";
+	                 _m4_128	:string :=                  "128    ";
+	                 _m4_255	:string :=                  "255    ";
+	                 _m4_256	:string :=                  "256    ";
+	               _m4_32767	:string :=                "32767    ";
+	               _m4_32768	:string :=                "32768    ";
+	               _m4_65535	:string :=                "65535    ";
+	               _m4_65536	:string :=                "65536    ";
+	          _m4_2147483647	:string :=           "2147483647    ";
+	          _m4_2147483648	:string :=           "2147483648    ";
+	          _m4_4294967295	:string :=           "4294967295    ";
+	          _m4_4294967296	:string :=           "4294967296    ";
+	 _m4_9223372036854775807	:string :=  "9223372036854775807    ";
+	 _m4_9223372036854775808	:string :=  "9223372036854775808    ";
+	_m4_18446744073709551615	:string := "18446744073709551615    ";
+	_m4_18446744073709551616	:string := "18446744073709551616    ";
+
+	_m4_170141183460469231731687303715884105727 :string :=
+							"170141183460469231731687303715884105727    ";
+
+	_m4_170141183460469231731687303715884105728 :string :=
+							"170141183460469231731687303715884105728    ";
+
+	_m4_340282366920938463463374607431768211455 :string :=
+							"340282366920938463463374607431768211455    ";
+
+	_m4_340282366920938463463374607431768211456 :string :=
+							"340282366920938463463374607431768211456    ";
+
+
+
+	                    _m4_32_767	:string :=                     "32_767    ";
+	                    _m4_32_768	:string :=                     "32_768    ";
+	                    _m4_65_535	:string :=                     "65_535    ";
+	                    _m4_65_536	:string :=                     "65_536    ";
+	             _m4_2_147_483_647	:string :=              "2_147_483_647    ";
+	             _m4_2_147_483_648	:string :=              "2_147_483_648    ";
+	             _m4_4_294_967_295	:string :=              "4_294_967_295    ";
+	             _m4_4_294_967_296	:string :=              "4_294_967_296    ";
+	 _m4_9_223_372_036_854_775_807	:string :=  "9_223_372_036_854_775_807    ";
+	 _m4_9_223_372_036_854_775_808	:string :=  "9_223_372_036_854_775_808    ";
+	_m4_18_446_744_073_709_551_615	:string := "18_446_744_073_709_551_615    ";
+	_m4_18_446_744_073_709_551_616	:string := "18_446_744_073_709_551_616    ";
+
+	_m4_170_141_183_460_469_231_731_687_303_715_884_105_727 :string :=
+					"170_141_183_460_469_231_731_687_303_715_884_105_727    ";
+
+	_m4_170_141_183_460_469_231_731_687_303_715_884_105_728 :string :=
+					"170_141_183_460_469_231_731_687_303_715_884_105_728    ";
+
+	_m4_340_282_366_920_938_463_463_374_607_431_768_211_455 :string :=
+					"340_282_366_920_938_463_463_374_607_431_768_211_455    ";
+
+	_m4_340_282_366_920_938_463_463_374_607_431_768_211_456 :string :=
+					"340_282_366_920_938_463_463_374_607_431_768_211_456    ";
+
+
+
+
+	_minus_1						:string := "-1";
+	_minus_127						:string := "-127";
+	_minus_128						:string := "-128";
+	_minus_255						:string := "-255";
+	_minus_256						:string := "-256";
+	_minus_32767					:string := "-32767";
+	_minus_32768					:string := "-32768";
+	_minus_65535					:string := "-65535";
+	_minus_65536					:string := "-65536";
+	_minus_2147483647				:string := "-2147483647";
+	_minus_2147483648				:string := "-2147483648";
+	_minus_4294967295				:string := "-4294967295";
+	_minus_4294967296				:string := "-4294967296";
+	_minus_9223372036854775807		:string := "-9223372036854775807";
+	_minus_9223372036854775808		:string := "-9223372036854775808";
+	_minus_18446744073709551615		:string := "-18446744073709551615";
+	_minus_18446744073709551616		:string := "-18446744073709551616";
+
+	_minus_170141183460469231731687303715884105727 :string :=
+						"-170141183460469231731687303715884105727";
+
+	_minus_170141183460469231731687303715884105728 :string :=
+						"-170141183460469231731687303715884105728";
+
+	_minus_340282366920938463463374607431768211455 :string :=
+							"-340282366920938463463374607431768211455";
+
+
+
+	_minus4_1						:string := "    -1";
+	_minus4_127						:string := "    -127";
+	_minus4_128						:string := "    -128";
+	_minus4_255						:string := "    -255";
+	_minus4_256						:string := "    -256";
+	_minus4_32767					:string := "    -32767";
+	_minus4_32768					:string := "    -32768";
+	_minus4_65535					:string := "    -65535";
+	_minus4_65536					:string := "    -65536";
+	_minus4_2147483647				:string := "    -2147483647";
+	_minus4_2147483648				:string := "    -2147483648";
+	_minus4_4294967295				:string := "    -4294967295";
+	_minus4_4294967296				:string := "    -4294967296";
+	_minus4_9223372036854775807		:string := "    -9223372036854775807";
+	_minus4_9223372036854775808		:string := "    -9223372036854775808";
+	_minus4_18446744073709551615	:string := "    -18446744073709551615";
+	_minus4_18446744073709551616	:string := "    -18446744073709551616";
+
+	_minus4_170141183460469231731687303715884105727 :string :=
+						"    -170141183460469231731687303715884105727";
+
+	_minus4_170141183460469231731687303715884105728 :string :=
+						"    -170141183460469231731687303715884105728";
+
+	_minus4_340282366920938463463374607431768211455 :string :=
+						"    -340282366920938463463374607431768211455";
+
+
+
+	                    _minus4_32_767	:string :=                "    -32_767";
+	                    _minus4_32_768	:string :=                "    -32_768";
+	                    _minus4_65_535	:string :=                "    -65_535";
+	                    _minus4_65_536	:string :=                "    -65_536";
+	             _minus4_2_147_483_647	:string :=           "    -2_147_483_647";
+	             _minus4_2_147_483_648	:string :=           "    -2_147_483_648";
+	             _minus4_4_294_967_295	:string :=           "    -4_294_967_295";
+	             _minus4_4_294_967_296	:string :=           "    -4_294_967_296";
+	 _minus4_9_223_372_036_854_775_807	:string :=  "    -9_223_372_036_854_775_807";
+	 _minus4_9_223_372_036_854_775_808	:string :=  "    -9_223_372_036_854_775_808";
+	_minus4_18_446_744_073_709_551_615	:string := "    -18_446_744_073_709_551_615";
+	_minus4_18_446_744_073_709_551_616	:string := "    -18_446_744_073_709_551_616";
+
+	_minus4_170_141_183_460_469_231_731_687_303_715_884_105_727 :string :=
+					"    -170_141_183_460_469_231_731_687_303_715_884_105_727";
+
+	_minus4_170_141_183_460_469_231_731_687_303_715_884_105_728 :string :=
+					"    -170_141_183_460_469_231_731_687_303_715_884_105_728";
+
+	_minus4_340_282_366_920_938_463_463_374_607_431_768_211_455 :string :=
+					"    -340_282_366_920_938_463_463_374_607_431_768_211_455";
+
+
+
+	                    _minus_32_767	:string :=                     "-32_767";
+	                    _minus_32_768	:string :=                     "-32_768";
+	                    _minus_65_535	:string :=                     "-65_535";
+	                    _minus_65_536	:string :=                     "-65_536";
+	             _minus_2_147_483_647	:string :=              "-2_147_483_647";
+	             _minus_2_147_483_648	:string :=              "-2_147_483_648";
+	             _minus_4_294_967_295	:string :=              "-4_294_967_295";
+	             _minus_4_294_967_296	:string :=              "-4_294_967_296";
+	 _minus_9_223_372_036_854_775_807	:string :=  "-9_223_372_036_854_775_807";
+	 _minus_9_223_372_036_854_775_808	:string :=  "-9_223_372_036_854_775_808";
+	_minus_18_446_744_073_709_551_615	:string := "-18_446_744_073_709_551_615";
+	_minus_18_446_744_073_709_551_616	:string := "-18_446_744_073_709_551_616";
+
+	_minus_170_141_183_460_469_231_731_687_303_715_884_105_727 :string :=
+						"-170_141_183_460_469_231_731_687_303_715_884_105_727";
+
+	_minus_170_141_183_460_469_231_731_687_303_715_884_105_728 :string :=
+						"-170_141_183_460_469_231_731_687_303_715_884_105_728";
+
+	_minus_340_282_366_920_938_463_463_374_607_431_768_211_455 :string :=
+						"-340_282_366_920_938_463_463_374_607_431_768_211_455";
+
+
+	                   _minusm4_1	:string :=                    "-1    ";
+	                 _minusm4_127	:string :=                  "-127    ";
+	                 _minusm4_128	:string :=                  "-128    ";
+	                 _minusm4_255	:string :=                  "-255    ";
+	                 _minusm4_256	:string :=                  "-256    ";
+	               _minusm4_32767	:string :=                "-32767    ";
+	               _minusm4_32768	:string :=                "-32768    ";
+	               _minusm4_65535	:string :=                "-65535    ";
+	               _minusm4_65536	:string :=                "-65536    ";
+	          _minusm4_2147483647	:string :=           "-2147483647    ";
+	          _minusm4_2147483648	:string :=           "-2147483648    ";
+	          _minusm4_4294967295	:string :=           "-4294967295    ";
+	          _minusm4_4294967296	:string :=           "-4294967296    ";
+	 _minusm4_9223372036854775807	:string :=  "-9223372036854775807    ";
+	 _minusm4_9223372036854775808	:string :=  "-9223372036854775808    ";
+	_minusm4_18446744073709551615	:string := "-18446744073709551615    ";
+	_minusm4_18446744073709551616	:string := "-18446744073709551616    ";
+
+	_minusm4_170141183460469231731687303715884105727 :string :=
+						"-170141183460469231731687303715884105727    ";
+
+	_minusm4_170141183460469231731687303715884105728 :string :=
+						"-170141183460469231731687303715884105728    ";
+
+	_minusm4_340282366920938463463374607431768211455 :string :=
+						"-340282366920938463463374607431768211455    ";
+
+
+
+
+	               _minusm4_32_767		:string :=                     "-32_767    ";
+	               _minusm4_32_768		:string :=                     "-32_768    ";
+	               _minusm4_65_535		:string :=                     "-65_535    ";
+	               _minusm4_65_536		:string :=                     "-65_536    ";
+	          _minusm4_2_147_483_647	:string :=              "-2_147_483_647    ";
+	          _minusm4_2_147_483_648	:string :=              "-2_147_483_648    ";
+	          _minusm4_4_294_967_295	:string :=              "-4_294_967_295    ";
+	          _minusm4_4_294_967_296	:string :=              "-4_294_967_296    ";
+	 _minusm4_9_223_372_036_854_775_807	:string :=  "-9_223_372_036_854_775_807    ";
+	 _minusm4_9_223_372_036_854_775_808	:string :=  "-9_223_372_036_854_775_808    ";
+	_minusm4_18_446_744_073_709_551_615	:string := "-18_446_744_073_709_551_615    ";
+	_minusm4_18_446_744_073_709_551_616	:string := "-18_446_744_073_709_551_616    ";
+
+	_minusm4_170_141_183_460_469_231_731_687_303_715_884_105_727 :string :=
+					"-170_141_183_460_469_231_731_687_303_715_884_105_727    ";
+
+	_minusm4_170_141_183_460_469_231_731_687_303_715_884_105_728 :string :=
+					"-170_141_183_460_469_231_731_687_303_715_884_105_728    ";
+
+	_minusm4_340_282_366_920_938_463_463_374_607_431_768_211_455 :string :=
+					"-340_282_366_920_938_463_463_374_607_431_768_211_455    ";
+
+
+
+
+	_7F							:string := "7F";
+	_80							:string := "80";
+	_FF							:string := "FF";
+	_100						:string := "100";
+	_7FFF						:string := "7FFF";
+	_8000						:string := "8000";
+	_FFFF						:string := "FFFF";
+	_10000						:string := "10000";
+	_7FFFFFFF					:string := "7FFFFFFF";
+	_80000000					:string := "80000000";
+	_FFFFFFFF					:string := "FFFFFFFF";
+	_100000000					:string := "100000000";
+	_7FFFFFFFFFFFFFFF			:string := "7FFFFFFFFFFFFFFF";
+	_8000000000000000			:string := "8000000000000000";
+	_FFFFFFFFFFFFFFFF			:string := "FFFFFFFFFFFFFFFF";
+	_10000000000000000			:string := "10000000000000000";
+
+	_7FFFFFFFFFFFFFFFFFFF		:string := "7FFFFFFFFFFFFFFFFFFF";
+	_80000000000000000000		:string := "80000000000000000000";
+	_FFFFFFFFFFFFFFFFFFFF		:string := "FFFFFFFFFFFFFFFFFFFF";
+	_100000000000000000000		:string := "100000000000000000000";
+
+	_7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF	:string := 
+								"7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
+
+	_80000000000000000000000000000000	:string := 
+								"80000000000000000000000000000000";
+
+	_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF	:string := 
+								"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
+
+
+
+	_1_0000						:string := "1_0000";
+	_7FFF_FFFF					:string := "7FFF_FFFF";
+	_8000_0000					:string := "8000_0000";
+	_FFFF_FFFF					:string := "FFFF_FFFF";
+	_1_0000_0000				:string := "1_0000_0000";
+	_7FFF_FFFF_FFFF_FFFF		:string := "7FFF_FFFF_FFFF_FFFF";
+	_8000_0000_0000_0000		:string := "8000_0000_0000_0000";
+	_FFFF_FFFF_FFFF_FFFF		:string := "FFFF_FFFF_FFFF_FFFF";
+	_1_0000_0000_0000_0000		:string := "1_0000_0000_0000_0000";
+
+	_7FFF_FFFF_FFFF_FFFF_FFFF	:string := "7FFF_FFFF_FFFF_FFFF_FFFF";
+	_8000_0000_0000_0000_0000	:string := "8000_0000_0000_0000_0000";
+	_FFFF_FFFF_FFFF_FFFF_FFFF	:string := "FFFF_FFFF_FFFF_FFFF_FFFF";
+	_1_0000_0000_0000_0000_0000	:string := "1_0000_0000_0000_0000_0000";
+
+	_7FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF	:string := 
+								"7FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF";
+
+	_8000_0000_0000_0000_0000_0000_0000_0000	:string := 
+								"8000_0000_0000_0000_0000_0000_0000_0000";
+
+	_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF	:string := 
+								"FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF";
+
+
+
+	_4_7F						:string := "    7F";
+	_4_80						:string := "    80";
+	_4_FF						:string := "    FF";
+	_4_100						:string := "    100";
+	_4_7FFF						:string := "    7FFF";
+	_4_8000						:string := "    8000";
+	_4_FFFF						:string := "    FFFF";
+	_4_10000					:string := "    10000";
+	_4_7FFFFFFF					:string := "    7FFFFFFF";
+	_4_80000000					:string := "    80000000";
+	_4_FFFFFFFF					:string := "    FFFFFFFF";
+	_4_100000000				:string := "    100000000";
+	_4_7FFFFFFFFFFFFFFF			:string := "    7FFFFFFFFFFFFFFF";
+	_4_8000000000000000			:string := "    8000000000000000";
+	_4_FFFFFFFFFFFFFFFF			:string := "    FFFFFFFFFFFFFFFF";
+	_4_10000000000000000		:string := "    10000000000000000";
+	 
+	_4_7FFFFFFFFFFFFFFFFFFF		:string := "    7FFFFFFFFFFFFFFFFFFF";
+	_4_80000000000000000000		:string := "    80000000000000000000";
+	_4_FFFFFFFFFFFFFFFFFFFF		:string := "    FFFFFFFFFFFFFFFFFFFF";
+	_4_100000000000000000000	:string := "    100000000000000000000";
+
+	_4_7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF	:string := 
+	 							"    7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
+	 
+	_4_80000000000000000000000000000000	:string := 
+	 							"    80000000000000000000000000000000";
+	 
+	_4_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF	:string := 
+								"    FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
+
+
+
+
+
+	_4_1_0000						:string := "    1_0000";
+	_4_7FFF_FFFF					:string := "    7FFF_FFFF";
+	_4_8000_0000					:string := "    8000_0000";
+	_4_FFFF_FFFF					:string := "    FFFF_FFFF";
+	_4_1_0000_0000					:string := "    1_0000_0000";
+	_4_7FFF_FFFF_FFFF_FFFF			:string := "    7FFF_FFFF_FFFF_FFFF";
+	_4_8000_0000_0000_0000			:string := "    8000_0000_0000_0000";
+	_4_FFFF_FFFF_FFFF_FFFF			:string := "    FFFF_FFFF_FFFF_FFFF";
+	_4_1_0000_0000_0000_0000		:string := "    1_0000_0000_0000_0000";
+	 
+	_4_7FFF_FFFF_FFFF_FFFF_FFFF		:string := "    7FFF_FFFF_FFFF_FFFF_FFFF";
+	_4_8000_0000_0000_0000_0000		:string := "    8000_0000_0000_0000_0000";
+	_4_FFFF_FFFF_FFFF_FFFF_FFFF		:string := "    FFFF_FFFF_FFFF_FFFF_FFFF";
+	_4_1_0000_0000_0000_0000_0000	:string := "    1_0000_0000_0000_0000_0000";
+
+	_4_7FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF	:string := 
+	 							"    7FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF";
+	 
+	_4_8000_0000_0000_0000_0000_0000_0000_0000	:string := 
+	 							"    8000_0000_0000_0000_0000_0000_0000_0000";
+	 
+	_4_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF	:string := 
+								"    FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF";
+
+
+	_m4_7F						:string := "7F    ";
+	_m4_80						:string := "80    ";
+	_m4_FF						:string := "FF    ";
+	_m4_100						:string := "100    ";
+	_m4_7FFF					:string := "7FFF    ";
+	_m4_8000					:string := "8000    ";
+	_m4_FFFF					:string := "FFFF    ";
+	_m4_10000					:string := "10000    ";
+	_m4_7FFFFFFF				:string := "7FFFFFFF    ";
+	_m4_80000000				:string := "80000000    ";
+	_m4_FFFFFFFF				:string := "FFFFFFFF    ";
+	_m4_100000000				:string := "100000000    ";
+	_m4_7FFFFFFFFFFFFFFF		:string := "7FFFFFFFFFFFFFFF    ";
+	_m4_8000000000000000		:string := "8000000000000000    ";
+	_m4_FFFFFFFFFFFFFFFF		:string := "FFFFFFFFFFFFFFFF    ";
+	_m4_10000000000000000		:string := "10000000000000000    ";
+	 
+	_m4_7FFFFFFFFFFFFFFFFFFF	:string := "7FFFFFFFFFFFFFFFFFFF    ";
+	_m4_80000000000000000000	:string := "80000000000000000000    ";
+	_m4_FFFFFFFFFFFFFFFFFFFF	:string := "FFFFFFFFFFFFFFFFFFFF    ";
+	_m4_100000000000000000000	:string := "100000000000000000000    ";
+
+	_m4_7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF	:string := 
+	 							"7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF    ";
+	 
+	_m4_80000000000000000000000000000000	:string := 
+	 							"80000000000000000000000000000000    ";
+	 
+	_m4_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF	:string := 
+								"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF    ";
+
+
+
+
+
+	_m4_1_0000					:string := "1_0000    ";
+	_m4_7FFF_FFFF				:string := "7FFF_FFFF    ";
+	_m4_8000_0000				:string := "8000_0000    ";
+	_m4_FFFF_FFFF				:string := "FFFF_FFFF    ";
+	_m4_1_0000_0000				:string := "1_0000_0000    ";
+	_m4_7FFF_FFFF_FFFF_FFFF		:string := "7FFF_FFFF_FFFF_FFFF    ";
+	_m4_8000_0000_0000_0000		:string := "8000_0000_0000_0000    ";
+	_m4_FFFF_FFFF_FFFF_FFFF		:string := "FFFF_FFFF_FFFF_FFFF    ";
+	_m4_1_0000_0000_0000_0000		:string := "1_0000_0000_0000_0000    ";
+	 
+	_m4_7FFF_FFFF_FFFF_FFFF_FFFF	:string := "7FFF_FFFF_FFFF_FFFF_FFFF    ";
+	_m4_8000_0000_0000_0000_0000	:string := "8000_0000_0000_0000_0000    ";
+	_m4_FFFF_FFFF_FFFF_FFFF_FFFF	:string := "FFFF_FFFF_FFFF_FFFF_FFFF    ";
+	_m4_1_0000_0000_0000_0000_0000	:string := "1_0000_0000_0000_0000_0000    ";
+
+	_m4_7FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF	:string := 
+	 							"7FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF    ";
+	 
+	_m4_8000_0000_0000_0000_0000_0000_0000_0000	:string := 
+	 							"8000_0000_0000_0000_0000_0000_0000_0000    ";
+	 
+	_m4_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF	:string := 
+								"FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF    ";
+
+
+
+#if( printCmps )
+
+	procedure printStrs
+	( 
+		src:dword in esi; 
+		dest:dword in edi; 
+		length:dword in ecx 
+	);
+	begin printStrs;
+
+		push( edx );
+
+		stdout.put(    "orig: '" );
+		dec( ecx );
+		stdout.write( [esi], ecx );
+		inc( ecx );
+		stdout.put( "'  >> " );
+		for( mov( 0, edx ); edx<ecx; inc( edx )) do
+
+			stdout.putb( [esi+edx] );
+
+		endfor;
+
+		stdout.put( nl "new:  '" );
+		dec( ecx );
+		stdout.write( [edi], ecx );
+		inc( ecx );
+		stdout.put( "'  >> " );
+		for( mov( 0, edx ); edx<ecx; inc( edx )) do
+
+			stdout.putb( [esi+edx] );
+
+		endfor;
+		stdout.newln();
+		pop( edx );
+
+	end printStrs;
+
+#else
+
+	#macro printStrs( a,b,c );
+	#endmacro
+
+#endif
+
+
+static
+	buffer	:char[256];
+						 
+begin internalFuncs_test;
+
+
+	#macro raiseifib32( expectedValue, raiseValue );
+
+
+		mov( expectedValue, eax );
+		conv.i32Size( eax );
+		mov( eax, ecx );
+		mov( expectedValue, eax );
+		push( ecx );
+		lea( edi, buffer[ecx] );
+		conv._intToBuf32( eax, ecx, [edi] );
+		pop( ecx );
+		mov( 0, (type byte [edi+ecx] ));
+		inc( ecx );
+		mov(  @text( "_" + @string( expectedValue )), esi );
+		printStrs( esi, edi, ecx );
+		cld();
+		repe.cmpsb();
+
+		if( @ne ) then
+
+			raise( raiseValue );
+
+		endif;
+
+	#endmacro
+
+
+
+	#macro minus_raiseifib32( expectedValue, raiseValue );
+
+
+		mov( -expectedValue, eax );
+		conv.i32Size( eax );
+		mov( eax, ecx );
+		mov( -expectedValue, eax );
+		push( ecx );
+		lea( edi, buffer[ecx] );
+		conv._intToBuf32( eax, ecx, [edi] );
+		pop( ecx );
+		mov( 0, (type byte [edi+ecx] ));
+		inc( ecx );
+		mov(  @text( "_minus_" + @string( expectedValue )), esi );
+		cld();
+		printStrs( esi, edi, ecx );
+		repe.cmpsb();
+
+		if( @ne ) then
+
+			raise( raiseValue );
+
+		endif;
+
+	#endmacro
+
+
+	conv.setUnderscores( false );
+	stderr.put( "Testing _intToBuf32() with no underscores" nl );
+	try
+
+		raiseifib32( 0,                 $2000 );
+		raiseifib32( 1,                 $2001 );
+		raiseifib32( 127,               $2002 );
+		raiseifib32( 128,               $2003 );
+		raiseifib32( 255,               $2004 );
+		raiseifib32( 256,               $2005 );
+		raiseifib32( 32767,             $2006 );
+		raiseifib32( 32768,             $2007 );
+		raiseifib32( 65535,             $2008 );
+		raiseifib32( 65536,             $2009 );
+		raiseifib32( 2147483647,        $2010 );
+										 
+		minus_raiseifib32( 1,           $2011 );
+		minus_raiseifib32( 127,         $2012 );
+		minus_raiseifib32( 128,         $2013 );
+		minus_raiseifib32( 255,         $2014 );
+		minus_raiseifib32( 256,         $2015 );
+		minus_raiseifib32( 32767,       $2016 );
+		minus_raiseifib32( 32768,       $2017 );
+		minus_raiseifib32( 65535,       $2018 );
+		minus_raiseifib32( 65536,       $2019 );
+		minus_raiseifib32( 2147483647,  $2020 );
+		minus_raiseifib32( 2147483648,  $2021 );
+
+		try
+
+			conv.dSize( eax );
+			mov( 20, ecx );		// Width is too big.
+			mov( 0, eax );
+			lea( edi, buffer[ecx] );
+			conv._intToBuf32( eax, ecx, [edi] );
+			raise( $2023 );	// Better not get here.
+
+		  exception( ex.WidthTooBig )
+
+			// This is the expected case
+
+		endtry;
+		stdout.put( "_intToBuf32 tests succeeded!" nl nl );
+
+	  anyexception
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"_intToBuf32 tests failed! Exception = ", eax,  nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+	conv.setUnderscores( true );
+	stderr.put( "Testing _intToBuf32() with underscores" nl );
+	try
+
+		raiseifib32( 0,                    $2030 );
+		raiseifib32( 1,                    $2031 );
+		raiseifib32( 127,                  $2032 );
+		raiseifib32( 128,                  $2033 );
+		raiseifib32( 255,                  $2034 );
+		raiseifib32( 256,                  $2035 );
+		raiseifib32( 32_767,               $2036 );
+		raiseifib32( 32_768,               $2037 );
+		raiseifib32( 65_535,               $2038 );
+		raiseifib32( 65_536,               $2039 );
+		raiseifib32( 2_147_483_647,        $2040 );
+											
+		minus_raiseifib32( 1,              $2041 );
+		minus_raiseifib32( 127,            $2042 );
+		minus_raiseifib32( 128,            $2043 );
+		minus_raiseifib32( 255,            $2044 );
+		minus_raiseifib32( 256,            $2045 );
+		minus_raiseifib32( 32_767,         $2046 );
+		minus_raiseifib32( 32_768,         $2047 );
+		minus_raiseifib32( 65_535,         $2048 );
+		minus_raiseifib32( 65_536,         $2049 );
+		minus_raiseifib32( 2_147_483_647,  $2050 );
+		minus_raiseifib32( 2_147_483_648,  $2051 );
+
+		try
+
+			lea( edi, buffer[ecx] );
+			conv._intToBuf32( 0, 256, [edi] );
+			raise( $2053 );	// Better not get here.
+
+		  exception( ex.WidthTooBig )
+
+			// This is the expected case
+
+		endtry;
+		stdout.put( "_intToBuf32 tests succeeded!" nl nl );
+
+	  anyexception
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"_intToBuf32 tests failed! Exception = ", eax,  nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+/*---------------------------------------------------------------------------*/
+
+
+	#macro raiseifib32Size( expectedValue, raiseValue );
+
+		mov( expectedValue, eax );
+		conv.i32Size( eax );
+		mov( eax, ecx );
+		lea( edx, [eax+4] );
+		mov( expectedValue, eax );
+		push( edx );
+		lea( edi, buffer );
+		conv._intToBuf32Size( eax, edx, ecx, ' ', [edi], 256 );
+		pop( ecx );
+		mov( 0, (type byte [edi+ecx] ));
+		inc( ecx );
+		mov(  @text( "_4_" + @string( expectedValue )), esi );
+		printStrs( esi, edi, ecx );
+		cld();
+		repe.cmpsb();
+
+		if( @ne ) then
+
+			raise( raiseValue );
+
+		endif;
+
+	#endmacro
+
+
+	#macro minus_raiseifib32Size( expectedValue, raiseValue );
+
+		mov( -expectedValue, eax );
+		conv.i32Size( eax );
+		mov( eax, ecx );
+		lea( edx, [eax+4] );
+		mov( -expectedValue, eax );
+		push( edx );
+		lea( edi, buffer );
+		conv._intToBuf32Size( eax, edx, ecx, ' ', [edi], 256 );
+		pop( ecx );
+		mov( 0, (type byte [edi+ecx] ));
+		inc( ecx );
+		mov(  @text( "_minus4_" + @string( expectedValue )), esi );
+		printStrs( esi, edi, ecx );
+		cld();
+		repe.cmpsb();
+
+		if( @ne ) then
+
+			raise( raiseValue );
+
+		endif;
+
+	#endmacro
+
+
+	#macro _raiseifib32Size( expectedValue, raiseValue );
+
+
+		mov( expectedValue, eax );
+		conv.i32Size( eax );
+		mov( eax, ecx );
+		mov( eax, edx );
+		lea( edx, [eax+4] );
+		push( edx );
+		neg( edx );
+		mov( expectedValue, eax );
+		lea( edi, buffer );
+		conv._intToBuf32Size( eax, edx, ecx, ' ', [edi], 256 );
+		pop( ecx );
+		mov( 0, (type byte [edi+ecx] ));
+		inc( ecx );
+		mov(  @text( "_m4_" + @string( expectedValue )), esi );
+		printStrs( esi, edi, ecx );
+		cld();
+		repe.cmpsb();
+
+		if( @ne ) then
+
+			raise( raiseValue );
+
+		endif;
+
+	#endmacro
+
+
+	#macro _minus_raiseifib32Size( expectedValue, raiseValue );
+
+
+		mov( -expectedValue, eax );
+		conv.i32Size( eax );
+		mov( eax, ecx );
+		mov( eax, edx );
+		lea( edx, [eax+4] );
+		push( edx );
+		neg( edx );
+		mov( -expectedValue, eax );
+		lea( edi, buffer );
+		conv._intToBuf32Size( eax, edx, ecx, ' ', [edi], 256 );
+		pop( ecx );
+		mov( 0, (type byte [edi+ecx] ));
+		inc( ecx );
+		mov(  @text( "_minusm4_" + @string( expectedValue )), esi );
+		printStrs( esi, edi, ecx );
+		cld();
+		repe.cmpsb();
+
+		if( @ne ) then
+
+			raise( raiseValue );
+
+		endif;
+
+	#endmacro
+
+
+	conv.setUnderscores( false );
+	stderr.put( "Testing _intToBuf32Size() with no underscores" nl );
+	try
+
+		raiseifib32Size(                 0,  $2060 );
+		raiseifib32Size(                 1,  $2061 );
+		raiseifib32Size(               127,  $2062 );
+		raiseifib32Size(               128,  $2063 );
+		raiseifib32Size(               255,  $2064 );
+		raiseifib32Size(               256,  $2065 );
+		raiseifib32Size(             32767,  $2066 );
+		raiseifib32Size(             32768,  $2067 );
+		raiseifib32Size(             65535,  $2068 );
+		raiseifib32Size(             65536,  $2069 );
+		raiseifib32Size(        2147483647,  $2070 );
+											  
+		minus_raiseifib32Size(           1,  $2071 );
+		minus_raiseifib32Size(         127,  $2072 );
+		minus_raiseifib32Size(         128,  $2073 );
+		minus_raiseifib32Size(         255,  $2074 );
+		minus_raiseifib32Size(         256,  $2075 );
+		minus_raiseifib32Size(       32767,  $2076 );
+		minus_raiseifib32Size(       32768,  $2077 );
+		minus_raiseifib32Size(       65535,  $2078 );
+		minus_raiseifib32Size(       65536,  $2079 );
+		minus_raiseifib32Size(  2147483647,  $2080 );
+		minus_raiseifib32Size(  2147483648,  $2081 );
+		
+		_raiseifib32Size(                0,  $2090 );
+		_raiseifib32Size(                1,  $2091 );
+		_raiseifib32Size(              127,  $2092 );
+		_raiseifib32Size(              128,  $2093 );
+		_raiseifib32Size(              255,  $2094 );
+		_raiseifib32Size(              256,  $2095 );
+		_raiseifib32Size(            32767,  $2096 );
+		_raiseifib32Size(            32768,  $2097 );
+		_raiseifib32Size(            65535,  $2098 );
+		_raiseifib32Size(            65536,  $2099 );
+		_raiseifib32Size(       2147483647,  $2100 );
+											  
+		_minus_raiseifib32Size(         1,   $2101 );
+		_minus_raiseifib32Size(        127,  $2102 );
+		_minus_raiseifib32Size(        128,  $2103 );
+		_minus_raiseifib32Size(        255,  $2104 );
+		_minus_raiseifib32Size(        256,  $2105 );
+		_minus_raiseifib32Size(      32767,  $2106 );
+		_minus_raiseifib32Size(      32768,  $2107 );
+		_minus_raiseifib32Size(      65535,  $2108 );
+		_minus_raiseifib32Size(      65536,  $2109 );
+		_minus_raiseifib32Size( 2147483647,  $2110 );
+		_minus_raiseifib32Size( 2147483648,  $2111 );
+
+		
+
+		try
+
+			conv.dSize( eax );
+			mov( 10, ecx );		// Width is too big.
+			mov( 0, eax );
+			lea( edi, buffer );
+			conv._intToBuf32Size( eax, 256, 256, ' ', [edi], 256 );
+			raise( $2113 );	// Better not get here.
+
+		  exception( ex.WidthTooBig )
+
+			// This is the expected case
+
+		endtry;
+		stdout.put( "_intToBuf32Size tests succeeded!" nl nl );
+
+	  anyexception
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"_intToBuf32Size tests failed! Exception = ", eax,  nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+	conv.setUnderscores( true );
+	stderr.put( "Testing _intToBuf32Size() with underscores" nl );
+	try
+
+
+		raiseifib32Size(              32_767,   $2126 );
+		raiseifib32Size(              32_768,   $2127 );
+		raiseifib32Size(              65_535,   $2128 );
+		raiseifib32Size(              65_536,   $2129 );
+		raiseifib32Size(       2_147_483_647,   $2130 );
+												 
+		minus_raiseifib32Size(        32_767,   $2136 );
+		minus_raiseifib32Size(        32_768,   $2137 );
+		minus_raiseifib32Size(        65_535,   $2138 );
+		minus_raiseifib32Size(        65_536,   $2139 );
+		minus_raiseifib32Size( 2_147_483_647,   $2140 );
+		minus_raiseifib32Size( 2_147_483_648,   $2141 );
+		
+		_raiseifib32Size(             32_767,   $2156 );
+		_raiseifib32Size(             32_768,   $2157 );
+		_raiseifib32Size(             65_535,   $2158 );
+		_raiseifib32Size(             65_536,   $2159 );
+		_raiseifib32Size(      2_147_483_647,   $2160 );
+
+		_minus_raiseifib32Size(        32_767,  $2166 );
+		_minus_raiseifib32Size(        32_768,  $2167 );
+		_minus_raiseifib32Size(        65_535,  $2168 );
+		_minus_raiseifib32Size(        65_536,  $2169 );
+		_minus_raiseifib32Size( 2_147_483_647,  $2170 );
+		_minus_raiseifib32Size( 2_147_483_648,  $2171 );
+
+		
+
+		try
+
+			conv.dSize( eax );
+			lea( edi, buffer );
+			conv._intToBuf32Size( 0, 256, 256, ' ', [edi], 256 );
+			raise( $2173 );	// Better not get here.
+
+		  exception( ex.WidthTooBig )
+
+			// This is the expected case
+
+		endtry;
+		stdout.put( "_intToBuf32Size tests succeeded!" nl nl );
+
+	  anyexception
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"_intToBuf32Size tests failed! Exception = ", eax,  nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+/*---------------------------------------------------------------------------*/
+
+	#macro raiseifib64( expectedValue, raiseValue );
+
+
+		conv.i64Size( expectedValue );
+		mov( eax, ecx );
+		push( ecx );
+		lea( edi, buffer[ecx] );
+		conv._intToBuf64( expectedValue, ecx, [edi] );
+		pop( ecx );
+		mov( 0, (type byte [edi+ecx] ));
+		inc( ecx );
+		mov(  @text( "_" + @string( expectedValue )), esi );
+		printStrs( esi, edi, ecx );
+		cld();
+		repe.cmpsb();
+
+		if( @ne ) then
+
+			raise( raiseValue );
+
+		endif;
+
+	#endmacro
+
+
+
+	#macro minus_raiseifib64( expectedValue, raiseValue );
+
+		conv.i64Size( -expectedValue );
+		mov( eax, ecx );
+		push( ecx );
+		lea( edi, buffer[ecx] );
+		conv._intToBuf64( -expectedValue, ecx, [edi] );
+		pop( ecx );
+		mov( 0, (type byte [edi+ecx] ));
+		inc( ecx );
+		mov(  @text( "_minus_" + @string( expectedValue )), esi );
+		cld();
+		printStrs( esi, edi, ecx );
+		repe.cmpsb();
+
+		if( @ne ) then
+
+			raise( raiseValue );
+
+		endif;
+
+	#endmacro
+
+
+	conv.setUnderscores( false );
+	stderr.put( "Testing _intToBuf64() with no underscores" nl );
+	try
+
+		raiseifib64(                   0,        $4000 );
+		raiseifib64(                   1,        $4001 );
+		raiseifib64(                 127,        $4002 );
+		raiseifib64(                 128,        $4003 );
+		raiseifib64(                 255,        $4004 );
+		raiseifib64(                 256,        $4005 );
+		raiseifib64(               32767,        $4006 );
+		raiseifib64(               32768,        $4007 );
+		raiseifib64(               65535,        $4008 );
+		raiseifib64(               65536,        $4009 );
+		raiseifib64(          2147483647,        $4010 );
+		raiseifib64(          2147483648,        $4011 );
+		raiseifib64(          4294967295,        $4012 );
+		raiseifib64(          4294967296,        $4013 );
+		raiseifib64( 9223372036854775807,        $4014 );
+										 
+		minus_raiseifib64(                   1,  $4020 );
+		minus_raiseifib64(                 127,  $4021 );
+		minus_raiseifib64(                 128,  $4022 );
+		minus_raiseifib64(                 255,  $4023 );
+		minus_raiseifib64(                 256,  $4024 );
+		minus_raiseifib64(               32767,  $4025 );
+		minus_raiseifib64(               32768,  $4026 );
+		minus_raiseifib64(               65535,  $4027 );
+		minus_raiseifib64(               65536,  $4028 );
+		minus_raiseifib64(          2147483647,  $4029 );
+		minus_raiseifib64(          2147483648,  $4030 );
+		minus_raiseifib64(          4294967295,  $4031 );
+		minus_raiseifib64(          4294967296,  $4032 );
+		minus_raiseifib64( 9223372036854775807,  $4033 );
+		minus_raiseifib64( 9223372036854775808,  $4034 );
+
+		try
+
+			lea( edi, buffer[ecx] );
+			conv._intToBuf64( 0, 256, [edi] );
+			raise( $4035 );	// Better not get here.
+
+		  exception( ex.WidthTooBig )
+
+			// This is the expected case
+
+		endtry;
+		stdout.put( "_intToBuf64 tests succeeded!" nl nl );
+
+	  anyexception
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"_intToBuf64 tests failed! Exception = ", eax,  nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+	conv.setUnderscores( true );
+	stderr.put( "Testing _intToBuf64() with underscores" nl );
+	try
+
+		raiseifib64(                         0,   $4040 );
+		raiseifib64(                         1,   $4041 );
+		raiseifib64(                       127,   $4042 );
+		raiseifib64(                       128,   $4043 );
+		raiseifib64(                       255,   $4044 );
+		raiseifib64(                       256,   $4045 );
+		raiseifib64(                    32_767,   $4046 );
+		raiseifib64(                    32_768,   $4047 );
+		raiseifib64(                    65_535,   $4048 );
+		raiseifib64(                    65_536,   $4049 );
+		raiseifib64(             2_147_483_647,   $4050 );
+		raiseifib64(             2_147_483_648,   $4051 );
+		raiseifib64(             4_294_967_295,   $4052 );
+		raiseifib64(             4_294_967_296,   $4053 );
+		raiseifib64( 9_223_372_036_854_775_807,   $4054 );
+											
+		minus_raiseifib64(                         1,   $4061 );
+		minus_raiseifib64(                       127,   $4062 );
+		minus_raiseifib64(                       128,   $4063 );
+		minus_raiseifib64(                       255,   $4064 );
+		minus_raiseifib64(                       256,   $4065 );
+		minus_raiseifib64(                    32_767,   $4066 );
+		minus_raiseifib64(                    32_768,   $4067 );
+		minus_raiseifib64(                    65_535,   $4068 );
+		minus_raiseifib64(                    65_536,   $4069 );
+		minus_raiseifib64(             2_147_483_647,   $4070 );
+		minus_raiseifib64(             2_147_483_648,   $4071 );
+		minus_raiseifib64(             4_294_967_295,   $4072 );
+		minus_raiseifib64(             4_294_967_296,   $4073 );
+		minus_raiseifib64( 9_223_372_036_854_775_807,   $4074 );
+
+		try
+
+			lea( edi, buffer[ecx] );
+			conv._intToBuf64( 0, 256, [edi] );
+			raise( $4079 );	// Better not get here.
+
+		  exception( ex.WidthTooBig )
+
+			// This is the expected case
+
+		endtry;
+		stdout.put( "_intToBuf64 tests succeeded!" nl nl );
+
+	  anyexception
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"_intToBuf64 tests failed! Exception = ", eax,  nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+/*---------------------------------------------------------------------------*/
+
+
+	#macro raiseifib64Size( expectedValue, raiseValue );
+
+		conv.i64Size( expectedValue );
+		mov( eax, ecx );
+		lea( edx, [eax+4] );
+		push( edx );
+		lea( edi, buffer );
+		conv._intToBuf64Size( expectedValue, edx, ecx, ' ', [edi], 256 );
+		pop( ecx );
+		mov( 0, (type byte [edi+ecx] ));
+		inc( ecx );
+		mov(  @text( "_4_" + @string( expectedValue )), esi );
+		printStrs( esi, edi, ecx );
+		cld();
+		repe.cmpsb();
+
+		if( @ne ) then
+
+			raise( raiseValue );
+
+		endif;
+
+	#endmacro
+
+
+	#macro minus_raiseifib64Size( expectedValue, raiseValue );
+
+		conv.i64Size( -expectedValue );
+		mov( eax, ecx );
+		lea( edx, [eax+4] );
+		push( edx );
+		lea( edi, buffer );
+		conv._intToBuf64Size( -expectedValue, edx, ecx, ' ', [edi], 256 );
+		pop( ecx );
+		mov( 0, (type byte [edi+ecx] ));
+		inc( ecx );
+		mov(  @text( "_minus4_" + @string( expectedValue )), esi );
+		printStrs( esi, edi, ecx );
+		cld();
+		repe.cmpsb();
+
+		if( @ne ) then
+
+			raise( raiseValue );
+
+		endif;
+
+	#endmacro
+
+
+	#macro _raiseifib64Size( expectedValue, raiseValue );
+
+
+		conv.i64Size( expectedValue );
+		mov( eax, ecx );
+		lea( edx, [eax+4] );
+		push( edx );
+		neg( edx );
+		lea( edi, buffer );
+		conv._intToBuf64Size( expectedValue, edx, ecx, ' ', [edi], 256 );
+		pop( ecx );
+		mov( 0, (type byte [edi+ecx] ));
+		inc( ecx );
+		mov(  @text( "_m4_" + @string( expectedValue )), esi );
+		printStrs( esi, edi, ecx );
+		cld();
+		repe.cmpsb();
+
+		if( @ne ) then
+
+			raise( raiseValue );
+
+		endif;
+
+	#endmacro
+
+
+	#macro _minus_raiseifib64Size( expectedValue, raiseValue ):ib64;
+
+
+		conv.i64Size( -expectedValue );
+		mov( eax, ecx );
+		lea( edx, [eax+4] );
+		push( edx );
+		neg( edx );
+		lea( edi, buffer );
+		conv._intToBuf64Size( -expectedValue, edx, ecx, ' ', [edi], 256 );
+		pop( ecx );
+		mov( 0, (type byte [edi+ecx] ));
+		inc( ecx );
+		mov(  @text( "_minusm4_" + @string( expectedValue )), esi );
+		printStrs( esi, edi, ecx );
+		cld();
+		repe.cmpsb();
+
+		if( @ne ) then
+
+			raise( raiseValue );
+
+		endif;
+
+	#endmacro
+
+
+	conv.setUnderscores( false );
+	stderr.put( "Testing _intToBuf64Size() with no underscores" nl );
+	try
+
+		raiseifib64Size(                   0,  $2180 );
+		raiseifib64Size(                   1,  $2181 );
+		raiseifib64Size(                 127,  $2182 );
+		raiseifib64Size(                 128,  $2183 );
+		raiseifib64Size(                 255,  $2184 );
+		raiseifib64Size(                 256,  $2185 );
+		raiseifib64Size(               32767,  $2186 );
+		raiseifib64Size(               32768,  $2187 );
+		raiseifib64Size(               65535,  $2188 );
+		raiseifib64Size(               65536,  $2189 );
+		raiseifib64Size(          2147483647,  $2200 );
+		raiseifib64Size(          2147483648,  $220a );
+		raiseifib64Size(          4294967295,  $220b );
+		raiseifib64Size(          4294967296,  $220c );
+		raiseifib64Size( 9223372036854775807,  $220d );
+
+		minus_raiseifib64Size(                   1,  $2201 );
+		minus_raiseifib64Size(                 127,  $2202 );
+		minus_raiseifib64Size(                 128,  $2203 );
+		minus_raiseifib64Size(                 255,  $2204 );
+		minus_raiseifib64Size(                 256,  $2205 );
+		minus_raiseifib64Size(               32767,  $2206 );
+		minus_raiseifib64Size(               32768,  $2207 );
+		minus_raiseifib64Size(               65535,  $2208 );
+		minus_raiseifib64Size(               65536,  $2209 );
+		minus_raiseifib64Size(          2147483647,  $2210 );
+		minus_raiseifib64Size(          2147483648,  $2211 );
+		minus_raiseifib64Size(          4294967295,  $221b );
+		minus_raiseifib64Size(          4294967296,  $221c );
+		minus_raiseifib64Size( 9223372036854775807,  $221d );
+		minus_raiseifib64Size( 9223372036854775808,  $221e );
+		
+		_raiseifib64Size(                   0,  $2220 );
+		_raiseifib64Size(                   1,  $2221 );
+		_raiseifib64Size(                 127,  $2222 );
+		_raiseifib64Size(                 128,  $2223 );
+		_raiseifib64Size(                 255,  $2224 );
+		_raiseifib64Size(                 256,  $2225 );
+		_raiseifib64Size(               32767,  $2226 );
+		_raiseifib64Size(               32768,  $2227 );
+		_raiseifib64Size(               65535,  $2228 );
+		_raiseifib64Size(               65536,  $2229 );
+		_raiseifib64Size(          2147483647,  $2230 );
+		_raiseifib64Size(          2147483648,  $223a );
+		_raiseifib64Size(          4294967295,  $223b );
+		_raiseifib64Size(          4294967296,  $223c );
+		_raiseifib64Size( 9223372036854775807,  $223d );
+
+		_minus_raiseifib64Size(                  1,   $2231 );
+		_minus_raiseifib64Size(                 127,  $2232 );
+		_minus_raiseifib64Size(                 128,  $2233 );
+		_minus_raiseifib64Size(                 255,  $2234 );
+		_minus_raiseifib64Size(                 256,  $2235 );
+		_minus_raiseifib64Size(               32767,  $2236 );
+		_minus_raiseifib64Size(               32768,  $2237 );
+		_minus_raiseifib64Size(               65535,  $2238 );
+		_minus_raiseifib64Size(               65536,  $2239 );
+		_minus_raiseifib64Size(          2147483647,  $2240 );
+		_minus_raiseifib64Size(          2147483648,  $2241 );
+		_minus_raiseifib64Size(          4294967295,  $224b );
+		_minus_raiseifib64Size(          4294967296,  $224c );
+		_minus_raiseifib64Size( 9223372036854775807,  $224d );
+		_minus_raiseifib64Size( 9223372036854775808,  $224e );
+
+		
+
+		try
+
+			lea( edi, buffer );
+			conv._intToBuf64Size( 0, 256, 256, ' ', [edi], 256 );
+			raise( $2243 );	// Better not get here.
+
+		  exception( ex.WidthTooBig )
+
+			// This is the expected case
+
+		endtry;
+		stdout.put( "_intToBuf64Size tests succeeded!" nl nl );
+
+	  anyexception
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"_intToBuf64Size tests failed! Exception = ", eax,  nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+	conv.setUnderscores( true );
+	stderr.put( "Testing _intToBuf64Size() with underscores" nl );
+	try
+
+
+		raiseifib64Size(                    32_767,   $2256 );
+		raiseifib64Size(                    32_768,   $2257 );
+		raiseifib64Size(                    65_535,   $2258 );
+		raiseifib64Size(                    65_536,   $2259 );
+		raiseifib64Size(             2_147_483_647,   $2260 );
+		raiseifib64Size(             2_147_483_648,   $2261 );
+		raiseifib64Size(             4_294_967_295,   $226a );
+		raiseifib64Size(             4_294_967_296,   $226b );
+		raiseifib64Size( 9_223_372_036_854_775_807,   $226c );
+												 
+		minus_raiseifib64Size(                    32_767,   $2266 );
+		minus_raiseifib64Size(                    32_768,   $2267 );
+		minus_raiseifib64Size(                    65_535,   $2268 );
+		minus_raiseifib64Size(                    65_536,   $2269 );
+		minus_raiseifib64Size(             2_147_483_647,   $2270 );
+		minus_raiseifib64Size(             2_147_483_648,   $2271 );
+		minus_raiseifib64Size(             4_294_967_295,   $227a );
+		minus_raiseifib64Size(             4_294_967_296,   $227b );
+		minus_raiseifib64Size( 9_223_372_036_854_775_807,   $227c );
+		minus_raiseifib64Size( 9_223_372_036_854_775_808,   $227d );
+												 
+		_raiseifib64Size(                    32_767,        $2276 );
+		_raiseifib64Size(                    32_768,        $2277 );
+		_raiseifib64Size(                    65_535,        $2278 );
+		_raiseifib64Size(                    65_536,        $2279 );
+		_raiseifib64Size(             2_147_483_647,        $2280 );
+		_raiseifib64Size(             2_147_483_648,        $2280 );
+		_raiseifib64Size(             4_294_967_295,        $228a );
+		_raiseifib64Size(             4_294_967_296,        $228b );
+		_raiseifib64Size( 9_223_372_036_854_775_807,        $228c );
+												 
+		_minus_raiseifib64Size(                    32_767,  $2286 );
+		_minus_raiseifib64Size(                    32_768,  $2287 );
+		_minus_raiseifib64Size(                    65_535,  $2288 );
+		_minus_raiseifib64Size(                    65_536,  $2289 );
+		_minus_raiseifib64Size(             2_147_483_647,  $2290 );
+		_minus_raiseifib64Size(             2_147_483_648,  $2291 );
+		_minus_raiseifib64Size(             4_294_967_295,  $229a );
+		_minus_raiseifib64Size(             4_294_967_296,  $229b );
+		_minus_raiseifib64Size( 9_223_372_036_854_775_807,  $229c );
+		_minus_raiseifib64Size( 9_223_372_036_854_775_808,  $229d );
+
+		
+
+		try
+
+			lea( edi, buffer );
+			conv._intToBuf64Size( 0, 256, 256, ' ', [edi], 256 );
+			raise( $2293 );	// Better not get here.
+
+		  exception( ex.WidthTooBig )
+
+			// This is the expected case
+
+		endtry;
+		stdout.put( "_intToBuf64Size tests succeeded!" nl nl );
+
+	  anyexception
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"_intToBuf64Size tests failed! Exception = ", eax,  nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+
+
+
+/*---------------------------------------------------------------------------*/
+
+	#macro raiseifib128( expectedValue, raiseValue );
+
+		conv.i128Size( expectedValue );
+		mov( eax, ecx );
+		push( ecx );
+		lea( edi, buffer[ecx] );
+		conv._intToBuf128( expectedValue, ecx, [edi] );
+		pop( ecx );
+		mov( 0, (type byte [edi+ecx] ));
+		inc( ecx );
+		mov(  @text( "_" + @string( expectedValue )), esi );
+		printStrs( esi, edi, ecx );
+		cld();
+		repe.cmpsb();
+
+		if( @ne ) then
+
+			raise( raiseValue );
+
+		endif;
+
+	#endmacro
+
+
+
+	#macro minus_raiseifib128( expectedValue, raiseValue );
+
+		conv.i128Size( -expectedValue );
+		mov( eax, ecx );
+		push( ecx );
+		lea( edi, buffer[ecx] );
+		conv._intToBuf128( -expectedValue, ecx, [edi] );
+		pop( ecx );
+		mov( 0, (type byte [edi+ecx] ));
+		inc( ecx );
+		mov(  @text( "_minus_" + @string( expectedValue )), esi );
+		cld();
+		printStrs( esi, edi, ecx );
+		repe.cmpsb();
+
+		if( @ne ) then
+
+			raise( raiseValue );
+
+		endif;
+
+	#endmacro
+
+
+	conv.setUnderscores( false );
+	stderr.put( "Testing _intToBuf128() with no underscores" nl );
+	try
+
+		raiseifib128(                                       0,  $4100 );
+		raiseifib128(                                       1,  $4101 );
+		raiseifib128(                                     127,  $4102 );
+		raiseifib128(                                     128,  $4103 );
+		raiseifib128(                                     255,  $4104 );
+		raiseifib128(                                     256,  $4105 );
+		raiseifib128(                                   32767,  $4106 );
+		raiseifib128(                                   32768,  $4107 );
+		raiseifib128(                                   65535,  $4108 );
+		raiseifib128(                                   65536,  $4109 );
+		raiseifib128(                              2147483647,  $4110 );
+		raiseifib128(                              2147483648,  $4111 );
+		raiseifib128(                              4294967295,  $4112 );
+		raiseifib128(                              4294967296,  $4113 );
+		raiseifib128(                     9223372036854775807,  $4114 );
+		raiseifib128(                     9223372036854775808,  $4115 );
+		raiseifib128(                    18446744073709551615,  $4116 );
+		raiseifib128(                    18446744073709551616,  $4117 );
+		raiseifib128( 170141183460469231731687303715884105727,  $4118 );
+										 
+		minus_raiseifib128(                                       1,  $4211 );
+		minus_raiseifib128(                                     127,  $4212 );
+		minus_raiseifib128(                                     128,  $4213 );
+		minus_raiseifib128(                                     255,  $4214 );
+		minus_raiseifib128(                                     256,  $4215 );
+		minus_raiseifib128(                                   32767,  $4216 );
+		minus_raiseifib128(                                   32768,  $4217 );
+		minus_raiseifib128(                                   65535,  $4218 );
+		minus_raiseifib128(                                   65536,  $4219 );
+		minus_raiseifib128(                              2147483647,  $4220 );
+		minus_raiseifib128(                              2147483648,  $4221 );
+		minus_raiseifib128(                              4294967295,  $4222 );
+		minus_raiseifib128(                              4294967296,  $4223 );
+		minus_raiseifib128(                     9223372036854775807,  $4224 );
+		minus_raiseifib128(                     9223372036854775808,  $4225 );
+		minus_raiseifib128(                    18446744073709551615,  $4226 );
+		minus_raiseifib128(                    18446744073709551616,  $4227 );
+		minus_raiseifib128( 170141183460469231731687303715884105727,  $4228 );
+		minus_raiseifib128( 170141183460469231731687303715884105728,  $4228 );
+
+		try
+
+			lea( edi, buffer[ecx] );
+			conv._intToBuf128( 0, 256, [edi] );
+			raise( $4023 );	// Better not get here.
+
+		  exception( ex.WidthTooBig )
+
+			// This is the expected case
+
+		endtry;
+		stdout.put( "_intToBuf128 tests succeeded!" nl nl );
+
+	  anyexception
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"_intToBuf128 tests failed! Exception = ", eax,  nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+	conv.setUnderscores( true );
+	stderr.put( "Testing _intToBuf128() with underscores" nl );
+	try
+
+		raiseifib128(                          0,  $5030 );
+		raiseifib128(                          1,  $5031 );
+		raiseifib128(                        127,  $5032 );
+		raiseifib128(                        128,  $5033 );
+		raiseifib128(                        255,  $5034 );
+		raiseifib128(                        256,  $5035 );
+		raiseifib128(                     32_767,  $5036 );
+		raiseifib128(                     32_768,  $5037 );
+		raiseifib128(                     65_535,  $5038 );
+		raiseifib128(                     65_536,  $5039 );
+		raiseifib128(              2_147_483_647,  $5040 );
+		raiseifib128(              2_147_483_648,  $504a );
+		raiseifib128(              4_294_967_295,  $504b );
+		raiseifib128(              4_294_967_296,  $504c );
+		raiseifib128(  9_223_372_036_854_775_807,  $504d );
+		raiseifib128(  9_223_372_036_854_775_808,  $504e );
+		raiseifib128( 18_446_744_073_709_551_615,  $504f );
+		raiseifib128( 18_446_744_073_709_551_616,  $50a0 );
+		raiseifib128
+		( 
+			170_141_183_460_469_231_731_687_303_715_884_105_727,  
+			$50a1 
+		);
+											
+		minus_raiseifib128(                          1,  $5041 );
+		minus_raiseifib128(                        127,  $5042 );
+		minus_raiseifib128(                        128,  $5043 );
+		minus_raiseifib128(                        255,  $5044 );
+		minus_raiseifib128(                        256,  $5045 );
+		minus_raiseifib128(                     32_767,  $5046 );
+		minus_raiseifib128(                     32_768,  $5047 );
+		minus_raiseifib128(                     65_535,  $5048 );
+		minus_raiseifib128(                     65_536,  $5049 );
+		minus_raiseifib128(              2_147_483_647,  $5050 );
+		minus_raiseifib128(              2_147_483_648,  $5051 );
+		minus_raiseifib128(              4_294_967_295,  $504b );
+		minus_raiseifib128(              4_294_967_296,  $504c );
+		minus_raiseifib128(  9_223_372_036_854_775_807,  $504d );
+		minus_raiseifib128(  9_223_372_036_854_775_808,  $504e );
+		minus_raiseifib128( 18_446_744_073_709_551_615,  $504f );
+		minus_raiseifib128( 18_446_744_073_709_551_616,  $50a0 );
+		minus_raiseifib128
+		( 
+			170_141_183_460_469_231_731_687_303_715_884_105_727,  
+			$50a1 
+		);
+		minus_raiseifib128
+		( 
+			170_141_183_460_469_231_731_687_303_715_884_105_728,  
+			$50a1 
+		);
+
+		try
+
+			lea( edi, buffer[ecx] );
+			conv._intToBuf128( 0, 256, [edi] );
+			raise( $5053 );	// Better not get here.
+
+		  exception( ex.WidthTooBig )
+
+			// This is the expected case
+
+		endtry;
+		stdout.put( "_intToBuf128 tests succeeded!" nl nl );
+
+	  anyexception
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"_intToBuf128 tests failed! Exception = ", eax,  nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+/*---------------------------------------------------------------------------*/
+
+
+	#macro raiseifib128Size( expectedValue, raiseValue );
+
+		conv.i128Size( expectedValue );
+		mov( eax, ecx );
+		lea( edx, [eax+4] );
+		push( edx );
+		lea( edi, buffer );
+		conv._intToBuf128Size( expectedValue, edx, ecx, ' ', [edi], 256 );
+		pop( ecx );
+		mov( 0, (type byte [edi+ecx] ));
+		inc( ecx );
+		mov(  @text( "_4_" + @string( expectedValue )), esi );
+		printStrs( esi, edi, ecx );
+		cld();
+		repe.cmpsb();
+
+		if( @ne ) then
+
+			raise( raiseValue );
+
+		endif;
+
+	#endmacro
+
+
+	#macro minus_raiseifib128Size( expectedValue, raiseValue );
+
+		conv.i128Size( -expectedValue );
+		mov( eax, ecx );
+		lea( edx, [eax+4] );
+		push( edx );
+		lea( edi, buffer );
+		conv._intToBuf128Size( -expectedValue, edx, ecx, ' ', [edi], 256 );
+		pop( ecx );
+		mov( 0, (type byte [edi+ecx] ));
+		inc( ecx );
+		mov(  @text( "_minus4_" + @string( expectedValue )), esi );
+		printStrs( esi, edi, ecx );
+		cld();
+		repe.cmpsb();
+
+		if( @ne ) then
+
+			raise( raiseValue );
+
+		endif;
+
+	#endmacro
+
+
+	#macro _raiseifib128Size( expectedValue, raiseValue );
+
+
+		conv.i128Size( expectedValue );
+		mov( eax, ecx );
+		mov( eax, edx );
+		lea( edx, [eax+4] );
+		push( edx );
+		neg( edx );
+		lea( edi, buffer );
+		conv._intToBuf128Size( expectedValue, edx, ecx, ' ', [edi], 256 );
+		pop( ecx );
+		mov( 0, (type byte [edi+ecx] ));
+		inc( ecx );
+		mov(  @text( "_m4_" + @string( expectedValue )), esi );
+		printStrs( esi, edi, ecx );
+		cld();
+		repe.cmpsb();
+
+		if( @ne ) then
+
+			raise( raiseValue );
+
+		endif;
+
+	#endmacro
+
+
+	#macro _minus_raiseifib128Size( expectedValue, raiseValue );
+
+		conv.i128Size( -expectedValue );
+		mov( eax, ecx );
+		mov( eax, edx );
+		lea( edx, [eax+4] );
+		push( edx );
+		neg( edx );
+		lea( edi, buffer );
+		conv._intToBuf128Size( -expectedValue, edx, ecx, ' ', [edi], 256 );
+		pop( ecx );
+		mov( 0, (type byte [edi+ecx] ));
+		inc( ecx );
+		mov(  @text( "_minusm4_" + @string( expectedValue )), esi );
+		printStrs( esi, edi, ecx );
+		cld();
+		repe.cmpsb();
+
+		if( @ne ) then
+
+			raise( raiseValue );
+
+		endif;
+
+	#endmacro
+
+
+	conv.setUnderscores( false );
+	stderr.put( "Testing _intToBuf128Size() with no underscores" nl );
+	try
+
+		raiseifib128Size(                                       0,  $2300 );
+		raiseifib128Size(                                       1,  $2301 );
+		raiseifib128Size(                                     127,  $2302 );
+		raiseifib128Size(                                     128,  $2303 );
+		raiseifib128Size(                                     255,  $2304 );
+		raiseifib128Size(                                     256,  $2305 );
+		raiseifib128Size(                                   32767,  $2306 );
+		raiseifib128Size(                                   32768,  $2307 );
+		raiseifib128Size(                                   65535,  $2308 );
+		raiseifib128Size(                                   65536,  $2309 );
+		raiseifib128Size(                              2147483647,  $2310 );
+		raiseifib128Size(                              2147483648,  $230a );
+		raiseifib128Size(                              4294967295,  $230b );
+		raiseifib128Size(                              4294967296,  $230c );
+		raiseifib128Size(                     9223372036854775807,  $230d );
+		raiseifib128Size(                     9223372036854775808,  $230e );
+		raiseifib128Size(                    18446744073709551615,  $230f );
+		raiseifib128Size(                    18446744073709551616,  $23a0 );
+		raiseifib128Size( 170141183460469231731687303715884105727,  $23a1 );
+											   
+		minus_raiseifib128Size(                                       1,  $2311 );
+		minus_raiseifib128Size(                                     127,  $2312 );
+		minus_raiseifib128Size(                                     128,  $2313 );
+		minus_raiseifib128Size(                                     255,  $2314 );
+		minus_raiseifib128Size(                                     256,  $2315 );
+		minus_raiseifib128Size(                                   32767,  $2316 );
+		minus_raiseifib128Size(                                   32768,  $2317 );
+		minus_raiseifib128Size(                                   65535,  $2318 );
+		minus_raiseifib128Size(                                   65536,  $2319 );
+		minus_raiseifib128Size(                              2147483647,  $2320 );
+		minus_raiseifib128Size(                              2147483648,  $2321 );
+		minus_raiseifib128Size(                              4294967295,  $231b );
+		minus_raiseifib128Size(                              4294967296,  $231c );
+		minus_raiseifib128Size(                     9223372036854775807,  $231d );
+		minus_raiseifib128Size(                     9223372036854775808,  $231e );
+		minus_raiseifib128Size(                    18446744073709551615,  $231f );
+		minus_raiseifib128Size(                    18446744073709551616,  $23a4 );
+		minus_raiseifib128Size( 170141183460469231731687303715884105727,  $23a5 );
+		minus_raiseifib128Size( 170141183460469231731687303715884105728,  $23a6 );
+		
+		_raiseifib128Size(                                       0,  $2340 );
+		_raiseifib128Size(                                       1,  $2341 );
+		_raiseifib128Size(                                     127,  $2342 );
+		_raiseifib128Size(                                     128,  $2343 );
+		_raiseifib128Size(                                     255,  $2344 );
+		_raiseifib128Size(                                     256,  $2345 );
+		_raiseifib128Size(                                   32767,  $2346 );
+		_raiseifib128Size(                                   32768,  $2347 );
+		_raiseifib128Size(                                   65535,  $2348 );
+		_raiseifib128Size(                                   65536,  $2349 );
+		_raiseifib128Size(                              2147483647,  $2350 );
+		_raiseifib128Size(                              2147483648,  $235a );
+		_raiseifib128Size(                              4294967295,  $235b );
+		_raiseifib128Size(                              4294967296,  $235c );
+		_raiseifib128Size(                     9223372036854775807,  $235d );
+		_raiseifib128Size(                     9223372036854775808,  $235e );
+		_raiseifib128Size(                    18446744073709551615,  $235f );
+		_raiseifib128Size(                    18446744073709551616,  $23a2 );
+		_raiseifib128Size( 170141183460469231731687303715884105727,  $23a3 );
+											   
+		_minus_raiseifib128Size(                                      1,   $2351 );
+		_minus_raiseifib128Size(                                     127,  $2352 );
+		_minus_raiseifib128Size(                                     128,  $2353 );
+		_minus_raiseifib128Size(                                     255,  $2354 );
+		_minus_raiseifib128Size(                                     256,  $2355 );
+		_minus_raiseifib128Size(                                   32767,  $2356 );
+		_minus_raiseifib128Size(                                   32768,  $2357 );
+		_minus_raiseifib128Size(                                   65535,  $2358 );
+		_minus_raiseifib128Size(                                   65536,  $2359 );
+		_minus_raiseifib128Size(                              2147483647,  $2360 );
+		_minus_raiseifib128Size(                              2147483648,  $2361 );
+		_minus_raiseifib128Size(                              4294967295,  $236b );
+		_minus_raiseifib128Size(                              4294967296,  $236c );
+		_minus_raiseifib128Size(                     9223372036854775807,  $236d );
+		_minus_raiseifib128Size(                     9223372036854775808,  $236e );
+		_minus_raiseifib128Size(                    18446744073709551615,  $236f );
+		_minus_raiseifib128Size(                    18446744073709551616,  $23a8 );
+		_minus_raiseifib128Size( 170141183460469231731687303715884105727,  $23a9 );
+		_minus_raiseifib128Size( 170141183460469231731687303715884105728,  $23aa );
+
+		
+
+		try
+
+			lea( edi, buffer );
+			conv._intToBuf128Size( 0, 256, 256, ' ', [edi], 256 );
+			raise( $2363 );	// Better not get here.
+
+		  exception( ex.WidthTooBig )
+
+			// This is the expected case
+
+		endtry;
+		stdout.put( "_intToBuf128Size tests succeeded!" nl nl );
+
+	  anyexception
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"_intToBuf128Size tests failed! Exception = ", eax,  nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+	conv.setUnderscores( true );
+	stderr.put( "Testing _intToBuf128Size() with underscores" nl );
+	try
+
+
+		raiseifib128Size(                     32_767,  $2366 );
+		raiseifib128Size(                     32_768,  $2367 );
+		raiseifib128Size(                     65_535,  $2368 );
+		raiseifib128Size(                     65_536,  $2369 );
+		raiseifib128Size(              2_147_483_647,  $2370 );
+		raiseifib128Size(              2_147_483_648,  $2371 );
+		raiseifib128Size(              4_294_967_295,  $236b );
+		raiseifib128Size(              4_294_967_296,  $236c );
+		raiseifib128Size(  9_223_372_036_854_775_807,  $236d );
+		raiseifib128Size(  9_223_372_036_854_775_808,  $236e );
+		raiseifib128Size( 18_446_744_073_709_551_615,  $236f );
+		raiseifib128Size( 18_446_744_073_709_551_616,  $237a );
+		raiseifib128Size
+		( 
+			170_141_183_460_469_231_731_687_303_715_884_105_727,  
+			$237b 
+		);
+												  
+		minus_raiseifib128Size(                     32_767,  $2376 );
+		minus_raiseifib128Size(                     32_768,  $2377 );
+		minus_raiseifib128Size(                     65_535,  $2378 );
+		minus_raiseifib128Size(                     65_536,  $2379 );
+		minus_raiseifib128Size(              2_147_483_647,  $2380 );
+		minus_raiseifib128Size(              2_147_483_648,  $2381 );
+		minus_raiseifib128Size(              4_294_967_295,  $238b );
+		minus_raiseifib128Size(              4_294_967_296,  $238c );
+		minus_raiseifib128Size(  9_223_372_036_854_775_807,  $238d );
+		minus_raiseifib128Size(  9_223_372_036_854_775_808,  $238e );
+		minus_raiseifib128Size( 18_446_744_073_709_551_615,  $238f );
+		minus_raiseifib128Size( 18_446_744_073_709_551_616,  $239a );
+		minus_raiseifib128Size
+		( 
+			170_141_183_460_469_231_731_687_303_715_884_105_727,  
+			$239b 
+		);
+		minus_raiseifib128Size
+		( 
+			170_141_183_460_469_231_731_687_303_715_884_105_728,  
+			$239c 
+		);
+												  
+		_raiseifib128Size(                     32_767,  $2386 );
+		_raiseifib128Size(                     32_768,  $2387 );
+		_raiseifib128Size(                     65_535,  $2388 );
+		_raiseifib128Size(                     65_536,  $2389 );
+		_raiseifib128Size(              2_147_483_647,  $2390 );
+		_raiseifib128Size(              2_147_483_648,  $2391 );
+		_raiseifib128Size(              4_294_967_295,  $23ab );
+		_raiseifib128Size(              4_294_967_296,  $23ac );
+		_raiseifib128Size(  9_223_372_036_854_775_807,  $23ad );
+		_raiseifib128Size(  9_223_372_036_854_775_808,  $23ae );
+		_raiseifib128Size( 18_446_744_073_709_551_615,  $23af );
+		_raiseifib128Size( 18_446_744_073_709_551_616,  $23b0 );
+		_raiseifib128Size
+		( 
+			170_141_183_460_469_231_731_687_303_715_884_105_727,  
+			$23b1 
+		);
+												  
+		_minus_raiseifib128Size(                     32_767,  $2396 );
+		_minus_raiseifib128Size(                     32_768,  $2397 );
+		_minus_raiseifib128Size(                     65_535,  $2398 );
+		_minus_raiseifib128Size(                     65_536,  $2399 );
+		_minus_raiseifib128Size(              2_147_483_647,  $2400 );
+		_minus_raiseifib128Size(              2_147_483_648,  $2401 );
+		_minus_raiseifib128Size(              4_294_967_295,  $240b );
+		_minus_raiseifib128Size(              4_294_967_296,  $240c );
+		_minus_raiseifib128Size(  9_223_372_036_854_775_807,  $240d );
+		_minus_raiseifib128Size(  9_223_372_036_854_775_808,  $240e );
+		_minus_raiseifib128Size( 18_446_744_073_709_551_615,  $240f );
+		_minus_raiseifib128Size( 18_446_744_073_709_551_616,  $241a );
+		_minus_raiseifib128Size
+		( 
+			170_141_183_460_469_231_731_687_303_715_884_105_727,  
+			$241b 
+		);
+		_minus_raiseifib128Size
+		( 
+			170_141_183_460_469_231_731_687_303_715_884_105_728,  
+			$241c 
+		);
+
+		
+
+		try
+
+			mov( 10, ecx );		// Width is too big.
+			mov( 0, eax );
+			lea( edi, buffer );
+			conv._intToBuf128Size( 0, 256, 256, ' ', [edi], 256 );
+			raise( $2403 );	// Better not get here.
+
+		  exception( ex.WidthTooBig )
+
+			// This is the expected case
+
+		endtry;
+		stdout.put( "_intToBuf128Size tests succeeded!" nl nl );
+
+	  anyexception
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"_intToBuf128Size tests failed! Exception = ", eax,  nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+	stderr.put( "Internal function tests #2 succeeded!" nl );
+			
+end internalFuncs_test;
+
+													

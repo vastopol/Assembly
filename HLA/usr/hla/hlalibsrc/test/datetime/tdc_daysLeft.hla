@@ -1,0 +1,100 @@
+program DaysLeft_test;
+#include( "stdlib.hhf" )
+#include( "dtClass.hhf" )
+
+static
+	baseDate	:date.daterec;
+	incDate		:date.daterec;
+	FiveYears	:date.daterec;
+	endDate		:date.daterec;
+	
+	days		:dword;
+	days5		:dword;
+	
+	dc			:dateClass;
+	vdc			:virtualDateClass;
+		
+	
+begin DaysLeft_test;
+
+	 
+	date.setFormat( date.mmddyyyy );
+	dc.create();
+	vdc.create();
+	
+	date.pack( 1, 1, date.minYear, incDate );
+	mov( incDate, eax );
+	mov( eax, baseDate );
+	mov( eax, dc.theDate );
+	mov( eax, vdc.theDate );
+	
+	date.pack( 1, 1, date.maxYear-1, endDate );
+	
+	mov( 0, days );
+	while( mov( endDate, eax ) >= (type dword baseDate) ) do
+	
+		mov( baseDate, eax );
+		mov( eax, incDate );
+		mov( eax, dc.theDate );
+		mov( eax, vdc.theDate );
+		mov( 364, ebx );
+		movzx( incDate.year, eax );
+		date.isLeapYear( eax );
+		add( eax, ebx );
+		while( ebx > 0 ) do
+		
+		
+			dc.daysLeft();
+			mov( eax, ecx );
+			vdc.daysLeft();
+			mov( eax, edx );
+			date.daysLeft( incDate );		
+			if
+			( 
+					eax <> ebx
+				||	eax <> ecx
+				||	eax <> edx 
+			) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"dateClass.daysLeft failed!", nl,
+					"daysLeft =  ", (type uns32 eax ), nl,
+					"dc.Left  =  ", (type uns32 ecx ), nl,
+					"vdc.Left =  ", (type uns32 edx ), nl,
+					"days     =  ", (type uns32 ebx ), nl,
+					"date =    '"
+				);
+				date.a_toString( incDate );
+				stderr.put
+				(
+					(type string eax), "'" nl
+					"dc.date = '", dc,  "'" nl
+					"vdc.date= '", vdc, "'" nl
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			dec( ebx );
+			date.addDays( 1, incDate );
+			dc.addDays( 1 );
+			vdc.addDays( 1 );
+			
+		endwhile;
+		inc( baseDate.year );
+		inc( dc.theDate.year );
+		inc( vdc.theDate.year );
+		
+	endwhile;
+	stderr.put( "dateClass.daysLeft succeeded!" nl );
+	os.exitProcess(0);
+		
+end DaysLeft_test;
+
+													

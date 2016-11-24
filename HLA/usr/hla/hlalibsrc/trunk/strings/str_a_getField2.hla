@@ -1,0 +1,55 @@
+unit str_field_unit;
+
+//	Synopsis:
+//	A "field" in a string consists of a sequence of characters separated by
+//	characters in some "delimiter set". This function uses a 'standard'
+//	delimiter set (see str.tokenize) that is used to separate command-line
+//	parameters. It returns the nth field of a string (n specified by the
+//	field' parameter) as a string 
+//	Note that the first field is field #0.
+
+
+//	Version History:
+//
+//	Revision:	3
+//	Author:		Sevag Krikorian
+//	Date:		Oct 2, 2007
+//	Note:		changed to library format, code improvement
+//
+//	Revision:	2
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 02, 2007
+//	Note:		separated engine for code reuse, completed  all functions
+
+//	Revision:	1
+//	Author:		Sevag Krikorian
+//	Date:		July 30, 2007
+//	Note:		1st release
+//
+	
+	#includeonce ("strings.hhf")
+	#includeonce ("excepts.hhf")
+	#includeonce ("memory.hhf")
+
+
+		
+	procedure str.a_getField2( s:string; field:dword );
+		@noframe; @nodisplay; @noalignstack;
+		
+		// allocate string on heap and return n'th 'field'
+		// use standard delimiter set
+		
+	begin a_getField2;
+		push( ebp );
+		mov( esp, ebp );
+		
+		str.a_getField3( s, field, str.CmdLnDelimiters );
+		
+		pop( ebp );
+		ret( _parms_ );
+		
+	end a_getField2;
+
+		
+
+end str_field_unit;

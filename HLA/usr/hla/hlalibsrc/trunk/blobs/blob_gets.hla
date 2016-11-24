@@ -1,0 +1,128 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "blobs.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "threads.hhf" );
+
+procedure blob.gets( src:blob.blob; s:string ); 
+begin gets;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( edi );
+	
+	mov( src, ebx );
+	test( ebx, ebx );
+	jz AttemptToDerefNULL;
+	
+	mov( s, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+	#if( @thread )
+	try
+	
+		thread.enterCriticalSection( (type blob.blobRec [ebx]).criticalSection );
+			
+	#endif
+	
+		mov( (type blob.blobRec [ebx]).rcursor, ecx );
+		cmp( ecx, (type blob.blobRec [ebx]).length );
+		jnae notEOFerror;
+			raise( ex.EndOfFile );
+			
+		notEOFerror:
+			
+		// Okay, copy all characters to the first NL sequence, or
+		// until EOF, into the destination string.
+		
+		sub( 1, ecx );
+		mov( -1, edx );
+		CopyChars:
+		
+			add( 1, ecx );
+			add( 1, edx );
+			cmp( edx, (type str.strRec [edi]).length );
+			jnae noStringOverflow;
+				raise( ex.StringOverflow );
+				
+			noStringOverflow:
+			 
+			mov( (type byte [ebx+ecx]), al );
+			mov( al, [edi+edx] );
+			cmp( al, stdio.lf );
+			jne CopyChars;
+			
+			test( edx, edx );
+			jz FoundEOS;
+			
+				RemoveCRs:
+					cmp( (type byte [edi+edx-1]), stdio.cr );
+					jne FoundEOS;
+					
+						sub( 1, edx );
+						jnz RemoveCRs;
+				
+			FoundEOS:
+			
+			// Zero-terminate the string and set the length:
+			
+			mov( 0, (type byte [edi+edx]));
+			mov( edx, (type str.strRec [edi]).length );
+			
+			// Skip the linefeed and set new rcursor value:
+			
+			add( 1, ecx );
+			mov( ecx, (type blob.blobRec [ebx]).rcursor ); 
+	
+	
+	#if( @thread )
+	
+	  anyexception
+		mov( src, edx );
+		thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		reraise( eax );
+		
+	endtry;
+	thread.leaveCriticalSection( (type blob.blobRec [ebx]).criticalSection );
+			
+	#endif
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+				
+end gets;
+
+	
+end blobUnit;
+

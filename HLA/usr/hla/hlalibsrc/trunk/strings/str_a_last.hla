@@ -1,0 +1,97 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+
+
+/***************************************************************/
+/*                                                             */
+/* last,                                                       */
+/* a_last-                                                     */
+/*                                                             */
+/* These routines remove characters from the beginning of a    */
+/* string. (that is, they return the characters at the end of  */
+/* the string). The start routine destructively removes        */
+/* characters from a specified string variable.  The a_last    */
+/* routine allocates storage for a new string and copies the   */
+/* string, minus the deleted portion, to the newly allocated   */
+/* storage. The original string is left unchanged by a_last.   */
+/*                                                             */
+/* Inputs-                                                     */
+/*                                                             */
+/* dest-   Pointer to string to remove characters from.        */
+/* length- Number of characters to delete from the end         */
+/*         of the string.                                      */
+/*                                                             */
+/***************************************************************/
+
+// str.a_last - returns pointer to newly allocated string in EAX.
+
+procedure str.a_last
+(
+      src: string;
+      len:	dword
+); 
+	@noframe;
+begin a_last;
+
+	push( ebp );
+	mov( esp, ebp );
+	mov( src, eax );
+	test( eax, eax );
+	jz AttemptToDerefNULL;			 
+
+	// string_length-len is the starting index to use.
+	
+	mov( src, edi );
+	mov( len, ecx );
+	mov( (type str.strRec [edi]).length, eax );
+	cmp( eax, ecx );
+	jae useLen;
+		mov( eax, ecx );
+	useLen:
+	sub( ecx, eax );
+	
+	// min( len, string_length ) is the length to use.
+	// str.a_substr handles the case where the
+	// length we've specified goes beyond the
+	// end of the string, so we don't need to
+	// worry about that here.
+	
+	str.a_substr( edi, eax, len );
+
+		
+	allDone:
+	pop( ebp );
+	ret( _parms_ );
+	
+AttemptToDerefNULL:			 
+	raise(ex.AttemptToDerefNULL);
+		
+end a_last;
+ 
+
+end stringUnit;
+
+
+
+
+	
+

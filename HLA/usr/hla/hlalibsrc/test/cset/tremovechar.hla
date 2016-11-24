@@ -1,0 +1,55 @@
+program removeChar_test;
+#include( "stdlib.hhf" )
+
+		
+const
+	cs_c :cset[] :=
+		[
+			#for( i := 0 to 127 )
+				 {#0..#127} - {char(i)},
+			#endfor
+		];
+		
+static
+	cstest		:cset;
+	ccs 		:cset[ @elements( cs_c ) ] := cs_c;
+	
+begin removeChar_test;
+
+	for( mov( 0, ecx ); ecx<128; inc(ecx) )do
+	
+		intmul( @size( cset ), ecx, edx );
+		cs.rangeChar( #0, #127, cstest );
+		cs.removeChar( cl, cstest );
+		if( cs.ne( cstest, ccs[edx]) ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"cs.removeChar failed!  ecx=", ecx, nl,
+				(type dword cstest[12]), '_',
+				(type dword cstest[8]), '_',
+				(type dword cstest[4]), '_',
+				(type dword cstest), nl,
+				
+				(type dword ccs[edx+12]), '_',
+				(type dword ccs[edx+8]), '_',
+				(type dword ccs[edx+4]), '_',
+				(type dword ccs[edx]), nl,
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif;
+			
+	endfor;
+	stderr.put( "cs.removeChar succeeded!" nl );
+	os.exitProcess(0);
+		
+end removeChar_test;
+
+													

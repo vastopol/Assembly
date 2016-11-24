@@ -1,0 +1,64 @@
+unit shortHWexceptionUnit;
+?@nodisplay := true;
+?@noframe := true;
+
+#if( false ) // Old MASM code
+
+						.586
+						.model	flat, syscall
+						option casemap :none   ; case sensitive
+	;cseg				segment	page public 'code'
+						.code
+
+	; Default Hardware Exception Handler to execute if
+	; we get a Windows Exception.  This just passes control
+	; back to the Windows' handler.
+
+							public	_SHORTHWEXCEPT__HLA_
+	_SHORTHWEXCEPT__HLA_	proc	near32 syscall
+	_SHORTHWEXCEPT__HLA_	endp
+
+							public	_shortHWExcept__hla_
+	_shortHWExcept__hla_	proc	near32 syscall
+	_shortHWExcept__hla_	endp
+
+							public	shortHWExcept__hla_
+	shortHWExcept__hla_		proc	near32 syscall
+	shortHWExcept__hla_		endp
+
+							public	shorthwExcept__hla_
+	shorthwExcept__hla_		proc	near32 syscall
+	shorthwExcept__hla_		endp
+
+							public	ShortHWExcept__hla_
+	ShortHWExcept__hla_		proc	near32 syscall
+	ShortHWExcept__hla_		endp
+
+							public	SHORTHWEXCEPT__HLA_
+	SHORTHWEXCEPT__HLA_		proc	near32 pascal
+							mov		eax, 1
+							ret
+	SHORTHWEXCEPT__HLA_		endp
+
+	;cseg		ends
+
+#endif
+
+#macro fallsThrough( procName, externalName );
+
+	procedure procName; external( @string:externalName );
+	procedure procName; begin procName; end procName;
+
+#endmacro
+
+
+fallsThrough( shw1, SHORTHWEXCEPT__HLA_ )
+fallsThrough( shw2, shorthwExcept__hla_ )
+ 
+procedure shortHWexcept;
+begin shortHWexcept;
+	mov( 1, eax );
+	ret();
+end shortHWexcept;
+
+end shortHWexceptionUnit;

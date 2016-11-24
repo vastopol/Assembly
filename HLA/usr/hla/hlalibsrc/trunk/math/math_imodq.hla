@@ -1,0 +1,161 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit mathUnit;
+
+#include( "math.hhf" )
+
+/*********************************************************/
+/*                                                       */
+/* imodq( left, right, dest -                            */
+/*                                                       */
+/* Computes dest := left imod right where all the        */
+/* operands are 64-bit operands.  Does a quick check     */
+/* to see if it can do a 64/32 division vs. a full       */
+/* 64/64 bit division.                                   */
+/*                                                       */
+/*********************************************************/
+
+
+procedure math.imodq( left:qword; right:qword; var dest:qword );
+	@nodisplay;
+	@noalignstack;
+	@noframe;
+	
+var
+	Quotient:qword;
+	sign		:boolean;
+	
+begin imodq;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	push( eax );
+	push( ecx );
+	mov( dest, ecx );
+	
+	// Determine the sign of the result:
+	
+	mov( false, sign );
+	cmp( (type int8 left[7]), 0 );
+	jnl noNeg1;
+	
+		mov( true, sign );
+		xor( eax, eax );
+		sub( (type dword left[0]), eax );
+		mov( eax, (type dword left[0]) );
+		
+		mov( 0, eax );
+		sbb( (type dword left[4]), eax );
+		mov( eax, (type dword left[4]) );
+		
+	noNeg1:
+	
+	cmp( (type int8 right[7]), 0 );
+	jnl noNeg2;
+	
+		xor( true, sign );
+		xor( eax, eax );
+		sub( (type dword right[0]), eax );
+		mov( eax, (type dword right[0]) );
+		
+		mov( 0, eax );
+		sbb( (type dword right[4]), eax );
+		mov( eax, (type dword right[4]) );
+		
+	noNeg2:
+	
+	// First, check to see if the H.O. dword of the divisor (right)
+	// is zero.  If so, we can do a 64/32 bit division using the
+	// div instruction (which is faster).
+	
+	cmp( (type dword right[4]), 0 );
+	jne fullDivision;
+	
+		// Okay, we can safely do a 128/32 bit division here.
+		// Note that if the divisor is zero, the system will
+		// raise the ex.DivideError exception, so we don't
+		// have to check here.
+		
+		push( ebx );
+		push( edx );
+		
+		mov( (type dword right), ebx );
+		mov( (type dword left[4]), edx );
+		test( edx, edx );
+		jnz not32Div;
+		
+			// We can do a 32/32 bit division!
+					
+			mov( (type dword left), eax );
+			div( ebx );
+			mov( dest, ebx );
+			
+			mov( edx, [ebx] );
+			mov( 0, (type dword [ebx+4]));
+			jmp shortDivDone;
+			
+		not32Div:
+		
+			// We have to do a full 64/32 bit division
+			
+			mov( (type dword left[4]), eax );
+			xor( edx, edx );
+			div( ebx );
+			
+			mov( (type dword left), eax );
+			div( ebx );
+
+			mov( 0, (type dword [ecx+4]) );	// H.O. remainder is always zero.
+			mov( edx, [ecx] );
+			
+		shortDivDone:				   
+		pop( edx );
+		pop( ebx );
+		jmp DivDone;
+			
+	fullDivision: 
+	
+		// Must do a full 64/64 modulo.
+		// Note: divisor is not zero at this point.
+		
+		math.div64( left, right, Quotient, [ecx] );
+	
+	DivDone:
+	
+	// If the result is supposed to be negative, negate the result:
+	
+	cmp( sign, 0 );
+	je noNegation;
+	
+		xor( eax, eax );
+		sub( [ecx], eax );
+		mov( eax, [ecx] );
+		
+		mov( 0, eax );
+		sbb( [ecx+4], eax );
+		mov( eax, [ecx+4] );
+		
+	noNegation:
+	pop( ecx );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+	
+end imodq;
+
+end mathUnit;

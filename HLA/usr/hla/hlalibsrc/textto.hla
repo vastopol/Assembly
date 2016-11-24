@@ -1,0 +1,1170 @@
+program textto;
+#include ("stdlib.hhf")
+#include ("w.hhf" )
+
+#if( !@defined( HLAstdlibVersion ))
+const
+	HLAstdlibVersion := 1;
+#endif
+
+static
+	argc			:uns32;
+	detab			:uns32;
+	column			:uns32 := 0;
+	backupSuffix	:string := "bak";
+
+	toDOS			:boolean := false;
+	toUnix			:boolean := false;
+	toMac			:boolean := false;
+	quiet			:boolean := false;
+	verify			:boolean := false;
+	toStdout		:boolean := false;
+	recursive		:boolean := false;
+	doBackup		:boolean := false;
+
+	align(4);
+	argv			:string[128];
+
+
+#if( HLAstdlibVersion < 2 )
+
+	namespace filesys;
+	
+		procedure delete( filename:string); @external( "STDIO_FDELETE" );
+		procedure rename( source:string; dest:string ); 
+			@returns( "EAX" ); 
+			@external( "STDIO_FMOVE" );
+			
+		procedure gwd( dest:string ); 
+			@external( "STDIO_FGWD" );
+		
+		procedure cd( source:string ); 
+			@returns( "EAX" ); 
+			@external( "STDIO_FCD" );
+
+		iterator dirInCwd; @external( "FILESYS_DIRINCWD" );
+
+		
+	end filesys;
+	
+	
+	
+	iterator filesys.dirInCwd; @nodisplay;
+	var
+		eaxSave		:dword;
+		ecxSave		:dword;
+		edxSave		:dword;
+		handle		:dword;
+		FileData	:w.WIN32_FIND_DATA;
+		
+	begin dirInCwd;
+
+		mov( edx, edxSave );
+		mov( ecx, ecxSave );
+		mov( eax, eaxSave );
+		
+		 
+		// Find the first matching file (if one exists).
+		// Save the handle for use by FindNextFile.
+		
+		w.FindFirstFile( "*", FileData );
+		mov( eax, handle );
+		
+		// If we matched at least one filename, return
+		// the corresponding string and call the
+		// FindNextFile routine to match any additional
+		// filenames.
+		
+		cmp( eax, w.INVALID_HANDLE_VALUE );
+		je allDone;
+		
+			repeatUntilNoMore:
+			
+				mov( FileData.dwFileAttributes, eax );
+				and( w.FILE_ATTRIBUTE_DIRECTORY, eax );
+				jz notADir;
+			
+				
+					// FindFirstFile & FindNextFile return
+					// zero-terminated strings.  Convert these
+					// to HLA compatible strings and return
+					// the converted string:
+					
+					lea( eax, FileData.cFileName );
+					#if( HLAstdlibVersion < 2 )
+					
+						str.a_cpyz( [eax] );
+					#else
+					
+						str.a_cpyz( eax );
+						
+					#endif
+					cmp( (type byte [eax]), 0 );	// Shouldn't happen, but...
+					je notADir;
+					
+						// Don't return '.' and '..':
+					
+						cmp( (type byte [eax]), '.' );
+						jne yieldFile;
+						cmp( (type byte [eax+1]), 0 );
+						je notADir;
+						cmp( (type byte [eax+1]), '.' );
+						jne yieldFile;
+						cmp( (type byte [eax+2]), 0 );
+						je notADir;
+						
+
+
+						yieldFile:
+						
+							// Return the converted string to the FOREACH
+							// loop and then free the storage associated
+							// with the string.
+							
+							mov( ecxSave, ecx );
+							mov( edxSave, edx );
+							yield();		// Return string to FOREACH loop.
+							mov( edx, edxSave );
+							mov( ecx, ecxSave );
+				
+				notADir:
+				
+				// Get the next filename in the list:
+				
+				w.FindNextFile( handle, FileData );
+				cmp( al, false );
+				jne repeatUntilNoMore;
+
+			
+			// When we've processed all the filenames in the list,
+			// call FindClose to free the handle and other resources.
+			
+			w.FindClose( handle );
+			
+		allDone:
+		mov( edxSave, edx );
+		mov( ecxSave, ecx );
+		mov( eaxSave, eax );
+
+	end dirInCwd;
+
+	
+#endif
+
+// External declarations for Windows API calls:
+
+procedure FindFirstFile( FileName:string; var WFD:w.WIN32_FIND_DATA ); 
+	@stdcall;
+	@use eax;
+	@returns( "eax" ); // File Handle.
+	@external( "_FindFirstFileA@8" );
+
+procedure FindNextFile( handle:dword; var WFD:w.WIN32_FIND_DATA ); 
+	@stdcall;
+	@use eax;
+	@returns( "al" ); // Boolean result, true=got a file.
+	@external( "_FindNextFileA@8" );
+	
+procedure FindClose( handle:dword );
+	@stdcall;
+	@external( "_FindClose@4" );
+
+
+procedure GetFullPathName
+(
+		lpFileName		:string;
+		nBufferLength	:uns32;
+	var	lpBuffer		:var;
+	var	lpFilePart		:dword
+);
+	@stdcall;
+	@use eax;
+	@returns( "eax" );
+	@external( "_GetFullPathNameA@16" );
+
+
+
+
+
+
+// These macros preserve registers that might get tweaked
+// by Windows API calls.
+
+#macro pusha2;
+	push( ecx );
+	push( edx );
+#endmacro;
+
+#macro popa2;
+	pop( edx );
+	pop( ecx );
+#endmacro;
+
+
+// The following iterator returns a string (in EAX) that corresponds
+// to a filename.  The parameter passed to this iterator is a filename,
+// one that typically contains wildcard characters (i.e., "*" and "?" ).
+// This iterator returns a list of filenames that match the, possibly
+// ambiguous, filename passed as a parameter.  This iterator fails
+// when there are no more matching filenames.
+
+iterator FileInList( FileList:string ); @nodisplay;
+var
+	handle:		dword;
+	curFile:	string;
+	FileData:	w.WIN32_FIND_DATA;
+	
+begin FileInList;
+
+	// Find the first matching file (if one exists).
+	// Save the handle for use by FindNextFile.
+	
+	pusha2;
+	FindFirstFile( FileList, FileData );
+	popa2;
+	mov( eax, handle );
+	
+	// If we matched at least one filename, return
+	// the corresponding string and call the
+	// FindNextFile routine to match any additional
+	// filenames.
+	
+	if( eax <> w.INVALID_HANDLE_VALUE ) then
+	
+		repeat
+		
+			// FindFirstFile & FindNextFile return
+			// zero-terminated strings.  Convert these
+			// to HLA compatible strings and return
+			// the converted string:
+			
+			lea( eax, FileData.cFileName );
+			#if( HLAstdlibVersion < 2 )
+			
+				str.a_cpyz( [eax] );
+				
+			#else
+			
+				str.a_cpyz( eax );
+				
+			#endif
+			mov( eax, curFile );
+			
+			// Return the converted string to the FOREACH
+			// loop and then free the storage associated
+			// with the string.
+			
+			mov( FileData.dwFileAttributes, eax );
+			test( w.FILE_ATTRIBUTE_DIRECTORY, eax );
+			if( @z ) then
+
+				mov( curFile, eax );
+				yield();		// Return string to FOREACH loop.
+
+			endif;
+			str.free( curFile );
+		
+			// Get the next filename in the list:
+			
+			pusha2;	
+			FindNextFile( handle, FileData );
+			popa2;
+			
+		until( eax = false );
+		
+		// When we've processed all the filenames in the list,
+		// call FindClose to free the handle and other resources.
+		
+		pusha2;
+		FindClose( handle );
+		popa2;
+		
+	endif;
+
+end FileInList;
+
+
+
+
+
+/*
+** convertFile-
+**
+**	This procedure is the one responsible for converting
+** the text file from one format to another.
+**
+**	If the user did not specify the '-s' option on the
+** command line, then this procedure will create a temporary
+** file, copy the converted output to the temporary file,
+** delete the original file, and then rename the temporary file
+** to the original file name.
+*/
+
+procedure convertFile( filename:string );
+	@nodisplay;
+	@noframe;
+	
+var
+	inFile		:mmap;
+	outHandle	:dword;
+	byteCnt		:dword;
+	tempFile	:string;
+	backName	:string;
+	fullName	:string;
+	pathPtr 	:dword;
+	
+	eaxSave		:dword;
+	ebxSave		:dword;
+	ecxSave		:dword;
+	edxSave		:dword;
+	ediSave		:dword;
+	esiSave		:dword;
+	
+	pathBuf 	:char[1024];
+	outBuf		:byte[8192];
+
+	isBinary	:boolean;
+
+begin convertFile;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	mov( eax, eaxSave );
+	mov( ebx, ebxSave );
+	mov( ecx, ecxSave );
+	mov( edx, edxSave );
+	mov( edi, ediSave );
+	mov( esi, esiSave );
+	
+	mov( NULL, tempFile );
+	mov( NULL, fullName );
+	mov( NULL, backName );
+	
+	try
+	
+		inFile.create();
+		inFile.open( filename, fileio.r );
+		
+	  anyexception
+	  
+		mov( eaxSave, eax );
+		mov( ebxSave, ebx );
+		mov( ecxSave, ecx );
+		mov( edxSave, edx );
+		mov( ediSave, edi );
+		mov( esiSave, esi );
+		stderr.put( "Error opening file '", filename, "'" nl );
+		jmp exitConvertFile;
+		
+	endtry;
+
+	if( toStdout ) then
+
+		stdout.handle();
+		mov( eax, outHandle );
+
+	else
+
+		/*
+		**	Get the full path to the source file:
+		*/
+
+		GetFullPathName( filename, 260, pathBuf, pathPtr );
+		if( eax = 0 ) then
+
+			stderr.put( "textto: GetFullPath returned an error" nl );
+			exit textto;
+
+		endif;
+
+
+		/*
+		** Make a copy of the full filename.
+		*/
+
+		lea( ecx, pathBuf );
+		#if( HLAstdlibVersion < 2 )
+		
+			str.zlen( [ecx] );
+			
+		#else
+		
+			zstr.len( ecx );
+			
+		#endif
+		add( 2, eax );
+		str.talloc( eax );
+		mov( eax, fullName );
+		#if( HLAstdlibVersion < 2 )
+		
+			str.cpyz( [ecx], fullName );
+		
+		#else
+		
+			str.cpyz( ecx, fullName );
+			
+		#endif
+		
+
+		/*
+		** Store a zero over the first character of the filename component:
+		*/
+
+		mov( pathPtr, eax );
+		mov( #0, (type char [eax]) );
+
+		
+		/*
+		** Generate a temporary filename in the same directory
+		** as the file we're converting:
+		*/
+		
+		str.talloc( 1024 );
+		mov( eax, tempFile );
+		str.put( tempFile, filename, "--tto--.temp" );
+
+		/*
+		** Open the temporary file for output:
+		*/
+
+		try
+		
+			fileio.openNew( tempFile );
+			mov( eax, outHandle );
+			
+		  anyexception
+		  
+			stderr.put
+			( 
+				"Could not open file '", 
+				tempFile, 
+				"' for output" 
+				nl 
+			);
+			jmp exitConvertFile;
+			
+		endtry;
+		  	
+	endif;
+
+	/*
+	** If we properly opened the file, the do the translation here:
+	*/
+
+
+	/*
+	** If the user has specified verify mode, then make a quick
+	** pass over the file to see if it contains "funny" characters
+	** that would suggest that it's a binary, rather than text, file.
+	*/
+
+	mov( false, isBinary );
+	if( verify ) then
+
+		mov( inFile.filePtr, esi );
+		mov( inFile.endFilePtr, ecx );
+		while( esi < ecx ) do
+
+			mov( [esi], al );
+			if( al = 0 || al > 127 ) then
+
+				stderr.put
+				( 
+					"'", 
+					fullName, 
+					"' appears to be a binary file, skipping"
+					nl
+				);
+				mov( true, isBinary );
+				break;
+
+			endif;
+			inc( esi );
+
+		endwhile;
+
+	endif;
+	if( !isBinary ) then
+	
+		// Set up the EOLN sequence for this conversion:
+		// BL = 1st char of sequence
+		// BH = 2nd char, or 0 if no second char.
+		
+		if( toDOS ) then
+
+			mov( stdio.cr, bl );	// DOS/Windows EOLN sequence
+			mov( stdio.lf, bh );
+
+		elseif( toUnix ) then
+
+			mov( stdio.lf, bl );	// UNIX EOLN sequence
+			mov( #0, bh );
+
+		else
+
+			mov( stdio.cr, bl );	// Mac EOLN sequence
+			mov( #0, bh );
+
+		endif;
+		mov( inFile.filePtr, esi );
+		lea( edi, outBuf );
+		xor( ecx, ecx );
+		while( esi < inFile.endFilePtr ) do
+
+			mov( [esi], al );
+			if( al = stdio.cr ) then
+
+				// If it's a carriage return, emit the EOLN
+				// sequence and ignore a linefeed if one
+				// immediately follows.
+
+				mov( bl, [edi] );
+				inc( ecx );
+				if( bh <> 0 ) then
+
+					inc( edi );
+					inc( ecx );
+					mov( bh, [edi] );
+
+				endif;
+				
+				// Skip over the line feed, if one follows the <CR>
+				
+				if( esi < inFile.endFilePtr ) then
+				
+					if( (type byte [esi+1]) = stdio.lf ) then
+						
+						inc( esi );
+						
+					endif;
+					
+				endif;
+				mov( -1, column );	// Reset tab column (inc'd below).
+				
+			elseif( al = stdio.lf ) then
+
+				mov( bl, [edi] );
+				inc( ecx );
+				if( bh <> 0 ) then
+
+					inc( edi );
+					inc( ecx );
+					mov( bh, [edi] );
+
+				endif;
+				mov( -1, column );	// Reset tab column (inc'd below).
+
+			elseif( al = stdio.tab && detab <> 0 ) then
+
+				push( edx );
+				mov( column, edx );
+				mov( ' ', (type char [edi]));
+				inc( edx );
+				inc( ecx );
+				while( edx < detab ) do
+
+					inc( edi );
+					inc( ecx );
+					mov( ' ', (type char [edi] ));
+					inc( edx );
+
+				endwhile;
+				mov( -1, column );
+				pop( edx );
+
+			else
+
+				mov( al, [edi] );
+				inc( ecx );
+
+			endif;
+			inc( esi );
+			inc( edi );
+			inc( column );
+			if( ecx > 4096 ) then
+			
+				fileio.write( outHandle, outBuf, ecx );
+				xor( ecx, ecx );
+				lea( edi, outBuf );
+				
+			endif;  
+
+		endwhile;
+		
+		// Flush the rest of the file to disk:
+		
+		if( ecx > 0 ) then
+		
+			fileio.write( outHandle, outBuf, ecx );
+			
+		endif;
+
+	endif;
+	inFile.close();
+	inFile.destroy();
+
+
+	/*
+	** If the output was not being sent to the standard output device,
+	** then close the file, deleting the original file, rename the
+	** new file to have the original file's name, and then free the 
+	** strings we allocated earlier.
+	*/
+		
+	if( tempFile <> NULL ) then
+
+		fileio.close( outHandle );
+		if( isBinary ) then
+
+			// The file is empty, but we created it so we've got to
+			// delete it here.
+
+			filesys.delete( tempFile );
+
+		else
+	
+			// Okay, we processed the file.  Now determine if the user
+			// wants a backup made:
+
+			if( doBackup ) then
+
+				// Replace the original filename's suffix (if present)
+				// with the backup suffix:
+
+				str.rchpos( fullName, '.' );
+				if( eax = -1 ) then
+
+					// There was no suffix on the original filename,
+					// so create the new name as:
+					// fullName + "." + backupSuffix
+
+					str.length( fullName );
+					mov( eax, ebx );
+					str.length( backupSuffix );
+					lea( eax, [eax+ebx+2] );
+					str.alloc( eax );
+					mov( eax, backName );
+					str.cpy( fullName, (type string eax) );
+					str.cat( ".", backName );
+					str.cat( backupSuffix, backName );
+
+				else
+
+					// There was an existing suffix, so remove
+					// it and create the new filename as follows:
+					// fullName + "." + backupSuffix
+
+					inc( eax );
+					push( eax );
+					mov( eax, ebx );
+					str.length( fullName );
+					add( eax, ebx );
+					str.length( backupSuffix );
+					add( ebx, eax );
+					str.alloc( eax );
+					mov( eax, backName );
+					pop( eax );
+					#if( HLAstdlibVersion < 2 )
+					
+						str.substr( fullName, backName, 0, eax );
+						
+					#else
+					
+						str.substr( fullName, 0, eax, backName );
+						
+					#endif
+					str.cat( backupSuffix, backName );
+
+				endif;
+
+				if( !quiet ) then
+
+					stderr.put
+					( 
+						fullName,
+						"->",
+						backName,
+						", ", 
+						tempFile,
+						"->",
+						fullName,
+						nl
+					);
+
+				endif;
+
+				// Delete any file that has the same name as the backup file:
+
+
+				try
+				
+					filesys.delete( backName );
+					
+					try
+					
+						// Rename the original file to have the backup file name:
+
+						filesys.rename( fullName, backName );
+
+						try
+						
+							// Okay, rename the temporary file to be the same
+							// as the original filename.
+
+							filesys.rename( tempFile, fullName );
+							
+						  anyexception
+
+							stderr.put
+							(
+								"textto(2):" nl
+								"Could not rename """,
+								tempFile,
+								""" to """,
+								fullName,
+								"""" nl,
+								"Leaving temp file in """,
+								tempFile,
+								"""" nl,
+								"Error code = ",
+								(type uns32 eax ),
+								nl
+							);
+
+						endtry;
+
+					  anyexception
+					  
+						stderr.put
+						(
+							"textto(1):" nl
+							"Could not rename """,
+							fullName,
+							""" to """,
+							backName,
+							"""" nl,
+							"Leaving converted file in """,
+							tempFile,
+							"""" nl,
+							"Error code = ",
+							(type uns32 eax),
+							nl
+						);
+					  
+					endtry;
+					
+
+
+				  anyException
+				  
+					// If we couldn't delete the old backup file,
+					// print a diagnostic message:
+
+					stderr.put
+					(
+						"textto(0):" nl
+						"Error- Could not delete old backup file """, 
+						backName,
+						""", " nl
+						"Original file left in """,
+						fullName,
+						"""" nl
+						"Converted file left in """,
+						tempFile,
+						"""" nl
+						"Win32 Error code = ", 
+						(type uns32 eax), 
+						nl nl
+					);
+
+				endtry;
+				
+				strfree( backName );
+
+			else // "-b" option was not specified, so don't make a backup.
+
+				try
+				
+					filesys.delete( fullName );
+					 
+					try
+					
+						// Deleted the file, so rename the temp file:
+
+						filesys.rename( tempFile, fullName );
+						
+					  anyexception
+					  
+						stderr.put
+						(
+							"textto(4):" nl
+							"Could not rename temp file """,
+							tempFile,
+							""" to """,
+							fullName,
+							"""" nl,
+							"Leaving converted file in """,
+							tempFile,
+							"""" nl
+							nl
+						);
+
+					endtry;
+
+				  anyexception
+				  
+					stderr.put
+					( 
+						"textto(3):" nl
+						"Error- Could not delete old file (""", 
+						fullName,
+						""", Converted file left in """,
+						tempFile,
+						"""" nl
+						"Error code = ",
+						(type uns32 eax),
+						nl
+					);
+				  
+				endtry;
+
+			endif;
+
+		endif;
+		
+	endif;
+
+	mov( eaxSave, eax );
+	mov( ebxSave, ebx );
+	mov( ecxSave, ecx );
+	mov( edxSave, edx );
+	mov( ediSave, edi );
+	mov( esiSave, esi );
+
+
+exitConvertFile:
+	leave();
+	ret( _parms_ );
+	
+end convertFile;
+
+
+/*
+** processFiles-
+**
+** Given a filename (possibly ambiguous, with wildcards),
+** this procedure processes that particular file.  If the
+** filename is ambiguous (contains wildcard characters) then
+** this function processes all the files that match the
+** ambiguous filename specification.
+*/
+
+procedure processFiles( filename:string );
+begin processFiles;
+
+	pushad();
+	foreach FileInList( filename ) do
+
+		if( !quiet ) then
+
+			stderr.put( "Processing file: ", (type string eax), nl );
+
+		endif;
+		convertFile( eax );
+
+	endfor;
+	popad();
+
+end processFiles;
+
+ 
+
+procedure processRecursive( pathName:string; filename:string );
+var
+	dir			:string;
+	curDirBuf	:char[512];
+
+begin processRecursive;
+
+	pushad();
+
+	str.init( curDirBuf, 512 );
+	mov( eax, dir );
+	filesys.gwd( eax );
+	filesys.cd( pathName );
+
+	/*
+	** Process the file(s) in the current directory first:
+	*/
+
+	processFiles( filename );
+
+	/*
+	** If the recursive option was specified, process all the
+	** files in the subdirectories (contained within the current
+	** subdirectory) as well
+	*/
+
+	if( recursive ) then
+
+		foreach filesys.dirInCwd() do
+
+			push( eax );
+			if( !quiet ) then
+
+				stderr.put
+				( 
+					"Processing directory: '", 
+					(type string eax), 
+					"'" nl 
+				);
+
+			endif;
+			processRecursive( eax, filename );
+			pop( eax );
+			str.free( eax );
+
+		endfor;
+
+	endif;
+	filesys.cd( dir );
+	popad();
+
+end processRecursive;
+
+ 
+/*
+** Usage- prints out command syntax if there is an error
+** on the command line when running this program.
+*/
+
+procedure usage;
+begin usage;
+
+	stderr.put
+	( 
+		"Usage: textto {-c -d -l -m -w -u -q -s -v} files..." nl 
+		"       -c, -w: Convert file to DOS/Windows format (default)" nl
+		"       -l, -u: Convert file to UNIX format" nl
+		"       -m:     Convert file to Macintosh format" nl
+		"       -q:     Quiet mode (don't display filenames)" nl
+		"       -v:     Verify mode (skips suspected binary files)" nl
+		"       -s:     Send output to stdout, don't modify the file" nl
+		"       -r:     Recursively descend into subdirectories" nl
+		"		-bX:	Create backup file with ""X"" extension" nl
+		"       -dN:	Convert tabs to spaces on N column boundaries" nl
+		"                (N=1..9, default tab boundary is 8 spaces)" nl
+		"       -?:     Display this message and quit" nl
+		nl
+		" Note: filenames may contain '*' and '?' wildcard characters and" nl
+		"       multiple filenames on the command line are legal." nl
+	);
+	
+end usage;
+
+
+/*
+** If there is an illegal command line option, this procedure
+** displays the offending option, calls usage, and then terminates
+** the program.
+*/
+
+procedure illegalOption( option:string );
+begin illegalOption;
+
+	stderr.put( "Illegal option: '", option, "'" nl );
+	usage();
+	exit textto;
+
+end illegalOption;
+
+
+
+begin textto;
+
+					
+	/*
+	** Determine if the number of command line arguments is
+	** reasonable:
+	*/
+
+	mov( arg.c(), argc );
+	if( eax < 2 ) then
+
+		usage();
+		exit textto;
+
+	elseif( eax > 128 ) then
+
+		stderr.put( "Too many command line parameters (max 127)" nl );
+		usage();
+		exit textto;
+
+	endif;
+
+	/*
+	** Process the command line options (that is, the command line
+	** arguments that begin with a '-'):
+	*/
+
+	mov( 0, detab );
+	for( mov( 1, ecx ); ecx < argc; inc( ecx )) do
+		 
+		arg.a_v( ecx );
+		mov( eax, ebx );
+		mov( ebx, argv[ ecx*4 ] );
+		if( (type char [ebx]) = '-' ) then
+
+			str.lower( (type string ebx) );
+			if(#{
+			
+				str.eq( (type string ebx), "-c" );
+				jz true;
+				str.eq( (type string ebx), "-w" );
+				jnz false;
+
+			}#) then
+
+				mov( true, toDOS );
+			
+			elseif
+			(#{ 
+				str.eq( (type string ebx), "-l" );
+				jz true;
+				str.eq( (type string ebx), "-u" );
+				jnz false;
+
+			}#) then
+			
+				mov( true, toUnix );
+
+			elseif( str.eq( (type string ebx), "-m" ) ) then
+			
+				mov( true, toMac );
+
+			elseif( str.eq( (type string ebx), "-q" ) ) then
+			
+				mov( true, quiet );
+
+			elseif( str.eq( (type string ebx), "-s" ) ) then
+
+				mov( true, toStdout );
+
+			elseif( str.eq( (type string ebx), "-v" ) ) then
+
+				mov( true, verify );
+
+			elseif( str.eq( (type string ebx), "-?" ) ) then
+
+				usage();
+				exit textto;
+
+			elseif( str.eq( (type string ebx), "-r" ) ) then
+
+				mov( true, recursive );
+
+			elseif( (type char [ebx+1]) = 'b' ) then
+
+				mov( true, doBackup );
+				if( (type char [ebx+2]) <> #0 ) then
+
+					// Free the lower-case version of the command line string:
+
+					strfree( (type string ebx) );
+
+					// Need to grab a new copy of this command line option
+					// because we don't want lower-case conversion for the
+					// backup suffix.
+
+					mov( arg.v( ecx ), ebx );
+
+					// Extract the suffix from the command line option:
+
+					str.a_substr( (type string ebx), 2, 256 );
+					mov( eax, backupSuffix );
+
+				endif;
+								
+			elseif
+			( 
+					(type char [ebx+1]) = 'd' 
+				&&	(type char [ebx+2]) >= '1'
+				&&	(type char [ebx+2]) <= '9'
+			) then
+			
+				// Extract the tab spacing.  Only allow a single
+				// digit in the range 1..9:
+
+				mov( [ebx+2], al );
+				and( $f, eax );
+				mov( eax, detab );
+
+
+			else
+			
+				illegalOption( ebx );
+
+			endif;
+
+		endif;
+
+	endfor;
+
+
+	// Check the validity of the command line arguments.
+	// Specifically, we can only allow one type of conversion
+	// to take place (e.g., cannot specify both '-u' and '-w' options).
+	
+	mov( toDOS, al );
+	add( toUnix, al );
+	add( toMac, al );
+	cmp( al, 1 );
+	if( @a ) then
+	
+		stderr.put
+		( 
+			"Cannot specify more than one type of conversion at a time"	nl
+		);
+		usage();
+		exit textto;
+
+	endif;
+	if( @b ) then
+	
+		// If they haven't specified any conversion options, then
+		// default to the OS we're running under (Windows):
+		
+		mov( true, toDOS );
+		if( !quiet ) then
+		
+			stderr.put( "Defaulting to Windows file conversion" nl );
+			
+		endif;
+			
+		
+	endif;
+
+	
+	// Okay, process all the filenames found on the command line:
+
+	for( mov( 1, edi ); edi < argc; inc( edi )) do
+
+		// Process the current command line parameter if it isn't
+		// a command line option beginning with a '-':
+
+		mov( argv[ edi*4 ], esi );
+		if( (type char [esi]) <> '-' ) then
+
+			processRecursive( ".", esi );
+
+		endif;
+		str.free( argv[ edi*4 ] );
+
+	endfor;
+	
+end textto;
+
+
+       

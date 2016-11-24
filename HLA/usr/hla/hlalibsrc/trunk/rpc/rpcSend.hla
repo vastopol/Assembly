@@ -1,0 +1,179 @@
+unit rpcUnit;
+
+#includeOnce( "rpc.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "stdlib.hhf" )
+
+	// Note: Because all of the routines in this module are methods,
+	// they will all be linked into the program (even if they aren't
+	// explicitly called) because their address appears in the VMT.
+	// For this reason, we'll stick them all in the same source file
+	// to make them easier to maintain (and faster to compile).
+
+
+
+	method rpcBase_t.sendByte( b:byte );
+	begin sendByte;
+
+		push( eax );
+		push( esi );
+		push( edi );
+		repeat
+		
+			lea( esi, this.client );
+			(type client_t [esi]).write( b, 1 );
+			
+		until( eax = 1 );
+		pop( edi );
+		pop( esi );
+		pop( eax );
+		
+	end sendByte;
+	
+	procedure sendBytes( ptrToClient:dword; ptrToBytes:dword; numBytes:dword );
+	begin sendBytes;
+	
+		push( eax );
+		push( ecx );
+		push( edx );
+		push( esi );
+		push( edi );
+		
+		mov( ptrToClient, esi );
+		lea( esi, (type rpcBase_t [esi]).client );
+		mov( esi, ptrToClient );
+		mov( ptrToBytes, edx );
+		mov( numBytes, ecx );
+		repeat
+		
+			mov( ptrToClient, esi );
+			mov( (type client_t [esi]).handle, eax );
+		    (type client_t [esi]).write( [edx], ecx );
+			add( eax, edx );
+			sub( eax, ecx );
+			
+		until( @z );
+		
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		
+	end sendBytes;
+	
+	
+	// Transmit a word value from the server to the client.
+	// Note that this could be a word, int16, or uns16 object.
+	
+	method rpcBase_t.sendWord( w:word );
+	begin sendWord;
+
+		push( eax );
+
+		lea( eax, w );
+		sendBytes( esi, eax, @size( word )); 
+		
+		pop( eax );
+	
+	end sendWord;
+
+
+	// Transmit a dword value from the server to the client.
+	// Note that this could be a dword, real32, int32, or uns32 object.
+	
+	method rpcBase_t.sendDword( d:dword );
+	begin sendDword;
+
+		push( eax );
+
+		lea( eax, d );
+		sendBytes( esi, eax, @size( dword )); 
+
+		pop( eax );
+	
+	end sendDword;
+
+
+	// Transmit a qword value from the server to the client.
+	// Note that this could be a qword, real64, int64, or uns64 object.
+	
+	method rpcBase_t.sendQword( q:qword );
+	begin sendQword;
+
+		push( eax );
+
+		lea( eax, q );
+		sendBytes( esi, eax, @size( qword )); 
+
+		pop( eax );
+	
+	end sendQword;
+
+
+	// Transmit a tbyte value from the server to the client.
+	// Note that this could be a tbyte or real80 object.
+	
+	method rpcBase_t.sendTbyte( tb:tbyte );
+	begin sendTbyte;
+
+		push( eax );
+
+		lea( eax, tb );
+		sendBytes( esi, eax, @size( tbyte )); 
+
+		pop( eax );
+	
+	end sendTbyte;
+
+
+	// Transmit an lword value from the server to the client.
+	// Note that this could be an lword, cset, int128, or uns128 object.
+	
+	method rpcBase_t.sendLword( l:lword );
+	begin sendLword;
+
+		push( eax );
+
+		lea( eax, l );
+		sendBytes( esi, eax, @size( lword )); 
+
+		pop( eax );
+	
+	end sendLword;
+
+	
+	// Transmit a string from the server to the client:
+	
+	method rpcBase_t.sendString( s:string );
+	begin sendString;
+	
+		push( eax );
+	
+		mov( s, eax );
+		this.sendDword( (type str.strRec [eax]).length );
+		sendBytes( esi, eax, (type str.strRec [eax]).length );
+
+		pop( eax );
+	
+	end sendString;
+
+	
+	// Transmit a blob from the server to the client:
+	
+	method rpcBase_t.sendBlob_t( b:blob_t );
+	begin sendBlob_t;
+	
+		push( eax );
+	
+		mov( b, eax );
+		this.sendDword( (type blob.blobRec [eax]).length );
+		sendBytes( esi, eax, (type blob.blobRec [eax]).length );
+
+		pop( eax );
+	
+	end sendBlob_t;
+
+
+
+end rpcUnit;

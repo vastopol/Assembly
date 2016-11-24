@@ -1,0 +1,174 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit coroutines;
+
+#includeOnce( "coroutines.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "os.hhf")
+#includeOnce( "threads.hhf" )
+#includeOnce( "../include/thread_private.hhf" ) 
+	
+// ??HWexcept is the (HLA compiler generated) exception handler
+// for Windows Structured Exceptions.  We need to be able to
+// take the address of this when initializing coroutines.
+
+procedure HWexcept;		@external( "HWexcept__hla_" );
+
+	
+	#if( os.linux | os.freeBSD | os.macOS )
+	
+		#if( !@thread )
+		
+			static
+				ExceptionPtr	:dword; @external( "ExceptionPtr__hla_" );
+				
+		#endif
+		
+	#endif
+	
+	 
+	
+
+	/**********************************************************/
+	/* 	                                                      */
+	/* 	 coroutine.cocall-                                    */
+	/* 	                                                      */
+	/* 		This procedure swaps stacks and transfers control */
+	/* 	 to the last return point in the coroutine object.    */
+	/* 	                                                      */
+	/**********************************************************/
+
+	procedure coroutine_t.cocall; @noframe; @nodisplay;
+	begin cocall;
+	
+		push( ebp );	// Save caller's frame pointer.
+		test( esi, esi );
+		jz AttempToDerefNULL;		
+		
+		// Get the pointer to the current coroutine object
+		// and store away the stack pointer into the
+		// "CurrentSP" field of that object.
+		
+		#if( os.linux | os.freeBSD | os.macOS )
+		
+			#if( @thread )
+			
+				push( eax );
+				pthread_getspecific( thread.threadContext );
+				test( eax, eax );
+				jz ThreadError;
+				mov( (type _hla.stdlib_tls_t [eax]).ExceptionPtr, edi );
+
+				// EAX is restored later.
+							
+			#else
+			
+				mov( ExceptionPtr, edi );
+				
+			#endif
+
+		#elseif( os.win32 )
+			
+			// The first step in this process is to locate a
+			// valid Structured Exception Handler record
+			// that was created by HLA.  SEH records created
+			// by HLA will have the address of HWexcept at
+			// offset four in the SEH record.
+			
+			xor( edi, edi );
+			fseg:mov( [edi], edi );		// Get ptr to current process.
+			cmp( (type dword [edi+4]), &HWexcept );
+			je atCurPrcs;
+			search4CurPrcs:
+				mov( [edi], edi );
+				cmp( (type dword [edi+4]), &HWexcept );
+				jne search4CurPrcs;
+				
+			atCurPrcs:
+			
+		#endif
+
+
+		// Okay, the pointer to the current coroutine
+		// can be found at offset eight in the exception record.
+		// Save away ESP into the CurrentSP field of
+		// the coroutine object.
+	
+		mov( [edi+8], ebp );
+		mov( esp, (type coroutine_t [ebp]).CurrentSP );
+		#if( @thread & ( os.linux | os.freeBSD | os.macOS ))
+		
+			add( 4, (type coroutine_t [ebp]).CurrentSP );	// Because of push eax earlier
+			
+		#endif
+
+		// Save away a pointer to the old coroutine
+		// so we can return to it via coFinish or by falling
+		// off the end of a coroutine.
+		
+		mov( ebp, this.LastCaller );
+		
+		// Get the pointer to the current SEH record
+		// for the new coroutine (this is found in
+		// the ExceptionContext field of the coroutine
+		// object).  Set FS:0 so that it points at
+		// this exception record.
+		
+		mov( this.ExceptionContext, edi );
+		#if( os.linux | os.freeBSD | os.macOS )
+
+			#if( @thread )
+			
+				mov( edi, (type _hla.stdlib_tls_t [eax]).ExceptionPtr );
+				pop( eax );		// Restored from earlier push.
+
+			#else
+			
+				mov( edi, ExceptionPtr );
+				
+			#endif
+		
+		#elseif( os.win32 )
+			
+			xor( ebp, ebp );
+			fseg:mov( edi, [ebp] );	// Store ptr to process.
+			
+		#endif
+				
+		// Point ESP at the top of this coroutine's
+		// stack.  The return address on the top of
+		// stack should point to wherever we're supposed
+		// to go in the coroutine.
+
+		mov( this.CurrentSP, esp );
+		
+
+		// Restore frame pointer for new coroutine.
+		
+		pop( ebp );
+		
+		// Transfer control into the new coroutine.
+		
+		ret();
+			
+	AttempToDerefNULL:		
+		raise( ex.AttemptToDerefNULL );
+		
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end cocall;
+	
+end coroutines;

@@ -1,0 +1,98 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "stdlibdata.hhf" )		
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+
+
+/**************************************************************/
+/*                                                            */
+/* atoh8-                                                     */
+/*                                                            */
+/* ESI points at a sequence of characters that represent      */
+/* a hexadecimal value.  This function converts that sequence */
+/* to the numeric equivalent and returns the result in        */
+/* AL.  ESI is left pointing at the first non-hex             */
+/* character.                                                 */
+/*                                                            */
+/**************************************************************/
+
+
+
+procedure conv.atoh8( var buffer:var in esi ); 
+	@nodisplay; 
+	@noframe;
+			
+begin atoh8;
+
+	push( ebx );
+	push( ecx );
+	push( edx );
+
+	mov( _hla.get_Delimiters(), ebx );
+	xor( eax, eax );	// Init H.O. three bytes of EAX to zero.
+	mov( eax, edx );	// Initialize EDX:ECX with zero.
+	mov( eax, ecx );
+	
+	// Skip over any delimiter characters at the beginning
+	// of the string.
+	
+	sub( 1, esi );
+	whileDelimLoop:
+	
+		NextChar;
+		cmp( eax, $80 );
+		jae IllegalChar;
+		bt( eax, (type dword [ebx]) );	// Delimiters
+		jc whileDelimLoop;
+	
+	// Do the actual numeric conversion:
+
+	_atoh();
+
+	// Verify that we've ended with a delimiter char:
+	
+	movzx( (type byte [esi]), ecx );
+	bt( ecx, (type dword [ebx]) );
+	jnc convError;
+
+	// Make sure the result fits into 16 bits.
+
+	test( edx, edx );
+	jnz Overflow;
+	cmp( eax, $100 );
+	jae Overflow;
+
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	ret();
+	
+convError:
+	raise( ex.ConversionError );
+	
+Overflow:
+	raise( ex.ValueOutOfRange );
+	
+IllegalChar:
+	raise( ex.IllegalChar );
+
+end atoh8;
+
+
+end ConvUnit;

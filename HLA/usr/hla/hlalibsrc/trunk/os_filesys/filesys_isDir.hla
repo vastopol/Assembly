@@ -1,0 +1,190 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+/*
+** fileExists-
+**
+** Provides the "fileio.exists("filename");" call that lets the caller 
+** determine if a file exists.
+**	
+*/
+
+
+
+unit FileIOUnit;
+		
+
+#include( "../include/fileiounit.hhf" )
+
+
+/*************************************************************/
+/*                                                           */
+/* isDir-                                                    */
+/*                                                           */
+/* Checks to see if the specified directory exists.          */
+/* Returns true in EAX if the dir exists, false              */
+/* if it does not exist. Note: returns true if specified     */
+/* name is a file rather than a directory.                   */
+/*                                                           */
+/*************************************************************/
+
+
+
+
+#if( os.linux )
+
+	procedure filesys.isDir( FileName:string ); @nodisplay; @noframe;
+	var
+		s	:linux.stat64_t;
+		
+	begin isDir;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( ecx );
+		push( edx );
+
+		linux.stat( FileName, s );
+		test( eax, eax );
+		jnz failure;
+		
+			mov( s.st_mode, eax );
+			and( linux.s_ifdir, eax );
+			jz notDir;
+				mov( 1, eax );
+				jmp notDir;
+				
+		failure:
+			xor( eax, eax );
+		
+		notDir:
+		pop( edx );
+		pop( ecx );
+		leave();
+		ret( _parms_ );
+		
+	end isDir;
+	
+
+#elseif( os.freeBSD )
+
+	procedure filesys.isDir( FileName:string ); @nodisplay; @noframe;
+	var
+		s	:bsd.stat_t;
+		
+	begin isDir;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( ecx );
+		push( edx );
+
+		bsd.stat( FileName, s );
+		jc failure;
+		
+			movzx( s.st_mode, eax );
+			and( bsd.S_IFDIR, eax );
+			jz notDir;
+				mov( 1, eax );
+				jmp notDir;
+				
+		failure:
+			xor( eax, eax );
+		
+		notDir:
+		pop( edx );
+		pop( ecx );
+		leave();
+		ret( _parms_ );
+		
+	end isDir;
+	
+#elseif( os.macOS )
+
+	procedure filesys.isDir( FileName:string ); @nodisplay; @noframe;
+	var
+		s	:mac.stat_t;
+		
+	begin isDir;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( ecx );
+		push( edx );
+
+		mac.stat( FileName, s );
+		jc failure;
+		
+			movzx( s.st_mode, eax );
+			and( mac.S_IFDIR, eax );
+			jz notDir;
+				mov( 1, eax );
+				jmp notDir;
+				
+		failure:
+			xor( eax, eax );
+		
+		notDir:
+		pop( edx );
+		pop( ecx );
+		leave();
+		ret( _parms_ );
+		
+	end isDir;
+	
+#elseif( os.win32 )
+
+	procedure filesys.isDir( FileName:string ); @nodisplay; @noframe;
+	begin isDir;
+
+		push( ebp );
+		mov( esp, ebp );
+		push( ecx );
+		push( edx );
+		pushfd();
+		cld();
+		
+		win.GetFileAttributes( FileName );
+		not( eax );
+		test( eax, eax );
+		jz allDone;
+			
+			not( eax );
+			and( win.FILE_ATTRIBUTE_DIRECTORY, eax );
+			setne( al );
+			movzx( al, eax );
+			
+		allDone:		
+		popfd();
+		pop( edx );
+		pop( ecx );
+		pop( ebp );
+		ret( _parms_ );
+		
+	end isDir;
+	
+#else
+
+	#print( "Unknown OS!" )
+		
+#endif
+	
+end FileIOUnit;
+

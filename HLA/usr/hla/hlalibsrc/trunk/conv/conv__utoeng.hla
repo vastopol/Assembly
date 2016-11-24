@@ -1,0 +1,217 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "strings.hhf" )
+
+
+/************************************************/
+/*                                              */
+/* 	_utoEng-                                    */
+/* 	                                            */
+/* 	Converts an unsigned number to a string     */
+/* 	containing the English equivalent of that   */
+/* 	number.  E.g., 25 becomes "twenty-five".    */
+/* 	                                            */
+/* 	Inputs:                                     */
+/* 	                                            */
+/* 		u:		Number to convert.              */
+/* 		dest:	String to store result into.    */
+/* 		                                        */
+/* 	Note: the destination string must be large  */
+/* 	enough to hold the result.  The largest     */
+/* 	possible string probably needs no more than */
+/* 	about 128 characters (3,777,777,777).       */
+/* 	                                            */
+/************************************************/
+
+// Recursive procedure that does the
+// actual conversion after the main
+// "utoEng" function sets up appropriate
+// register values.
+
+procedure _utoEng; @nodisplay; @noframe;
+begin _utoEng;
+
+	// All but the last of the following
+	// code sections wind up doing a division,
+	// so zero extend EAX into EDX at this
+	// point just to save some code.
+	
+	xor( edx, edx );
+	
+	// If the value is greater than a billion,
+	// pick off the billion's digit (there can
+	// be only one), convert it to English,
+	// append "billion" to that string, and
+	// recursively call this function again
+	// if the remainder isn't zero.
+	
+	cmp( eax, 1_000_000_000 );
+	jb lessThanBillion;
+	
+		mov( 1_000_000_000, ebx );
+		div( ebx, edx:eax );
+		str.cat( LessThan20[ eax*4 ], (type string edi) );
+		test( edx, edx );
+		jnz moreThanABillion;
+
+			str.cat( " billion", (type string edi) );
+			ret();
+
+		moreThanABillion:
+			str.cat( " billion ", (type string edi) );
+			mov( edx, eax );
+			_utoEng();
+			ret();
+
+	
+	// If the value is greater than a million,
+	// pick off the millions digits (there can
+	// be as many as three) and call _utoEng
+	// recursively to convert it to a string
+	// between one and 999.  Then append
+	// the string "million" to the end of that
+	// conversion.  Finally, if the remainder
+	// is not zero, all this routine recursively
+	// to handle the remainder.
+	
+	lessThanBillion:
+		cmp( eax, 1_000_000 );
+		jb lessThanMillion;
+
+			mov( 1_000_000, ebx );
+			div( ebx, edx:eax );
+			push( edx );
+			_utoEng();
+			pop( edx );
+			test( edx, edx );
+			jnz moreThanAMillion;
+			 
+				str.cat( " million", (type string edi) );
+				ret();
+
+			moreThanAMillion:
+			
+				str.cat( " million ", (type string edi) );
+				mov( edx, eax );
+				_utoEng();
+				ret();
+	
+
+	// If the value is greater than 1,000, pick
+	// pick off the thousands digits (there can
+	// be as many as three) and call _utoEng
+	// recursively to convert it to a string
+	// between one and 999.  Then append
+	// the string "thousand" to the end of that
+	// conversion.  Finally, if the remainder
+	// is not zero, all this routine recursively
+	// to handle the remainder.
+	
+	lessThanMillion:
+		cmp( eax, 1_000 );
+		jb lessThanThousand;
+	
+			mov( 1_000, ebx );
+			div( ebx, edx:eax );
+			push( edx );
+			_utoEng();
+			pop( edx );
+			test( edx, edx );
+			jnz moreThanAThousand;
+
+				str.cat( " thousand", (type string edi) );
+				ret();
+
+			moreThanAThousand:
+			
+				str.cat( " thousand ", (type string edi) );
+				mov( edx, eax );
+				_utoEng();
+				ret();
+					
+	// If the value is greater than 100, pick
+	// of the hundred's digit (there can be only
+	// one) and use this as an index into the
+	// LessThan20 table to select the appropriate
+	// string to use.  Concatenate "hundred" to
+	// the result and then call _utoEng recursively
+	// to handle the remainder (if it is not zero).
+	
+	lessThanThousand:
+		cmp( eax, 100 );
+		jb lessThanHundred;
+	
+			mov( 100, ebx );
+			div( ebx, edx:eax );
+			str.cat( LessThan20[ eax*4 ], (type string edi) );
+			test( edx, edx );
+			jnz moreThanAHundred;
+
+				str.cat( " hundred", (type string edi) );
+				ret();
+						
+			moreThanAHundred:
+			
+				str.cat( " hundred ", (type string edi) );
+				mov( edx, eax );
+				_utoEng();
+				ret();
+					
+	
+	// For values between 20 & 99, strip the
+	// tens digit and print the appropriate
+	// text.  If the one's digit is not zero,
+	// concatenate "-" and the corresponding
+	// string for the one's digit to the end of
+	// the string.
+	
+	lessThanHundred:
+		cmp( eax, 20 );
+		jb lessThanTwenty;
+
+			mov( 10, ebx );
+			div( ebx, edx:eax );
+			test( edx, edx );
+			jnz moreThanTwenty;
+
+				str.cat( Tens[ eax*4 ], (type string edi) );
+				ret();
+
+			moreThanTwenty:
+			
+				str.cat( Tens[ eax*4 ], (type string edi) );
+				str.cat( "-", (type string edi) );
+				str.cat( LessThan20[ edx*4 ], (type string edi) );
+				ret();
+					
+	
+	// If all we've got left is a value in the
+	// range 0..19, simply copy the corresponding
+	// string to the end of the string we're
+	// building.
+	
+	lessThanTwenty:
+	
+		str.cat( LessThan20[ eax*4 ], (type string edi) );
+		ret();
+	
+end _utoEng;
+
+
+end ConvUnit;

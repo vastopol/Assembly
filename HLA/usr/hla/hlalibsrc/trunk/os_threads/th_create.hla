@@ -1,0 +1,509 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit threads;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "os.hhf" )
+#includeOnce( "sleep.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "memory.hhf" )
+#includeOnce( "threads.hhf" )
+#includeOnce( "../include/datetime_private.hhf" )
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "../include/thread_private.hhf" )
+
+
+#if( os.win32 )
+	#include( "w.hhf" )
+			
+	
+#elseif( os.linux | os.freeBSD | os.macOS )
+
+	#if( os.linux )
+		#include( "linux.hhf" )
+	#elseif( os.freeBSD )
+		#include( "bsd.hhf" )
+	#elseif( os.macOS )
+		#include( "mac.hhf" )
+	#endif
+	
+
+#else
+	#error( "Unsupported OS" )
+#endif
+
+
+// Externals we need for building exception handling records:
+
+procedure BuildExcepts; 			@external("BuildExcepts__hla_");
+procedure HardwareException; 		@external("HardwareException__hla_" );
+procedure DefaultExceptionHandler;	@external("DefaultExceptionHandler__hla_" );
+
+
+type
+	threadParm:
+		record
+			threadID			:dword;
+			createEventHandle	:dword;
+			parm				:dword;
+			func				:thread.threadFunc_t;
+			tds					:_hla.stdlib_tls_t;
+			align(4);
+		endrecord;
+
+
+// In lieu of events, we use the following as a spin-lock in order
+// to synchronize the operation of the preThreadFunc function with
+// the thread.create function:
+		
+static
+	align( 4 );
+	thread.threadContext	:dword 		:= 0;
+	_hla.haveTLShandle		:boolean 	:= false;
+	haveCreateEventHandle	:boolean 	:= false;
+	
+
+
+
+
+		
+// preThreadFunc-
+//
+//	This is the actual function called by the OS when it creates a thread.
+// This function allocates storage for a coroutine object and sets up the
+// exception-handling record for this thread, then it calls the function the
+// original caller wants used for the thread.
+
+procedure preThreadFunc( parm:dword ); @cdecl;
+const
+	tlsEBX	:text := "(type _hla.stdlib_tls_t [ebx])";
+
+var
+	lcltp	:threadParm;
+	cds		:hla.coroutineDataStructure;
+	pds		:_hla.stdlib_tls_t;
+		
+begin preThreadFunc;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	cld();
+	
+	// We need to copy the parameter and thread data passed to us to
+	// safe local storage so the thread that created us can free up
+	// that (local) storage and go about its business):
+	
+	mov( parm, eax );
+	mov( (type threadParm [eax]).parm, ecx );
+	mov( ecx, lcltp.parm );
+	mov( (type threadParm [eax]).func, ecx );
+	mov( ecx, lcltp.func );
+	
+	// Copy the thread local storage initial values to our thread local storage:
+	
+	lea( esi, (type threadParm [eax]).tds );
+	lea( edi, pds );
+	mov( @size( _hla.stdlib_tls_t ) div 4, ecx );
+	rep.movsd();
+	
+	
+	
+	#if( os.win32 )
+	
+		// Set a pointer to our thread local storage (allocated on the
+		// stack in this function -- it will exist for the lifetime
+		// of the thread).
+		
+		lea( ebx, pds ); 
+		w.TlsSetValue( thread.threadContext, ebx ); 
+
+		// Grab the current Structured Exception Handling record (Windows only)
+		// and save it away:
+		
+		xor( eax, eax );
+		fseg: mov( [eax], eax );
+		mov( eax, tlsEBX.MainPgmCoroutine.exceptionContext );
+		
+	#else
+	
+		// Set the pointer to the thread-local data for this thread:
+		
+		lea( ebx, pds );
+		pthread_setspecific( thread.threadContext, ebx );
+	
+		// For everyone else, there is no outlying context so just
+		// set the exceptionContext field to NULL.
+		
+		mov( NULL, tlsEBX.MainPgmCoroutine.exceptionContext );
+		
+	#endif
+	
+	// Get the thread ID and shove it into the data structure passed
+	// to us so the parent thread can retrieve this later.
+	
+	thread.getCurrentThreadHandle();
+	mov( parm, ebx );
+	mov( eax, (type threadParm [ebx]).threadID );
+	 
+	// Okay, signal the thread that created us so that it can
+	// go about its business because we've already used the
+	// value that was created on its local stack:
+	
+	thread.setEvent( (type threadParm [ebx]).createEventHandle );	
+	
+	// Build our structured exception handling record on the stack:
+	
+	call BuildExcepts;
+	
+	
+	// Okay, now that exceptions are set up, let's call the actual
+	// thread code to do the real work.
+	
+	lcltp.func( lcltp.parm );
+	
+	// When we get back, clean up after ourselves and quit.
+	// Note that we do not clean up the parameter on the stack
+	// (this is an @cdecl function) because the stack is toast
+	// when this routine quits.
+	//
+	// Cleanup consists of (under Windows) restoring the original
+	// structure exception handling record. Note that we must
+	// preserve EAX at this point so that we can return the thread
+	// exit code in it.
+	
+	lea( ebx, pds );
+	#if( os.win32 )
+	
+		mov( tlsEBX.MainPgmCoroutine.exceptionContext, ecx );
+		xor( edx, edx );
+		fseg: mov( ecx, [edx] );
+		w.ExitThread( eax );
+
+	#else
+	
+	
+		//  Under *NIX, we don't have to restore the exception pointer
+		// because we (not the OS) explicitly created it.
+		
+		pthread_exit( NULL );
+
+	#endif
+	
+end preThreadFunc;
+		
+
+// thread.create-
+//
+//	Creates a new thread object and returns a thread handle in EAX:
+
+#if( os.win32 )
+
+	procedure thread.create
+	( 
+		threadFunc	:thread.threadFunc_t; 
+		parm		:dword; 
+		stackSize	:dword 
+	);
+	var
+		threadID	:dword;
+		tp			:threadParm;
+		
+	begin create;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( ebx );
+		push( ecx );
+		push( edx );
+		
+		// The following critical section protects the preThreadDone
+		// and haveTLShandle variables from other threads that might 
+		// be calling this function.
+		
+		_hla.enterCSthread();		
+		
+		thread.createEvent();
+		mov( eax,  tp.createEventHandle );
+		
+		// If this is the first time thread.create has been called by this
+		// process, then create a thread local storage handle:
+		
+		cmp( _hla.haveTLShandle, false );
+		jne AlreadyHaveTLShandle;
+		
+			// Okay, create a thread-local-storage handle for
+			// use by all the threads in this process.
+			
+			w.TlsAlloc();
+			cmp( eax, $FFFF_FFFF );
+			je ThreadError;
+		
+			mov( eax, thread.threadContext );
+			mov( true, _hla.haveTLShandle );
+			
+		AlreadyHaveTLShandle:
+		
+		
+		// Fill in the initial values for our thread local storage.
+		// Note that this is initialization data that will be copied by
+		// the thread, this isn't the actual data structure.
+		//
+		// Begin by filling in the bogus fields of the MainPgmCoroutine
+		// data structure. This is not a real coroutine, so we can put NULLs 
+		// (and zeros) in most of the fields of the pds.MainPgmCoroutine data 
+		// structure:
+		
+		mov( NULL, tp.tds.MainPgmCoroutine.theCoroutineVMT );
+		mov( 0, tp.tds.MainPgmCoroutine.currentESP );
+		mov( 0, tp.tds.MainPgmCoroutine.stackPointer );
+		mov( 0, tp.tds.MainPgmCoroutine.pointerToLastCaller );
+		mov( &quitProgram, tp.tds.MainPgmCoroutine.terminationCode );
+		
+		// Okay, the new thread will inherit the current thread's
+		// conv_delimters cset:
+		
+		conv.getDelimiters( tp.tds.conv_Delimiters );
+		
+		// The new thread inherits the current thread's OutputUnderscores
+		// value:
+		
+		_hla.get_OutputUnderscores();
+		mov( al, tp.tds.conv_OutputUnderscores );
+		
+		// The new thread will *not* inherit the current command-line
+		// argument data -- if the new thread reads the command line data
+		// it will get a new copy of everything:
+		
+		mov( NULL, tp.tds.cl_CommandLine );
+		mov( 0, tp.tds.cl_argc );
+		mov( true, tp.tds.cl_NeedsCmdLn );
+		
+		// The new thread inherits the current thread's date and time
+		// formats and separator character:
+		
+		_hla.get_DateFormat();
+		mov( al, tp.tds.dt_DateFormat );
+		_hla.get_DateSeparator();
+		mov( al, tp.tds.dt_DateSeparator );
+		_hla.get_TimeFormat();
+		mov( al, tp.tds.dt_TimeFormat );		
+		
+		
+		// Pass along the thread parameter passed to us:
+		
+		mov( parm, eax );
+		mov( eax, tp.parm );
+		
+		// Pass along the function address passed to us:
+		
+		mov( threadFunc, eax );
+		mov( eax, tp.func );
+		
+		// Start the thread running:
+		
+		lea( ebx, tp );
+		w.CreateThread( NULL, stackSize, &preThreadFunc, ebx, 0, threadID );
+		test( eax, eax );
+		jz ThreadError;
+		
+		// Wait for the thread to signal us that it is done using the
+		// tp object we've allocated on the stack:
+		
+		thread.waitForEvent( tp.createEventHandle );
+		
+		thread.deleteEvent( tp.createEventHandle ); 
+		_hla.leaveCSthread(); 
+		 
+		mov( tp.threadID, eax );	// Return the thread ID in EAX.
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		leave();
+		ret( _parms_ );
+		
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end create;
+	
+#else	// *NIX
+
+
+	procedure thread.create
+	( 
+		threadFunc	:thread.threadFunc_t; 
+		parm		:dword; 
+		stackSize	:dword 
+	);
+	var
+		theThread	:pthread_t;
+		ptrPTAttr	:pointer to pthread_attr_t;
+		ptAttr		:pthread_attr_t;
+		tp			:threadParm;
+		
+		
+	begin create;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+
+		push( ebx );
+		push( ecx );
+		push( edx );
+		mov( NULL, ptrPTAttr );			// Assume default stack size.
+
+		// The following critical section protects the preThreadDone
+		// and haveTLShandle variables from other threads that might 
+		// be calling this function.
+		
+		_hla.enterCSthread();
+		
+		thread.createEvent();
+		mov( eax, tp.createEventHandle );
+						
+		// If this is the first time thread.create has been called by this
+		// process, then create a thread local storage handle:
+		
+		cmp( _hla.haveTLShandle, false );
+		jne AlreadyHaveTLShandle;
+		
+			// Okay, create a thread-local-storage handle for
+			// use by all the threads in this process.
+			
+			pthread_key_create( &thread.threadContext, NULL );
+			test( eax, eax );
+			jnz ThreadError;
+			mov( true, _hla.haveTLShandle );
+		
+			
+		AlreadyHaveTLShandle:
+		
+		
+		// Fill in the initial values for our thread local storage.
+		// Note that this is initialization data that will be copied by
+		// the thread, this isn't the actual data structure.
+		//
+		// Begin by filling in the bogus fields of the MainPgmCoroutine
+		// data structure. This is not a real coroutine, so we can put NULLs 
+		// (and zeros) in most of the fields of the pds.MainPgmCoroutine data 
+		// structure:
+		
+		mov( NULL, tp.tds.MainPgmCoroutine.theCoroutineVMT );
+		mov( 0, tp.tds.MainPgmCoroutine.currentESP );
+		mov( 0, tp.tds.MainPgmCoroutine.stackPointer );
+		mov( 0, tp.tds.MainPgmCoroutine.pointerToLastCaller );
+		mov( &quitProgram, tp.tds.MainPgmCoroutine.terminationCode );
+		
+		// Okay, the new thread will inherit the current thread's
+		// conv_delimters cset:
+		
+		conv.getDelimiters( tp.tds.conv_Delimiters );
+		
+		// The new thread inherits the current thread's OutputUnderscores
+		// value:
+		
+		_hla.get_OutputUnderscores();
+		mov( al, tp.tds.conv_OutputUnderscores );
+		
+		// The new thread will *not* inherit the current command-line
+		// argument data -- if the new thread reads the command line data
+		// it will get a new copy of everything:
+		
+		mov( NULL, tp.tds.cl_CommandLine );
+		mov( 0, tp.tds.cl_argc );
+		mov( true, tp.tds.cl_NeedsCmdLn );
+		
+		// The new thread inherits the current thread's date and time
+		// formats and separator character:
+		
+		_hla.get_DateFormat();
+		mov( al, tp.tds.dt_DateFormat );
+		_hla.get_DateSeparator();
+		mov( al, tp.tds.dt_DateSeparator );
+		_hla.get_TimeFormat();
+		mov( al, tp.tds.dt_TimeFormat );		
+		
+		
+		mov( parm, eax );
+		mov( eax, tp.parm );
+		mov( threadFunc, eax );
+		mov( eax, tp.func );
+		
+		// See if we need to specify the stack size:
+		
+		cmp( stackSize, 0 );
+		je noSetStackSize;
+		
+			lea( eax, ptAttr );
+			mov( eax, ptrPTAttr );
+			pthread_attr_init( [eax] );
+			test( eax, eax );
+			jnz ThreadError;			
+			
+			pthread_attr_setstacksize( ptrPTAttr, stackSize );
+			test( eax, eax );
+			jnz ThreadError1;	// Illegal stack size...
+					
+		noSetStackSize:
+		
+		
+		// Start the thread running:
+		
+		lea( ecx, tp );
+		pthread_create( theThread, ptrPTAttr, &preThreadFunc, ecx ); 
+		test( eax, eax );
+		jnz ThreadError1;
+		
+		// Wait for the thread to signal us that it is done using the
+		// tp object we've allocated on the stack:
+		
+		thread.waitForEvent( tp.createEventHandle );
+		thread.deleteEvent( tp.createEventHandle );
+		_hla.leaveCSthread(); 
+
+		cmp( ptrPTAttr, NULL );
+		je noFreeAttr;
+		
+			// We're done with the attribute used earlier, so delete it:
+		
+			pthread_attr_destroy( ptrPTAttr );
+			
+		noFreeAttr:
+		mov( tp.threadID, eax );	// Return the thread ID in EAX.
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		leave();
+		ret( _parms_ );
+		
+	ThreadError1:
+		cmp( ptrPTAttr, NULL );
+		jz ThreadError;
+		pthread_attr_destroy( ptrPTAttr );
+		
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end create;
+	
+	
+#endif
+
+end threads;

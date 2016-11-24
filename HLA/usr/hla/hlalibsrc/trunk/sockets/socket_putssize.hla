@@ -1,0 +1,106 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit socketUnit;
+		
+#includeOnce( "sockets.hhf" )
+#includeOnce( "strings.hhf" )
+
+
+/***********************************************************/
+/*                                                         */
+/* baseSocketClass_t.putssize-                             */
+/*                                                         */
+/* This routine writes a string to the socket.             */
+/* The caller gets to specify a minimum field width        */
+/* and a padding character.                                */
+/*                                                         */
+/***********************************************************/
+
+
+
+
+
+procedure baseSocketClass_t.putsSize( s:string; width:int32; fill:char );
+	@nodisplay;
+	@noframe;
+	@noalignstack; 
+
+begin putsSize;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ecx );
+	
+	
+	mov( width, ecx );
+	test( ecx, ecx );
+	js dontRightJustify;
+	
+	
+		// We only print pad characters if the absolute value of
+		// the specified field width is greater than the length
+		// of the string.
+		
+		mov( s, eax );
+		sub( (type str.strRec [eax]).length, ecx );
+		js dontRightJustify;
+		jz dontRightJustify;
+		
+			movzx( fill, eax );
+			this.sPutPad( al, ecx );
+		
+	dontRightJustify:
+			
+		
+	// Print the string.
+	
+	mov( s, eax );
+	this.write( [eax], (type str.strRec [eax]).length );	
+
+
+	// If the width is negative, right-justify the string in
+	// the field width by printing the padding characters after the string.
+	
+	mov( width, ecx );
+	test( ecx, ecx );
+	jns allDone;
+	
+	
+		// We only print pad characters if the absolute value of
+		// the specified field width is greater than the length
+		// of the string.
+		
+		neg( ecx );
+		mov( s, eax );
+		sub( (type str.strRec [eax]).length, ecx );
+		js allDone;
+		jz allDone;
+		
+			movzx( fill, eax );
+			this.sPutPad( al, ecx );
+		
+		
+	allDone:
+	pop( ecx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+
+end putsSize;
+		
+	
+end socketUnit;
+

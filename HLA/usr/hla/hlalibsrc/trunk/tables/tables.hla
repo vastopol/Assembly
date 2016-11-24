@@ -1,0 +1,525 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit tablesUnit;
+
+#include( "tables.hhf" )							  
+#include( "excepts.hhf" )
+#include( "memory.hhf" )
+#include( "strings.hhf" )
+
+#include( "stdio.hhf" )
+
+
+// Emit the VMT for the table_t class.
+
+readonly
+	vmt( table_t );
+	
+	
+
+// hash-
+//
+// This is a function that attempts to translate the
+// string pointed at by ebx to an unsigned integer
+// in the range 0..HashCnt-1.  This function attempts
+// to randomly (and uniformly) distribute its return
+// values based on typical input strings.
+//
+// Note that this function generates a semi-unique
+// value from the string based upon its length and
+// all the characters in the string.	
+
+procedure hash; @returns( "eax" ); @nodisplay; @noframe;
+begin hash;
+
+	mov( (type str.strRec [ebx]).length, ecx );
+	mov( ecx, eax );
+	xchg( al, ah );
+	xor( edx, edx );
+	test( ecx, ecx );
+	jz whileDone;
+	forEachChar:
+	
+		mov( [ebx], dl );
+		rol( 3, ax );
+		add( edx, eax );
+		inc( ebx );
+		dec( ecx );
+		jnz forEachChar;
+		
+	whileDone:
+
+	// If any bits were shifted into the H.O. word
+	// of eax, facter them in here.
+
+	mov( eax, edx );
+	bswap( eax );
+	xor( edx, eax );
+	
+	// Take the mod of the result with the
+	// size of the table.
+	
+	and( (type table_t [esi]).__HashMask, eax );
+	ret();
+	
+end hash;
+		
+	
+		
+	
+
+// Constructor for the table_t class.
+
+procedure table_t.create( HashSize:uns32 ); @nodisplay; @noframe;
+begin create;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	push( eax );
+	push( ecx );
+	push( edi );
+	pushfd();
+	
+	test( esi, esi );
+	jnz alreadyAllocated;
+	
+		malloc( @size( table_t ) );
+		mov( eax, esi );
+		
+	alreadyAllocated:
+	mov( &table_t._VMT_, this._pVMT_ );
+	
+	// Save away the HashSize value and then
+	// allocate 4*HashSize bytes for the Hash Table.
+	
+	mov( HashSize, eax );
+	cmp( eax, $1_0000 );
+	ja ValueOutOfRange;
+			
+	
+	// Calculate the size of the hash table
+	// as the first power of two that
+	// is greater than HashSize.
+	
+	mov( 1, eax );
+	cmp( HashSize, 0 );
+	je HashIs0;
+	whileHashSizeNot0:
+
+		shl( 1, eax );
+		shr( 1, HashSize );
+		jnz whileHashSizeNot0;
+			
+	HashIs0:
+	mov( eax, this.__HashCnt );
+
+	// Compute a mask we can and with
+	// a value to produce "value mod HashCnt".
+	
+	dec( eax );
+	mov( eax, this.__HashMask );
+
+	// Allocate storage for the array of
+	// pointers into the hash table.
+		
+	inc( eax );
+	mov( eax, ecx );
+	shl( 2, eax );
+	malloc( eax );
+	mov( eax, this.__HashTable );
+	
+	// Set each of the pointers to NULL.
+	
+	mov( eax, edi );
+	xor( eax, eax );
+	cld();
+	rep.stosd();
+	
+	popfd();
+	pop( edi );
+	pop( ecx );	
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+ValueOutOfRange:
+	raise( ex.ValueOutOfRange );
+
+end create;
+
+
+// Destructor for the table_t class.
+
+method table_t.destroy( FreeValue:procedure ); @nodisplay; @noframe;
+
+	// FreeChain- EBX points at a list of
+	// tableNode_t items.  Free each item
+	// in the list.
+	
+	procedure FreeChain; @nodisplay; @noframe;
+	begin FreeChain;
+	
+		push( ecx );	// In case FreeValue messes it up.
+		
+		// Free up each node in the list of
+		// nodes.  Also free each string
+		// associated with each node.
+		
+		test( ebx, ebx );
+		jz ebxIsNULL;
+		whileEBXnotNULL:
+		
+			push( ebx );
+			mov( ebx, eax );
+			ebp::FreeValue();	// User function that frees Value field.
+			pop( ebx );
+
+			mov( (type tableNode_t [ebx]).id, eax );
+			strfree( eax );
+			mov( (type tableNode_t [ebx]).__link, eax );
+			free( ebx );
+			mov( eax, ebx );
+			test( ebx, ebx );
+			jnz whileEBXnotNULL;
+		
+		ebxIsNULL:
+		pop( ecx );
+		ret();
+		
+	end FreeChain;
+	
+	
+begin destroy;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	
+	// For each pointer in the hash table,
+	// free the associated chain of nodes.
+	
+	mov( this.__HashCnt, ecx );
+	mov( this.__HashTable, edx );
+	test( ecx, ecx );
+	jz ecxIs0;
+	whileECXnot0:
+	
+		mov( [edx], ebx );
+		FreeChain();
+		add( 4, edx );
+		dec( ecx );
+		jnz whileECXnot0;
+				
+	ecxIs0:
+	
+	// Okay, free the hash table itself.
+	
+	free( this.__HashTable );
+	
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+end destroy;
+
+
+
+
+
+/*************************************************/
+/*                                               */
+/* lookup-                                       */
+/*                                               */
+/* This method searches for the specified string */
+/* in the hash table.  If it finds the string,   */
+/* it returns a pointer to the node holding the  */
+/* string in the EAX register.  If it does not   */
+/* find the string, it returns NULL in the       */
+/* EAX register.                                 */
+/*                                               */
+/*************************************************/
+
+method table_t.lookup( id:string ); @nodisplay; @noframe;
+begin lookup;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	pushfd();
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( edi );
+	push( esi );
+	
+	cld();
+	
+	// Compute the hash value for this string and
+	// put it into the EAX register:
+	
+	mov( id, ebx );
+	hash();
+	mov( this.__HashTable, ebx );
+	
+	// Save a pointer to the string we're searching for in ESI.
+	// Also save the string length in ECX.
+	
+	mov( id, esi );
+	mov( (type str.strRec [esi]).length, ecx );
+	
+	
+	// Find the last node in the current hash chain
+	// (which is a list of tableNode_t records).
+	// Sneaky trick in play here!  EBX+EAX*4 is a
+	// pointer into the array of pointers to the
+	// tableNode_t lists.  Therefore, the first in the
+	// while loop below does not access a tableNode_t
+	// object, instead it accesses a field of the
+	// array of pointers.  However, the "link" field
+	// is at offset zero so this code correctly fetches
+	// the pointer.  For this code to continue to operate
+	// properly, the link field of the tableNode_t
+	// record must be at offset zero.
+	
+	lea( ebx, [ebx+eax*4] );
+	findLastNode:
+	
+		mov( (type tableNode_t [ebx]).__link, eax );
+		test( eax, eax );
+		jz foundLastNode;
+		mov( eax, ebx );
+	
+		mov( (type tableNode_t [ebx]).id, edi );
+		
+		// If the lengths are unequal, the strings cannot match!
+		
+		cmp( ecx, (type str.strRec [edi]).length );
+		jne findLastNode;
+		
+			push( esi );
+			push( ecx );
+			repe.cmpsb();
+			pop( ecx );
+			pop( esi );
+			jnz findLastNode;
+		
+	foundLastNode:
+
+	pop( esi );
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	popfd();
+	pop( ebp );
+	ret( _parms_ );
+	
+end lookup;
+
+
+
+/****************************************************/
+/*                                                  */
+/* getNode-                                         */
+/*                                                  */
+/* This function searches for the specified string  */
+/* in the hash table.  If it finds the string, it   */
+/* returns a pointer to the node holding the string */
+/* in the EAX register.  If it doesn't find the     */
+/* string, then it creates a new node, initializes  */
+/* it with the string, and returns a pointer to     */
+/* the node in the EAX register.                    */
+/*                                                  */
+/****************************************************/
+
+method table_t.getNode( id:string ); @nodisplay; @noframe;
+begin getNode;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	pushfd();
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( edi );
+	push( esi );
+	
+	cld();
+	
+	// Compute the hash value for this string and
+	// put it into the EAX register:
+	
+	mov( id, ebx );
+	hash();
+	mov( this.__HashTable, ebx );
+	
+	// Save a pointer to the string we're searching for in ESI.
+	// Also save the string length in ECX.
+	
+	mov( id, esi );
+	mov( (type str.strRec [esi]).length, ecx );
+	
+	
+	// Find the last node in the current hash chain
+	// (which is a list of tableNode_t records).
+	// Sneaky trick in play here!  EBX+EAX*4 is a
+	// pointer into the array of pointers to the
+	// tableNode_t lists.  Therefore, the first in the
+	// while loop below does not access a tableNode_t
+	// object, instead it accesses a field of the
+	// array of pointers.  However, the "link" field
+	// is at offset zero so this code correctly fetches
+	// the pointer.  For this code to continue to operate
+	// properly, the link field of the tableNode_t
+	// record must be at offset zero.
+	
+	lea( ebx, [ebx+eax*4] );
+	findLastNode:
+	
+		mov( (type tableNode_t [ebx]).__link, edx );
+		test( edx, edx );
+		jz foundLastNode;
+		mov( edx, ebx );
+	
+		mov( (type tableNode_t [ebx]).id, edi );
+		
+		// If the lengths are unequal, the strings cannot match!
+		
+		cmp( ecx, (type str.strRec [edi]).length );
+		jne findLastNode;
+		
+			push( esi );
+			push( ecx );
+			repe.cmpsb();
+			pop( ecx );
+			pop( esi );
+			jne findLastNode;
+		
+	foundLastNode:
+	
+	// If EDX is NULL, then we need to create a new node.
+	// If EDX is not NULL, we need to return the pointer to
+	// the node we've found.
+	
+	test( edx, edx );
+	jnz returnNodeFound;
+	
+		malloc( @size( tableNode_t ) );
+		
+		// Set the link field of the last node we processed
+		// to point at this new node.
+		
+		mov( eax, (type tableNode_t [ebx]).__link );
+		
+		// Make a copy of the id and store the pointer
+		// to the string into this node.
+		
+		mov( eax, ebx );
+		str.a_cpy( id );
+		mov( eax, (type tableNode_t [ebx]).id );
+		
+		// Clear the link and value fields of the new node.
+		
+		xor( eax, eax );
+		mov( eax, (type tableNode_t [ebx]).__link );
+		mov( eax, (type tableNode_t [ebx]).Value );
+		
+	returnNodeFound:
+		
+	mov( ebx, eax );
+	pop( esi );
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	popfd();
+	pop( ebp );
+	ret( _parms_ );
+	
+end getNode;
+
+
+
+
+// Node iterator for the table_t class.
+
+iterator table_t.item; @nodisplay;
+
+	// EAX points at the first node in
+	// a hash chain.  This iterator yields
+	// each node in the chain.
+
+	iterator NodeInChain; @nodisplay;
+	begin NodeInChain;
+	
+		// Yield each node in the chain until
+		// we hit the end of the chain.
+		
+		while( eax <> NULL ) do
+		
+			push( eax );
+			yield();
+			pop( eax );
+
+			mov( (type tableNode_t [eax]).__link, eax );
+		
+		endwhile;
+		
+	end NodeInChain;
+	
+	
+begin item;
+
+	push( eax );
+	push( ebx );
+	push( ecx );
+	
+	// For each pointer in the hash table
+	// that is non-NULL, yield the list of
+	// nodes in that particular chain.
+	
+	mov( this.__HashCnt, ecx );
+	mov( this.__HashTable, ebx );
+	while( ecx > 0 ) do
+	
+		mov( [ebx + ecx*4 - 4 ], eax );
+		foreach NodeInChain() do
+
+			push( ebx );
+			push( ecx );
+			yield();
+			pop( ecx );
+			pop( ebx );
+		
+		endfor;
+		dec( ecx );
+	endwhile;
+	
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	
+end item;
+
+end tablesUnit;

@@ -1,0 +1,973 @@
+// Module to test the OS-specific file I/O functions.
+
+program tOSFileIO;
+#include( "stdlib.hhf" )
+
+const
+	fileName	:= "tOSFileIO.txt";
+	
+static
+	handle		:dword;
+	blobData	:byte[8192];
+	exMsg		:str.strvar(256);
+	msg			:str.strvar(256);
+	lineLen		:dword;
+	qPosn		:qword := 0;
+	dPosn		:dword := 0;
+	
+	textForSeek : string[10] :=
+		[
+			"0123456",
+			"7890123",
+			"4567890",
+			"hijklmn",
+			"opqrstu",
+			"vwxyzab",
+			"cdefghi",
+			"jklmnop",
+			"qrstuvw",
+			"xyz0123"
+		];
+	
+procedure setblobData( value:byte );
+begin setblobData;
+
+	push( edi );
+	push( ecx );
+	push( eax );
+	
+	cld();
+	lea( edi, blobData );
+	mov( 8192, ecx );
+	mov( value, al );
+	rep.stosb();
+	
+	pop( eax );
+	pop( ecx );
+	pop( edi );
+
+end setblobData;
+	
+procedure cmpblobData( value:byte; msg:string );
+begin cmpblobData;
+
+	push( edi );
+	push( ecx );
+	push( eax );
+	
+	cld();
+	lea( edi, blobData );
+	mov( 4096, ecx );
+	mov( value, al );
+	repe.scasb();
+	if( @ne ) then
+	
+		neg( ecx );
+		add( 4096, ecx );
+		stderr.put
+		(
+			nl,
+			msg, nl
+			"cmpblobData failed at index ", (type int32 ecx), nl
+			"Expected: $", al, nl
+			"Got       $", (type byte [edi]), nl
+			nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+	pop( eax );
+	pop( ecx );
+	pop( edi );
+
+end cmpblobData;
+	
+procedure cmpblobData2( value:byte; msg:string );
+begin cmpblobData2;
+
+	push( edi );
+	push( ecx );
+	push( eax );
+	
+	cld();
+	lea( edi, blobData );
+	mov( 8192, ecx );
+	mov( value, al );
+	repe.scasb();
+	if( @ne ) then
+	
+		neg( ecx );
+		add( 8192, ecx );
+		stderr.put
+		(
+			nl,
+			msg, nl
+			"cmpblobData2 failed at index ", (type int32 ecx), nl
+			"Expected: $", al, nl
+			"Got       $", (type byte [edi]), nl
+			nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+	pop( eax );
+	pop( ecx );
+	pop( edi );
+
+end cmpblobData2;
+	
+	
+begin tOSFileIO;
+
+	try
+	
+		// Testing: openNew, open, close, read, and write:
+		//
+		// Okay, write and read the file a bunch of times to verify
+		// that we get the data we wrote. This test also verifies that
+		// we delete the old file when executing fileio.openNew.
+		//
+		// Note: although the blobData size is 8K long, this code
+		// only uses the first 4K bytes.
+		
+		for( mov( 0, edx ); edx < 256; add( 17, edx )) do
+
+			setblobData( dl );
+			fileio.openNew( fileName );
+			mov( eax, handle );
+			fileio.write( handle, blobData, 4096 );
+			fileio.close( handle );
+			
+			lea( ecx, [edx+1] );	// Disturb blobData's value
+			setblobData( cl );
+			
+			fileio.open( fileName, fileio.r );
+			mov( eax, handle );
+			fileio.read( handle, blobData, 8192 );
+			if( eax <> 4096 ) then
+			
+				stderr.put
+				(
+					"fileio.read should have read 4096 bytes, but read ",
+					(type uns32 eax),
+					" bytes instead (1)" nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			fileio.close( handle );
+			
+			cmpblobData( dl, "r/w open/new close test" );
+			
+		endfor;
+		stderr.put
+		( 
+			"openNew, open, close, read, and write test succeeded!" 
+			nl 
+		);
+		
+		
+		// Now do a more stringent test on fileio.open, checking each of
+		// the Access values (r, w, rw, a):
+		//
+		// We've done a pretty good job of testing the 'r' option in
+		// the code above, however, we still need to verify that an
+		// exception is raised if we attempt to write to a file opened for
+		// read-only access.
+		
+		fileio.open( fileName, fileio.r );
+		mov( eax, handle );
+		try
+		
+			fileio.write( handle, blobData, 4096 );
+		  	stderr.put
+			(
+				"Expected ex.FileWriteError exception" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		  exception( ex.FileWriteError )
+		  
+		  	// This is what we expect.
+			
+		  anyexception
+		  
+		  	ex.exceptionMsg( eax, exMsg );
+		  	stderr.put
+			(
+				"Unexpected exception: eax=$", eax, " exception=", exMsg, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endtry;
+		fileio.close( handle );
+		stderr.put
+		( 
+			"open( xxx, r ) test succeeded!" 
+			nl 
+		);
+		
+		
+
+		// Test the 'w' option here:
+		
+		for( mov( 0, edx ); edx < 256; add( 37, edx )) do
+
+			setblobData( dl );
+			fileio.open( fileName, fileio.w );
+			mov( eax, handle );
+			fileio.write( handle, blobData, 4096 );
+			fileio.close( handle );
+			
+			setblobData( $ff );		// Disturb blobData's value.
+			
+			fileio.open( fileName, fileio.r );
+			mov( eax, handle );
+			fileio.read( handle, blobData, 8192 );
+			if( eax <> 4096 ) then
+			
+				stderr.put
+				(
+					"fileio.read should have read 4096 bytes, but read ",
+					(type uns32 eax),
+					" bytes instead (2)" nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			fileio.close( handle );
+			cmpblobData( dl, "open( xxx, w ) test" );
+		
+		endfor;
+		
+		// Make sure we can't read from a write-only file:
+		
+		fileio.open( fileName, fileio.w );
+		mov( eax, handle );
+		try
+		
+			fileio.read( handle, blobData, 4096 );
+		  	stderr.put
+			(
+				"Expected ex.FileReadError exception" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		  exception( ex.FileReadError )
+		  
+		  	// This is what we expect.
+			
+		  anyexception
+		  
+		  	ex.exceptionMsg( eax, exMsg );
+		  	stderr.put
+			(
+				"Unexpected exception: eax=$", eax, " exception=", exMsg, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endtry;
+		fileio.close( handle );
+		stderr.put
+		( 
+			"open( xxx, w ) test succeeded!" 
+			nl 
+		);
+		
+		// Now check 'rw' (also checks rewind):
+		
+		for( mov( 0, edx ); edx < 256; add( 31, edx )) do
+
+			setblobData( dl );
+			fileio.open( fileName, fileio.rw );
+			mov( eax, handle );
+			fileio.write( handle, blobData, 4096 );
+			
+			setblobData( $ff );		// Disturb blobData's value.
+			
+			fileio.rewind( handle );
+			fileio.read( handle, blobData, 8192 );
+			if( eax <> 4096 ) then
+			
+				stderr.put
+				(
+					"fileio.read should have read 4096 bytes, but read ",
+					(type uns32 eax),
+					" bytes instead (3)" nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			fileio.close( handle );
+			cmpblobData( dl, "rw test" );
+		
+		endfor;
+		stderr.put
+		( 
+			"open( xxx, rw ) test succeeded!" 
+			nl 
+		);
+		
+		
+		
+		// Now check 'a':
+		
+		for( mov( 0, edx ); edx < 256; add( 31, edx )) do
+
+			setblobData( dl );
+			fileio.openNew( fileName );
+			mov( eax, handle );
+			fileio.write( handle, blobData, 4096 );
+			fileio.close( handle );
+			
+			fileio.open( fileName, fileio.a );
+			mov( eax, handle );
+			fileio.write( handle, blobData, 4096 );
+			fileio.close( handle );
+			
+			setblobData( $ff );		// Disturb blobData's value.
+			
+			fileio.open( fileName, fileio.r );
+			fileio.read( handle, blobData, 8192 );
+			if( eax <> 8192 ) then
+			
+				stderr.put
+				(
+					"fileio.read should have read 8192 bytes, but read ",
+					(type uns32 eax),
+					" bytes instead (4)" nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			fileio.close( handle );
+			cmpblobData2( dl, "a test" );
+		
+		endfor;
+		
+		// Make sure we can't read from a file opened for append
+		// (which is a write-only file):
+		
+		fileio.open( fileName, fileio.a );
+		mov( eax, handle );
+		try
+		
+			fileio.read( handle, blobData, 4096 );
+		  	stderr.put
+			(
+				"Expected ex.FileReadError exception" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		  exception( ex.FileReadError )
+		  
+		  	// This is what we expect.
+			
+		  anyexception
+		  
+		  	ex.exceptionMsg( eax, exMsg );
+		  	stderr.put
+			(
+				"Unexpected exception: eax=$", eax, " exception=", exMsg, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endtry;
+		fileio.close( handle );
+		stderr.put
+		( 
+			"open( xxx, a ) test succeeded!" 
+			nl 
+		);
+		
+		
+		// Testing: append, rewind.
+		//
+		// First, append a bunch of zeros to the end of the file.
+		
+		setblobData( $ff );
+		fileio.openNew( fileName );
+		fileio.write( eax, blobData, 4096 );
+		fileio.close( eax );
+		
+		setblobData( 0 );
+		fileio.open( fileName, fileio.rw );
+		mov( eax, handle );
+		fileio.append( handle );
+		fileio.write( handle, blobData, 4096 );
+		fileio.rewind( handle );
+		fileio.read( handle, blobData, 8192 );
+		fileio.close( handle );
+		
+		cld();
+		lea( edi, blobData );
+		mov( 4096, ecx );
+		mov( $ff, al );
+		repe.scasb();
+		if( @ne ) then
+		
+			neg( ecx );
+			add( 4096, ecx );
+			stderr.put
+			(
+				"append/rewind failed at index $", ecx, nl
+				"Expected: $", al, nl
+				"Got       $", (type byte [edi]), nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		
+		
+		mov( 4096, ecx );
+		mov( 0, al );
+		repe.scasb();
+		if( @ne ) then
+		
+			neg( ecx );
+			add( 8192, ecx );
+			stderr.put
+			(
+				"append/rewind failed at index $", ecx, nl
+				"Expected: $", al, nl
+				"Got       $", (type byte [edi]), nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		stderr.put( "append/rewind test succeeded!" nl );
+		
+		
+		// Test the EOF function here:
+		
+		setblobData( 0 );
+		fileio.openNew( fileName );
+		mov( eax, handle );
+		fileio.eof( handle );
+		if( !eax ) then
+		
+			stderr.put
+			(
+				"fileio.eof failed immediately after openNew!" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		fileio.write( handle, blobData, 4096 );
+		fileio.eof( handle );
+		if( !eax ) then
+		
+			stderr.put
+			(
+				"fileio.eof failed immediately after write!" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		fileio.rewind( handle );
+		fileio.eof( handle );
+		if( eax ) then
+		
+			stderr.put
+			(
+				"fileio.eof failed immediately after rewind!" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		
+		fileio.close( handle );
+		stderr.put( "fileio.eof tests succeeded!" nl );
+		
+		
+		// Test the eoln function here 
+		// (also tests fileio.newln and fileio.readLn):
+
+		fileio.openNew( fileName );
+		mov( eax, handle );
+		for( mov( 0, ebx ); ebx < 10; inc( ebx )) do
+		
+			for( mov( 'a', ecx ); ecx <= 'g'; inc( ecx )) do
+			
+				fileio.putc( handle, cl );
+				
+			endfor;
+			fileio.newln( handle );
+			
+		endfor;
+		fileio.close( handle );
+		
+		fileio.open( fileName, fileio.r );
+		mov( eax, handle );
+		
+		for( mov( 0, ebx ); ebx < 10; inc( ebx )) do
+		
+			for( mov( 'a', ecx ); ecx <= 'g'; inc( ecx )) do
+			
+				fileio.getc( handle );
+				if( al <> cl ) then
+				
+					stderr.put
+					(
+						"fileio.get failed to read the same character " nl
+						"that was written to the file. Read: '",
+						(type char al),
+						"' expected '",
+						(type char cl),
+						"'" nl
+					);
+					stdout.put( "Press Enter to Continue: " );
+					stdin.readLn();
+					os.exitProcess(1);
+					
+				endif;
+				
+			endfor;
+			if( !fileio.eoln( handle )) then
+				
+				stderr.put
+				(
+					"fileio.get failed to read the same character " nl
+					"that was written to the file. Read: '",
+					(type char al),
+					"' expected '",
+					(type char cl),
+					"'" nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+					
+			endif;
+			fileio.readLn( handle );
+				
+			
+		endfor;
+		fileio.close( handle );
+		
+		// Test for eoln true at EOF:
+		
+		fileio.open( fileName, fileio.rw );
+		mov( eax, handle );
+		fileio.truncate( handle );
+		if( !fileio.eof( handle ) ) then
+		
+			stderr.put
+			(
+				"fileio.eof returned false after truncate!" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		if( !fileio.eoln( handle ) ) then
+				
+			stderr.put
+			(
+				"fileio.eoln returned false at the end of the file" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+				
+		endif;
+		fileio.close( handle );
+		
+		
+		// Under Windows, EOLN is <cr><lf> but we need to allow
+		// just linefeeds too. The following checks that (of course,
+		// *NIX systems will pass this with flying colors).
+		
+		fileio.openNew( fileName );
+		mov( eax, handle );
+		fileio.put( handle, 'a' nl, 'b' stdio.lf );
+		fileio.close( handle );
+		fileio.open( fileName, fileio.r );
+		mov( eax, handle );
+		if( fileio.eoln( handle ) ) then
+				
+			stderr.put
+			(
+				"fileio.eoln didn't expect end of file!" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+				
+		endif;
+		fileio.getc( handle );
+		if( !fileio.eoln( handle ) ) then
+				
+			stderr.put
+			(
+				"fileio.eoln expected end of line! (1)" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+				
+		endif;
+		fileio.readLn( handle );
+		fileio.getc( handle );
+		if( !fileio.eoln( handle ) ) then
+				
+			stderr.put
+			(
+				"fileio.eoln expected end of line! (2)" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+				
+		endif;
+		fileio.readLn( handle );
+		if( !fileio.eoln( handle ) ) then
+				
+			stderr.put
+			(
+				"fileio.eoln expected end of file! (2)" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+				
+		endif;
+		fileio.close( handle );
+		stderr.put( "fileio.eoln tests succeeded!" nl );
+		 
+		
+		
+		
+		// Test the fileio.gets function here:
+		
+		fileio.openNew( fileName );
+		mov( eax, handle );
+		for( mov( 0, ebx ); ebx < 10; inc( ebx )) do
+		
+			for( mov( 'a', ecx ); ecx <= 'g'; inc( ecx )) do
+			
+				fileio.putc( handle, cl );
+				
+			endfor;
+			fileio.newln( handle );
+			
+		endfor;
+		fileio.close( handle );
+		
+		fileio.open( fileName, fileio.r );
+		mov( eax, handle );
+		for( mov( 0, ebx ); ebx < 10; inc( ebx )) do
+		
+			fileio.gets( handle, msg );
+		
+			if( str.ne( msg, "abcdefg" )) then
+			
+				stderr.put
+				(
+					"fileio.gets failed to read the string " nl
+					"that was written to the file (iteration ",
+					(type uns32 ebx), ")." nl
+					"Read: '",
+					msg,
+					"'" nl
+					"Expected 'abcdefg'" nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			
+			// Can't really test fileio.flush other than to call it
+			// and make sure that it doesn't hang. So do that here:
+			
+			fileio.flush( handle );
+			
+		endfor;
+		fileio.close( handle );
+		
+		// Verify that fileio.gets raises an exception if we attempt
+		// to read data from a file opened for writing.
+		
+		fileio.open( fileName, fileio.w );
+		mov( eax, handle );
+		try
+		
+			fileio.gets( handle, msg );
+		  	stderr.put
+			(
+				"Expected ex.FileReadError exception" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		  exception( ex.FileReadError )
+		  
+		  	// This is what we expect.
+			
+		  anyexception
+		  
+		  	ex.exceptionMsg( eax, exMsg );
+		  	stderr.put
+			(
+				"Unexpected exception: eax=$", eax, " exception=", exMsg, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endtry;
+		fileio.close( handle );
+		stderr.put( "fileio.gets tests succeeded!" nl );
+		 
+		
+		
+		
+		// Test the fileio.truncate function here:
+		
+		fileio.open( fileName, fileio.rw );
+		mov( eax, handle );
+		for( mov( 0, ebx ); ebx < 5; inc( ebx )) do
+		
+			fileio.gets( handle, msg );
+		
+			if( str.ne( msg, "abcdefg" )) then
+			
+				stderr.put
+				(
+					"fileio.gets(1) failed to read the string " nl
+					"that was written to the file (iteration ",
+					(type uns32 ebx), ")." nl
+					"Read: '",
+					msg,
+					"'" nl
+					"Expected 'abcdefg'" nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+						
+		endfor;
+		fileio.truncate( handle );
+		fileio.close( handle );
+		
+		
+		fileio.open( fileName, fileio.r );
+		mov( eax, handle );
+		
+		// Make sure we can read the lines we left in the file:
+		
+		for( mov( 0, ebx ); ebx < 5; inc( ebx )) do
+		
+			fileio.gets( handle, msg );
+		
+			if( str.ne( msg, "abcdefg" )) then
+			
+				stderr.put
+				(
+					"fileio.gets(2) failed to read the string " nl
+					"that was written to the file (iteration ",
+					(type uns32 ebx), ")." nl
+					"Read: '",
+					msg,
+					"'" nl
+					"Expected 'abcdefg'" nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+						
+		endfor;
+		
+		// Now verify that we're at the end of the file:
+		
+		if( !fileio.eof( handle )) then
+			
+			fileio.gets( handle, msg );
+			stderr.put
+			(
+				"fileio.truncate failed! Read line '",
+				msg,
+				"'" nl
+				"from what should have been the end of file" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+				
+		endif;
+		fileio.close( handle );
+		stderr.put( "fileio.truncate tests succeeded!" nl );
+		
+		
+		
+		
+		// Seek tests:
+		
+		str.length( nl );		// Line lengths are different on different OSes!
+		add( 7, eax );
+		mov( eax, lineLen );
+		
+		// Seek out each line going backwards in the file:
+		
+		fileio.open( fileName, fileio.rw );
+		mov( eax, handle );
+		for( mov( 4, ebx ); (type int32 ebx) >= 0; dec( ebx )) do
+		
+			mov( ebx, eax );
+			intmul( lineLen, eax );
+			fileio.seek( handle, eax );
+			fileio.gets( handle, msg );
+		
+			if( str.ne( msg, "abcdefg" )) then
+			
+				stderr.put
+				(
+					"fileio.seek failed! Index = ",
+					(type uns32 ebx), nl
+					"Read: '",
+					msg,
+					"'" nl
+					"Expected 'abcdefg'" nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+						
+		endfor;
+
+		
+		// Okay, let's so something a little more sophisticated:
+		
+		fileio.seek( handle, 0 );
+		for( mov( 0, ebx ); ebx < 10; inc( ebx )) do
+		
+			fileio.puts( handle, textForSeek[ebx*4] );
+			fileio.newln( handle );
+			
+		endfor;
+		foreach rand.deal(10) do
+		
+			mov( eax, ebx );
+			mov( eax, ecx );
+			intmul( lineLen, ebx );
+			fileio.seek( handle, ebx );
+			
+			// Check Position function:
+			
+			fileio.position( handle );
+			if( edx <> 0 || eax <> ebx ) then
+			
+				stderr.put
+				(
+					"fileio.position failed!" nl
+					"Should have returned $", ebx, nl
+					"Returned instead     $", eax, nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			fileio.gets( handle, msg );
+			if( str.ne( msg, textForSeek[ecx*4] )) then
+			
+				stderr.put
+				(
+					"fileio.seek failed! Index = ",
+					(type uns32 ecx), nl
+					"Read: '",
+					msg,
+					"'" nl
+					"Expected '", textForSeek[ecx*4], "'" nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+		
+		 endfor;
+		 
+		 // Just check the syntax of the various forms of seek:
+		 
+		 fileio.seek( handle, qPosn, fileio.fromBOF );
+		 fileio.seek( handle, dPosn );
+		 fileio.seek( handle, dPosn, fileio.fromBOF );
+		 fileio.seek( handle, 0, 0, fileio.fromBOF );
+		 fileio.seek( handle, 0, 0, fileio.curPosn );
+		 fileio.seek( handle, 0, 0, fileio.fromEOF );
+		 
+		 fileio.close( handle );
+		 
+		 
+		 // Clean up the junk file:
+		 
+		 filesys.delete( fileName );
+		 
+		 stderr.put( "fileio.seek/position tests succeeded!" nl );
+		 
+		
+	  anyexception
+	  
+	  	ex.exceptionMsg( eax, exMsg );
+	  	stderr.put
+		(
+			nl, 
+			"tOSFileIO failed! Exception = $", 
+			eax, 
+			" - ", 
+			exMsg,
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;	
+	stderr.put( nl "tOSFileIO succeeded!" nl );
+	  
+	
+end tOSFileIO;

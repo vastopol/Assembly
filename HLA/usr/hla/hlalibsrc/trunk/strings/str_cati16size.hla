@@ -1,0 +1,68 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+/******************************************************/
+/*                                                    */
+/* str.cati16size-                                    */
+/*                                                    */
+/* Appends the decimal equivalent of the i16 parameter*/
+/* to the end of the dest string.                     */
+/*                                                    */
+/******************************************************/
+ 
+procedure str.cati16Size
+( 
+	dest:string;
+	i16:word; 
+	width:int32;
+	fill:char
+);  @noframe;
+begin cati16Size;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( edx );
+	push( eax );
+
+	push( dest );
+	movsx( i16, eax );
+	cdq();
+	push( edx );
+	push( eax );
+	push( width );
+	push( (type dword fill ));
+	call( str.cati64Size );
+
+	pop( eax );
+	pop( edx );
+	pop( ebp );
+	ret( _parms_ );
+
+end cati16Size;
+
+end stringUnit;
+
+
+
+
+	
+

@@ -1,0 +1,119 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+
+/*************************************************/
+/*                                               */
+/* u128Size-                                     */
+/*                                               */
+/* Computes the number of digits required by the */
+/* unsigned 128-bit value passed as a parameter. */
+/* Returns the digit count in EAX.               */
+/*                                               */
+/*************************************************/
+
+
+procedure conv.u128Size( u128 :lword ); 
+	@nodisplay;
+	@noframe;
+	
+val
+	Digits	:uns128 := 100_000_000_000_000_000_000_000_000_000_000_000_000;
+
+readonly(4)
+	cntWithUnderscores :dword[40] :=
+		[
+			0, 
+			1, 2, 3,
+			5, 6, 7,
+			9, 10, 11,
+			13, 14, 15,
+			17, 18, 19,
+			21, 22, 23,
+			25, 26, 27,
+			29, 30, 31,
+			33, 34, 35,
+			37, 38, 39,
+			41, 42, 43,
+			45, 46, 47,
+			49, 50, 51
+		];
+		
+begin u128Size;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( edx );
+	
+	?dCnt := 39;
+	mov( dCnt, eax );
+	#while( Digits > 1 )
+	
+		#if( dCnt >= 29 )
+		
+			mov( (type dword u128[12]), edx );
+			cmp( edx, (Digits >> 96 ));
+			ja Done;
+			jb @text( "Next" + string( dCnt ));
+			
+		#endif
+		
+		#if( dCnt >= 20 )
+		
+			mov( (type dword u128[8]), edx );
+			cmp( edx, (Digits >> 64 ) & $FFFF_FFFF );
+			ja Done;
+			jb @text( "Next" + string( dCnt ));
+			
+		#endif
+		
+		#if( dCnt >= 10 )
+		
+			mov( (type dword u128[4]), edx );
+			cmp( edx, (Digits >> 32 ) & $FFFF_FFFF );
+			ja Done;
+			jb @text( "Next" + string( dCnt ));
+			
+		#endif
+		
+		mov( (type dword u128), edx );
+		cmp( edx, Digits & $FFFF_FFFF );
+		ja Done;
+		je Done;
+		
+		@text( "Next" + string( dCnt )):
+		?dCnt -= 1;
+		?Digits := Digits div 10;
+		dec( eax );	
+		
+	#endwhile
+  Done:
+  	_hla.test_OutputUnderscores();
+	je noUnderscores;
+		
+		mov( cntWithUnderscores[eax*4], eax );
+	
+	noUnderscores:
+		pop( edx );
+		pop( ebp );
+		ret( _parms_ );
+	
+end u128Size;
+
+
+end ConvUnit;

@@ -1,0 +1,633 @@
+program bAlloc_test;
+#include( "stdlib.hhf" )
+
+readonly
+	fileData	:string :=
+					"a" #$d #$a "bc" #$d #$a "d ef" #$d #$a  
+					#$d #$a "100"  #$d #$a;
+	
+var
+	allocSize			:uns32;
+	initialAllocSize	:uns32;
+	alignment			:uns32;
+	b1					:blob.blob;
+	b2					:blob.blob;
+	ba1					:blob.blob;
+	s					:string;
+	blobSpace			:byte[16384];
+	
+readonly
+	allocMasks	:dword[17] :=
+				[
+					$F,
+					$F,
+					$F,
+					$F,
+					$F,
+					$1F,
+					$3F,
+					$7F,
+					$FF,
+					$1FF,
+					$3FF,
+					$7FF,
+					$FFF,
+					$1FFF,
+					$3FFF,
+					$7FFF,
+					$FFFF,
+				];
+	
+	
+	// pwr2-
+	//
+	//	Computes 2**x, unless x=0, then returns 1.
+	
+	procedure pwr2( x:dword );
+	begin pwr2;
+
+		push( ecx );
+		mov( x, ecx );
+		mov( 1, eax );
+		shl( cl, eax );
+		pop( ecx );					
+
+	end pwr2;
+	
+begin bAlloc_test;
+
+	try
+	
+		stderr.put( "Testing blob.alloc/blob.free" nl );
+		
+		blob.alloc( 8192 );
+		mov( eax, b1 );
+		blob.rcursor( b1 );
+		if( eax <> 0 ) then
+		
+			stderr.put( "blob.alloc didn't set rcursor to zero." nl );
+			raise( 1000 );
+			
+		endif;
+		blob.wcursor( b1 );
+		if( eax <> 0 ) then
+		
+			stderr.put( "blob.alloc didn't set wcursor to zero." nl );
+			raise( 10001 );
+			
+		endif;
+		blob.maxlen( b1 );
+		if( eax <> 8192 ) then
+		
+			stderr.put( "blob.alloc didn't set maxlen to 8192" nl );
+			raise( 1002 );
+			
+		endif;
+		mov( b1, eax );
+		test( $f, eax );
+		if( @nz ) then
+		
+			stderr.put( "blob.alloc didn't align to 16 bytes" nl );
+			raise( 1003 );
+			
+		endif;
+		mov( (type blob.blobRec [eax]).allocPtr, ebx );
+		neg( ebx );
+		add( eax, ebx );
+		cmp( ebx, blob.blobHeaderSize );
+		if( @b ) then
+		
+			stderr.put
+			( 
+				"blob.alloc didn't allocate sufficient storage to"
+				"align to 16 bytes" nl 
+			);
+			raise( 1004 );
+			
+		endif;
+		
+		try
+		
+			blob.free( b1 );
+			
+		exception( ex.MemoryFreeFailure )
+		
+			stderr.put
+			(
+				"blob.free failed to free the storage for b1" nl
+			);
+			raise( 1005 );
+			
+		endtry;
+		
+		
+		// See if we can allocate a blob of size 0..1024
+		
+		for( mov( 0, ecx ); ecx <= 1024; inc( ecx )) do
+		
+			mov( ecx, allocSize );
+			blob.alloc( ecx );
+			mov( eax, b2 );
+			test( $f, eax );
+			if( @nz ) then
+	
+				stderr.put
+				( 
+					"blob.alloc(n) didn't align to 16 bytes" nl
+					"ECX = ", (type uns32 ecx), nl 
+				);
+				raise( 1006 );
+				
+			endif;
+			blob.maxlen( b2 );
+			if( eax <> ecx ) then
+	
+				stderr.put
+				( 
+					"blob.alloc didn't set maxlen to ",
+					(type uns32 ecx),
+					nl 
+				);
+				raise( 1007 );
+				
+			endif;
+			mov( b2, eax );
+			mov( (type blob.blobRec [eax]).allocPtr, ebx );
+			neg( ebx );
+			add( eax, ebx );
+			cmp( ebx, blob.blobHeaderSize );
+			if( @b ) then
+			
+				stderr.put
+				( 
+					"blob.alloc(n) didn't allocate sufficient storage to"
+					"align to 16 bytes" nl
+					"ECX = ", (type uns32 ecx), nl 
+					 
+				);
+				raise( 1008 );
+				
+			endif;
+			try
+			
+				blob.free( b2 );
+				
+			exception( ex.MemoryFreeFailure )
+			
+				stderr.put
+				(
+					"blob.free(n) failed to free the storage for b2" nl
+					"ECX = ", allocSize, nl 
+					
+				);
+				raise( 1009 );
+				
+			endtry;
+			
+		endfor;
+		
+		
+		//////////////////////////////////////////////////////////////
+		//
+		// Test blob.allocAlign:
+		
+		stderr.put( "Testing blob.allocAligned/blob.free" nl );
+		
+		for( mov( 0, alignment ); alignment <= 16; inc( alignment )) do
+		
+			blob.allocAligned( 8192, alignment );
+			mov( eax, b1 );
+			blob.rcursor( b1 );
+			if( eax <> 0 ) then
+			
+				pwr2( alignment );
+				stderr.put
+				( 
+					"blob.allocAlign didn't set rcursor to zero." nl
+					"alignment = 2**", alignment, " = ", (type uns32 eax), nl 
+				);
+				raise( 1100 );
+				
+			endif;
+			blob.wcursor( b1 );
+			if( eax <> 0 ) then
+			
+				pwr2( alignment );
+				stderr.put
+				( 
+					"blob.allocAlign didn't set wcursor to zero." nl 
+					"alignment = 2**", alignment, " = ", (type uns32 eax), nl 
+				);
+				raise( 1101 );
+				
+			endif;
+			blob.maxlen( b1 );
+			if( eax <> 8192 ) then
+			
+				pwr2( alignment );
+				stderr.put
+				( 
+					"blob.allocAlign didn't set maxlen to 8192" nl 
+					"alignment = 2**", alignment, " = ", (type uns32 eax), nl 
+				);
+				raise( 1102 );
+				
+			endif;
+			mov( b1, eax );
+			mov( alignment, ecx );
+			test( allocMasks[ecx*4], eax );
+			if( @nz ) then
+			
+				pwr2( alignment );					
+				stderr.put
+				( 
+					"blob.allocAlign didn't align to ",
+					"2**", alignment, " = ", (type uns32 eax), 
+					" bytes" nl 
+				);
+				raise( 1103 );
+				
+			endif;
+			mov( (type blob.blobRec [eax]).allocPtr, ebx );
+			neg( ebx );
+			add( eax, ebx );
+			cmp( ebx, (blob.blobHeaderSize+15) & $FFFF_FFF0 );
+			if( @b ) then
+			
+				pwr2( alignment );					
+				stderr.put
+				( 
+					"blob.allocAlign didn't allocate sufficient storage to"
+					"alignment = 2**", alignment, " = ", (type uns32 eax), nl 
+				);
+				raise( 1104 );
+				
+			endif;
+			
+			try
+			
+				blob.free( b1 );
+				
+			exception( ex.MemoryFreeFailure )
+			
+				stderr.put
+				(
+					"blob.free failed to free the storage for b1" nl
+				);
+				raise( 1105 );
+				
+			endtry;
+			
+			
+			// See if we can allocate a blob of size 0..1024
+			
+			for( mov( 0, ecx ); ecx <= 1024; inc( ecx )) do
+			
+				mov( ecx, allocSize );
+				blob.allocAligned( ecx, alignment );
+				mov( eax, b2 );
+				mov( alignment, edx );
+				test( allocMasks[edx*4], eax );
+				if( @nz ) then
+				
+					pwr2( alignment );					
+					stderr.put
+					( 
+						"blob.allocAligned didn't align to ",
+						"2**", alignment, " = ", (type uns32 eax), 
+						" bytes" nl 
+					);
+					raise( 1106 );
+					
+				endif;
+				blob.maxlen( b2 );
+				if( eax <> ecx ) then
+		
+					stderr.put
+					( 
+						"blob.allocAligned didn't set maxlen to ",
+						(type uns32 ecx),
+						nl 
+					);
+					raise( 1107 );
+					
+				endif;
+				mov( b2, eax );
+				mov( (type blob.blobRec [eax]).allocPtr, ebx );
+				neg( ebx );
+				add( eax, ebx );
+				cmp( ebx, (blob.blobHeaderSize+15) & $FFFF_FFF0 );
+				if( @b ) then
+				
+					pwr2( alignment );
+					stderr.put
+					( 
+						"blob.allocAligned(n) didn't allocate sufficient storage" nl
+						"to align to ", (type uns32 eax), " bytes" nl
+						"ECX = ", (type uns32 ecx), nl 
+						 
+					);
+					raise( 1108 );
+					
+				endif;
+				try
+				
+					blob.free( b2 );
+					
+				exception( ex.MemoryFreeFailure )
+				
+					stderr.put
+					(
+						"blob.free(n) failed to free the storage for b2" nl
+						"ECX = ", allocSize, nl 
+						
+					);
+					raise( 1109 );
+					
+				endtry;
+				
+			endfor;
+			
+			
+		endfor;
+		
+		
+		///////////////////////////////////////////////////////////////////
+		//
+		// blob.realloc tests.
+	
+		stderr.put( "Testing blob.realloc/blob.free" nl );
+		
+		blob.alloc( 1024 );
+		mov( eax, b1 );
+		blob.realloc( b1, 8192 );
+		mov( eax, b1 );
+		blob.rcursor( b1 );
+		if( eax <> 0 ) then
+		
+			stderr.put( "blob.realloc didn't set rcursor to zero." nl );
+			raise( 1200 );
+			
+		endif;
+		blob.wcursor( b1 );
+		if( eax <> 0 ) then
+		
+			stderr.put( "blob.realloc didn't set wcursor to zero." nl );
+			raise( 1201 );
+			
+		endif;
+		blob.maxlen( b1 );
+		if( eax <> 8192 ) then
+		
+			stderr.put( "blob.realloc didn't set maxlen to 8192" nl );
+			raise( 1202 );
+			
+		endif;
+		mov( b1, eax );
+		test( $f, eax );
+		if( @nz ) then
+		
+			stderr.put( "blob.realloc didn't align to 16 bytes" nl );
+			raise( 1203 );
+			
+		endif;
+		mov( (type blob.blobRec [eax]).allocPtr, ebx );
+		neg( ebx );
+		add( eax, ebx );
+		cmp( ebx, blob.blobHeaderSize );
+		if( @b ) then
+		
+			stderr.put
+			( 
+				"blob.realloc didn't allocate sufficient storage to"
+				"align to 16 bytes" nl 
+			);
+			raise( 1204 );
+			
+		endif;
+		
+		try
+		
+			blob.free( b1 );
+			
+		exception( ex.MemoryFreeFailure )
+		
+			stderr.put
+			(
+				"blob.free failed to free the storage for b1" nl
+			);
+			raise( 1205 );
+			
+		endtry;
+		
+		
+		// See if we can allocate a blob of size 0..1024
+		
+		for( mov( 0, ecx ); ecx <= 1024; inc( ecx )) do
+		
+			mov( ecx, initialAllocSize );
+			for( mov( 0, edx ); edx < 1024; inc( edx )) do
+			 
+				mov( edx, allocSize );
+				blob.alloc( ecx );
+				mov( eax, b2 );
+				blob.realloc( b2, edx );
+				mov( eax, b2 );
+				test( $f, eax );
+				if( @nz ) then
+		
+					stderr.put
+					( 
+						"blob.realloc(n) didn't align to 16 bytes" nl
+						"ECX = ", (type uns32 ecx), nl 
+						"EDX = ", (type uns32 edx), nl 
+					);
+					raise( 1206 );
+					
+				endif;
+				blob.maxlen( b2 );
+				if( eax <> edx ) then
+		
+					stderr.put
+					( 
+						"blob.realloc didn't set maxlen to ",
+						(type uns32 edx),
+						nl
+						"(maxlen was ", (type uns32 eax), ")" nl 
+					);
+					raise( 1207 );
+					
+				endif;
+				mov( b2, eax );
+				mov( (type blob.blobRec [eax]).allocPtr, ebx );
+				neg( ebx );
+				add( eax, ebx );
+				cmp( ebx, blob.blobHeaderSize );
+				if( @b ) then
+				
+					stderr.put
+					( 
+						"blob.realloc(n) didn't allocate sufficient storage to"
+						"align to 16 bytes" nl
+						"ECX = ", (type uns32 ecx), nl 
+						"EDX = ", (type uns32 edx), nl 
+						 
+					);
+					raise( 1208 );
+					
+				endif;
+				try
+				
+					blob.free( b2 );
+					
+				exception( ex.MemoryFreeFailure )
+				
+					stderr.put
+					(
+						"blob.free(n) failed to free the storage for b2" nl
+						"EDX = ", allocSize, nl 
+						"ECX = ", initialAllocSize, nl 
+						
+					);
+					raise( 1209 );
+					
+				endtry;
+				
+			endfor;
+		
+		endfor;
+	
+	
+		////////////////////////////////////////////////////////////////
+		//
+		// blob.init
+		
+		stderr.put( "Testing blob.init" nl );
+		
+		blob.init( blobSpace, 8192+blob.blobHeaderSize );
+		mov( eax, b1 );
+		blob.rcursor( b1 );
+		if( eax <> 0 ) then
+		
+			stderr.put( "blob.init didn't set rcursor to zero." nl );
+			raise( 1300 );
+			
+		endif;
+		blob.wcursor( b1 );
+		if( eax <> 0 ) then
+		
+			stderr.put( "blob.init didn't set wcursor to zero." nl );
+			raise( 1301 );
+			
+		endif;
+		blob.maxlen( b1 );
+		if( eax <> 8192 ) then
+		
+			stderr.put( "blob.init didn't set maxlen to 8192" nl );
+			raise( 1302 );
+			
+		endif;
+		
+		
+		// See if we can allocate a blob of size 0..1024
+		
+		for( mov( 0, ecx ); ecx <= 1024; inc( ecx )) do
+		
+			mov( ecx, allocSize );
+			lea( eax, [ecx+blob.blobHeaderSize+20] );
+			blob.init( blobSpace, eax );
+			mov( eax, b2 );
+			blob.maxlen( b2 );
+			sub( 20, eax );
+			if( eax <> ecx ) then
+	
+				stderr.put
+				( 
+					"blob.init(n) didn't set maxlen to ",
+					(type uns32 ecx),
+					nl,
+					"maxlen = ", (type uns32 eax), nl 
+				);
+				raise( 1307 );
+				
+			endif;
+			
+		endfor;
+		
+		
+	
+	
+		////////////////////////////////////////////////////////////////
+		//
+		// blob.init16
+		
+		stderr.put( "Testing blob.init16" nl );
+		
+		blob.init16( blobSpace, 8192+blob.blobHeaderSize );
+		mov( eax, b1 );
+		blob.rcursor( b1 );
+		if( eax <> 0 ) then
+		
+			stderr.put( "blob.init16 didn't set rcursor to zero." nl );
+			raise( 1400 );
+			
+		endif;
+		blob.wcursor( b1 );
+		if( eax <> 0 ) then
+		
+			stderr.put( "blob.init16 didn't set wcursor to zero." nl );
+			raise( 1401 );
+			
+		endif;
+		mov( b1, eax );
+		test( $f, eax );
+		if( @nz ) then
+		
+			stderr.put( "blob.init16 didn't align to 16 bytes" nl );
+			raise( 1403 );
+			
+		endif;
+		
+		
+		// See if we can allocate a blob of size 0..1024
+		
+		for( mov( 0, ecx ); ecx <= 1024; inc( ecx )) do
+		
+			mov( ecx, allocSize );
+			lea( eax, [ecx+blob.blobHeaderSize+32] );
+			blob.init16( blobSpace, eax );
+			mov( eax, b2 );
+			test( $f, eax );
+			if( @nz ) then
+			
+				stderr.put( "blob.init16(n) didn't align to 16 bytes" nl );
+				stderr.put( "Blob address is $", eax, nl );
+				raise( 1408 );
+				
+			endif;
+			
+		endfor;
+		
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"bAlloc failed!" nl
+			"Exception = ", (type uns32 eax), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "bAlloc succeeded!" nl );
+	os.exitProcess(0);
+			
+end bAlloc_test;
+
+													

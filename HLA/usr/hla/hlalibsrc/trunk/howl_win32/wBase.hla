@@ -1,0 +1,253 @@
+unit wBase_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+
+readonly		
+	align( 4 );
+	vmt( wBase_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+//
+// Constructor for generic object.
+//
+// Note: because wBase_t is an abstract class, we *never*
+// allocate storage for it; we always assume that ESI contains
+// a pointer to a real object upon entry into this code.
+//
+// This constructor must be call *after* the derived class' constructor
+// has allocated storage, but before any other initialization takes
+// place in that constructor.
+
+procedure wBase_t.create_wBase
+(
+	wbName	:string 
+);;
+	
+_begin( wBase_t, create_wBase );
+
+	// object_t is an abstract class and ESI must contain the address
+	// of a derived object when this constructor is called.
+	
+	assert( esi <> NULL );
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	// Generic initialization for all objects:
+	
+	mov( wbName, eax );
+	mov( eax, this._name );
+	mov( 0, this.userData );
+	mov( this.objectID_g, eax );
+	inc( eax );
+	mov( eax, this.wBase_private.objectID );
+	mov( eax, this.objectID_g );
+	mov( false, this.wBase_private.onHeap );
+	mov( NULL, this.wBase_private.nextWidget );
+	mov( NULL, this.wBase_private.parentForm );
+	howl.setType( wBase_c );	
+	mov( &wBase_t._VMT_, this._pVMT_ );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wBase_t, create_wBase );
+
+
+// Destructor for the generic wBase_t class.
+// This destructor must be called *after* any derived class' constructor
+// code.
+
+method wBase_t.destroy;;
+_begin( wBase_t, destroy );
+
+	if( this.wBase_private.onHeap ) then
+	
+		mem.free( esi );
+		
+	endif;
+	if( mem.isInHeap( this._name )) then
+	
+		str.free( this._name );
+		
+	endif;
+	
+_end( wBase_t, destroy );
+
+
+
+
+
+
+// Accessors
+
+
+method wBase_t.get_handle; @noframe;;
+_begin( wBase_t, get_handle );
+
+	mov( this.handle, eax );
+	ret();
+	 
+_end( wBase_t, get_handle );
+
+
+
+method wBase_t.get_objectID; @noframe;;
+_begin( wBase_t, get_objectID );
+
+	mov( this.wBase_private.objectID, eax );
+	ret();
+	 
+_end( wBase_t, get_objectID );
+
+
+
+method wBase_t.get_visible; @noframe;;
+_begin( wBase_t, get_visible );
+
+	movzx( this.wBase_private.visible, eax );
+	ret();
+	 
+_end( wBase_t, get_visible );
+
+
+
+method wBase_t.get_enabled; @noframe;;
+_begin( wBase_t, get_enabled );
+
+	movzx( this.wBase_private.enabled, eax );
+	ret();
+	 
+_end( wBase_t, get_enabled );
+
+
+
+method wBase_t.get_onHeap; @noframe;;
+_begin( wBase_t, get_onHeap );
+
+	movzx( this.wBase_private.onHeap, eax );
+	ret();
+	 
+_end( wBase_t, get_onHeap );
+
+
+method wBase_t.get_parentHandle; @noframe;;
+_begin( wBase_t, get_parentHandle );
+
+	mov( this.wBase_private.parentHandle, eax );
+	ret();
+	 
+_end( wBase_t, get_parentHandle );
+
+
+method wBase_t.get_parentForm; @noframe;;
+_begin( wBase_t, get_parentForm );
+
+	mov( this.wBase_private.parentForm, eax );
+	ret();
+	 
+_end( wBase_t, get_parentForm );
+
+
+
+
+			
+
+
+// Mutator functions:
+
+
+
+method wBase_t.set_parentForm( parentForm:wForm_p );;
+_begin( wBase_t, set_parentForm );
+
+	push( parentForm );
+	pop( this.wBase_private.parentForm );
+	
+_end( wBase_t, set_parentForm );
+
+
+method wBase_t.set_parentHandle( parentHandle:dword );;
+_begin( wBase_t, set_parentHandle );
+
+	push( parentHandle );
+	pop( this.wBase_private.parentHandle );
+	
+_end( wBase_t, set_parentHandle );
+
+
+method wBase_t.set_onHeap( onHeap:boolean );;
+_begin( wBase_t, set_onHeap );
+
+	push( eax );
+	mov( onHeap, al );
+	mov( al, this.wBase_private.onHeap );
+	pop( eax );
+	
+_end( wBase_t,set_onHeap );
+
+
+
+// Empty methods that interested child classes can override:
+			
+method wBase_t.show;;
+_begin( wBase_t, show );
+
+	mov( true, this.wBase_private.visible );
+	
+_end( wBase_t, show );
+
+
+method wBase_t.hide;;
+_begin( wBase_t, hide );
+
+	mov( false, this.wBase_private.visible );
+	
+_end( wBase_t, hide );
+
+method wBase_t.enable;;
+_begin( wBase_t, enable );
+
+	mov( true, this.wBase_private.enabled );
+	
+_end( wBase_t, enable );
+
+method wBase_t.disable;;
+_begin( wBase_t, disable );
+
+	mov( false, this.wBase_private.enabled );
+	
+_end( wBase_t, disable );
+
+
+
+// The default processMessage method just calls the Windows DefWindProc code.
+
+method wBase_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);;
+_begin( wBase_t, processMessage );
+
+	w.DefWindowProc( hwnd, uMsg, wParam, lParam );
+
+_end( wBase_t, processMessage );
+
+
+
+end	wBase_u;

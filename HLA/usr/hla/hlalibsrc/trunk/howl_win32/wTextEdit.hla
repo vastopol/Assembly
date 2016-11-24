@@ -1,0 +1,277 @@
+unit wTextEdit_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( wTextEdit_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wTextEdit objects here:
+
+
+
+procedure wTextEdit_t.create_wTextEdit
+(
+	wteName		:string;
+	initialTxt	:string;
+	parent		:dword; 									
+	x			:dword; 
+	y			:dword; 
+	width		:dword; 
+	height		:dword;
+	style		:dword;
+	onChange	:widgetProc  
+);;
+	
+_begin( wTextEdit_t, create_wTextEdit );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wTextEdit_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+
+	// Generic initialization for all Edit Box objects:
+	
+	mov
+	( 
+		w.WS_CHILD | w.WS_VISIBLE | w.WS_TABSTOP | 
+			w.WS_GROUP | w.WS_BORDER | 
+			w.ES_MULTILINE | w.ES_WANTRETURN |
+			w.WS_HSCROLL | w.WS_VSCROLL,
+		eax
+	);
+	or( style, eax );
+	(type wabsEditBox_t [esi]).create_wabsEditBox
+	(
+		wteName,
+		initialTxt,
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height,
+		eax,
+		onChange
+	);
+	mov( cl, this.wBase_private.onHeap );		
+
+	
+	// Initialize the type string field:
+		
+	howl.setType( wTextEdit_c );
+	mov( &wTextEdit_t._VMT_, this._pVMT_ );
+			
+	pop( eax );
+	
+_end( wTextEdit_t, create_wTextEdit );
+
+
+// getLineCount-
+//
+//	Returns (in EAX) the number of lines in a TextEdit control:
+
+method wTextEdit_t.getLineCount;;
+_begin( wTextEdit_t, getLineCount );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.EM_GETLINECOUNT, 0, 0 ); 
+	
+	pop( edx );
+	pop( ecx );
+	
+_end( wTextEdit_t, getLineCount );
+
+
+// getLineIndex-
+//
+//	Converts a character index (into the text buffer) into a line index
+// and returns the line index in EAX:
+
+method wTextEdit_t.getLineIndex( charIndex:dword );; 
+_begin( wTextEdit_t, getLineIndex );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.EM_LINEFROMCHAR, charIndex, 0 ); 
+	
+	pop( edx );
+	pop( ecx );
+	
+_end( wTextEdit_t, getLineIndex );
+
+
+
+// getCharIndex-
+//
+//	Converts a line index (into the text buffer) into a character index
+// and returns the character index in EAX:
+
+method wTextEdit_t.getCharIndex( lineIndex:dword );; 
+_begin( wTextEdit_t, getCharIndex );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.EM_LINEINDEX, lineIndex, 0 ); 
+	
+	pop( edx );
+	pop( ecx );
+	
+_end( wTextEdit_t, getCharIndex );
+
+
+
+// getLine-
+//
+//	Retrieves a line (specified by a line index) from the TextEdit
+// control and stores that line into the "txt" argument.
+
+method wTextEdit_t.getLine( lineIndex:dword; txt:string );;
+_begin( wTextEdit_t, getLine );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	// First, get the length of the line:
+	
+	w.SendMessage( this.handle, w.EM_LINEINDEX, lineIndex, 0 ); 
+	w.SendMessage( this.handle, w.EM_LINELENGTH, EAX, 0 );
+	mov( txt, ecx );
+	mov( (type str.strRec [ecx]).maxlen, edx );
+	if( eax > edx ) then
+	
+		raise( ex.StringOverflow );
+		
+	endif;
+	mov( eax, (type str.strRec [ecx]).length );	// Set string length
+	mov( edx, [ecx] );							// 1st dword must contain maxlen
+	mov( 0, (type byte [ecx+eax]) );			// Zero terminate.
+	w.SendMessage( this.handle, w.EM_GETLINE, lineIndex, txt ); 
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wTextEdit_t, getLine );
+
+
+// a_getLine-
+//
+//	Retrieves a line (specified by a line index) from the TextEdit
+// control and returns a pointer to that string in EAX.
+
+method wTextEdit_t.a_getLine( lineIndex:dword );;
+_begin( wTextEdit_t, a_getLine );
+
+	push( ecx );
+	push( edx );
+	
+	// First, get the length of the line:
+	
+	w.SendMessage( this.handle, w.EM_LINEINDEX, lineIndex, 0 ); 
+	w.SendMessage( this.handle, w.EM_LINELENGTH, EAX, 0 );
+	mov( eax, ecx );
+	str.alloc( eax );
+	mov( ecx, (type str.strRec [eax]).length );	// Set string length
+	mov( ecx, [eax] );							// 1st dword must contain maxlen
+	mov( 0, (type byte [ecx+eax]) );			// Zero terminate.
+	push( eax );
+	w.SendMessage( this.handle, w.EM_GETLINE, lineIndex, eax ); 
+	pop( eax );
+	pop( edx );
+	pop( ecx );
+	
+_end( wTextEdit_t, a_getLine );
+
+
+
+// scroll-
+//
+//	Scrolls the textEdit window the specified number of horizontal and
+// vertical characters.
+
+method wTextEdit_t.scroll( horz:int32; vert:int32 );;
+_begin( wTextEdit_t, scroll );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.EM_LINESCROLL, horz, vert ); 
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wTextEdit_t, scroll );
+
+
+// scrollCaret-
+//
+//	Displays the caret position in the editor window.
+
+method wTextEdit_t.scrollCaret;;
+_begin( wTextEdit_t, scrollCaret );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.EM_SCROLLCARET, 0, 0 ); 
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wTextEdit_t, scrollCaret );
+
+
+// setTabStops-
+//
+//	Sets the tabstops of a textEdit box to every "tabstops" position.
+
+method wTextEdit_t.setTabStops( tabstops:dword );;
+_begin( wTextEdit_t, setTabStops );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	lea( eax, tabstops );
+	w.SendMessage( this.handle, w.EM_SETTABSTOPS, 1, eax ); 
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+
+_end( wTextEdit_t, setTabStops );
+
+end	wTextEdit_u;

@@ -1,0 +1,99 @@
+program removeStr_test;
+#include( "stdlib.hhf" )
+
+		
+const
+	str_c:string[] :=
+		[
+			#for( i := 0 to 127 )
+				?s := "";
+				#for( j := 1 to (@random(i) & $7f))
+					?s := s + char(j);
+				#endfor
+				s,
+			#endfor
+		];
+		
+	cs_c :cset[] :=
+		[
+			#for( i := 0 to 127 )
+				 {#1..#127} - {str_c[i]},
+			#endfor
+		];
+		
+	halfCset_c	:string := string( {#1..#$7f} );
+
+static
+	cstest		:cset;
+	cstest2		:cset := {#1..#$3f};
+	strs		:string[ @elements(str_c)] := str_c;
+	ccs 		:cset[ @elements( cs_c ) ] := cs_c;
+	halfCset	:string := halfCset_c;
+
+	
+begin removeStr_test;
+
+	for( mov( 0, ecx ); ecx<128; inc(ecx) )do
+	
+		intmul( @size( cset ), ecx, edx );
+		cs.rangeChar( #1, #127, cstest );
+		cs.removeStr( strs[ecx*4], cstest );
+		if( cs.ne( cstest, ccs[edx]) ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"cs.removeStr failed!  ecx=", ecx, nl,
+				(type dword cstest[12]), '_',
+				(type dword cstest[8]), '_',
+				(type dword cstest[4]), '_',
+				(type dword cstest), nl,
+				
+				(type dword ccs[edx+12]), '_',
+				(type dword ccs[edx+8]), '_',
+				(type dword ccs[edx+4]), '_',
+				(type dword ccs[edx]), nl,
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif;
+			
+		cs.rangeChar( #1, #127, cstest );
+		cs.removeStr2( halfCset, $3f, cstest );
+		if( cs.ne( cstest, cstest2) ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"cs.removeStr2 failed!  ecx=", ecx, nl,
+				(type dword cstest[12]), '_',
+				(type dword cstest[8]), '_',
+				(type dword cstest[4]), '_',
+				(type dword cstest), nl,
+				
+				(type dword cstest2[edx+12]), '_',
+				(type dword cstest2[edx+8]), '_',
+				(type dword cstest2[edx+4]), '_',
+				(type dword cstest2[edx]), nl,
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif;
+			
+	endfor;
+	stderr.put( "cs.removeStr & cs.removeStr2 succeeded!" nl );
+	os.exitProcess(0);
+		
+end removeStr_test;
+
+													

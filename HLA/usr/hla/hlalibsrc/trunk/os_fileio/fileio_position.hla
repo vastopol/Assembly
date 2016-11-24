@@ -1,0 +1,132 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+
+//20020108 Mark de Wever
+//changed lseek to llseek to enable usage with char devices		
+
+#include( "../include/fileiounit.hhf" )
+#include( "os.hhf" )
+
+
+
+/*****************************************************/
+/*                                                   */
+/* position-                                         */
+/*                                                   */
+/* Returns the current file pointer value in EDX:EAX */
+/* for the file specified by the Handle parameter.   */
+/*                                                   */
+/*****************************************************/
+
+
+
+#if( os.linux )
+
+	procedure fileio.position( Handle:dword ); @nodisplay; @noframe;
+	var
+		offset:linux.loff_t;
+		 
+	begin position;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		//always llseek char devices don't have lseek
+		// found no way to detect an error.
+		// Could check for offset > 32-bit value.
+
+		linux.llseek( Handle, 0, 0, offset, linux.seek_cur );
+		mov((type dword offset ),eax);
+		mov((type dword offset[4]), edx );
+		leave();
+		ret( _parms_ );
+		
+	end position;
+
+#elseif( os.freeBSD )
+
+	procedure fileio.position( Handle:dword ); @nodisplay; @noframe;
+	begin position;
+	
+		push( ebp );
+		mov( esp, ebp );
+		
+		bsd.lseek( Handle, 0, bsd.SEEK_CUR );
+		jc FileSeekError;
+		
+		pop( ebp );
+		ret( _parms_ );
+		
+	FileSeekError:
+		raise( ex.FileSeekError );
+		
+	end position;
+
+#elseif( os.macOS )
+
+	procedure fileio.position( Handle:dword ); @nodisplay; @noframe;
+	begin position;
+	
+		push( ebp );
+		mov( esp, ebp );
+		
+		mac.lseek( Handle, 0, mac.SEEK_CUR );
+		jc FileSeekError;
+		
+		pop( ebp );
+		ret( _parms_ );
+		
+	FileSeekError:
+		raise( ex.FileSeekError );
+		
+	end position;
+
+#elseif( os.win32 )
+
+	procedure fileio.position( Handle:dword ); @nodisplay; @noframe;
+	var
+		HOPosition	:dword;
+		
+	begin position;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( ecx );
+		pushfd();
+		cld();
+		
+		mov( 0, HOPosition );
+		lea( eax, HOPosition );
+		SetFilePointer( win.FILE_CURRENT, eax, 0, Handle );
+		mov( HOPosition, edx );
+		
+		popfd();
+		pop( ecx );
+		leave();
+		ret( _parms_ );
+		
+	end position;
+	
+#else
+
+	#print( "Unknown OS!" )
+
+#endif
+	
+end FileIOUnit;
+

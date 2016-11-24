@@ -1,0 +1,106 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit threads;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "os.hhf" )
+#includeOnce( "threads.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "../include/thread_private.hhf" )
+
+#if( os.win32 )
+	#include( "w.hhf" )
+#elseif( os.linux )
+	#include( "linux.hhf" )
+#elseif( os.freeBSD )
+	#include( "bsd.hhf" )
+#elseif( os.macOS )
+	#include( "mac.hhf" )
+#else
+	#error( "Unsupported OS" )
+#endif
+
+// thread.releaseSemaphore-
+//
+//	Decrements a semaphore count by one.
+
+#if( os.win32 )
+
+	procedure thread.releaseSemaphore( sema:dword );
+	begin releaseSemaphore;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( eax );
+		push( ecx );
+		push( edx );
+		
+		w.ReleaseSemaphore( sema, 1, NULL );
+		test( eax, eax );
+		jz ThreadError;
+
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end releaseSemaphore;
+
+
+#elseif( os.linux | os.freeBSD | os.macOS )
+
+	procedure thread.releaseSemaphore( sema:dword );
+    readonly
+		sb	:sembuf	:= sembuf:[0, 1, 0];  // set to free resource
+		
+	begin releaseSemaphore;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( eax );
+		push( ecx );
+		push( edx );
+		
+		lea( eax, sb );
+		semop( sema, [eax], 1);
+		test( eax, eax );
+		jnz ThreadError;
+
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end releaseSemaphore;
+
+
+#else
+
+	#error( "Unknown OS!" )
+	
+#endif
+
+
+end threads;

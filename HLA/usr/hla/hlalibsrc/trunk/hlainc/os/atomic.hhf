@@ -1,0 +1,13 @@
+#if( ! @defined( atomic_hhf ))
+?atomic_hhf := true;
+
+namespace linux; @fast;
+
+  type
+	atomic_t:record
+		counter	:dword;
+	endrecord;
+
+end linux;
+
+#endif //atomic_hhf

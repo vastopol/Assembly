@@ -1,0 +1,113 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+/****************************************************************/
+/*                                                              */
+/* cat2-                                                        */
+/* cat3-                                                        */
+/*                                                              */
+/* Concatenates the source string to the end of the destination */
+/* string.   												    */
+/*                                                              */
+/* Note: the destination string's maximum length must be large  */
+/* enough to hold the concatenated result, or this routine      */
+/* will raise an exception.                                     */
+/*                                                              */
+/****************************************************************/
+
+
+procedure str.cat2( src:string; dest:string ); @noframe;
+begin cat2;
+
+	push( ebp );
+	mov( esp, ebp );
+	pushfd();
+	cld();
+	
+	push( eax );
+	push( ecx );
+	push( esi );
+	push( edi );
+	
+	// Make sure the string pointers are non-NULL.
+	
+	mov( src, esi );
+	mov( dest, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+		
+
+	// Compute new length and verify that the destination string
+	// can hold the result.
+	
+	mov( (type str.strRec [edi]).length, ecx );
+	mov( ecx, eax ); 							//Save for later.
+	
+	add( (type str.strRec [esi]).length, ecx );
+	cmp( ecx,  (type str.strRec [edi]).maxlen );
+	ja StringOverflow;
+		
+	mov( ecx, (type str.strRec [edi]).length );
+	
+	// Okay, the destination string can hold the result.
+	// Concatenate the source string to the end of the dest string.
+	// Note: unfortunately, we cannot copy DWORDs here because the
+	// dynamic lengths of the source and destination strings could
+	// cause an overflow.  Furthermore, we don't know if the dest
+	// (concat) address is dword-aligned, so there may be little
+	// benefit to this.  
+	//
+	// In the future: after some research, we might be able to speed
+	// this up by computing whether dword moves are possible.  For now,
+	// this code just sticks with the simple (though slow) approach.
+	
+	
+	mov( (type str.strRec [esi]).length, ecx );
+	inc( ecx );				// Also copy zero byte from source.
+	add( eax, edi );		// Start storing source here.
+	rep.movsb();			// Copy source to the end of dest.
+	
+	pop( edi );
+	pop( esi );
+	pop( ecx );
+	pop( eax );
+	popfd();
+	pop( ebp );
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+StringOverflow:
+	raise( ex.StringOverflow );
+
+end cat2;
+
+end stringUnit;
+
+
+
+
+	
+

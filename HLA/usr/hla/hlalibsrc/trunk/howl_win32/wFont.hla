@@ -1,0 +1,298 @@
+unit wFont_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly		
+	align( 4 );
+	vmt( wFont_t );
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//
+// Constructor for Font objects.
+//
+
+
+procedure wFont_t.create_wFont2
+(
+	wfName			:string;
+	parentHandle	:dword;
+	faceName		:string;
+	family			:byte;
+	size			:uns32;
+	angle			:int32;
+	rotate			:int32;
+	weight			:uns32;
+	italic			:boolean;
+	underline		:boolean;
+	strikeout		:boolean;
+	monospaced		:boolean
+);
+var
+	winFont		:w.LOGFONT;
+	dc			:dword;
+	LogPixelsY	:int32;
+		
+_begin( wFont_t, create_wFont2 );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wFont_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	(type wBase_t [esi]).create_wBase( wfName );
+	mov( cl, this.wBase_private.onHeap );
+	mov( parentHandle, eax );
+	mov( eax, this.wBase_private.parentHandle );
+	mov( faceName, eax );
+	mov( eax, this.wFont_private.faceName );
+	mov( size, eax );
+	mov( eax, this.wFont_private.size );
+	mov( family, al );
+	mov( al, this.wFont_private.family );
+	
+	cmp( weight, w.FW_NORMAL );
+	seta( al );	
+	mov( al, this.wFont_private.bold );
+	mov( italic, al );
+	mov( al, this.wFont_private.italic );
+	mov( underline, al );
+	mov( al, this.wFont_private.underline );
+	mov( strikeout, al );
+	mov( al, this.wFont_private.strikeout );
+	mov( monospaced, al );
+	mov( al, this.wFont_private.monospaced );
+	
+	howl.setType( wFont_c );	
+	mov( &wFont_t._VMT_, this._pVMT_ );
+	
+	// Must get the LogPixelsY value in order to compute
+	// the font height from the size:
+	
+	w.GetDC( parentHandle );
+	
+		mov( eax, dc );
+		w.GetDeviceCaps( eax, w.LOGPIXELSY );
+		mov( eax, LogPixelsY );
+		
+	w.ReleaseDC( parentHandle, dc );
+		
+	// Compute the lfHeight value based on the (point) size parameter
+	// using the calculation: lfHeight := -(size *appDevCaps.LogPixelsy)/72;
+	
+	mov( size, eax );
+	imul( LogPixelsY, eax );
+	idiv( 72, edx:eax );
+	neg( eax );
+	mov( eax, winFont.lfHeight );
+	
+	mov( 0, winFont.lfWidth );
+	mov( angle, eax );
+	mov( eax, winFont.lfEscapement );
+	mov( rotate, eax );
+	mov( eax, winFont.lfOrientation );
+	mov( weight, eax );
+	mov( eax, winFont.lfWeight );
+	mov( underline, al );
+	mov( al, winFont.lfUnderline );
+	mov( strikeout, al );
+	mov( al, winFont.lfStrikeOut );
+	mov( italic, al );
+	mov( al, winFont.lfItalic );
+	mov( w.ANSI_CHARSET, winFont.lfCharSet );
+	mov( w.OUT_DEFAULT_PRECIS, winFont.lfOutPrecision );
+	mov( w.CLIP_DEFAULT_PRECIS, winFont.lfClipPrecision );
+	mov( w.DEFAULT_QUALITY, winFont.lfQuality );
+	mov( w.DEFAULT_PITCH, al );
+	if( monospaced ) then
+	
+		mov( w.FIXED_PITCH, al );
+		
+	endif;
+	or( family, al );
+	mov( al, winFont.lfPitchAndFamily );
+	lea( eax, winFont.lfFaceName );
+	zstr.cpyn( (type zstring faceName), 31, eax );
+	w.CreateFontIndirect( winFont );
+	mov( eax, this.handle );
+	 
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wFont_t, create_wFont2 );
+
+
+procedure wFont_t.create_wFont
+(
+	wfName			:string;
+	parentHandle	:dword;
+	faceName		:string;
+	family			:byte;
+	size			:uns32;
+	bold			:boolean;
+	italic			:boolean;
+	underline		:boolean;
+	strikeout		:boolean;
+	monospaced		:boolean
+);
+var
+	winFont		:w.LOGFONT;
+	dc			:dword;
+	LogPixelsY	:int32;
+		
+_begin( wFont_t, create_wFont );
+
+	push( eax );
+	mov( w.FW_NORMAL, eax );
+	if( bold ) then
+	
+		mov( w.FW_BOLD, eax );
+		
+	endif;		
+	wFont_t.create_wFont2
+	(
+		wfName,		   
+		parentHandle,   
+		faceName,	   
+		family,		   
+		size,
+		0,
+		0,		   
+		eax,		   
+		italic,		   
+		underline,	   
+		strikeout,	   
+		monospaced
+	);
+	pop( eax );
+		
+_end( wFont_t, create_wFont );
+
+
+// Delete the font from the system when we are done using it:
+	
+method wFont_t.destroy;;
+_begin( wFont_t, destroy );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.DeleteObject( this.handle );
+	
+	// Delete the storage associated with this object:
+	
+	super.destroy();
+		
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wFont_t, destroy );
+
+
+// Accessor functions:
+
+method wFont_t.get_facename; @noframe;;
+_begin( wFont_t, get_facename );
+
+	mov( this.wFont_private.faceName, eax );
+	ret();
+	
+_end( wFont_t, get_facename );
+
+
+
+method wFont_t.get_size; @noframe;;
+_begin( wFont_t, get_size );
+
+	mov( this.wFont_private.size, eax );
+	ret();
+	
+_end( wFont_t, get_size );
+
+
+		
+method wFont_t.get_family; @noframe;;
+_begin( wFont_t, get_family );
+
+	movzx( this.wFont_private.family, eax );
+	ret();
+	
+_end( wFont_t, get_family );
+
+
+		
+method wFont_t.get_bold; @noframe;;
+_begin( wFont_t, get_bold );
+
+	movzx( this.wFont_private.bold, eax );
+	ret();
+	
+_end( wFont_t, get_bold );
+
+
+		
+method wFont_t.get_italic; @noframe;;
+_begin( wFont_t, get_italic );
+
+	movzx( this.wFont_private.italic, eax );
+	ret();
+	
+_end( wFont_t, get_italic );
+
+
+		
+method wFont_t.get_underline; @noframe;;
+_begin( wFont_t, get_underline );
+
+	movzx( this.wFont_private.underline, eax );
+	ret();
+	
+_end( wFont_t, get_underline );
+
+
+	
+method wFont_t.get_strikeout; @noframe;;
+_begin( wFont_t, get_strikeout );
+
+	movzx( this.wFont_private.strikeout, eax );
+	ret();
+	
+_end( wFont_t, get_strikeout );
+
+
+	
+method wFont_t.get_monospaced; @noframe;;
+_begin( wFont_t, get_monospaced );
+
+	movzx( this.wFont_private.monospaced, eax );
+	ret();
+	
+_end( wFont_t, get_monospaced );
+
+
+	
+
+
+end	wFont_u;

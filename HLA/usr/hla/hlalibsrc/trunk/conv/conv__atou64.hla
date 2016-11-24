@@ -1,0 +1,151 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "excepts.hhf" )
+
+
+/*****************************************************/
+/*                                                   */
+/* atou64-                                           */
+/*                                                   */
+/* ASCII to unsigned.                                */
+/*                                                   */
+/* ESI points at a string containing decimal digits. */
+/* This function converts that string to a 64-bit    */
+/* unsigned integer.                                 */
+/*                                                   */
+/* On return, EDX:EAX contains the converted value.  */
+/* ESI points at the first non-digit in the string.  */
+/*                                                   */
+/* On entry, ESI must point at at least one legal    */
+/* decimal digit character.                          */
+/*                                                   */
+/* A legal delimiter character (see the Delimiters   */
+/* cset above) must terminate the string of digits,  */
+/* otherwise this routine raises an exception.       */
+/*                                                   */
+/* If the string of digits corresponds to a value    */
+/* too large for 64 bits, this routine raises an     */
+/* exception.                                        */
+/*                                                   */
+/* If any character in the string of digits has its  */
+/* H.O. bit set, this routine raises an exception.   */
+/*                                                   */
+/* This routine is primarily intended for use by the */
+/* atoi and StrToXXX routines.						 */
+/*                                                   */
+/*****************************************************/
+
+
+procedure _atou64; 
+	@nodisplay; 
+	@noframe;
+
+	procedure accX10; @nodisplay; @noframe;
+	begin accX10;
+
+		push( edi );
+		shl( 1, ecx );			// Compute EDX:ECX * 2 and
+		rcl( 1, edx );			//  save in EDI:EBX.
+		mov( ecx, ebx );
+		mov( edx, edi );
+		jc Overflow;
+		
+		shl( 1, ecx );
+		rcl( 1, edx );			// Compute (original) EDX:ECX * 4.
+		jc Overflow;		
+	
+		shl( 1, ecx );
+		rcl( 1, edx );			// Compute (original) EDX:ECX * 8.
+		jc Overflow;
+				
+		add( ebx, ecx );		// Add 2*EDX:ECX + 8*EDX:ECX to
+		adc( edi, edx );		// produce 10*EDX:ECX.
+		jc	Overflow;
+		
+		pop( edi );
+		ret();
+		
+	Overflow:
+		raise( ex.ValueOutOfRange );
+		
+	end accX10;
+		
+begin _atou64;
+
+	push( edi );
+	xor( eax, eax );	// Init H.O. three bytes of EAX to zero.
+	mov( eax, edx );	// Initialize EDX:ECX with zero.
+	mov( eax, ecx );
+
+	mov( _hla.get_Delimiters(), edi );
+	
+	// The first character *must* be a legal digit.
+	
+	mov( [esi], al );
+			
+	// For each legal character that ESI points at, repeat
+	// the following until we encounter a delimiter or
+	// illegal character.
+	
+	whileNotADelimiter:
+
+		cmp( al, '0' );
+		jb convError;
+		cmp( al, '9' );
+		ja convError;
+		
+		// Okay, we've got a digit, so add it into EDX:ECX.
+		
+		accX10();	// EDX:ECX * 10.
+		and( $f, eax );
+		add( eax, ecx );
+		adc( 0, edx );
+		jc Overflow;
+		
+		
+		// Move on to the next character:
+		
+		NextChar;
+		
+		// repeat until we hit a delimiter:
+
+		cmp( eax, $80 );
+		jae IllegalChar;
+		bt( eax, (type dword [edi] ));	// Delimiters
+		jnc whileNotADelimiter;
+		
+		
+	// Return 64-bit result in EDX:EAX:
+	
+	mov( ecx, eax );
+	pop( edi );
+	ret();
+
+convError:
+	raise( ex.ConversionError );
+
+Overflow:
+		raise( ex.ValueOutOfRange );
+
+IllegalChar:
+	raise( ex.IllegalChar );
+	
+end _atou64;
+
+
+end ConvUnit;

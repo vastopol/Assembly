@@ -1,0 +1,88 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit StdInput;
+#include( "../include/stdinunit.hhf" )
+
+
+/***********************************************************/
+/*                                                         */
+/* getc-                                                   */
+/*                                                         */
+/* Reads a single character from the standard input device */
+/* and returns this character in the AL/EAX register (the  */
+/* character is in AL, zeroes are in the upper three bytes */
+/* of EAX).                                                */
+/*                                                         */
+/* Returns stdin.eoln (#$0a) in AL upon encountering the   */
+/* end of the current line (end of the input buffer).      */
+/* Also sets the "NeedsInput" variable to true upon        */
+/* encountering the end of the current input line.         */
+/*                                                         */
+/***********************************************************/
+
+
+procedure getc; 
+	@noframe;
+	@nodisplay;
+begin getc;
+
+	// If the input buffer is empty, read a new line from the
+	// standard input device.
+	
+	push( ebx );
+	cmp( NeedsInput, false );
+	je noReadLn;
+	
+		ReadLn();
+		
+	noReadLn:
+	
+	// If we're at the end of the input buffer, return a new line
+	// character (line feed) and set the NeedsInput variable
+	// to true.  Otherwise, just return the next character.
+	
+	mov( InputIndex, ebx );
+	cmp( InputBuffer[ebx], #0 );
+	jne hasInput;
+
+		
+		mov( #$0a, al );
+		mov( true, NeedsInput );
+		pop( ebx );
+		ret();
+		
+	hasInput:
+	
+		// Get the character into al (and zero extend through eax).
+		
+		mov( InputBuffer[ ebx ], al );
+		
+		// Bump the index into the buffer to point at the
+		// next character in the buffer.
+		
+		inc( InputIndex );
+		pop( ebx );
+		ret();
+	
+end getc;
+
+
+end StdInput;
+
+
+
+
+	
+

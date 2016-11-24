@@ -1,0 +1,85 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+
+procedure strieqne; @external( "STR_IEQNE" );
+
+/**************************************************************/
+/*                                                            */
+/* ieq,                                                       */
+/* ine,                                                       */
+/* ilt,                                                       */
+/* igt,                                                       */
+/* ile,                                                       */
+/* ige-                                                       */
+/*                                                            */
+/* These routines do a case insensitive comparison and return */
+/* the boolean result in the carry flag.	These routines    */
+/* compare the src1 string against the src2 string            */
+/* (e.g., ile returns true if src1 <= src2).                  */
+/*                                                            */
+/**************************************************************/
+
+
+
+procedure str.ieq( src1:string; src2:string ); @noframe;
+begin ieq;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( esi );
+	push( edi );
+	
+	mov( src1, esi );
+	mov( src2, edi );
+	
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+	strieqne();
+    mov( 0, eax );
+	sete( al );
+		
+	cmp( al, 1 );		// Set the carry flag to the result state.
+	cmc();
+	pop( edi );
+	pop( esi );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end ieq;
+
+end stringUnit;
+
+
+
+
+	
+

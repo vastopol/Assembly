@@ -1,0 +1,124 @@
+unit wPasswdBox_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( wPasswdBox_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wPasswdBox objects here:
+
+
+
+procedure wPasswdBox_t.create_wPasswdBox
+(
+	wpwbName	:string;
+	initialTxt	:string;
+	parent		:dword; 									
+	x			:dword; 
+	y			:dword; 
+	width		:dword; 
+	height		:dword;
+	style		:dword;
+	onChange	:widgetProc  
+);;
+	
+_begin( wPasswdBox_t, create_wPasswdBox );
+
+	push( eax );
+	push( ecx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wPasswdBox_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+
+	// Generic initialization for all Edit Box objects:
+	
+	mov
+	(
+		w.WS_CHILD | w.WS_VISIBLE | w.WS_TABSTOP | 
+			w.WS_GROUP | w.WS_BORDER | w.ES_AUTOHSCROLL | w.ES_PASSWORD,
+		eax
+	);
+	or( style, eax );
+	(type wabsEditBox_t [esi]).create_wabsEditBox
+	(
+		wpwbName,
+		initialTxt,
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height,
+		eax,
+		onChange
+	);
+	mov( cl, this.wBase_private.onHeap );		
+
+	
+	// Initialize the type string field:
+		
+	howl.setType( wPasswdBox_c );
+	mov( &wPasswdBox_t._VMT_, this._pVMT_ );
+	
+	pop( ecx );
+	pop( eax );
+	
+_end( wPasswdBox_t, create_wPasswdBox );
+
+
+// Accessors and mutators:
+
+method wPasswdBox_t.get_passwordChar;;
+_begin( wPasswdBox_t, get_passwordChar );
+
+	push( ecx );
+	push( edx );
+	
+		w.SendMessage( this.handle, w.EM_GETPASSWORDCHAR, 0, 0 );
+		and( $FF, eax );
+	
+	pop( edx );
+	pop( ecx );
+	
+_end( wPasswdBox_t, get_passwordChar );
+
+
+method wPasswdBox_t.set_passwordChar( pwc:char );;
+_begin( wPasswdBox_t, set_passwordChar );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+		movzx( pwc, eax );
+		w.SendMessage( this.handle, w.EM_SETPASSWORDCHAR, eax, 0 );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wPasswdBox_t, set_passwordChar );
+
+
+end	wPasswdBox_u;

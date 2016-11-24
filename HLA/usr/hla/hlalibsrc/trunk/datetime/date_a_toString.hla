@@ -1,0 +1,50 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "memory.hhf" )
+
+// date._a_toString-
+//
+// Converts a date to a string representation (using the
+// global "DateFormat" and "DateSeparator" variables to
+// control the output conversion (see date.toString for details).
+//
+// Allocates storage for the date string on the heap and returns
+// a pointer to this new string (with the converted date) in the
+// EAX register.
+
+procedure date._a_toString( dr:date.daterec ); 
+	@nodisplay; 
+	@noframe;
+begin _a_toString;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	// Maximum # of characters any date format requires
+	// is less than 20 characters, so we'll just allocate
+	// 20 and then call _toString to do all the work.
+	
+	stralloc( 20 );
+	push( eax );
+	date._toString( dr, eax );		// Let date._toString do the real work.
+	pop( eax );						// Return ptr to string in EAX.
+	pop( ebp );
+	ret( _parms_ );
+	
+end _a_toString;
+	
+end DateTime;			

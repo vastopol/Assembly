@@ -1,0 +1,128 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+?@noframe := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+// zeroOrOneCset2-
+// zeroOrOneCset3-
+// zeroOrOneCset4-
+//
+//	Skips zero or one characters in a string that are members of
+// the cst character set. Because this function can match zero
+// characters, it always succeeds, even if the first character
+// of the string is not a member of cst.
+//
+// zeroOrOneCset3-
+//	Also returns the remainder string in the rem parameter.	 
+// This function returns the entire src string as the remainder
+// if the first character is not a member of cst.
+//
+// zeroOrOneCset4-
+//	Returns an empty string or a string of length one in the mat
+// parameter. Returns the remainder (which could be the whole string)
+// in the rem parameter.
+			
+
+procedure str.zeroOrOneCset4( src:string; cst:cset; rem:string; mat:string ); 
+begin zeroOrOneCset4;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( esi );
+	
+	mov( src, esi );
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+	// rem and mat cannot be the same string
+	
+	mov( rem, eax );
+	cmp( eax, mat );
+	je StringOverlap;
+	
+	// Determine whether we've matched zero or one characters
+	// in the string.  Compute the length of the rem and mat
+	// strings.
+	
+	movzx( (type char [esi]), eax );
+	bt( eax, cst );
+	mov( 0, eax );
+	adc( 0, eax );		// Length of MAT string.
+	push( eax );		// Save for later.
+	neg( eax );			// Now compute the length of the rem string
+	add( (type str.strRec [esi]).length, eax );
+	
+	cmp( esi, rem );
+	je srcEQrem;
+	
+		// Src <> rem, so it's safe to copy the remainder string
+		// first:
+		
+		str.last( (type string esi), eax, rem );
+		pop( eax );		// Get MAT length (0/1).
+		cmp( esi, mat );
+		je srcEQmat;
+		
+			str.substr( (type string esi), 0, eax, mat );
+			jmp allDone;
+			
+		srcEQmat:
+		
+			str.first( (type string esi), eax );
+			jmp allDone;
+			
+	srcEQrem:
+	
+		// Src == rem, so we must copy mat first:
+		
+		push( eax );
+		mov( [esp+4], eax );
+		str.substr( esi, 0, eax, mat );
+		pop( eax );
+		str.last2( esi, eax );
+		add( 4, esp );
+		
+	allDone:	
+	pop( esi );
+	pop( eax );
+	pop( ebp );
+	stc();			// We always succeed.
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+StringOverflow:
+	raise( ex.StringOverflow );
+
+StringOverlap:
+	raise( ex.StringOverlap );
+
+end zeroOrOneCset4;
+
+end stringUnit;
+
+
+
+
+	
+

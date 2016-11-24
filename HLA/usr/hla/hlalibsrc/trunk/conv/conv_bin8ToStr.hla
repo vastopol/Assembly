@@ -1,0 +1,73 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "strings.hhf" )
+
+
+// bin8ToStr-                                                
+//                                                         
+// Converts a byte value to a string of 8 binary digits (plus an underscore
+// if "OutputUnderscores" is true).
+//                                                         
+// Inputs:                                                 
+// 		b-	                                                   
+// 			contains the byte to convert.                      
+// 			                                                   
+// 		buffer-                                                
+// 			points at an HLA string that will hold             
+// 			the converted result.                              
+
+
+
+
+
+
+procedure conv.bin8ToStr( b:byte; buffer:string ); 
+	@nodisplay;
+	@noframe;
+	@noalignstack;
+	
+begin bin8ToStr;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( edi );
+	
+	_hla.get_OutputUnderscores();
+	add( 8, eax );
+	mov( buffer, edi );
+	cmp( eax, (type str.strRec [edi]).maxlen );
+	ja StringOverflow;
+	mov( eax, (type str.strRec [edi]).length );
+	
+	conv.bin8ToBuf( b, [edi] );
+	mov( 0, (type char [edi]) );	// zero terminate the string
+	
+	pop( edi );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+StringOverflow:
+	raise( ex.StringOverflow );
+	
+end bin8ToStr;
+
+end ConvUnit;

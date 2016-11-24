@@ -1,0 +1,173 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeOnce( "memory.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "x86.hhf" )
+
+
+
+/***************************************************************/
+/*                                                             */
+/* substr-                                                     */
+/*                                                             */
+/* Extracts a substring from a string specified.  Stores       */
+/* the resulting substring into the string variable            */
+/* passed as the first parameter.                              */
+/*                                                             */
+/* Inputs:                                                     */
+/*     dest- address where substr stores the resulting string. */
+/* 	src-  address of string from which substring is taken.     */
+/* 	start-Starting index of the substr within src.             */
+/* 	len-  length of substring to extract.                      */
+/* 	                                                           */
+/* Outputs-                                                    */
+/*     [dest]- substring winds up where dest points.           */
+/*     carry-  Set if valid substring operation.               */
+/* 	                                                           */
+/* Possible errors:                                            */
+/*                                                             */
+/* Raises a StringIndexError exception if start is a value     */
+/* greater than the length of the source string.               */
+/*                                                             */
+/* Raises a StringOverflow exception if the actual length      */
+/* of the substring is greater than the maximum length         */
+/* of the destination string.                                  */
+/*                                                             */
+/* If start+len is greater than the length of the src          */
+/* string, but start is less than src's length, then           */
+/* substr simply copies the characters through to the          */
+/* end of the string and returns the carry flag clear.         */
+/*                                                             */
+/* If start is equal to the length of src, substr does         */
+/* not raise an exception;  it just returns a string           */
+/* of zero length. It returns with the carry flag clear if the */
+/* len argument is non-zero                                    */
+/*                                                             */
+/***************************************************************/
+ 
+procedure str.a_substr
+(
+	src:	string; 
+	start:	dword; 
+	len:	dword 
+); @noframe;
+var
+	saveECX		:dword;
+	saveESI		:dword;
+	saveEDI		:dword;
+	saveFlags	:dword;
+	
+begin a_substr;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_ - 4), esp );
+	stc();			// Assume substring succeeds with carry set.
+	pushfd();		// Reserves and initializes saveFlags
+	
+	mov( edi, saveEDI );
+	mov( esi, saveESI );
+	mov( ecx, saveECX );
+	cld();
+	
+	mov( src, esi );
+	test( esi, esi );
+	jz attemptToDerefNULL;	
+	
+	// Make sure the starting index is within the limits of
+	// the source string.
+	
+	mov( (type str.strRec [esi]).length, ecx );
+	cmp( ecx, start );
+	jb stringIndexError; 	
+
+
+	// Compute the number of characters to copy.  This is either
+	// "len" if (start+len) is less than or equal to src.len, or
+	// it is len - (start+len-src.len) if (start+len) is greater
+	// than src.len.
+	 
+	mov( len, ecx );
+	mov( start, eax );
+	add( ecx, eax );
+
+	cmp( eax, (type str.strRec [esi]).length );
+	jna fullLength;
+	
+		// Truncate at the end of the actual string.
+		
+		sub( (type str.strRec [esi]).length, eax );
+		sub( eax, ecx );
+
+		// Return carry clear if the len value is not zero.
+		
+		cmp( len, 0 );
+		je fullLength;
+		
+			and( !x86.flag_carry, saveFlags );
+							
+	fullLength:
+
+	
+	// Allocate sufficient storage to hold the result.
+
+	stralloc( ecx );
+	push( eax );		// Save for use as the return value.
+	mov( eax, edi );	// Use as the destination string address.
+	
+	
+	// Store away the destination length.
+	
+	mov( ecx, (type str.strRec [edi]).length );
+	
+	// Okay, copy the characters.
+	
+	add( start, esi );
+	rep.movsb();
+
+	// Zero-terminate the string:
+
+	mov( 0, (type char [edi]));
+	
+	// Clean up and leave.
+	
+	mov( saveEDI, edi );
+	mov( saveESI, esi );
+	mov( saveECX, ecx );
+	pop( eax );		// Retrieve address of new substring.
+	popfd();		// Get carry flag result.
+	leave();
+	ret( _parms_ );
+	
+attemptToDerefNULL:	
+	raise( ex.AttemptToDerefNULL );
+		
+stringIndexError: 	
+	raise( ex.StringIndexError );
+	
+end a_substr;
+
+end stringUnit;
+
+
+
+
+	
+

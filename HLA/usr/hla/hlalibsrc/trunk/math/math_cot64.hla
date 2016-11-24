@@ -1,0 +1,42 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit mathUnit;
+
+#include( "math.hhf" )
+
+/************************************************************************/
+/*                                                                      */
+/* COT(x) - computes the cotangent of st(0) and leaves result in st(0). */
+/*    st(0) contains x (in radians) and must be between                 */
+/* 	-2**63 and +2**63                                                   */
+/*    There must be at least one free register on the stack for this    */
+/*    routine to operate properly.                                      */
+/*                                                                      */
+/* cot(x) = 1/tan(x)                                                    */
+/*                                                                      */
+/************************************************************************/
+
+procedure math.cot64( r64:real64 ); @nodisplay; @noframe;
+begin cot64;
+
+	fld( (type real64 [esp+4]) );
+	fsincos();
+	fdivrp();
+	ret( _parms_ );
+
+end cot64;
+
+
+end mathUnit;

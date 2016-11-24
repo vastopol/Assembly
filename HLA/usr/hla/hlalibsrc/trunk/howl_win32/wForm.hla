@@ -1,0 +1,240 @@
+unit wForm_u;
+?@NoDisplay := true;		   
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+
+readonly		
+	align( 4 );
+	vmt( wForm_t );
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// wForm_t objects:
+
+
+procedure wForm_t.create_wForm
+(
+	wwName		:string;
+	caption		:string;
+	exStyle		:dword;
+	style		:dword; 
+	parent		:dword; 									
+	x			:dword; 
+	y			:dword;
+	width		:dword;
+	height		:dword;
+	fillColor	:dword;
+	visible		:boolean 
+);;
+	
+_begin( wForm_t, create_wForm );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wForm_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	mov( style, eax );
+	or( w.WS_CLIPCHILDREN | w.WS_OVERLAPPEDWINDOW, eax );
+	mov( exStyle, ecx );
+	or( w.WS_EX_CONTROLPARENT, ecx ); 
+	(type window_t [esi]).create_window
+	(
+		wwName,
+		caption,
+		ecx,
+		eax,
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height,
+		fillColor,
+		visible
+	);
+	mov( cl, this.wBase_private.onHeap );
+	howl.setType( wForm_c );
+	mov( &wForm_t._VMT_, this._pVMT_ );
+	mov( NULL, this.wForm_private.menuList );
+	mov( esi, this.wBase_private.parentForm );		// This form is on "itself".
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );	
+	
+
+_end( wForm_t, create_wForm );
+
+
+
+
+
+
+// Insert a wMenuItem object at the beginning of the
+// current window's menu list:
+
+method wForm_t.appendMenuItem( mi:wMenuItem_p );;
+_begin( wForm_t, appendMenuItem );
+
+	push( eax );
+	push( ebx );
+	
+	mov( mi, ebx );
+	mov( this.wForm_private.menuList, eax );
+	mov( ebx, this.wForm_private.menuList );
+	mov( eax, (type wMenuItem_t [ebx]).wMenuItem_private.nextMenu );
+	
+	pop( ebx );
+	pop( eax );
+
+_end( wForm_t, appendMenuItem );
+
+
+
+// wForm_t.insertWidget
+//
+//	Inserts some widget into the form's widget list.
+// This also updates the "parentForm" field of all the
+// objects inserted onto the form's widget list (including
+// doing this recursively).
+
+method wForm_t.insertWidget( theWidget:wBase_p );
+var
+	saveThis	:dword;
+	
+_begin( wForm_t, insertWidget );
+
+	push( ecx );
+	push( edx );
+	
+	mov( esi, saveThis );
+	
+	super.insertWidget( theWidget );
+	mov( theWidget, ecx );
+	mov( esi, (type wBase_t [ecx]).wBase_private.parentForm );
+	bt( wContainer_b,  (type wBase_t [ecx]).wType );
+	if( @c ) then
+	
+		foreach (type wContainer_t [ecx]).widgetOnForm( 0 ) do
+		
+			mov( saveThis, esi );
+			mov( esi, (type wBase_t [eax]).wBase_private.parentForm );
+				
+		endfor;
+		
+	endif;
+	pop( edx );
+	pop( ecx );
+	 
+_end( wForm_t, insertWidget ); 
+
+
+
+//	wForm_t.processMessage-
+//
+//	Handles message sent to a wForm_t object.
+//
+//	Messages Handled:
+//
+//	w.WM_COMMAND-
+//		If the message is a menu message, this method invokes the underlying
+//		menu event handler for the menu item.
+//
+//	If the message is not a w.WM_COMMAND message, or is not a menu message,
+// then this function calls the base class' processMessage method. 
+
+method wForm_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);;
+_begin( wForm_t, processMessage );
+
+	mov( uMsg, eax );
+	if( eax = w.WM_COMMAND ) then
+	
+		movzx( (type word wParam[2]), eax );
+		if( eax = 0 ) then // It's a menu command
+		
+			// The message is directed at the main window.
+			// It could be a menu message. We have to loop through
+			// all the menu items attached to this window to determine
+			// if the current ID matches one of the menu IDs and then
+			// call the appropriate menu handler if this is the case:
+			
+			mov( this.wForm_private.menuList, edx );
+			movzx( (type word wParam), eax );
+			while
+			( 
+					edx <> NULL 
+				&&	eax <> (type wMenuItem_t [edx]).wBase_private.objectID 
+			) do
+			
+				mov( (type wMenuItem_t [edx]).wMenuItem_private.nextMenu, edx );
+				
+			endwhile;
+			if( edx <> NULL ) then
+
+				// We've matched a menu item.  If it's itemHandler
+				// field is non-null, then execute the handler.
+				
+				if
+				(	
+					(type wMenuItem_t [edx]).wMenuItem_private.itemHandler <> 
+						NULL 
+				) then				
+
+					(type wMenuItem_t [edx]).wMenuItem_private.itemHandler
+					(
+						edx,
+						wParam,
+						lParam
+					);
+						
+				endif;
+				exit processMessage;
+				
+			endif;
+		
+		endif;
+	
+	
+	endif;
+
+	// Some generic message that the parent handler must
+	// process.
+	
+	super.processMessage( hwnd, uMsg, wParam, lParam );
+
+_end( wForm_t, processMessage );
+
+
+
+
+end	wForm_u;

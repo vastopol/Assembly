@@ -1,0 +1,87 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+#include( "strings.hhf" )
+#include( "excepts.hhf" )
+#include( "memory.hhf" )
+#include( "stdout.hhf" )
+
+/**********************************************************/
+/*                                                        */
+/* zcmp-                                                  */
+/*                                                        */
+/* Compares to zero-terminated strings and sets the flags */
+/* according to the result. Also returns the comparison	  */
+/* status in EAX.		                                  */
+/*                                                        */
+/**********************************************************/
+
+procedure zstr.zcmp( _zsrc1:zstring; _zsrc2:zstring ); 
+	@noframe;
+	
+const
+	zsrc1	:text := "(type dword [esp+16])";
+	zsrc2	:text := "(type dword [esp+12])";
+	
+begin zcmp;
+
+	push( esi );
+	push( edi );
+	
+	mov( zsrc1, esi );
+	mov( zsrc2, edi );
+	cmpLoop:
+		mov( [esi], al );
+		add( 1, esi );
+		cmp( al, [edi] );
+		jb StrsLT;
+		ja StrsGT;
+		add( 1, edi );
+		cmp( al, 0 );
+		jne cmpLoop;
+		
+	StrsEQ:
+		xor( eax, eax );
+		pop( edi );
+		pop( esi );
+		ret( 8 );		// flags are set from XOR.
+		
+	StrsGT:
+		mov( 1, eax );
+		cmp( eax, 0 );	// Set flags appropriately.
+		pop( edi );
+		pop( esi );
+		ret( 8 );
+		
+		
+	StrsLT:
+		mov( -1, eax );
+		cmp( eax, 0 );
+		clc();			// no carry = "below";
+		pop( edi );
+		pop( esi );
+		ret( _parms_ );
+		
+end zcmp;
+
+end stringUnit;
+
+
+
+
+	
+

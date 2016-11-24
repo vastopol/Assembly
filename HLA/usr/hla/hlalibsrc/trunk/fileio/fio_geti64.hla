@@ -1,0 +1,163 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+#include( "../include/fileiounit.hhf" )
+
+
+/*****************************************************/
+/*                                                   */
+/* fgeti64-                                          */
+/*                                                   */
+/* Reads a 64-bit signed integer from the input file */
+/* and returns the value in edx:eax.                 */
+/*                                                   */
+/*****************************************************/
+
+// Modified 2-1-2003 to deal with an EOF as a delimiter.
+
+
+procedure fileio.geti64( _Handle:dword in eax ); 
+	@nodisplay; @noframe;
+
+var
+	Handle		:dword;
+	Delimiters	:cset;
+	IsNeg		:boolean;
+	
+begin geti64;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( ecx );
+	
+	mov( eax, Handle );
+	conv.getDelimiters( Delimiters );
+	xor( eax, eax );
+	xor( edx, edx );
+	xor( ecx, ecx );
+	
+	// Skip over any leading delimiters:
+	
+	whileDelimiter:
+	
+		fileio.getc( Handle );
+		bt( eax, (type dword Delimiters ));
+		jc whileDelimiter;
+		
+	
+	
+	// Process a possible leading minus sign:
+	
+	mov( false, IsNeg );
+	cmp( al, '-' );
+	jne notNegative;
+	
+		mov( true, IsNeg );
+		fileio.getc( Handle );
+
+	notNegative:	
+		
+	// Okay, input the digits and convert to a number:
+	
+	
+	whileDigits:
+	
+		// The character must be a numeric digit.
+		
+		cmp( al, '0' );
+		jb convErr;
+		cmp( al, '9' );
+		ja convErr;
+		
+
+		shl( 1, ecx );	// Multiply edx:ecx by 10.
+		rcl( 1, edx );
+		jc Overflow;
+			
+		push( edx );	// Save *2.
+		push( ecx );
+		shl( 1, ecx );
+		rcl( 1, edx );
+		jc Overflow;
+		
+		shl( 1, ecx );	// This is *8.
+		rcl( 1, edx );
+		jc Overflow;
+		
+		and( $f, eax );	// Add in current digit.
+		add( eax, ecx );
+		adc( 0, edx );
+		jc Overflow;
+		
+		pop( eax );		// Add in *2.
+		add( eax, ecx );
+		pop( eax );
+		adc( eax, edx );
+		jc Overflow;
+		
+		// Skip any underscores in the middle of the number.
+		// (Technically, this allows underscores at the end
+		// of the number too, but we'll ignore this issue).
+		
+		skipUnderscores:
+		
+			fileio.eof( Handle );
+			cmp( al, 0 );
+			jne exitIfEOF;
+			fileio.getc( Handle );
+			cmp( al, '_' );
+			je skipUnderscores;
+			
+		movzx( al, eax );
+		bt( eax, (type dword Delimiters ));
+		jnc whileDigits;
+		
+		
+	exitIfEOF:
+	mov( ecx, eax );
+	
+	// Now we have to check for signed overflow:
+	
+	cmp( edx, $8000_0000 );
+	ja Overflow;
+	jb noOverflow;
+	
+		test( eax, eax );
+		jnz Overflow;
+	
+	noOverflow:
+	cmp( IsNeg, false );
+	je dontNegate;
+	
+		neg( edx );
+		neg( eax );
+		sbb( 0, edx );
+
+	dontNegate:		
+	pop( ecx );
+	leave();
+	ret( _parms_ );
+
+convErr:
+	raise( ex.ConversionError );
+
+Overflow:
+	raise( ex.ValueOutOfRange );
+		
+end geti64;
+	
+end FileIOUnit;
+

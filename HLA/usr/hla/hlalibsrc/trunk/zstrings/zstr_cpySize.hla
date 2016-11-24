@@ -1,0 +1,177 @@
+unit zstr_cpySize_unit;
+
+//	Revision:	4
+//	Author:		Sevag Krikorian
+//	Date:		Sep 28, 2007
+//	Note:		separated functions into units
+//				reverted back to var:xxx var format
+//				improved efficiency, now uses rep.movsd for lengths
+//				of more than 3, and finishes with rep.movsb
+//
+//	Revision:	3
+//	Author:		Sevag Krikorian
+//	Date:		
+//	Note:		removed some unnecessary instructions
+//				had a duh! moment.  what i've been calling
+//				catx routines are actually cpyz!  renamed
+//				file and functions
+//				also, zstr.cpySize uses var xxx:dword now instead of
+//				var xxx:var
+//
+//	Revision:	2
+//	Author:		Sevag Krikorian
+//	Date:		Aug 31, 2007
+//	Note:		added cpyzn function with demo
+//
+//	Revision:	1
+//	Author:		Sevag Krikorian
+//	Date:		Aug 20, 2007
+//	Note:		1st release
+
+
+	#includeonce( "zstrings.hhf" )
+	#includeonce( "excepts.hhf" )
+	
+	
+	procedure zstr.cpySize(  src:zstring; width:int32; fill:char; dest:zstring );
+		@nodisplay; @noframe; @noalignstack;
+		
+		// similar to stdlib str.catsSize function
+		// takes source address and copies to dest address filling
+		// to width with fill char.  if width is negative, fill char is inserted
+		// otherwise it is appended.
+		
+		// returns EAX =  address after last copied character
+		// pointing to the zero-termination byte
+		// eg: (type byte[eax]) = 0
+		
+		// caller has to make sure there is enough room in dest buffer 
+		
+		var
+			saveESI	:dword;
+			saveEDI	:dword;
+			saveECX	:dword;
+			
+	begin cpySize;
+		
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( ecx, saveECX );
+		mov( edi, saveEDI );
+		mov( esi, saveESI );
+		
+		
+		mov( dest, edi );
+		test( edi, edi );
+		jz raiseDerefNULL;
+		
+		mov( src, esi );
+		test( esi, esi );
+		jz raiseDerefNULL;
+		
+		mov( width, ecx );
+		or( ecx, ecx );
+		js fillBefore;
+		
+		// fill after
+		add( edi, ecx );	// ecx = eos
+		sub( 1, edi );
+		sub( 1, esi );
+		jmp _cpyStr;
+		
+		fillBefore:
+		
+		neg( ecx );
+		
+		// we need length of source
+		// src in esi
+		push( esi );
+		sub( 1, esi );
+		or( -1, eax );
+		_getLen:
+			add( 1, eax );
+			add( 1, esi );
+			cmp( (type byte[esi]), #0 );
+			jne _getLen;
+			
+		pop( esi );
+		// eax = len of string
+		// if eax >= width, then just concatenate
+		
+		cmp( eax, ecx );
+		jae _cpyStr;
+		
+		push( eax );
+		sub( eax, ecx );
+		add( edi, ecx ); // ecx = eos
+		call fillStr;
+
+		
+		// get new eos and fall through _cpyStr
+		// this only works because we know source is smaller than width
+		pop( ecx );	// restore length of source string
+		add( edi, ecx );
+		sub( 1, edi );
+		sub( 1, esi );
+		
+		
+		// here, edi is either at beginning of dest
+		// or right after the fill char operation
+		// edi and esi have 1 subtracted
+		_cpyStr:
+			add( 1, esi );
+			add( 1, edi );
+			cmp( edi, ecx );
+			je _doneCpy;
+			mov( [esi], al ); 
+			test( al, al );
+			jz _doneCpy;
+			mov( al, [edi] );
+			jmp _cpyStr;
+			
+		_doneCpy:
+		
+		// if width was possitive, we still have to pad
+		// the char
+		mov( width, eax );
+		or( eax, eax );
+		js done;
+		call fillStr;
+		
+		
+		done:
+		mov( #0, ( type byte[edi]) );
+		mov( edi, eax );
+		
+		mov( saveECX, ecx );
+		mov( saveEDI, edi );
+		mov( saveESI, esi );
+		
+		mov( ebp, esp );
+		pop( ebp );
+		ret(_parms_);
+		
+		// local procedure
+		// fills char up to ecx
+		fillStr:
+			mov( fill, ah );
+			_fillStr:
+				cmp( edi, ecx );
+				je _doneFill;
+				mov( ah, [edi] );
+				add( 1, edi );
+				jmp _fillStr;
+				
+			_doneFill:
+		ret();
+		
+		
+		raiseDerefNULL:
+			raise( ex.AttemptToDerefNULL );
+
+	end cpySize;
+
+
+end zstr_cpySize_unit;

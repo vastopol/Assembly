@@ -1,0 +1,166 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+?@noframe := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+
+
+// upToCset2-
+// upToCset3-
+// upToCset4-
+//
+//	Skips characters up to a character in a given character set.
+// Returns true if there is at least one memory of the cset in
+// the string. Returns false if there are no members of the
+// cset in the string.  True/False is returned in the carry flag.
+// If these functions return true, they also return the index into
+// the source string where the character in the set was found.
+//
+// upToCset3-
+//	Also returns the remainder string (starting with character
+// found in the cset) in the rem parameter.	 Does not modify
+// the rem string if there is no match.
+//
+// upToCset4-
+//	Returns all the characters matched (skipped) up to but not
+// including the character matched in the character set in the
+// mat parameter. Returns the remaining characters in the
+// rem parameter. Does not modify rem or mat if there is no match.
+
+
+procedure str.upToCset4( src:string; cst:cset; rem:string; mat:string ); 
+begin upToCset4;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ecx );
+	push( esi );
+	
+	mov( src, esi );
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+	// If REM and MAT are the same string, raise an exception.
+	
+	mov( rem, eax );
+	cmp( eax, mat );
+	je StringOverlap;
+	
+	mov( (type str.strRec [esi]).length, eax );	// Fail if empty string
+	test( eax, eax );							// Clears carry flag
+	jz allDone;
+
+		mov( -1, eax );
+		whileNotInCset:
+		
+			// Fail if we exceed the string's length:
+			
+			add( 1, eax );
+			cmp( eax, (type str.strRec [esi]).length );
+			jae allDone;	// Note: jae=jnc, so carry will be clear
+			
+			// Check to see if the current character is
+			// in the set to match:
+			
+			movzx( (type char [esi+eax+1]), ecx );
+			bt( ecx, cst );
+			jnc whileNotInCset;
+		
+		// If we get down here, we've matched a character in the set.
+		//
+		// If SRC overlaps REM, then we need to copy the matched string
+		// to MAT first; if SRC overlaps MAT, then we need to copy the
+		// remainder string to REM first. If there is no overlap, the
+		// order doesn't matter. 
+		
+		cmp( esi, rem );
+		je srcEQrem;
+		
+			// If src <> REM, then copy to REM first.
+			//
+			//  Compute the length of the remainder string:
+			
+			mov( (type str.strRec [esi]).length, ecx );
+			sub( eax, ecx );
+			str.substr( esi, eax, ecx, rem );
+			
+			// Check to see if SRC and MAT overlap:
+			
+			cmp( esi, mat );
+			jne noOverlap;
+			
+				// SRC and MAT overlap. So all we have to do is
+				// shorten the src string:
+				
+				mov( eax, (type str.strRec [esi]).length );
+				mov( 0, (type byte [esi+eax]));
+				stc();		// Success!
+				jmp allDone;
+				
+				
+			noOverlap:
+			
+				// The matched string is the first character in the
+				// string up to, but not including, the char we matched.
+				
+				str.substr( esi, 0, eax, mat );
+				stc();
+				jmp allDone;
+			
+			
+		// If the src string is equal to the remainder string,
+		// we must first copy the data to the MAT string to
+		// avoid corruption.
+		
+		srcEQrem:
+			str.substr( esi, 0, eax, mat );
+			
+			// Okay, now copy the remainder over the top of src:
+			
+			mov( (type str.strRec [esi]).length, ecx );
+			sub( eax, ecx );
+			str.last2( esi, ecx );
+			stc();		// Return success		
+		
+	allDone:	
+	pop( esi );
+	pop( ecx );
+	pop( ebp );
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+StringOverlap:
+	raise( ex.StringOverlap );
+	
+StringOverflow:
+	raise( ex.StringOverflow );
+
+end upToCset4;
+
+end stringUnit;
+
+
+
+
+	
+

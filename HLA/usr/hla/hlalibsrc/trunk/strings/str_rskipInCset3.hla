@@ -1,0 +1,94 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+
+#include( "stdio.hhf" );
+
+// 
+// rrskipInCset3-
+// 	Scans from the position specified by 'start' towards the
+// 	beginning of the src1 string. It skips over characters
+// 	that match entries in the src2 character set. It stops
+// 	when it finds a character that is not in the src2 set.
+// 	This function returns -1 if the src1 string is empty
+// 	or if all the characters in the src1 string (from
+// 	position 0 to start) are members of src2.
+// 			
+
+procedure str.rskipInCset3( src1: string; start:dword; src2:cset ); 
+	@noframe;
+begin rskipInCset3;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ecx );
+	push( edi );
+	
+	mov( src1, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+
+	// If the starting index is beyond the end of the string,
+	// raise an exception.
+	 
+	mov( (type str.strRec [edi]).length, eax );
+	test( eax, eax );
+	jz failedToMatch;
+	mov( start, ecx );
+	cmp( ecx, eax );
+	jae StringIndexError;
+	
+	whlLoop:					// Repeat until we run of the start of the str.
+	
+		mov( [edi+ecx], al );			// Get the next char in string.
+		bt( eax, (type dword src2) );	// See if a member of the set.
+		jnc ExitWhlLoop;				// Exit loop if it isn't.
+		dec( ecx );						// Move to previous character.
+		jns whlLoop;
+		
+	failedToMatch:
+		or( -1, ecx );
+		
+	ExitWhlLoop:
+	
+	mov( ecx, eax );			// Return matching index in EAX.
+	pop( edi );				
+	pop( ecx );
+	pop( ebp );
+	cmp( eax, -1 );		// Set carry on success, clear if no match.
+	ret( _parms_ );	
+		 
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+StringIndexError:
+	raise( ex.StringIndexError );
+
+end rskipInCset3;
+
+
+end stringUnit;
+
+
+
+
+	
+

@@ -1,0 +1,472 @@
+// tArithmetic-
+//
+//	Tests the following MATH module functions:
+//
+//	addq, addl, divq, divl, idivq, idivl, imodq, imodl, imulq, imull,
+//	modq, modl, mulq, mull, negq, negl, subq, subl.
+
+program tArithmetic;
+#include( "stdlib.hhf" )
+
+val
+	
+	pwrsOf2_64_c	:uns64[] :=
+		[
+			#for( i := 0 to 63 )
+				1 << i,
+			#endfor
+		];
+	
+	pwrsOf2m1_64_c	:uns64[] :=
+		[
+			#for( i := 0 to 63 )
+				(1 << i) - 1,
+			#endfor
+		];
+		
+	neg_64_c	:int64[] :=
+		[
+			#for( i := 0 to 62 )
+				-((1 << i) - 1),
+			#endfor
+			#for( i := 0 to 62 )
+				((1 << i) - 1),
+			#endfor
+		];
+		
+	negResults_64_c	:int64[] :=
+		[
+			#for( i := 0 to 62 )
+				((1 << i) - 1),
+			#endfor
+			#for( i := 0 to 62 )
+				-((1 << i) - 1),
+			#endfor
+		];
+		
+	?sresult := 0;
+	altBits_64_c	:uns64[] :=
+		[
+			#for( i := 0 to 31 )
+				?sresult := (sresult << 2) | 1;
+				sresult,
+			#endfor
+		];
+		
+	?sresult := 0;
+	altBits2_64_c	:uns64[] :=
+		[
+			#for( i := 0 to 31 )
+				?sresult := (sresult << 2) | 2;
+				sresult,
+			#endfor
+		];
+	
+		
+		
+		
+	
+	pwrsOf2_128_c	:uns128[] :=
+		[
+			#for( i := 0 to 127 )
+				1 << i,
+			#endfor
+		];
+	
+	pwrsOf2m1_128_c	:uns128[] :=
+		[
+			#for( i := 0 to 127 )
+				(1 << i) - 1,
+			#endfor
+		];
+		
+	neg_128_c	:int128[] :=
+		[
+			#for( i := 0 to 126 )
+				-((1 << i) - 1),
+			#endfor
+			#for( i := 0 to 126 )
+				((1 << i) - 1),
+			#endfor
+		];
+		
+	negResults_128_c	:int128[] :=
+		[
+			#for( i := 0 to 126 )
+				((1 << i) - 1),
+			#endfor
+			#for( i := 0 to 126 )
+				-((1 << i) - 1),
+			#endfor
+		];
+		
+	?sresult := 0;
+	altBits_128_c	:uns128[] :=
+		[
+			#for( i := 0 to 63 )
+				?sresult := (sresult << 2) | 1;
+				sresult,
+			#endfor
+		];
+		
+	?sresult := 0;
+	altBits2_128_c	:uns128[] :=
+		[
+			#for( i := 0 to 63 )
+				?sresult := (sresult << 2) | 2;
+				sresult,
+			#endfor
+		];
+		
+		
+	
+	
+static
+	i64				:int64;
+	u64				:uns64;
+	result64		:uns64;
+	iresult64		:int64;
+	
+	one64			:uns64 := 1;
+	allOnes64		:uns64 := $FFFF_FFFF_FFFF_FFFF;
+	
+	i128			:int128;
+	u128			:uns128;
+	result128		:uns128;
+	iresult128		:int128;
+	
+readonly
+	one128			:uns128 := 1;
+	allOnes128		:uns128 := $FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF;
+	
+	pwrsOf2_64		:uns64[ @elements( pwrsOf2_64_c ) ] := pwrsOf2_64_c;
+	pwrsOf2m1_64	:uns64[ @elements( pwrsOf2m1_64_c ) ] := pwrsOf2m1_64_c;
+	altBits_64		:uns64[ @elements( altBits_64_c ) ] := altBits_64_c;
+	altBits2_64		:uns64[ @elements( altBits2_64_c ) ] := altBits2_64_c;
+	
+	pwrsOf2_128		:uns128[ @elements( pwrsOf2_128_c ) ] := pwrsOf2_128_c;
+	pwrsOf2m1_128	:uns128[ @elements( pwrsOf2m1_128_c ) ] := pwrsOf2m1_128_c;
+	altBits_128		:uns128[ @elements( altBits_128_c ) ] := altBits_128_c;
+	altBits2_128	:uns128[ @elements( altBits2_128_c ) ] := altBits2_128_c;
+	
+	neg_64			:int64[ @elements( neg_64_c ) ] := neg_64_c;
+	negResults_64	:int64[ @elements( negResults_64_c ) ] := negResults_64_c;
+	
+	neg_128			:int128[ @elements( neg_128_c ) ] := neg_128_c;
+	negResults_128	:int128[ @elements( negResults_128_c ) ] := negResults_128_c;
+	
+	
+	
+procedure cmp64( index:uns32; testVal1:qword; testVal2:qword; msg:string );
+begin cmp64;
+
+	push( edx );
+	mov( (type dword testVal1), eax );
+	mov( (type dword testVal1[4]), edx );
+	cmp( eax, (type dword testVal2));
+	jne failed;
+	cmp( edx, (type dword testVal2[4]));
+	je succeeded;
+	failed:
+	
+		stderr.put
+		( 
+			"Error: ", msg, nl
+			"testVal1: ", testVal1, nl
+			"testVal2: ", testVal2, nl
+		);
+		conv.setUnderscores( true );
+		stderr.put
+		(
+			"index:    ", index, nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	succeeded:
+	pop( edx );
+	
+end cmp64;
+
+	
+procedure cmp128( index:uns32; testVal1:lword; testVal2:lword; msg:string );
+begin cmp128;
+
+	mov( (type dword testVal1), eax );
+	cmp( eax, (type dword testVal2));
+	jne failed;
+	mov( (type dword testVal1[4]), eax );
+	cmp( eax, (type dword testVal2[4]));
+	jne failed;
+	mov( (type dword testVal1[8]), eax );
+	cmp( eax, (type dword testVal2[8]));
+	jne failed;
+	mov( (type dword testVal1[12]), eax );
+	cmp( eax, (type dword testVal2[12]));
+	je succeeded;
+	failed:
+	
+		stderr.put
+		( 
+			"Error: ", msg, nl
+			"testVal1: ", testVal1, nl
+			"testVal2: ", testVal2, nl
+		);
+		conv.setUnderscores( true );
+		stderr.put
+		(
+			"index:    ", index, nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	succeeded:
+	
+end cmp128;
+
+begin tArithmetic;
+	
+	// ADDQ tests:
+	
+	mov( 1, (type dword u64));
+	mov( 0, (type dword u64[4]));
+	for( mov( 0, edx ); edx < 64; inc( edx )) do
+	
+		cmp64( edx, u64, pwrsOf2_64[ edx*8 ], "addq(1) failed!" );
+		math.addq( u64, u64, u64 );
+		
+	endfor;
+	
+	for( mov( 0, edx ); edx < 64; inc( edx )) do
+	
+		math.addq( pwrsOf2m1_64[ edx*8 ], one64, u64 );
+		cmp64( edx, u64, pwrsOf2_64[ edx*8 ], "addq(2) failed!" );
+		
+	endfor;
+	
+	for( mov( 0, edx ); edx < @elements( altBits2_64_c )-1; inc( edx )) do
+	
+		math.addq( altBits_64[ edx*8 ], altBits2_64[ edx*8 ], u64 );
+		lea( ecx, [edx+edx+2] );
+		cmp64( edx, u64, pwrsOf2m1_64[ecx*8], "addq(3) failed!" );
+		
+	endfor;
+	
+	for( mov( 0, edx ); edx < @elements( altBits2_64_c ); inc( edx )) do
+	
+		math.addq( altBits_64[ edx*8 ], altBits_64[ edx*8 ], u64 );
+		cmp64( edx, u64, altBits2_64[edx*8], "addq(4) failed!" );
+		
+	endfor;
+	
+	for( mov( 0, edx ); edx < @elements( altBits2_64_c )-1; inc( edx )) do
+	
+		math.addq( altBits2_64[ edx*8 ], altBits2_64[ edx*8 ], u64 );
+		mov( (type dword altBits2_64[ edx*8 ]), eax );
+		shl( 1, eax );
+		mov( eax, (type dword result64) );
+		mov( (type dword altBits2_64[ edx*8+4 ]), eax );
+		rcl( 1, eax );
+		mov( eax, (type dword result64[4]));
+		cmp64( edx, u64, result64, "addq(5) failed!" );
+		
+	endfor;
+	stderr.put( "addq tests succeeded!" nl );
+	
+	
+	
+	
+	// ADDL tests:
+	
+	mov( 1, (type dword u128));
+	mov( 0, (type dword u128[4]));
+	mov( 0, (type dword u128[8]));
+	mov( 0, (type dword u128[12]));
+	for( mov( 0, edx ); edx < 128; inc( edx )) do
+	
+		lea( ecx, [edx*2] );
+		cmp128( edx, u128, pwrsOf2_128[ ecx*8 ], "addl(1) failed!" );
+		math.addl( u128, u128, u128 );
+		
+	endfor;
+	
+	for( mov( 0, edx ); edx < 128; inc( edx )) do
+	
+		lea( ecx, [edx*2] );
+		math.addl( pwrsOf2m1_128[ ecx*8 ], one128, u128 );
+		cmp128( edx, u128, pwrsOf2_128[ ecx*8 ], "addl(2) failed!" );
+		
+	endfor;
+	
+	for( mov( 0, edx ); edx < @elements( altBits2_128_c )-1; inc( edx )) do
+	
+		lea( ecx, [edx*2] );
+		math.addl( altBits_128[ ecx*8 ], altBits2_128[ ecx*8 ], u128 );
+		lea( ecx, [ecx*8] );
+		cmp128( edx, u128, pwrsOf2m1_128[ecx*2+32], "addl(3) failed!" );
+		
+	endfor;
+	
+	for( mov( 0, edx ); edx < @elements( altBits2_128_c ); inc( edx )) do
+	
+		lea( ecx, [edx*2] );
+		math.addl( altBits_128[ ecx*8 ], altBits_128[ ecx*8 ], u128 );
+		cmp128( edx, u128, altBits2_128[ecx*8], "addl(4) failed!" );
+		
+	endfor;
+	
+	for( mov( 0, edx ); edx < @elements( altBits2_128_c )-1; inc( edx )) do
+	
+		lea( ecx, [edx*2] );
+		math.addl( altBits2_128[ ecx*8 ], altBits2_128[ ecx*8 ], u128 );
+		mov( (type dword altBits2_128[ ecx*8 ]), eax );
+		shl( 1, eax );
+		mov( eax, (type dword result128) );
+		mov( (type dword altBits2_128[ ecx*8+4 ]), eax );
+		rcl( 1, eax );
+		mov( eax, (type dword result128[4]));
+		mov( (type dword altBits2_128[ ecx*8+8 ]), eax );
+		rcl( 1, eax );
+		mov( eax, (type dword result128[8]));
+		mov( (type dword altBits2_128[ ecx*8+12 ]), eax );
+		rcl( 1, eax );
+		mov( eax, (type dword result128[12]));
+		cmp128( edx, u128, result128, "addl(5) failed!" );
+		
+	endfor;
+	stderr.put( "addl tests succeeded!" nl );
+	
+	
+	// SUBQ tests:
+	
+	mov( 1, (type dword u64));
+	mov( 0, (type dword u64[4]));
+	for( mov( 0, edx ); edx < 64; inc( edx )) do
+	
+		math.subq( u64, pwrsOf2_64[ edx*8 ], result64 );
+		cmp64( edx, result64, 0, "subq(1) failed!" );
+		shl( 1, (type dword u64[0]) );
+		rcl( 1, (type dword u64[4]));
+		
+	endfor;
+	
+	for( mov( 0, edx ); edx < 64; inc( edx )) do
+	
+		math.subq( pwrsOf2_64[ edx*8 ], one64, u64 );
+		cmp64( edx, u64, pwrsOf2m1_64[ edx*8 ], "subq(2) failed!" );
+		
+	endfor;
+	
+	for( mov( 0, edx ); edx < @elements( altBits2_64_c ); inc( edx )) do
+	
+		math.subq( altBits2_64[ edx*8 ], altBits_64[ edx*8 ], u64 );
+		cmp64( edx, u64, altBits_64[edx*8], "subq(3) failed!" );
+		
+	endfor;
+	
+	for( mov( 0, edx ); edx < @elements( altBits2_64_c ); inc( edx )) do
+	
+		math.subq( altBits_64[ edx*8 ], altBits_64[ edx*8 ], u64 );
+		cmp64( edx, u64, 0, "subq(4) failed!" );
+		
+	endfor;
+	
+	for( mov( 0, edx ); edx < @elements( altBits2_64_c ); inc( edx )) do
+	
+		math.subq( pwrsOf2_64[ edx*8 ], pwrsOf2m1_64[ edx*8 ], u64 );
+		cmp64( edx, u64, one64, "subq(5) failed!" );
+		
+	endfor;
+	stderr.put( "subq tests succeeded!" nl );
+	
+	
+	
+	
+	// SUBL tests:
+	
+	mov( 1, (type dword u128));
+	mov( 0, (type dword u128[4]));
+	mov( 0, (type dword u128[8]));
+	mov( 0, (type dword u128[12]));
+	for( mov( 0, edx ); edx < 128; inc( edx )) do
+	
+		lea( ecx, [edx*2] );
+		math.subl( u128, pwrsOf2_128[ ecx*8 ], result128 );
+		cmp128( edx, result128, 0, "subl(1) failed!" );
+		shl( 1, (type dword u128[0]) );
+		rcl( 1, (type dword u128[4]));
+		rcl( 1, (type dword u128[8]));
+		rcl( 1, (type dword u128[12]));
+
+		
+	endfor;
+	
+	for( mov( 0, edx ); edx < 128; inc( edx )) do
+	
+		lea( ecx, [edx*2] );
+		math.subl( pwrsOf2_128[ ecx*8 ], one128, u128 );
+		cmp128( edx, u128, pwrsOf2m1_128[ ecx*8 ], "subl(2) failed!" );
+		
+	endfor;
+	
+	for( mov( 0, edx ); edx < @elements( altBits2_128_c )-1; inc( edx )) do
+	
+		lea( ecx, [edx*2] );
+		math.subl( altBits2_128[ ecx*8 ], altBits_128[ ecx*8 ], u128 );
+		cmp128( edx, u128, altBits_128[ecx*8], "subl(3) failed!" );
+		
+	endfor;
+	
+	for( mov( 0, edx ); edx < @elements( altBits2_128_c ); inc( edx )) do
+	
+		lea( ecx, [edx*2] );
+		math.subl( altBits_128[ ecx*8 ], altBits_128[ ecx*8 ], u128 );
+		cmp128( edx, u128, 0, "subl(4) failed!" );
+		
+	endfor;
+	
+	for( mov( 0, edx ); edx < @elements( altBits2_128_c )-1; inc( edx )) do
+	
+		lea( ecx, [edx*2] );
+		math.subl( pwrsOf2_128[ ecx*8 ], pwrsOf2m1_128[ ecx*8 ], u128 );
+		cmp128( edx, u128, one128, "subq(5) failed!" );
+		
+	endfor;
+	stderr.put( "subl tests succeeded!" nl );
+	
+	
+	
+	// NEGQ tests
+	
+	for( mov( 0, edx ); edx < @elements( neg_64 ); inc( edx )) do
+	
+		math.negq( neg_64[edx*8], iresult64 );
+		cmp64( edx, iresult64, negResults_64[edx*8], "negq(1) failed!" );
+		
+	endfor;
+	stderr.put( "negq tests succeeded!" nl );
+	
+	
+	
+	
+	// NEGL tests
+	
+	for( mov( 0, edx ); edx < @elements( neg_64 ); inc( edx )) do
+	
+		lea( ecx, [edx*2] );
+		math.negl( neg_128[ecx*8], iresult128 );
+		cmp128( edx, iresult128, negResults_128[ecx*8], "negl(1) failed!" );
+		
+	endfor;
+	stderr.put( "negl tests succeeded!" nl );
+	
+	
+	
+	
+	
+	
+	stderr.put( "tArithmetic tests succeeded!" nl );
+	
+end tArithmetic;	

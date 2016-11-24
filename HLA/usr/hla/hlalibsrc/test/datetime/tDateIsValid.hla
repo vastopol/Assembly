@@ -1,0 +1,111 @@
+program isValid_test;
+#include( "stdlib.hhf" )
+
+static
+	baseDate	:date.daterec;
+	endDate		:date.daterec;	
+	
+begin isValid_test;
+
+	 
+	date.setFormat( date.mmddyyyy );
+
+	date.pack( 1, 1, date.minYear, baseDate );
+	date.pack( 12, 31, date.maxYear-1, endDate );
+	
+	while( mov( baseDate, eax ) <= (type dword endDate) ) do
+	
+		movzx( baseDate.month, ebx );
+		if( ebx in 1..12 ) then
+		
+			movzx( baseDate.day, ecx );
+			xor( eax, eax );
+			if( ebx == 2 ) then
+			
+				date.isLeapYear( baseDate.year );
+				
+			endif;
+			add( date.DaysInMonth[ebx*4], eax );
+			if( ecx > 0 && ecx <= eax ) then
+			
+				if( !date.isValid( baseDate )) then
+			
+					stderr.put
+					( 
+						nl nl 
+						"***************************************************" nl
+						"date.isValid failed!", nl,
+						"Date= '",
+						(type uns8 baseDate.month),
+						"/",
+						(type uns8 baseDate.day),
+						"/",
+						(type uns16 baseDate.year ),
+						nl
+					);
+					stdout.put( "Press Enter to Continue: " );
+					stdin.readLn();
+					os.exitProcess(1);
+					
+				endif;
+
+			else
+			
+				if( date.isValid( baseDate )) then
+			
+					stderr.put
+					( 
+						nl nl 
+						"***************************************************" nl
+						"date.isValid should have failed!", nl,
+						"Date= '",
+						(type uns8 baseDate.month),
+						"/",
+						(type uns8 baseDate.day),
+						"/",
+						(type uns16 baseDate.year ),
+						nl
+					);
+					stdout.put( "Press Enter to Continue: " );
+					stdin.readLn();
+					os.exitProcess(1);
+					
+				endif;
+
+			endif;
+			
+		else
+		
+			if( date.isValid( baseDate )) then
+		
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"date.isValid should have failed! (2)", nl,
+					"Date= '",
+					(type uns8 baseDate.month),
+					"/",
+					(type uns8 baseDate.day),
+					"/",
+					(type uns16 baseDate.year ),
+					nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+
+		endif;
+		add( 1, baseDate.day );
+		adc( 0, baseDate.month );
+		adc( 0, baseDate.year );
+		
+	endwhile;
+	stderr.put( "date.isValid succeeded!" nl );
+	os.exitProcess(0);
+		
+end isValid_test;
+
+													

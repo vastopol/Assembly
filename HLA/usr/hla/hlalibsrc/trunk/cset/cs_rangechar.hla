@@ -1,0 +1,83 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit charSets;
+
+#include( "cset.hhf" );
+
+
+/*****************************************************/
+/*                                                   */
+/* rangeChar-                                        */
+/*                                                   */
+/* Creates a character set containing a range of     */
+/* values specified by the two character parameters. */
+/*                                                   */
+/*****************************************************/
+
+procedure cs.rangeChar( first:char; last:char; var dest:cset );	 
+	@nodisplay; 
+	@noframe;
+const
+	_first	:text := "(type char [esp+20])";
+	_last	:text := "(type char [esp+16])";
+	_dest	:text := "(type dword [esp+12])";
+	
+begin rangeChar;
+
+	push( eax );
+	push( ebx );
+	
+	// Stack at this point:
+	//
+	//	esp+20	first	:char
+	//	esp+16	last	:char
+	//	esp+12	dest	:dword
+	//	esp+8	return address
+	//	esp+4	eax
+	//	esp		ebx
+	
+	mov( _dest, ebx );
+	
+	// Create an empty set.
+	
+	xor( eax, eax );
+	mov( eax, [ebx] );
+	mov( eax, [ebx+4] );
+	mov( eax, [ebx+8] );
+	mov( eax, [ebx+12] );
+	
+	// Union in all the characters in the range.
+	
+	movzx( _first, eax );
+	while( al <= _last ) do
+	
+		bts( eax, [ebx] );
+		inc( al );
+		
+	endwhile;
+	pop( ebx );
+	pop( eax );
+	ret( _parms_ );
+	
+end rangeChar;
+
+
+end charSets;
+
+
+
+
+	
+

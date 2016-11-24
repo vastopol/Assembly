@@ -1,0 +1,83 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+
+
+
+#include( "../include/fileiounit.hhf" )
+
+
+/*********************************************************/
+/*                                                       */
+/* fileio.pute32-                                        */
+/*                                                       */
+/* Writes a 32-bit floating-point value to the specified */
+/* file using scientific format.                         */
+/*                                                       */
+/* Inputs-                                               */
+/* 	e32		:32-bit value to print.                      */
+/* 	width	:# of print positions to use.                */
+/* 	                                                     */
+/*********************************************************/
+	
+			 
+
+procedure fileio.pute32
+( 
+	Handle	:dword;
+	e32		:real32; 
+	width	:uns32 
+);  @noframe; @nodisplay;
+var
+	ediSave	:dword;
+	eaxSave	:dword;
+	eBuffer	:char[1024];
+	
+begin pute32;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( eax, eaxSave );	// Faster than push/pop.
+	mov( edi, ediSave );
+	
+	// Bail if the specified width is greater than 1024:
+
+	cmp( width, 1024 );
+	ja vor;
+	
+		
+	// Convert the real80 value to a string and print it.
+
+	lea( edi, eBuffer );
+	conv.e32ToBuf( e32, width, [edi] );
+
+	lea( eax, eBuffer );					// Compute the length of the
+	sub( eax, edi );						//  string produced by e32ToBuf.
+	fileio.write( Handle, eBuffer, edi );
+
+	mov( eaxSave, eax );	// Restore original register values.
+	mov( ediSave, edi );
+	leave();
+	ret( _parms_ );
+
+vor:
+	raise( ex.ValueOutOfRange );
+	
+end pute32;
+
+end FileIOUnit;
+

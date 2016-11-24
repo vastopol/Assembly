@@ -1,0 +1,421 @@
+unit wContainer_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly		
+	align( 4 );
+	vmt( wContainer_t );
+
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Container objects
+
+
+procedure wContainer_t.create_wContainer
+(
+	wcName	:string;
+	parent	:dword; 									
+	x		:dword; 
+	y		:dword;
+	width	:dword;
+	height	:dword 
+);;
+	
+_begin( wContainer_t, create_wContainer );
+
+	push( eax );
+	
+	// wContainer_t is an abstract base class. Therefore, ESI had better
+	// be pointing at some sort of (descendant) object when we enter this
+	// procedure:
+	
+	assert( esi <> NULL );
+	
+	(type wVisual_t [esi]).create_wVisual
+	(
+		wcName,
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height
+	);
+	mov( 0, this.wContainer_private.numWidgets );
+	mov( NULL, this.wContainer_private.widgetList );
+	mov( NULL, this.wContainer_private.lastWidget );
+	
+	
+	// Because wContainer_t is an abstract class, the following assignments
+	// are for naught; however, best to initialize these fields with something
+	// just to be on the safe side.
+	
+	howl.setType( wContainer_c );
+	mov( &wContainer_t._VMT_, this._pVMT_ );
+	
+	pop( eax );	
+	
+_end( wContainer_t, create_wContainer );
+
+
+// Accessor methods:
+
+method wContainer_t.get_numWidgets; @noframe;;
+_begin( wContainer_t, get_numWidgets );
+
+	mov( this.wContainer_private.numWidgets, eax );
+	ret();
+	 
+_end( wContainer_t, get_numWidgets );
+
+// Overridden methods:
+//
+// wContainer_t.destroy-
+//
+//	Destroys all the widgets contained within the container and
+// then frees up any storage associated with this object.
+
+method wContainer_t.destroy;;
+_begin( wContainer_t, destroy );
+
+	push( eax );
+	
+	// Free the storage associated with the widgets in the
+	// widgetlist of this wContainer_t object:
+	
+	foreach this.widgetsJustOnForm() do
+	
+		push( esi );
+		push( edi );
+		(type wBase_t [eax]).destroy();
+		pop( edi );
+		pop( esi );
+	
+	endfor;
+	
+	// Free the storage associated with this wContainer_t object:
+	
+	super.destroy();
+	pop( eax );
+	
+_end( wContainer_t, destroy );
+
+
+
+
+// wContainer_t.show-
+//
+//	Invokes show on all the objects held by this container:
+
+method wContainer_t.show;;   
+_begin( wContainer_t, show );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.ShowWindow( this.handle, w.SW_SHOW );
+	
+	foreach this.widgetOnForm( 0 ) do
+	
+		push( esi );
+		push( edi );
+		(type wBase_t [eax]).show();
+		pop( edi );
+		pop( esi );
+	
+	endfor;
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wContainer_t, show );
+
+
+// wContainer_t.hide-
+//
+//	Hides the container and any objects within the container:
+
+method wContainer_t.hide;;   	 
+_begin( wContainer_t, hide );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	foreach this.widgetOnForm( 0 ) do
+	
+		push( esi );
+		push( edi );
+		(type wBase_t [eax]).hide();
+		pop( edi );
+		pop( esi );
+	
+	endfor;
+	
+	w.ShowWindow( this.handle, w.SW_HIDE );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wContainer_t, hide );
+
+
+// wContainer_t.enable-
+//
+//	Enables the container and any objects held by the container:
+
+method wContainer_t.enable;; 	 
+_begin( wContainer_t, enable );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.EnableWindow( this.handle, true );
+	foreach this.widgetOnForm( 0 ) do
+	
+		push( esi );
+		push( edi );
+		(type wBase_t [eax]).enable();
+		pop( edi );
+		pop( esi );
+	
+	endfor;
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wContainer_t, enable );
+
+
+
+// wContainer_t.disable
+//
+// 	Disables the container and any widgets held by the container:
+
+method wContainer_t.disable;;	 
+_begin( wContainer_t, disable );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.EnableWindow( this.handle, false );
+	foreach this.widgetOnForm( 0 ) do
+	
+		push( esi );
+		push( edi );
+		(type wBase_t [eax]).disable();
+		pop( edi );
+		pop( esi );
+	
+	endfor;
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wContainer_t, disable );
+
+
+
+// wContainer_t.insertWidget
+//
+//	Inserts some widget into the current object's widget list
+
+method wContainer_t.insertWidget( theWidget:wBase_p );;
+_begin( wContainer_t, insertWidget );
+
+	push( ecx );
+	push( edx );
+	
+	mov( theWidget, edx );
+	assert( edx <> NULL );
+	mov( this.wContainer_private.lastWidget, ecx );
+	if( ecx = NULL ) then
+	
+		mov( edx, this.wContainer_private.lastWidget );
+		mov( edx, this.wContainer_private.widgetList );
+		
+	else
+	
+		mov( edx, (type wBase_t [ecx]).wBase_private.nextWidget );
+		mov( edx, this.wContainer_private.lastWidget );
+
+	endif;
+	inc( this.wContainer_private.numWidgets );
+	mov( NULL, (type wBase_t [edx]).wBase_private.nextWidget );
+	
+	pop( edx );
+	pop( ecx );
+	 
+_end( wContainer_t, insertWidget ); 
+
+
+// wContainer_t.findWidget
+//
+//	Searches the current object's widget list for an object
+// whose objectID matches the objectID parameter. Returns
+// a pointer to the object found in EAX. Returns NULL in
+// EAX if the widget was not found.
+
+method wContainer_t.findWidget( objectID:dword );;
+_begin( wContainer_t, findWidget );
+
+	push( edx );
+	mov( this.wContainer_private.widgetList, eax );
+	if( eax <> NULL ) then
+	
+		// Do a linear search on the widget list until we find the
+		// desired objectID or when hit the end of the (NULL-terminated)
+		// list:
+		
+		mov( objectID, edx );
+		while
+		( 
+				eax <> NULL 
+			&&	edx <> (type wContainer_t [eax]).wBase_private.objectID 
+		) do
+	
+			mov( (type wContainer_t [eax]).wBase_private.nextWidget, eax );
+			
+		endwhile;
+		 
+	endif;
+	pop( edx );
+	 
+_end( wContainer_t, findWidget ); 
+
+
+
+
+// wContainer_t.widgetOnForm-
+//
+//	Iterates over all the widgets in a container.
+// Each iteration of the foreach loop returns a pointer
+// to the current widget in EAX and the current "nesting"
+// level in EDX..
+
+iterator wContainer_t.widgetOnForm( nestingLevel:uns32 );
+var
+	eaxSave	:dword;
+	edxSave	:dword;
+	ediSave	:dword;
+	esiSave	:dword;
+	curObj	:wBase_p;
+	
+_begin( wContainer_t, widgetOnForm );
+
+	mov( eax, eaxSave );
+	mov( edx, edxSave );
+	mov( edi, ediSave );
+	mov( esi, esiSave );
+	
+	mov( this.wContainer_private.widgetList, eax );
+	mov( eax, curObj );
+	while( eax <> NULL ) do
+	
+
+		// If the current object is a descendant of wContainer_t,
+		// the recursively process all the objects held by that
+		// container:
+		
+		mov( esiSave, esi );	// Restore before yield
+		mov( ediSave, edi );
+		mov( curObj, eax );
+		mov( nestingLevel, edx );
+		yield();
+		
+		mov( curObj, eax );
+		bt( wContainer_b, (type dword (type wBase_t [eax]).wType));
+		if( @c ) then
+
+			add( 1, nestingLevel );
+			foreach (type wContainer_t [eax]).widgetOnForm( nestingLevel ) do
+			
+				yield();
+				
+			endfor;
+			sub( 1, nestingLevel );
+			
+		endif;
+		
+		// Move on to the next object in the widget list:
+		
+		mov( curObj, eax );
+		mov( (type wBase_t [eax]).wBase_private.nextWidget, eax );
+		mov( eax, curObj );
+	
+	endwhile;
+	mov( esiSave, esi );
+	mov( ediSave, edi );
+	mov( edxSave, edx );
+	mov( eaxSave, eax );
+	 
+_end( wContainer_t, widgetOnForm );
+ 
+
+
+
+// wContainer_t.widgetsJustOnForm-
+//
+//	Non-recursive version of widgetsOnForm.
+
+iterator wContainer_t.widgetsJustOnForm;
+var
+	eaxSave	:dword;
+	ediSave	:dword;
+	esiSave	:dword;
+	curObj	:wBase_p;
+	
+_begin( wContainer_t, widgetsJustOnForm );
+
+	mov( eax, eaxSave );
+	mov( edi, ediSave );
+	mov( esi, esiSave );
+	
+	mov( this.wContainer_private.widgetList, eax );
+	mov( eax, curObj );
+	while( eax <> NULL ) do
+	
+
+		// If the current object is a descendant of wContainer_t,
+		// the recursively process all the objects held by that
+		// container:
+		
+		mov( esiSave, esi );	// Restore before yield
+		mov( ediSave, edi );
+		mov( curObj, eax );
+		yield();
+				
+		// Move on to the next object in the widget list:
+		
+		mov( curObj, eax );
+		mov( (type wBase_t [eax]).wBase_private.nextWidget, eax );
+		mov( eax, curObj );
+	
+	endwhile;
+	mov( esiSave, esi );
+	mov( ediSave, edi );
+	mov( eaxSave, eax );
+	 
+_end( wContainer_t, widgetsJustOnForm );
+
+
+
+
+end	wContainer_u;

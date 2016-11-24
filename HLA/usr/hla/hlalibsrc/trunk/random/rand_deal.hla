@@ -1,0 +1,100 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit randomUnit;
+#include( "../include/random.hhf" )
+
+
+namespace rand;
+
+iterator deal( count:dword ); @nodisplay; @noalignstack;
+var
+	array: pointer to uns32;
+	
+begin deal;
+
+	
+	if( count > 0 ) then
+
+	
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+
+		mov( count, eax );
+		shl( 2, eax );
+		@global:malloc( eax );
+		mov( eax, ebx );
+		mov( eax, array );
+		
+		// Initialize the array with 0..count-1:
+		
+		xor( eax, eax );
+		while( eax < count ) do 
+		
+			mov( eax, [ebx+eax*4] );
+			inc( eax );
+			
+		endwhile;
+		
+		// "Randomize" the elements in the array by sequencing
+		// through the array and swapping each successive element
+		// with a random element from the array.
+		
+		xor( ecx, ecx );
+		while( ecx < count ) do
+		
+			uniform();					// Generate a random index
+			ror( 16, eax );				// and force it into the
+			xor( edx, edx );			// range 0..count-1.
+			mod( count );				// (ror produces better randomness).
+			
+			mov( [ebx+edx*4], eax );	// Swap the current element
+			xchg( eax, [ebx+ecx*4] );	// with a random element
+			mov( eax, [ebx+edx*4] );	// from the array.
+			
+			inc( ecx );
+			
+		endwhile;
+		
+		// Okay, yield each successive
+		// element of our scrambled array:
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		while( count > 0 ) do
+		
+			push( ebx );
+			mov( count, eax );
+			mov( array, ebx );
+			mov( [ebx+eax*4 - 4], eax );
+			pop( ebx );
+			yield();
+			dec( count );
+			
+		endwhile;
+		@global:free( array );
+		pop( eax );
+		
+	endif;
+	
+end deal;
+
+end rand;
+
+
+
+end randomUnit;

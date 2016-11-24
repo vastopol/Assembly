@@ -1,0 +1,180 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+
+
+/******************************************************/
+/*                                                    */
+/* tokenCnt2                                          */
+/*                                                    */
+/* Counts the number of "tokens" in a string.         */
+/* "Tokens" are substrings separated by characters    */
+/* in some character set. The user passes the         */
+/* character set containing the delimiter characters. */
+/* This function returns the count in the EAX         */
+/* register.                                          */
+/*                                                    */
+/******************************************************/
+
+
+
+
+procedure str.tokenCnt2
+(
+		src		:string;
+		delims	:cset
+);  @noframe;
+begin tokenCnt2;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ecx );
+	push( esi );
+	
+	
+	// #0 (end of string) is always a delimiter.
+	// Force that bit on in the delimiter character set.
+	
+	or( 1, (type byte delims));
+	
+	mov( src, esi );
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+	
+	// As long as we don't hit the end of the string,
+	//  count the tokens/fields/words in it.
+	
+	xor( ecx, ecx );				// Count the tokens here.
+	cmp( (type char [esi]), #0 );
+	je endWhl;
+	whlLoop:
+	
+		// Skip over all leading delimiter characters:
+		
+		xor( eax, eax );
+		dec( esi );
+		SkipDelims:
+		
+			// Since csets only support the 7-bit character set,
+			// strip off the H.O. bit of the current byte.  Note
+			// the implication that $80 is always a delimiter char.
+			//
+			// Repeat as long as the current character is not a
+			// zero byte and is a delimiter character.
+			
+			inc( esi );
+			mov( [esi], al );
+			cmp( al, 0 );
+			je endWhl;
+
+			and( $7f, al );
+			bt( eax, (type dword delims) );
+			jc SkipDelims;
+			
+		
+		// Okay, we're at the beginning of a new word.  Find the
+		// end of the word.
+		//
+		// Note the special case: if the quote is not in the
+		// delimiter set (we would skip over it in the above
+		// loop if it were), then we grab all characters up
+		// to the matching end quote.
+
+		cmp( al, '"' );
+		jne tryApost;
+		
+			WhileNotQuote:
+			
+				inc( esi );
+				mov( [esi], al );
+				cmp( al, 0 );
+				je endQuoted;
+				cmp( al, '"' );
+				je WhileNotQuote;
+				jmp endQuoted;	
+			
+		tryApost:
+		cmp( al, '''' );
+		jne notQuoted;		
+		
+			WhileNotApost:
+			
+				inc( esi );
+				mov( [esi], al );
+				cmp( al, 0 );
+				je endQuoted;
+				cmp( al, '''' );
+				jne WhileNotApost;
+				jmp endQuoted;	
+		
+		notQuoted:
+		
+			dec( esi );
+			repeatUntilDelim:		// Skip to the end of the word.
+			
+				inc( esi );
+				mov( [esi], al );
+				bt( eax, (type dword delims)); 
+				jnc repeatUntilDelim;
+			
+		endQuoted:
+		inc( ecx );			// Count the number of words here.
+		
+		// If we stopped scanning on a quote or apostrophe, skip
+		// over that symbol here.
+		
+		mov( [esi], al );
+		cmp( al, '"' );
+		je noInc;
+		cmp( al, '''' );
+		je noInc;
+		
+			add( 1, esi );
+			
+		noInc:
+		cmp( (type char [esi]), #0 );
+		jne whlLoop;
+
+	endWhl:				
+
+	mov( ecx, eax );		// Return word count in EAX.
+	pop( esi );
+	pop( ecx );
+	pop( ebp );
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end tokenCnt2;
+
+
+
+
+end stringUnit;
+
+
+
+
+	
+

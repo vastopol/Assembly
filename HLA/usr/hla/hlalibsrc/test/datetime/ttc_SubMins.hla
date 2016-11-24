@@ -1,0 +1,165 @@
+program subMins_test;
+#include( "stdlib.hhf" )
+
+static
+	baseTime	:time.timerec;
+	subTime		:timeClass;
+	curTime		:time.timerec;
+	hours		:uns16;
+	minutes		:uns8;
+	mins		:uns32;
+	mins2		:uns32;
+	days		:int16;
+	days2		:int16;
+	
+		
+begin subMins_test;
+	
+	subTime.create();
+	for( mov( 0, hours ); hours < 24; inc( hours )) do
+	
+		for( mov( 0, minutes ); minutes < 60; inc( minutes )) do
+		
+			mov( 0, baseTime.secs );
+			mov( minutes, al );
+			mov( al, baseTime.mins );
+			mov( hours, ax );
+			mov( ax, baseTime.hours );
+			
+			movzx( hours, eax );
+			movzx( minutes, ebx );
+			intmul( 60, eax );
+			add( ebx, eax );
+			mov( eax, mins );
+			for( mov( 0, mins2 ); mins2 < 60*24*3; inc( mins2 )) do
+			
+				mov( 0, days );
+				mov( mins, eax );
+				sub( mins2, eax );
+				if( @s ) then
+				
+					neg( eax );
+					xor( edx, edx );
+					div( 24*60, edx:eax );
+					inc( eax );
+					mov( ax, days );
+					
+				endif;
+				mov( baseTime, ebx );
+				mov( ebx, subTime.theTime );
+				subTime.subMins( mins2 );
+				mov( ax, days2 );
+				
+				cmp( ax, days );
+				jne timeSubMinsFailed1;
+				
+				// Compute the expected time
+				
+				movzx( hours, eax );
+				intmul( 60, eax );
+				movzx( minutes, edx );
+				add( edx, eax );
+				sub( mins2, eax );
+				if( @ns ) then
+				
+					xor( edx, edx );
+					div( 60, edx:eax );
+					mov( dl, curTime.mins );
+					xor( edx, edx );
+					div( 24, edx:eax );
+					mov( dx, curTime.hours );
+					mov( 0, curTime.secs );
+					
+				else
+				
+					// Compute [minutes mod (24*60)]:
+					
+					neg( eax );
+					xor( edx, edx );
+					div( 24*60, edx:eax );
+					mov( edx, eax );
+					
+					xor( edx, edx );
+					div( 60, edx:eax );
+					
+					neg( edx );
+					jz edxIs0;
+					
+						add( 60, edx );
+						inc( eax );
+						
+					edxIs0:
+					mov( dl, curTime.mins );
+					
+					neg( eax );
+					jz edxIs0_2;
+					
+						add( 24, eax );
+					
+					edxIs0_2:
+					mov( ax, curTime.hours );
+					mov( 0, curTime.secs );
+					
+				endif;
+
+				mov( subTime.theTime, eax );
+				cmp( eax, curTime );
+				jne timeSubMinsFailed2;
+				
+			endfor;
+			time.addMins( 1, baseTime );
+			
+		endfor;
+		
+	endfor;
+			
+	stderr.put( "timeClass.subMins succeeded!" nl );
+	os.exitProcess(0);
+	
+timeSubMinsFailed2:
+	mov( 2, bl );
+	jmp timeSubMinsFailed;
+	
+timeSubMinsFailed1:
+	mov( 1, bl );
+	
+timeSubMinsFailed:
+	stderr.put
+	( 
+		nl nl 
+		"***************************************************" 
+		nl
+		"timeClass.subMins failed! (", (type uns8 bl), ")", nl,
+		"Time= ",
+		(type uns16 baseTime.hours),
+		":",
+		(type uns8 baseTime.mins),
+		":",
+		(type uns8 baseTime.secs ),
+		"-",
+		mins2,
+		" Minutes = ",
+		(type uns16 subTime.theTime.hours),
+		":",
+		(type uns8 subTime.theTime.mins),
+		":",
+		(type uns8 subTime.theTime.secs ),
+		nl,
+		"curTime= ",
+		(type uns16 curTime.hours),
+		":",
+		(type uns8 curTime.mins),
+		":",
+		(type uns8 curTime.secs ),
+		nl,
+		"Days = ", days,
+		" day2 = ", days2,
+		nl 
+	);
+	stdout.put( "Press Enter to Continue: " );
+	stdin.readLn();
+	os.exitProcess(1);
+					
+end subMins_test;
+
+													

@@ -1,0 +1,98 @@
+program fgetf_test;
+#include( "stdlib.hhf" )
+
+var
+	Handle		:dword;
+	inputF		:real80;
+	
+begin fgetf_test;
+
+	try
+	
+		fileio.open( "fgetf.data", fileio.r );
+		mov( eax, Handle );
+		fileio.getf( Handle );
+		fld( 1.0 );
+		fcomip( st0, st1 );
+		if( @ne ) then
+		
+			raise(1001);
+		
+		endif;	
+		fdecstp();
+		
+		fileio.getf( Handle );
+		fld( 2.0 );
+		fcomip( st0, st1 );
+		if( @ne ) then
+		
+			raise(1002);
+		
+		endif;	
+		fdecstp();
+		
+		fileio.getf( Handle );
+		fld( 3.0 );
+		fcomip( st0, st1 );
+		if( @ne ) then
+		
+			raise(1003);
+		
+		endif;	
+		fdecstp();
+		
+		fileio.getf( Handle );
+		fld( 4.0 );
+		fcomip( st0, st1 );
+		if( @ne ) then
+		
+			raise(1004);
+		
+		endif;	
+		fdecstp();
+		fileio.readLn( Handle );
+		
+		
+		if( !fileio.eof( Handle )) then
+		
+			raise(1000);
+			
+		endif;
+		stderr.put( "fgetf succeeded!" nl );
+		os.exitProcess(0);
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"fgetf failed! eax=", (type uns32 eax), nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put
+	( 
+		nl nl 
+		"***************************************************" nl
+		"fgetf failed!" nl
+		"Unknown problem with fagets test" nl
+		nl 
+	);
+	stdout.put( "Press Enter to Continue: " );
+	stdin.readLn();
+	stdout.put( "Press Enter to Continue: " );
+	stdin.readLn();
+	os.exitProcess(1);
+			
+end fgetf_test;
+
+													

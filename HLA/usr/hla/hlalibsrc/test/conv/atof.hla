@@ -1,0 +1,105 @@
+program atof_test;
+#include( "stdlib.hhf" )
+
+static
+	inputF		:real80;
+	inputLine	:str.strvar(256);
+	
+procedure getf;
+begin getf;
+
+	stdin.gets( inputLine );
+	mov( inputLine, esi );
+	conv.atof();
+	
+end getf;
+
+	
+begin atof_test;
+
+	try
+	
+		stdin.gets( inputLine );
+		conv.strToFlt( inputLine, 4 );
+		fldz();
+		fcomip( st0, st1 );
+		if( @ne ) then
+		
+			raise( 1000 );
+			
+		endif;
+	
+		getf();
+		fld( 1.0 );
+		fcomip( st0, st1 );
+		if( @ne ) then
+		
+			raise(1001);
+		
+		endif;	
+		fdecstp();
+		
+		getf();
+		fld( 2.0 );
+		fcomip( st0, st1 );
+		if( @ne ) then
+		
+			raise(1002);
+		
+		endif;	
+		fdecstp();
+		
+		getf();
+		fld( 3.0 );
+		fcomip( st0, st1 );
+		if( @ne ) then
+		
+			raise(1003);
+		
+		endif;	
+		fdecstp();
+		
+		getf();
+		fld( 4.0 );
+		fcomip( st0, st1 );
+		if( @ne ) then
+		
+			raise(1004);
+		
+		endif;	
+		fdecstp();
+		stdin.readLn();
+		stderr.put( "atof succeeded!" nl );
+		os.exitProcess(0);
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"atof failed! eax=", (type uns32 eax), nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put
+	( 
+		nl nl 
+		"***************************************************" nl
+		"atof failed!" nl
+		"Unknown problem with atof test" nl
+		nl 
+	);
+	stdout.put( "Press Enter to Continue: " );
+	stdin.readLn();
+	os.exitProcess(1);
+			
+end atof_test;
+
+													

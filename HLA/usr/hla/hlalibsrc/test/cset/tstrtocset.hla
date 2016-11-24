@@ -1,0 +1,141 @@
+program strToCset_test;
+#include( "stdlib.hhf" )
+
+		
+const
+	cs_c :cset[] :=
+		[
+			{},
+			#for( i := 1 to 127 )
+				 {char(1)..char(i)},
+			#endfor
+			{},
+			#for( i := 1 to 127 )
+				{@char(i)..@char(127)},
+			#endfor
+		];
+		
+	s_c	:string[] :=
+		[
+			"",
+			#for( i := 1 to 127 )
+				?s := "";
+				#for( j := 1 to i )
+					?s := s + char(j);
+				#endfor
+				s,
+			#endfor
+			"",
+			#for( i := 1 to 127 )
+				?s := "";
+				#for( j := i to 127 )
+					?s := s + char(j);
+				#endfor
+				s,
+			#endfor
+		];
+		
+		
+	cs2_c :cset[] :=
+		[
+			32 dup [{}],
+			{' '},
+			#for( i := 33 to 127 )
+				 {char(i)..char(i)},
+			#endfor
+		];
+		
+	s2_c	:string[] :=
+		[
+			32 dup [""],
+			#for( i := 32 to 127 )
+				?s := "";
+				#for( j := 1 to i )
+					?s := s + char(j);
+				#endfor
+				s,
+			#endfor
+		];
+		
+		
+static
+	csresult	:cset;
+	cstest		:cset;
+	ccs 		:cset[ @elements( cs_c ) ]   := cs_c;
+	sss			:string[ @elements( s_c ) ]  := s_c;
+	ccs2 		:cset[ @elements( cs2_c ) ]  := cs2_c;
+	sss2		:string[ @elements( s2_c ) ] := s2_c;
+	
+begin strToCset_test;
+
+	for( mov( 0, ecx ); ecx<@elements( cs_c ); inc(ecx) )do
+
+		intmul( @size( cset ), ecx, edx );
+	
+		cs.strToCset( sss[ecx*4], csresult );
+		if( cs.ne( csresult, ccs[edx]) ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"cs.strToCset failed!  ecx=", ecx, nl,
+				(type dword csresult[12]), '_',
+				(type dword csresult[8]), '_',
+				(type dword csresult[4]), '_',
+				(type dword csresult), nl,
+				
+				(type dword ccs[edx+12]), '_',
+				(type dword ccs[edx+8]), '_',
+				(type dword ccs[edx+4]), '_',
+				(type dword ccs[edx]), nl,
+									
+				"***************************************************" nl
+				nl 
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+
+		endif;
+		
+		
+		if( ecx >= 32 && ecx < $80 ) then
+		
+			lea( ebx, [ecx-1] );
+			cs.strToCset2( sss2[ecx*4], ebx, csresult );
+			if( cs.ne( csresult, ccs2[edx] ) ) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"cs.strToCset2 failed!  ecx=", ecx, nl,
+					(type dword csresult[12]), '_',
+					(type dword csresult[8] ), '_',
+					(type dword csresult[4] ), '_',
+					(type dword csresult    ), nl,
+					
+					(type dword ccs2[edx+12]), '_',
+					(type dword ccs2[edx+8]), '_',
+					(type dword ccs2[edx+4]), '_',
+					(type dword ccs2[edx]), nl,
+										
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+
+			endif;
+			
+		endif;
+						
+	endfor;
+	stderr.put( "cs.strToCset & cs.strToCset2 succeeded!" nl );
+	os.exitProcess(0);
+		
+end strToCset_test;
+
+													

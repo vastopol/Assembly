@@ -1,0 +1,482 @@
+// tMemUtils-
+//
+// Tests various memory manager utility functions, including:
+//
+//		isInHeap, newref, getref, stat, and size	
+
+program tMemUtils;
+#include( "stdlib.hhf" )
+#include( "../../trunk/include/mem.hhf" )	
+
+const
+	listSize	:= 1024;
+	
+type
+	memStat	:record
+	
+		totalHeapSpace	:dword;
+		freeSpace		:dword;
+		largestBlock	:dword;
+		numBlocks		:dword;
+		freeBlocks		:dword;
+			
+	endrecord;
+	
+	memalloc	:record
+		adrs	:dword;
+		size	:dword;
+	endrecord;
+	
+static
+	freeBlockCnt	:uns32;
+	allocPtrs		:memalloc[listSize];
+	
+	
+	
+
+begin tMemUtils;
+
+	// We should be able to call the utilities before any storage
+	// is actually allocated and get reasonable results:
+	
+	// Try isInHeap with no heap allocated:
+	
+	lea( edi, freeBlockCnt );	// An arbitrary address, not on the heap
+	mem.isInHeap( edi );
+	if( eax <> NULL ) then
+	
+		stderr.put
+		(
+			"Error! isInHeap returned $", eax, " was expecting NULL.(1)" nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endif;
+
+	mem.isInHeap( NULL );
+	if( eax <> NULL ) then
+	
+		stderr.put
+		(
+			"Error! isInHeap returned $", eax, " was expecting NULL(2)." nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endif;
+	
+	
+	// Try newref with no allocated heap (will raise an exception):
+	
+	try
+	
+		mem.newref( NULL );
+		stderr.put
+		(
+			"Error! newref(NULL) should have raised ex.AttemptToDerefNULL" nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL );
+	  
+	  	// We expect this
+		
+	  anyexception
+	  
+		stderr.put
+		(
+			"Error! newref(NULL) unexpected exception: eax=$", eax, nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endtry;
+	
+	
+	
+	try
+	
+		mem.newref( &freeBlockCnt );
+		stderr.put
+		(
+			"Error! newref(&freeBlockCnt) "
+			"should have raised ex.PointerNotInHeap" nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	  exception( ex.PointerNotInHeap );
+	  
+	  	// We expect this
+		
+	  anyexception
+	  
+		stderr.put
+		(
+			"Error! newref(&freeBlockCnt) unexpected exception: eax=$", eax, nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endtry;
+	
+	
+	
+	// Try getref with no allocated heap (will raise an exception):
+	
+	try
+	
+		mem.getref( NULL );
+		stderr.put
+		(
+			"Error! getref(NULL) should have raised ex.AttemptToDerefNULL" nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL );
+	  
+	  	// We expect this
+		
+	  anyexception
+	  
+		stderr.put
+		(
+			"Error! getref(NULL) unexpected exception: eax=$", eax, nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endtry;
+	
+	
+	
+	try
+	
+		mem.getref( &freeBlockCnt );
+		stderr.put
+		(
+			"Error! getref(&freeBlockCnt) "
+			"should have raised ex.PointerNotInHeap" nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	  exception( ex.PointerNotInHeap );
+	  
+	  	// We expect this
+		
+	  anyexception
+	  
+		stderr.put
+		(
+			"Error! getref(&freeBlockCnt) unexpected exception: eax=$", eax, nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endtry;
+	
+	// Try mem.stat with no allocated heap:
+	
+	mem.stat();
+	if( eax<>0 && ebx <> 0 && ecx <> 0 && edx <> 0 ) then
+	
+		stderr.put
+		(
+			"Error! mem.stat unexpected values" nl
+			"EAX = $", eax, nl
+			"EBX = $", ebx, nl
+			"ECX = $", ecx, nl
+			"EDX = $", edx, nl
+		);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endif;
+	
+	
+	// Try mem.size with no allocated heap:
+	
+	mem.size( NULL );
+	if( eax <> 0 ) then
+	
+		stderr.put( "Error! mem.size(NULL) was $", eax, nl );
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endif;
+	
+	mem.size( &freeBlockCnt );
+	if( eax <> 0 ) then
+	
+		stderr.put( "Error! mem.size(&freeBlockCnt) was $", eax, nl );
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+		
+	endif;
+
+	/////////////////////////////////////////////////////////////////////
+	
+	// Okay, allocate a bunch of blocks and test the utilities with
+	// actual pointers into the heap:
+
+	for( mov( 0, edx ); edx < listSize; inc( edx )) do
+	
+		rand.range( 1, 1024 );
+		mov( eax, allocPtrs.size[edx*8] );
+		mem.alloc( eax );
+		mov( eax, allocPtrs.adrs[edx*8] );
+		
+	endfor;
+	
+	
+	// make sure mem.isInHeap reports that all the addresses
+	// are present in the heap.
+	//
+	// Make sure mem.getref returns 1 for each pointer.
+	//
+	// Make sure mem.size returns a value greater than or equal to
+	// the original allocation size.
+	
+	
+	for( mov( 0, edx ); edx < listSize; inc( edx )) do
+	
+		if( mem.isInHeap( allocPtrs.adrs[edx*8] ) = NULL ) then
+		
+			stderr.put
+			(
+				"Error! mem.isInHeap reports allocPtrs[", 
+				edx, 
+				"] is not" nl
+				"on the heap!" nl
+			);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+			
+		endif;
+		
+		mem.getref(	allocPtrs.adrs[edx*8] );
+		if( eax <> 1 ) then
+		
+			stderr.put
+			(
+				"Error! mem.getref reports allocPtrs[", 
+				edx, 
+				"] has a refcnt of ", (type uns32 eax), nl
+			);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+			
+		endif;
+		
+		mem.size( allocPtrs.adrs[edx*8] );
+		if( eax < allocPtrs.size[edx*8]) then
+		
+			stderr.put
+			(
+				"Error! mem.size reports allocPtrs[", 
+				edx, 
+				"] has a size of ", (type uns32 eax), nl
+				"which is less than the original allocation size of ",
+				(type uns32 allocPtrs.size[edx*8]), nl
+			);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+			
+		endif;
+		
+		
+		
+	endfor;
+	
+	
+	// Verify that we can properly bump up and down the reference count
+	// for each item in the list:
+	
+	for( mov( 0, edx ); edx < listSize; inc( edx )) do
+	
+		mem.newref( allocPtrs.adrs[edx*8] );
+		mem.getref( allocPtrs.adrs[edx*8] );
+		if( eax <> 2 ) then
+		
+			stderr.put
+			(
+				"Error! mem.getref should have returned 2!" nl
+			);
+			
+		endif;
+		mem.free( allocPtrs.adrs[edx*8] );
+		mem.getref( allocPtrs.adrs[edx*8] );
+		if( eax <> 1 ) then
+		
+			stderr.put
+			(
+				"Error! mem.getref should have returned 1!" nl
+			);
+			
+		endif;
+	
+	endfor;
+	
+	
+	// Okay, let's start freeing the storage and see how it
+	// affects the various utility functions.
+	
+	for( mov( 0, edx ); edx < listSize; inc( edx )) do
+	
+		mem.free( allocPtrs.adrs[edx*8] );
+		for( mov( 0, edi ); edi < listSize; inc( edi )) do
+		
+		
+			if( edi > edx ) then
+			
+				if( mem.isInHeap( allocPtrs.adrs[edi*8] ) = NULL ) then
+				
+					stderr.put
+					(
+						"Error! mem.isInHeap reports allocPtrs[", 
+						edi, 
+						"] is not on the heap!" nl
+					);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+					
+				endif;
+				
+				mem.getref(	allocPtrs.adrs[edi*8] );
+				if( eax <> 1 ) then
+				
+					stderr.put
+					(
+						"Error! mem.getref reports allocPtrs[", 
+						edi, 
+						"] has a refcnt of ", (type uns32 eax), nl
+					);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+					
+				endif;
+				
+				mem.size( allocPtrs.adrs[edi*8] );
+				if( eax < allocPtrs.size[edi*8]) then
+				
+					stderr.put
+					(
+						"Error! mem.size reports allocPtrs[", 
+						edi, 
+						"] has a size of ", (type uns32 eax), nl
+						"which is less than the original allocation size of ",
+						(type uns32 allocPtrs.size[edi*8]), nl
+					);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+					
+				endif;
+				
+			else
+			
+				mem.isInHeap( allocPtrs.adrs[edi*8] );
+				if( eax <> NULL ) then
+				
+					stderr.put
+					(
+						"Error! mem.isInHeap reports allocPtrs[", 
+						edi, 
+						"] is on the heap," nl
+						"but it was deallocated!" nl
+					);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+					
+				endif;
+				
+				try
+				
+					mem.getref(	allocPtrs.adrs[edi*8] );
+					if( eax <> 0 ) then
+					
+						stderr.put
+						(
+							"Error! mem.getref should have returned zero." nl
+						);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+						
+					endif;
+					
+				  anyexception
+				  
+					stderr.put
+					(
+						"Error! mem.getref unexpected exception: "
+						"eax=$", eax, nl
+					);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+				  
+				endtry;
+					
+				try
+				
+					mem.size( allocPtrs.adrs[edi*8] );
+					if( eax <> 0 ) then
+					
+						stderr.put
+						(
+							"Error! mem.size should have returned zero, " nl 
+							"instead, it returned ", (type uns32 eax), nl
+						);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+						
+					endif;
+					
+				  anyexception
+				  
+					stderr.put
+					(
+						"Error! mem.size unexpected exception: "
+						"eax=$", eax, nl
+					);
+stdout.put( "Press Enter to Continue: " );
+stdin.readLn();
+os.exitProcess(1);
+				  
+				endtry;
+				
+			endif;
+			
+		endfor;	
+		
+	endfor;
+	
+	stderr.put( "tMemUtils succeeded!" nl );
+	
+	
+end tMemUtils;	

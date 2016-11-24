@@ -1,0 +1,480 @@
+unit wVisual_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+
+readonly
+	align( 4 );		
+	vmt( wVisual_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//
+// Constructor for wVisual_t object.
+//
+// Note: because wVisual_t is an abstract class, we *never*
+// allocate storage for it; we always assume that ESI contains
+// a pointer to a real object upon entry into this code.
+//
+// This constructor must be call *after* the derived class' constructor
+// has allocated storage, but before any other initialization takes
+// place in that constructor.
+
+procedure wVisual_t.create_wVisual
+(
+	wvName			:string;
+	parentHandle	:dword; 									
+	x				:dword; 
+	y				:dword; 
+	width			:dword; 
+	height			:dword 
+);;
+	
+_begin( wVisual_t, create_wVisual );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	// wVisual_t is an abstract class and ESI must contain the address
+	// of a derived object when this constructor is called.
+		
+	assert( esi <> NULL );
+	
+	(type wBase_t [esi]).create_wBase
+	(
+		wvName
+	);
+
+	// Generic initialization for all objects:
+	
+	mov( x, eax );
+	mov( eax, this.wVisual_private.x );
+	mov( y, eax );
+	mov( eax, this.wVisual_private.y );
+	mov( width, eax );
+	mov( eax, this.wVisual_private.width );
+	mov( height, eax );
+	mov( eax, this.wVisual_private.height );
+	mov( parentHandle, eax );
+	mov( eax, this.wBase_private.parentHandle );
+	howl.setType( wVisual_c );	
+	mov( &wVisual_t._VMT_, this._pVMT_ );
+	mov( 0, this.wVisual_private.style );
+	mov( 0, this.wVisual_private.exStyle );
+	
+	// Create a dummy background brush (so we have
+	// an actual background if someone doesn't initialize
+	// the background). 
+	
+	mov( RGB( 255, 255, 255), eax );			// White background.
+	mov( eax, this.wVisual_private.bkgColor );
+	w.CreateSolidBrush( eax );
+	mov( eax, this.wVisual_private.bkgBrush );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wVisual_t, create_wVisual );
+
+
+
+
+
+
+// Overridden methods:
+//
+// wVisual_t.destroy-
+//
+//	Destroys the background color brush.
+
+method wVisual_t.destroy;;
+_begin( wVisual_t, destroy );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.DeleteObject( this.wVisual_private.bkgBrush );
+		
+	// Free the storage associated with this wVisual_t object:
+	
+	super.destroy();
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wVisual_t, destroy );
+
+
+// Accessor methods:
+
+method wVisual_t.get_style; @noframe;;		
+_begin( wVisual_t, get_style );
+
+	mov( this.wVisual_private.style, eax );
+	ret();
+	
+_end( wVisual_t, get_style );
+
+
+method wVisual_t.get_exStyle; @noframe;;		
+_begin( wVisual_t, get_exStyle );
+
+	mov( this.wVisual_private.exStyle, eax );
+	ret();
+	
+_end( wVisual_t, get_exStyle );
+
+
+
+method wVisual_t.get_x; @noframe;;		
+_begin( wVisual_t, get_x );
+
+	mov( this.wVisual_private.x, eax );
+	ret();
+	
+_end( wVisual_t, get_x );
+
+
+
+method wVisual_t.get_y; @noframe;;		
+_begin( wVisual_t, get_y );
+
+	mov( this.wVisual_private.y, eax );
+	ret();
+	
+_end( wVisual_t, get_y );
+
+
+
+method wVisual_t.get_width; @noframe;;		
+_begin( wVisual_t, get_width );
+
+	mov( this.wVisual_private.width, eax );
+	ret();
+	
+_end( wVisual_t, get_width );
+
+
+
+method wVisual_t.get_height; @noframe;;		
+_begin( wVisual_t, get_height );
+
+	mov( this.wVisual_private.height, eax );
+	ret();
+	
+_end( wVisual_t, get_height );
+
+
+// Retrieve the background color for the window.
+
+method wVisual_t.get_bkgColor;;
+_begin( wVisual_t, get_bkgColor );
+
+	mov( this.wVisual_private.bkgColor, eax );
+	
+_end( wVisual_t, get_bkgColor );
+
+
+
+
+
+
+
+
+
+
+
+// The following mutators have to be explicitly written
+// because they all send mutator-specific messages to Windows:
+//
+//
+// Set the x-coordinate field of the object. Also sends
+// a MOVE message the the handle of the visual object
+// so it will be redrawn on the screen (if it is visible).
+
+method wVisual_t.set_x( x:dword );;
+_begin( wVisual_t, set_x );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( x, eax );
+	mov( eax, this.wVisual_private.x );
+	w.MoveWindow( this.handle, this.wVisual_private.x, this.wVisual_private.y, this.wVisual_private.width, this.wVisual_private.height, true );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wVisual_t, set_x );
+
+
+
+// Set the y-coordinate field of the object. Also sends
+// a MOVE message the the handle of the visual object
+// so it will be redrawn on the screen (if it is visible).
+
+method wVisual_t.set_y( y:dword );;
+_begin( wVisual_t, set_y );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( y, eax );
+	mov( eax, this.wVisual_private.y );
+	w.MoveWindow( this.handle, this.wVisual_private.x, this.wVisual_private.y, this.wVisual_private.width, this.wVisual_private.height, true );
+
+	pop( edx );
+	pop( ecx );
+	pop( eax );								 
+	
+_end( wVisual_t, set_y );
+
+
+
+// Set the width field of the object. Also sends
+// a size message the the handle of the visual object
+// so it will be redrawn on the screen (if it is visible).
+
+method wVisual_t.set_width( width:dword );;
+_begin( wVisual_t, set_width );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( width, eax );
+	mov( eax, this.wVisual_private.width );
+	
+	w.MoveWindow( this.handle, this.wVisual_private.x, this.wVisual_private.y, this.wVisual_private.width, this.wVisual_private.height, true );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wVisual_t, set_width );
+
+
+// Set the height field of the object. Also sends
+// a size message the the handle of the visual object
+// so it will be redrawn on the screen (if it is visible).
+
+method wVisual_t.set_height( height:dword );;
+_begin( wVisual_t, set_height );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( height, eax );
+	mov( eax, this.wVisual_private.height );
+	w.MoveWindow( this.handle, this.wVisual_private.x, this.wVisual_private.y, this.wVisual_private.width, this.wVisual_private.height, true );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wVisual_t, set_height );
+
+
+// Move the object. Sets both the X and Y coordinates at the same time.
+
+method wVisual_t.move( x:dword; y:dword );;
+_begin( wVisual_t, move );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( x, eax );
+	mov( eax, this.wVisual_private.x );
+	mov( y, eax );
+	mov( eax, this.wVisual_private.y );
+	w.MoveWindow( this.handle, this.wVisual_private.x, this.wVisual_private.y, this.wVisual_private.width, this.wVisual_private.height, true );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wVisual_t, move );
+
+
+// Resize the object. Sets both the width and height values at the same time.
+
+method wVisual_t.resize( width:dword; height:dword );;
+_begin( wVisual_t, resize );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( width, eax );
+	mov( eax, this.wVisual_private.width );
+	mov( height, eax );
+	mov( eax, this.wVisual_private.height );
+	w.MoveWindow( this.handle, this.wVisual_private.x, this.wVisual_private.y, this.wVisual_private.width, this.wVisual_private.height, true );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wVisual_t, resize );
+
+
+
+// Set the background color for the window.
+// Also computes the background brush value
+// from the fill value.
+
+method wVisual_t.set_bkgColor( bkgColor:dword );;
+_begin( wVisual_t, set_bkgColor );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	w.DeleteObject( this.wVisual_private.bkgBrush );
+	
+	mov( bkgColor, eax );
+	mov( eax, this.wVisual_private.bkgColor );
+	
+	// Note: H.O. byte might be $FF for transparent background:
+	
+	and( $FF_FFFF, eax );
+	w.CreateSolidBrush( eax );
+	mov( eax, this.wVisual_private.bkgBrush );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wVisual_t, set_bkgColor );
+
+
+
+
+// Show the object.
+
+method wVisual_t.show;;
+_begin( wVisual_t, show );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.ShowWindow( this.handle, w.SW_SHOW );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wVisual_t, show );
+
+
+// Hide is called to make an object invisible:
+
+method wVisual_t.hide;;
+_begin( wVisual_t, hide );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.ShowWindow( this.handle, w.SW_HIDE );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wVisual_t, hide );
+
+
+
+// Enable is called to enable a windows object:
+
+method wVisual_t.enable;;
+_begin( wVisual_t, enable );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	w.EnableWindow( this.handle, true );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wVisual_t, enable );
+
+
+// Disable is called to disable a Windows UI object:
+
+method wVisual_t.disable;;
+_begin( wVisual_t, disable );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	w.EnableWindow( this.handle, false );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wVisual_t, disable );
+
+
+
+
+// setFocus is called to set the input focus to the current object.
+
+method wVisual_t.setFocus;;
+_begin( wVisual_t, setFocus );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SetFocus( this.handle );
+	 
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wVisual_t, setFocus );
+
+
+
+
+// Dummy methods for onClose and onCreate.
+// These do nothing. The real intent is to have
+// wForm_t and descendants overload these methods
+// to handle the case when the application quits.
+
+method wVisual_t.onClose;;
+_begin( wVisual_t, onClose );
+_end( wVisual_t, onClose );
+
+
+method wVisual_t.onCreate;;
+_begin( wVisual_t, onCreate );
+_end( wVisual_t, onCreate );
+
+
+
+
+
+
+end	wVisual_u;

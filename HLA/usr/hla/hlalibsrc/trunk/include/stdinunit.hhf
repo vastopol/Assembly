@@ -1,0 +1,223 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+#if( ! @defined( stdinUnit_hhf ))
+?stdinUnit_hhf := true;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdin.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "memory.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "os.hhf" )
+
+#if( os.linux )
+
+	#include( "linux.hhf" )
+	
+#elseif( os.freeBSD )
+
+	#include( "bsd.hhf" )
+		
+#elseif( os.macOS )
+
+	#include( "mac.hhf" )
+		
+#endif
+
+
+static
+
+	/*
+	** HasStdInHandle- 
+	**	This variable is set to true the first
+	**	time this code obtains the standard input handle from
+	**	Windows.  This ensures that the call to Windows is made
+	**	only once rather than on each output.
+	**
+	** StdInHandle-
+	**	This code stores the standard input handle obtained from
+	**	Windows in this variable.
+	**
+	** InputBuffer- Array containing data read from the standard
+	**				input.  All the stdin routines extract their
+	**				data from this buffer.
+	**
+	** InputIndex-	Index into InputBuffer that indicates where
+	**				the next character is to be taken from.
+	**
+	** CharsInBuf:	Indicates the total number of characters read
+	**				into the InputBuffer array.
+	**
+	** NeedsInput-	Indicates that the buffer is empty and a new
+	**				line of text must be read from the standard
+	**				input device before further input processing
+	**				occurs.
+	*/ 
+
+	HasStdInHandle :	boolean;	@global:_hla._ext( "STDIN_HASSTDINHANDLE" );
+	StdInHandle :		dword;		@global:_hla._ext( "STDIN_STDINHANDLE" );
+
+	InputIndex :		dword;		@global:_hla._ext( "STDIN_INPUTINDEX" );
+	CharsInBuf:			dword;		@global:_hla._ext( "STDIN_CHARSINBUF" );
+	NeedsInput :		boolean;	@global:_hla._ext( "STDIN_NEEDSINPUT" );
+	
+	InputBuffer :		byte[ 1024 ]; @global:_hla._ext( "STDIN_INPUTBUFFER" );
+
+
+	#macro ChkStdIn;
+		
+		#if( os.win32 )
+		
+			if( HasStdInHandle = false ) then
+			
+				pushad;
+				pushfd;
+				cld;
+				GetStdHandle( -10 );
+				mov( eax, StdInHandle );
+				popfd;
+				popad;
+				
+			endif;
+			
+		#endif
+		
+	#endmacro;
+
+
+
+
+static
+
+	#if( os.win32 )
+		
+		ReadFile:procedure
+		(
+				overlapped:	dword;
+			var	bytesRead:	dword;
+				len:		dword;
+			var buffer:		byte;
+				Handle:		dword
+		); 
+			external( "__imp__ReadFile@20" );
+
+
+
+
+
+		GetStdHandle:procedure
+		( 
+			WhichHandle:int32 
+		); 
+			external( "__imp__GetStdHandle@4" );
+			
+	#endif
+
+
+
+
+procedure GetStdInHandle; @returns( "eax" ); 
+		@global:_hla._ext( "STDIN_GETSTDINHANDLE" );
+
+
+procedure eoln; @returns( "al" ); 
+		@global:_hla._ext( "STDIN_EOLN" );
+
+procedure eoln2; @returns( "al" ); 
+		@global:_hla._ext( "STDIN_EOLN2" );
+
+procedure ReadLn; 
+		@global:_hla._ext( "STDIN_READLN" );
+
+procedure FlushInput; 
+		@global:_hla._ext( "STDIN_FLUSHINPUT" );
+
+procedure peekc; @returns( "al" ); 
+		@global:_hla._ext( "STDIN_PEEKC" );
+
+procedure getc; @returns( "al" ); 
+		@global:_hla._ext( "STDIN_GETC" );
+
+procedure gets( s:string ); @returns( "eax" ); 
+		@global:_hla._ext( "STDIN_GETS" );
+
+procedure a_gets; @returns( "eax" ); 
+		@global:_hla._ext( "STDIN_A_GETS" );
+
+
+
+procedure _getx_; @global:_hla._ext( "STDIN_GETX_" );
+
+procedure geth8; @returns( "al" ); @global:_hla._ext( "STDIN_GETH8" );
+procedure geth16; @returns( "ax" ); @global:_hla._ext( "STDIN_GETH16" );
+procedure geth32; @returns( "eax" ); @global:_hla._ext( "STDIN_GETH32" );
+procedure geth64; @returns( "edx:eax" ); @global:_hla._ext( "STDIN_GETH64" );
+procedure geth128( var dest:lword ); @global:_hla._ext( "STDIN_GETH128" );
+
+
+
+
+procedure _geti_; @global:_hla._ext( "STDIN_GETI_" );
+
+procedure geti8; @returns( "al" ); 
+		@global:_hla._ext( "STDIN_GETI8" );
+
+procedure geti16; @returns( "ax" ); 
+		@global:_hla._ext( "STDIN_GETI16" );
+
+procedure geti32; @returns( "eax" ); 
+		@global:_hla._ext( "STDIN_GETI32" );
+
+procedure geti64; @returns( "edx:eax" ); 
+		@global:_hla._ext( "STDIN_GETI64" );
+
+procedure geti128( var dest:lword ); 
+		@global:_hla._ext( "STDIN_GETI128" );
+
+
+
+
+
+procedure _getu_; @global:_hla._ext( "STDIN_GETU_" );
+
+procedure getu8; @returns( "al" ); 
+		@global:_hla._ext( "STDIN_GETU8" );
+
+procedure getu16; @returns( "ax" ); 
+		@global:_hla._ext( "STDIN_GETU16" );
+
+procedure getu32; @returns( "eax" ); 
+		@global:_hla._ext( "STDIN_GETU32" );
+
+procedure getu64; @returns( "edx:eax" ); 
+		@global:_hla._ext( "STDIN_GETU64" );
+
+procedure getu128( var dest:lword ); 
+		@global:_hla._ext( "STDIN_GETU128" );
+
+
+
+procedure getf; @returns( "st0" ); 
+		@global:_hla._ext( "STDIN_GETF" );
+
+
+
+
+
+
+#endif

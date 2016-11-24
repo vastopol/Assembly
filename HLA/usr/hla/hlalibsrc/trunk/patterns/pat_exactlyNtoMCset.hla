@@ -1,0 +1,222 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit patterns;
+#includeOnce( "../include/pat.hhf" )
+#includeOnce( "patterns.hhf" )
+#includeOnce( "misctypes.hhf" )
+
+	
+	
+/*****************************************************************/
+/*                                                               */
+/* ExactlyNtoMCset-                                              */
+/*                                                               */
+/* Matches between "n" and "m" characters from a character set.  */
+/* Does not process more than "m" characters. Fails if           */
+/* additional chars (beyond position "m") are in the set.        */
+/*                                                               */
+/*                                                               */
+/* Disposition:		Eager                                        */
+/* BackTrackable:	Yes                                          */
+/*                                                               */
+/* Entry Parameters:                                             */
+/*                                                               */
+/* 	ESI:	Pointer to sequence of characters to match.          */
+/* 	EDI:	Pointer to byte beyond last char to match.           */
+/* 	cst:	Character set to match with.                         */
+/*                                                               */
+/* Exit Parameters (if success):                                 */
+/*                                                               */
+/*  EBX:	Points at the start of matched sequence.			 */
+/* 	ESI:	Points at first character not in cst.                */
+/* 	EDI:	Unchanged from entry value.                          */
+/*                                                               */
+/* Exit Parameters (if failure):                                 */
+/* 														         */
+/* EDI:	Unchanged from original entry value.			         */
+/* ESI:	Unchanged from original entry value.			         */
+/*                                                               */
+/* Unless noted, assume all other registers can be modified      */
+/* by this code.                                                 */
+/*                                                               */
+/*****************************************************************/
+
+		
+procedure pat.exactlyNtoMCset( cst:cset; n:uns32; m:uns32 ); 
+	@nodisplay;
+	@noframe;
+var
+	cursor: 	misc.pChar;		// Save last matched posn here.
+	startPosn:	misc.pChar; 	// Save start of str here.
+	startMatch:	misc.pChar;		// Start of matched chars.
+	endPosn:	misc.pChar;		// Save last possible posn to match here.
+	endStr:		misc.pChar;		// End of string goes here.
+	espSave:	dword;			// To clean stk after back trk.
+	FailToSave:	pat.FailRec;	// Save global FailTo value here.
+	
+begin exactlyNtoMCset;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	// If n > m, then fail.
+
+	mov( n, eax );
+	cmp( eax, m );
+	ja pat_fail_;
+	
+
+	// If some routine after this one fails and transfers
+	// control via backtracking to this code, the stack
+	// will be a mess.  So save esp so we can clean up
+	// the stack if backtracking is necessary.
+	
+	mov( esp, espSave );
+
+	// Save pointer to end of string to match.
+	// This is needed to restore this value when
+	// backtracking occurs.
+
+	mov( edi, endStr );
+
+	// Save pointer to start of string.
+
+	mov( esi, startPosn );
+	mov( esi, ebx );
+	
+	// Compute the address of the character position
+	// we must match to in order to succeed.
+	
+	mov( esi, eax );
+	add( n, eax );
+	
+	// If we must match to a position beyond the
+	// end of the current string, then fail immediately.
+	
+	cmp( eax, edi );
+	jae pat_fail_;
+	mov( eax, startMatch );
+
+	// Compute that last address we can match.
+
+	mov( esi, eax );
+	add( m, eax );
+	cmp( eax, edi );
+	jnae eaxIsOk;
+
+		mov( edi, eax );
+
+	eaxIsOk:
+	mov( eax, endPosn );
+
+
+	// Okay, eagerly match as many characters in
+	// the character set as possible (up to the
+	// address in edi).
+	
+	xor( eax, eax );
+	dec( esi );
+	whileInCset:
+	
+		inc( esi );					// Move to next char in string.
+		cmp( esi, endPosn );		// Stop at m chars.
+		jae endwhile2;
+		mov( [esi], al );			// Get the char to test.
+		bt( eax, (type dword cst));	// See if in cst.
+		jc whileInCset;				// Carry is set if al in cst.
+		
+	endwhile2:
+	
+	// So we can easily back track, save a pointer
+	// to the first non-matching character.
+	
+	mov( esi, cursor );
+
+	// If we haven't matched at least "n" characters,
+	// then fail;  otherwise return success.
+
+	cmp( esi, startMatch );
+	jb pat_fail_2;
+
+	// If we've matched "m" characters, make sure the (m+1)th
+	// character is not in the set:
+
+	cmp( esi, endPosn );
+	jnae success;
+
+		mov( [esi], al );
+		bt( eax, (type dword cst) );
+		jc pat_fail_2;
+
+	success:
+	pat._success_( FailToSave, FailToHere );
+
+
+
+
+	// If someone after us fails and invokes
+	// backtracking, control is transfered to
+	// this point.  First, we need to restore
+	// ESP to clean up the junk on the stack.
+	// Then we back up one character, failing
+	// if we move beyond the beginning of the
+	// string.  If we don't fail, we jump to
+	// the code following the call to this
+	// routine (having backtracked one character).
+	
+	FailToHere:
+
+		mov( espSave, esp );	// Clean up stack.
+		
+		mov( cursor, esi );		// Get last posn we matched.
+		dec( esi );				// Back up to prev matched char.
+		mov( endStr, edi );
+			
+		// We've backed up before the nth char of
+	    // the string.  So we won't be able to
+		// match at least n characters.		
+		
+		cmp( esi, startMatch );
+		jb fail3;
+	
+		// If we drop down here, there is at least n
+		// characters left in the string that we've
+		// matched, so call the next matching routine
+		// (by jumping to the return address) to continue
+		// the pattern match.
+		
+		mov( startPosn, ebx );
+		mov( esi, cursor );
+		mov( [ebp+4], eax );
+		mov( [ebp], ebp );
+		jmp( eax );
+	
+	
+pat_fail_2:
+		mov( ebx, esi );
+pat_fail_:
+	pat._fail_( pat.FailTo );
+
+fail3:
+	mov( startPosn, esi );
+	mov( FailToSave.ebpSave, pat.FailTo.ebpSave );
+	mov( FailToSave.jmpAdrs, pat.FailTo.jmpAdrs );
+	pat._fail_( pat.FailTo );
+
+end exactlyNtoMCset;
+
+
+end patterns;

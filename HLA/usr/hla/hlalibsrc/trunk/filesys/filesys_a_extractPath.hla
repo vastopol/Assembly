@@ -1,0 +1,69 @@
+unit filePath_unit;
+
+// filesys.a_extractPath
+//
+//	Extracts the path component of a full pathname.
+//	If a path component is present, then this function
+//	returns a pointer in EAX to the path string allocated
+//	on the heap and the carry flag will be set.
+//
+//	If no path component is present, this function returns carry clear
+//	and EAX will point at an empty string allocated on the heap.
+	
+	#includeOnce( "filesys.hhf" )
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "excepts.hhf" )
+	#includeOnce( "memory.hhf" )
+	
+
+
+	procedure filesys.a_extractPath( pathname:string );
+		@nodisplay; @noframe; @noalignstack;
+	
+		// allocates a string on HEAP and returns the
+		// file path sans base name.
+		//	Returns:
+		//		carry set = true, EAX = string
+		//		carry clear = false, EAX undefined
+	
+		var
+			saveEBX	:dword;
+			saveESI	:dword;
+			
+	begin a_extractPath;
+		
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		mov( ebx, saveEBX );
+		mov( esi, saveESI );
+
+		filesys.hasPath( pathname );
+		jnc returnFalse;
+
+		mov( pathname, esi );
+		mov( eax, ebx );
+		str.alloc( eax );
+		mov( ebx, (type str.strRec[eax]).length );
+		push( eax );
+		
+		zstr.cpyn( esi, ebx, eax );
+		
+		pop( eax );
+		stc();
+		jmp returnTrue;
+		
+		returnFalse:
+			str.alloc(1);	// Create an empty string on the heap.
+			clc();
+		
+		returnTrue:
+			mov( saveESI, esi );
+			mov( saveEBX, ebx );
+			leave();
+			ret( _parms_ );
+		
+	end a_extractPath;
+
+
+end filePath_unit;

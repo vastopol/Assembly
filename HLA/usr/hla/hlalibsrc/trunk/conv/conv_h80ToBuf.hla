@@ -1,0 +1,92 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "stdlibdata.hhf" )
+#includeOnce( "conv.hhf" )
+
+
+/************************************************************************/
+/*                                                                      */
+/* h128ToBuf,                                                            */
+/*                                                                      */
+/* This routine converts the value passed in l to a sequence of         */
+/* characters that form the hexadecimal representation of the value.    */
+/* It stores the  character output starting at the location specified   */
+/* by the EDI register.  Note that the buffer pointed at by EDI must be */
+/* large enough to hold the result (up to two bytes), no checking is    */
+/* done.                                                                */
+/*                                                                      */
+/* Unlike lToBuf, this routine will produce only the minimum number of  */
+/* characters needed for the hexadecimal representation of l.           */
+/*                                                                      */
+/************************************************************************/
+
+
+procedure conv.h80ToBuf( tb:tbyte; var buffer:var in edi );  
+	@nodisplay; 
+	@noalignstack; 
+	@noframe;
+	
+begin h80ToBuf;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	
+	cmp( (type dword tb[8]), 0 );
+	jnz do80Bits;
+
+		// The value is 64 bits or less, so just call h64ToBuf to
+		// do the actual work:
+
+		conv.h64ToBuf( (type qword tb), [edi] );
+		pop( ebx );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ );
+
+
+	// The value is greater than 64 bits, so call h64ToBuf to handle
+	// the upper 64 bits and then just convert the remaining 16 bits
+	// directly.
+
+	do80Bits:
+
+		conv.h64ToBuf( (type qword tb[2]), [edi] );
+
+		Output_();
+
+		// Convert the remaining 16 bits:
+
+		movzx( (type byte tb[1]), ebx );
+		mov( (type word stdlib.hexTbl[ebx*2]), ax );
+		mov( ax, [edi] );
+		movzx( (type byte tb[0]), ebx );
+		mov( (type word stdlib.hexTbl[ebx*2]), ax );
+		mov( ax, [edi+2] );
+		add( 4, edi );
+
+		pop( ebx );
+		pop( eax );
+		pop( ebp );
+		ret( _parms_ );
+
+						
+end h80ToBuf;
+
+end ConvUnit;

@@ -1,0 +1,45 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit linuxUnit;
+#include( "linux.hhf" )
+
+procedure _pthread_exit( exitCode:dword );
+	@cdecl;
+	@external( "pthread_exit" );
+	
+
+// linux.pthread_exit- Terminates a pthread.
+
+procedure linux.pthread_exit( value_ptr:dword );	
+	@nodisplay;
+	@noframe;
+	
+begin pthread_exit;
+
+	push( ebp );
+	mov( esp, ebp );
+	linux.pushregs;
+
+	_pthread_exit( value_ptr );
+	add( 4, esp );
+
+	linux.popregs;
+	leave();
+	ret( _parms_ );
+	
+end pthread_exit;
+
+
+end linuxUnit;

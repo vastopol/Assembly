@@ -1,0 +1,56 @@
+#if( !@defined( ptrace_hhf ))
+?ptrace_hhf := true;
+
+namespace linux; @fast;
+
+const
+	
+	// ptrace constants
+	
+	ptrace_traceme		:= 0;
+	ptrace_peektext		:= 1;
+	ptrace_peekdata		:= 2;
+	ptrace_peekusr		:= 3;
+	ptrace_poketext		:= 4;
+	ptrace_pokedata		:= 5;
+	ptrace_pokeusr		:= 6;
+	ptrace_cont			:= 7;
+	ptrace_kill			:= 8;
+	ptrace_singlestep	:= 9;
+	ptrace_getregs		:= 12;
+	ptrace_setregs		:= 13;
+	ptrace_getfpregs	:= 14;
+	ptrace_setfpregs	:= 15;
+	ptrace_attach		:= 16;
+	ptrace_detach		:= 17;
+	ptrace_getfpxregs	:= 18;
+	ptrace_setfpxregs	:= 19;
+	ptrace_setoptions	:= 20;
+	ptrace_syscall		:= 24;
+	
+	ptrace_o_tracesysgood	:= 1;
+	
+	_ebx		:= 0;
+	_ecx		:= 1;
+	_edx		:= 2;
+	_esi		:= 3;
+	_edi		:= 4;
+	_ebp		:= 5;
+	_eax		:= 6;
+	_ds			:= 7;
+	_es			:= 8;
+	_fs			:= 9;
+	_gs			:= 10;
+	orig_eax	:= 11;
+	_eip		:= 12;
+	_cs			:= 13;
+	efl			:= 14;
+	uesp		:= 15;
+	_ss			:= 16;
+	frame_size	:= 17;
+	
+	
+	
+
+end linux;
+#endif //ptrace_hhf

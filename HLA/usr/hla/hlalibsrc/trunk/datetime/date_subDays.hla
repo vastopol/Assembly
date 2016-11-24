@@ -1,0 +1,103 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" );
+
+	
+	// date.subDays-
+	//
+	//	This function subtracts the specified number of days from
+	//	the date passed by reference.
+	
+	procedure date.subDays
+	( 
+			days: uns32;
+		var	theDate:date.daterec
+		
+	); 	
+		@nodisplay; 
+		@noframe;
+	
+	var
+		dt	:date.daterec;
+	
+	begin subDays;
+	
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		push( eax );
+		push( ebx );
+
+		mov( theDate, ebx );
+		mov( [ebx], eax );
+		mov( eax, dt );
+		
+		// Optimization: most of the time, the difference of the days minus
+		// the specified date falls within the current month. A quick
+		// check for this allows for a *very* fast date computation,
+		// so it's worth making this check because the situation is
+		// so common.
+		//
+		// Note: the following assumes that the dt.day value is in
+		// the L.O. byte of the daterec structure.
+		
+		movzx( al, eax );
+		sub( days, eax );
+		cmp( eax, 28 );
+		jg fullDateArith;
+		cmp( eax, 0 );
+		jle fullDateArith;
+		
+			// Okay, we've got the special case here.
+			// First, verify that the original date
+			// was valid.
+			
+			pushd( [ebx] );
+			call date._validate;
+			
+			// Now store away the new day value:
+			
+			mov( al, (type date.daterec [ebx]).day );
+			
+			pop( ebx );
+			pop( eax );
+			leave();
+			ret( _parms_ );
+			
+		
+		fullDateArith:
+		
+		// Okay, if the difference of the days parameter and theDate might not
+		// leave us in the same month, then we're going to do this the
+		// slow way -- we'll convert the date to a Julian day number,
+		// add in the days value, then convert the result back to a
+		// Gregorian date:
+		
+		pushd( [ebx] );
+		call date._toJulian;	// Also checks validity of date.
+		sub( days, eax );
+		
+		date.fromJulian( eax, theDate );
+		
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+				
+	end subDays;
+	
+end DateTime;			

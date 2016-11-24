@@ -1,0 +1,23 @@
+program fputbool_test;
+#include( "stdlib.hhf" )
+
+static
+	f	:pointer to virtualFile;
+	
+begin fputbool_test;
+
+	virtualFile.create();
+	mov( esi, f );
+	
+	f.openNew( "vfc_putbool.txt" );
+
+	f.putbool( true );
+	f.newln( );
+	f.putbool( false );
+	f.newln( );
+
+	f.close( );
+
+end fputbool_test;
+
+													

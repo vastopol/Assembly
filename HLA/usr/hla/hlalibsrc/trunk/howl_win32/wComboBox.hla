@@ -1,0 +1,667 @@
+unit wComboBox_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+
+readonly
+	align( 4 );		
+	vmt( wComboBox_t );
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//
+// Combo Box objects.
+//
+
+
+// Constructor for the wComboBox_t class:
+
+procedure wComboBox_t.create_wComboBox
+(
+	wcbName		:string;
+	caption		:string;
+	parent		:dword; 									
+	x			:dword; 
+	y			:dword;
+	width		:dword;
+	height		:dword;
+	sort		:boolean;
+	onSelChange	:widgetProc 
+);;
+	
+_begin( wComboBox_t, create_wComboBox );
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wComboBox_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+
+	// We need to create a window that will hold this object.
+
+	(type wClickable_t [esi]).create_wClickable
+	(
+		wcbName,
+		parent,									
+		x,		
+		y,		
+		width,	
+		height,	
+		onSelChange 
+	);	
+	mov( cl, this.wBase_private.onHeap );
+	mov
+	(
+		w.WS_CHILD | w.WS_VISIBLE | w.WS_TABSTOP | w.WS_GROUP |
+			w.CBS_DROPDOWN,
+		eax
+	);
+	if( sort ) then
+	
+		or( w.CBS_SORT, eax );
+		
+	endif;
+	w.CreateWindowEx
+	(
+		0,
+		"COMBOBOX",							// Button class name
+		"",									// ComboBox caption
+		eax,								// ComboBox style
+		x,
+		y,
+		width,
+		height,
+		parent,
+		this.wBase_private.objectID,
+		howl.howlInstance,
+		NULL
+	);
+	mov( eax, this.handle );
+	w.SetWindowLong( eax, w.GWL_USERDATA, esi );
+	
+	w.SendMessage( this.handle, w.WM_SETTEXT, 0, caption ); 
+	
+	// Initialize the type string field:
+		
+	howl.setType( wComboBox_c );
+	
+	// Initialize the VMT pointer:
+	
+	mov( &wComboBox_t._VMT_, this._pVMT_ );
+			   
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wComboBox_t, create_wComboBox );
+
+
+
+method wComboBox_t.get_onEditChange;;
+_begin( wComboBox_t, get_onEditChange );
+
+	mov( this.wComboBox_private.onEditChange, eax );
+	
+_end( wComboBox_t, get_onEditChange );
+
+
+
+method wComboBox_t.get_onCancel;;
+_begin( wComboBox_t, get_onCancel );
+
+	mov( this.wComboBox_private.onCancel, eax );
+	
+_end( wComboBox_t, get_onCancel );
+
+
+
+
+method wComboBox_t.get_SelEndOk;;
+_begin( wComboBox_t, get_SelEndOk );
+
+	mov( this.wComboBox_private.onSelEndOk, eax );
+	
+_end( wComboBox_t, get_SelEndOk );
+
+
+
+
+method wComboBox_t.set_onEditChange( onEditChange:widgetProc );;
+_begin( wComboBox_t, set_onEditChange );
+
+	push( eax );
+	mov( onEditChange, eax );
+	mov( eax, this.wComboBox_private.onEditChange );
+	pop( eax );
+	
+_end( wComboBox_t, set_onEditChange );
+
+
+
+
+method wComboBox_t.set_onCancel( onCancel:widgetProc );;
+_begin( wComboBox_t, set_onCancel );
+
+	push( eax );
+	mov( onCancel, eax );
+	mov( eax, this.wComboBox_private.onCancel );
+	pop( eax );
+	
+_end( wComboBox_t, set_onCancel );
+
+
+
+
+method wComboBox_t.set_SelEndOk( onSelEndOk:widgetProc );;
+_begin( wComboBox_t, set_SelEndOk );
+
+	push( eax );
+	mov( onSelEndOk, eax );
+	mov( eax, this.wComboBox_private.onSelEndOk );
+	pop( eax );
+	
+_end( wComboBox_t, set_SelEndOk );
+
+
+
+
+// add_string-
+//
+//	If "sort" was false, appends a string to the end of a list box;
+// if "sort" was true, inserts the string at the appropriate point
+// in the list box.
+ 
+method wComboBox_t.add_string( s:string );;						
+_begin( wComboBox_t, add_string );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.CB_ADDSTRING, 0, s );
+	if( eax = w.LB_ERRSPACE ) then
+	
+		raise( ex.MemoryAllocationFailure );
+		
+	endif;
+	
+	pop( edx );
+	pop( ecx );
+	pop( edx );
+
+_end( wComboBox_t, add_string );
+
+
+
+
+// Insert a string into a list box at the specified index.
+
+method wComboBox_t.insert_string( index:dword; s:string );;						
+_begin( wComboBox_t, insert_string );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.CB_INSERTSTRING, index, s );
+	if( eax = w.LB_ERRSPACE ) then
+	
+		raise( ex.MemoryAllocationFailure );
+		
+	elseif( eax = w.LB_ERR ) then
+	
+		raise (ex.ValueOutOfRange );
+		
+	endif;
+	
+	pop( edx );
+	pop( ecx );
+	pop( edx );
+
+_end( wComboBox_t, insert_string );
+
+
+
+// delete_string-
+//	Deletes the string at index "index" from the list box:
+
+method wComboBox_t.delete_string( index:dword );;				
+_begin( wComboBox_t, delete_string );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.CB_DELETESTRING, index, 0 );
+	if( eax = w.LB_ERRSPACE ) then
+	
+		raise( ex.ValueOutOfRange );
+		
+	endif;
+	
+	pop( edx );
+	pop( ecx );
+	pop( edx );
+
+_end( wComboBox_t, delete_string );
+
+
+// reset-
+//	Clears all the text from the list box
+
+method wComboBox_t.reset;;										
+_begin( wComboBox_t, reset );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.CB_RESETCONTENT, 0, 0 );
+	
+	pop( edx );
+	pop( ecx );
+	pop( edx );
+
+_end( wComboBox_t, reset );
+
+
+// find_prefix-
+//
+//	Finds the first entry in the list box that begins with the specified
+// prefix string. Returns the index into the list box where the entry was
+// found or w.LB_ERR if no such string exists.
+
+method wComboBox_t.find_prefix( s:string; startIndex:dword );;		
+_begin( wComboBox_t, find_prefix );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.CB_FINDSTRING, startIndex, s );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wComboBox_t, find_prefix );
+
+
+// find_strings-
+//
+//	Finds the first entry in the list box that matches the specified
+// string. Returns the index into the list box where the entry was
+// found or w.LB_ERR if no such string exists.
+
+method wComboBox_t.find_string( s:string; startIndex:dword );;		
+_begin( wComboBox_t, find_string );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.CB_FINDSTRINGEXACT, startIndex, s );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wComboBox_t, find_string );
+
+
+
+// get_count-
+//
+//	Returns the number of items in the list box.
+
+method wComboBox_t.get_count;;					
+_begin( wComboBox_t, get_count );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.CB_GETCOUNT, 0, 0 );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wComboBox_t, get_count );
+
+
+// get_curSel
+//
+//	Returns the index of the currently selected item in the list box.
+// Will return w.LB_ERR if no item is selected.
+
+method wComboBox_t.get_curSel;;					
+_begin( wComboBox_t, get_curSel );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.CB_GETCURSEL, 0, 0 );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wComboBox_t, get_curSel );
+
+
+// get_itemData-
+//	Returns the 32-bit data value associated with the 
+// object specified by the index (set by set_itemData)
+
+method wComboBox_t.get_itemData( i:dword );;		
+_begin( wComboBox_t, get_itemData );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.CB_GETCURSEL, i, 0 );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wComboBox_t, get_itemData );
+
+
+// a_get_editBoxText-
+//	Retrieves the string found in the edit box of the combo box.  
+//  Storage for the string is allocated on the heap.
+
+method wComboBox_t.a_get_editBoxText;
+var
+	len		:dword;
+	theText	:string;
+			
+_begin( wComboBox_t, a_get_editBoxText );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.WM_GETTEXTLENGTH, 0, 0 );
+	mov( eax, len );
+	str.alloc( eax );
+	mov( eax, theText );
+	mov( len, ecx );
+	mov( ecx, (type str.strRec [eax]).length );
+	add( 1, ecx ); 	// Must include NUL character.
+	w.SendMessage( this.handle, w.WM_GETTEXT, ecx, eax );
+	mov( theText, eax );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wComboBox_t, a_get_editBoxText );
+
+
+// get_editBoxText-
+//	Retrieves the string found in the edit box of the combo box.  
+
+method wComboBox_t.get_editBoxText( theText:string );
+var
+	len		:dword;
+			
+_begin( wComboBox_t, get_editBoxText );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.WM_GETTEXTLENGTH, 0, 0 );
+	mov( eax, ecx );
+	mov( theText, eax );
+	if( ecx > (type str.strRec [eax]).maxlen ) then
+	
+		raise( ex.StringOverflow );
+		
+	endif;
+	mov( ecx, (type str.strRec [eax]).length );
+	add( 1, ecx ); 	// Must include NUL character.
+	w.SendMessage( this.handle, w.WM_GETTEXT, ecx, eax );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wComboBox_t, get_editBoxText );
+
+
+// set_editBoxText-
+//	Stores a string into the edit box of the combo box.  
+
+method wComboBox_t.set_editBoxText( theText:string );;
+_begin( wComboBox_t, set_editBoxText );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.WM_SETTEXT, 0, theText );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wComboBox_t, set_editBoxText );
+
+
+// get_text-
+//
+//	Retrieves a string from the list box at the specified
+// index and stores the character data into the 's' parameter.
+
+method wComboBox_t.get_text( i:dword; s:string );;				
+_begin( wComboBox_t, get_text );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.WM_GETTEXTLENGTH, 0, 0 );
+	if( eax = w.LB_ERR ) then
+	
+		raise( ex.ValueOutOfRange );
+		
+	endif;
+	mov( s, ecx );
+	if( eax > (type str.strRec [ecx]).length ) then
+	
+		raise( ex.StringOverflow );
+		
+	endif;
+	mov( eax, (type str.strRec [ecx]).length );
+	w.SendMessage( this.handle, w.CB_GETLBTEXT, i, ecx );
+	mov( s, ecx );
+	mov( 0, (type byte [ecx+eax]));
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wComboBox_t, get_text );
+
+
+// a_get_text-
+//
+//	Retrieves a string from the list box at the specified
+// index and stores the character data into a string
+// allocated on the heap.
+
+method wComboBox_t.a_get_text( i:dword );
+var
+	theText	:string;
+					
+_begin( wComboBox_t, a_get_text );
+
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.CB_GETLBTEXTLEN, i, 0 );
+	if( eax = w.LB_ERR ) then
+	
+		raise( ex.ValueOutOfRange );
+		
+	endif;
+	mov( eax, ecx );
+	str.alloc( eax );
+	mov( eax, theText );
+	mov( ecx, (type str.strRec [eax]).length );
+	w.SendMessage( this.handle, w.CB_GETLBTEXT, i, theText );
+	mov( eax, ecx );
+	mov( theText, eax );
+	mov( 0, (type byte [ecx+eax]) );
+	
+	pop( edx );
+	pop( ecx );
+
+_end( wComboBox_t, a_get_text );
+
+
+
+method wComboBox_t.set_curSel(index:dword);;	
+_begin( wComboBox_t, set_curSel );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.CB_SETCURSEL, index, 0 );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wComboBox_t, set_curSel );
+
+
+method wComboBox_t.set_itemData
+(
+	index	:dword;
+	data	:dword
+);;
+_begin( wComboBox_t, set_itemData );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.CB_SETITEMDATA, index, data );
+	
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wComboBox_t, set_itemData );
+
+
+
+
+
+// load_dir-
+//
+//	Populates a list box with a directory listing.
+
+method wComboBox_t.load_dir
+( 
+	pathname	:string; 
+	attributes	:dword 
+);;
+_begin( wComboBox_t, load_dir );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	w.SendMessage( this.handle, w.CB_DIR, attributes, pathname );
+		
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wComboBox_t, load_dir );
+
+
+method wComboBox_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);;
+_begin( wComboBox_t, processMessage );
+
+
+	// Handle list box notifications here:
+				
+	movzx( (type word wParam[2]), eax );
+	switch( eax )
+	
+		case( w.CBN_SELCHANGE )
+		
+			if( this.wClickable_private.onClick <> NULL ) then
+			
+				this.wClickable_private.onClick( esi, wParam, lParam );
+				
+			endif;
+			
+		case( w.CBN_EDITCHANGE )
+		
+			if( this.wComboBox_private.onEditChange <> NULL ) then
+			
+				this.wComboBox_private.onEditChange( esi, wParam, lParam );
+				
+			endif;
+			
+		
+		case( w.CBN_SELENDCANCEL )
+		
+			if( this.wComboBox_private.onCancel <> NULL ) then
+			
+				this.wComboBox_private.onCancel( esi, wParam, lParam );
+				
+			endif;
+			
+			
+		case( w.CBN_SELENDOK )
+		
+			if( this.wComboBox_private.onSelEndOk <> NULL ) then
+			
+				this.wComboBox_private.onSelEndOk( esi, wParam, lParam );
+				
+			endif;
+			
+			
+		case( w.CBN_DBLCLK )
+		
+			if( this.wClickable_private.onDblClick <> NULL ) then
+			
+				this.wClickable_private.onDblClick( esi, wParam, lParam );
+				
+			endif;
+			
+		default
+			
+			w.DefWindowProc( hwnd, uMsg, wParam, lParam );
+			
+	endswitch;
+
+_end( wComboBox_t, processMessage );
+
+
+end	wComboBox_u;

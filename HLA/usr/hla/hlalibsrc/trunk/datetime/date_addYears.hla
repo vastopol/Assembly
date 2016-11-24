@@ -1,0 +1,94 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "excepts.hhf" )
+
+	
+	// addYears-
+	//
+	//	This function adds the specified number of Years to
+	//	the date passed by reference.
+	//
+	// There is one special case we have to worry about.
+	// if the original year is a leap year and the date
+	// is Feb 29, if the sum of years plus the original
+	// year is not a leap year, then the resultant date
+	// must be truncated to Feb 28. This function returns
+	// the truncation result in EAX. That is, if we go
+	// from Feb 28 to Feb 29, then EAX is returned with
+	// the value 1, in all other cases, EAX will contain
+	// zero.
+	
+	procedure date.addYears
+	( 
+			years: uns32;
+		var	theDate:date.daterec
+		
+	); 	
+		@nodisplay; 
+		@noframe;
+	
+	begin addYears;
+	
+		push( ebp);
+		mov( esp, ebp );
+		push( ebx );
+
+		mov( theDate, ebx );
+		movzx( (type date.daterec [ebx]).year, eax );
+		add( years, eax );
+		cmp( eax, $FFFF );
+		ja invalidDate;
+		mov( ax, (type date.daterec [ebx]).year );
+		
+		// Handle Feb 29 truncation here.
+		
+		pushd( 0 );			// Assume no Feb 29 truncation.
+		cmp( (type date.daterec [ebx]).day, 29 );
+		jne dontTruncateDate;
+		cmp( (type date.daterec [ebx]).month, 2 );
+		jne dontTruncateDate;
+		
+		// If it's Feb 29, it better be a leap year
+		// or this is an invalid date.  Now check to
+		// see if the new year we've just calculated
+		// is also a leap year.
+		
+		test( %11, ax );	// If not divisible by 4, not a leap year.
+		jnz dontTruncateDate;
+		
+			date.isLeapYear( ax );		// Returns 1/0 = is/is not a leap year
+			xor( 1, al );
+		 	mov( al, [esp] );			// Return 1 for date truncation
+			add( 28, al );				// Set to Feb 28/29 (29 if leap year)
+			mov( al, (type date.daterec [ebx]).day );	//Truncate date
+		
+		dontTruncateDate:
+
+		// Ensure that the date is valid.
+		
+		pushd( [ebx] );
+		call date._validate;
+		pop( eax );	// Retrieve date truncation value.
+		pop( ebx );
+		pop( ebp );
+		ret( _parms_ );
+		
+	invalidDate:
+		raise( ex.InvalidDate );
+				
+	end addYears;
+	
+end DateTime;			

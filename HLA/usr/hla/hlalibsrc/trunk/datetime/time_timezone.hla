@@ -1,0 +1,70 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#includeOnce( "datetime.hhf" )
+#includeOnce( "excepts.hhf" )
+
+// Yes, this is static. Even for the thread-safe variant.
+// All threads share the same value for timeZone.
+//
+// The accessor functions atomically access this variable, so it is
+// intrinsically thread-safe. However, if some thread does a r-m-w
+// operation on timeZone (via calls to setTimeZone and getTimeZone)
+// then it has to protect those calls.
+
+static
+	timeZone	:dword := 0;	// Time zone value (offset from UTC, in hours).
+
+
+
+// Function to set the internal timeZone value:
+
+procedure time.setTimeZone( tz:int32 );
+	@nodisplay;
+	@noframe;
+begin setTimeZone;
+
+	push( eax );
+	mov( [esp+8], eax );
+	cmp( eax, -24 );
+	jl RangeError;
+	cmp( eax, 24 );
+	jg RangeError;
+	mov( eax, timeZone );
+	pop( eax );
+	ret( _parms_ );
+	
+RangeError:
+	raise( ex.ValueOutOfRange );
+	
+end setTimeZone;
+
+
+
+// Accessor function to retrieve the time zone value:
+
+procedure time.getTimeZone;
+	@nodisplay;
+	@noframe;
+begin getTimeZone;
+
+	mov( timeZone, eax );
+	ret();
+	
+end getTimeZone;
+
+ 
+
+end DateTime;			

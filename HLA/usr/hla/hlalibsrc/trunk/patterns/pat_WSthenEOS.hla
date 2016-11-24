@@ -1,0 +1,88 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit patterns;
+#includeOnce( "../include/pat.hhf" )
+#includeOnce( "patterns.hhf" )
+#include( "chars.hhf" )
+
+	
+	
+
+/************************************************************/
+/*                                                          */
+/* WSthenEOS-                                               */
+/*                                                          */
+/* Matches zero or more whitespace chars that must be		*/
+/* followed by EOS.									        */
+/*                                                          */
+/* Disposition:		Eager                                   */
+/* BackTrackable:	Yes                                     */
+/*                                                          */
+/* Entry Parameters:                                        */
+/*                                                          */
+/* 	ESI:	Pointer to sequence of characters to match.     */
+/* 	EDI:	Pointer to byte beyond last char to match.      */
+/*                                                          */
+/* Exit Parameters (if success):                            */
+/*                                                          */
+/*  EBX:	Points at the start of matched sequence.		*/
+/* 	ESI:	Points at EOS.									*/
+/*															*/
+/* 	EDI:	Unchanged from entry value.                     */
+/*                                                          */
+/* Exit Parameters (if failure):                            */
+/*															*/
+/*	EDI:	Unchanged from original entry value.			*/
+/*	ESI:	Unchanged from original entry value.			*/
+/*                                                          */
+/* Unless noted, assume all other registers can be modified */
+/* by this code.                                            */
+/*                                                          */
+/************************************************************/
+
+		
+procedure pat.WSthenEOS; @nodisplay; @noframe;
+begin WSthenEOS;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( esi );	// Save, in case we fail.
+	
+	// First, skip any white space characters we encounter.
+
+	pat.zeroOrMoreCset( chars.WhiteSpaceCset );
+
+	// Fail if we're not at the end of the string.
+	// Note that this routine does not handle backtracking.
+	// Any pattern matching routine (other than EOS) after
+	// this one will fail.
+
+	cmp( esi, edi );
+	jnae fail;
+
+	add( 4, esp );	// Remove unneeded ESI value from stack.
+	mov( [ebp+4], eax );
+	mov( [ebp], ebp );
+	jmp( eax );
+		
+fail:
+	pop( esi );
+	pat._fail_( pat.FailTo );		
+	
+end WSthenEOS;
+
+
+
+end patterns;

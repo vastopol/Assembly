@@ -1,0 +1,158 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+/*************************************************************/
+/*                                                           */
+/* index3-                                                   */
+/*                                                           */
+/* This functions searches for the first occurrence of       */
+/* str2 within str1 starting at index position "offs" within */
+/* the src1 string.  It returns the numerical index          */
+/* (offs..len(str1)-1) if the string is found.               */
+/* It returns -1 if str2 does not appear within str1.        */
+/*                                                           */
+/* Efficiency note: This brute force way probably isn't      */
+/* the best algorithm.  It works great for short strings     */
+/* (especially if str2 is short), but better algorithms      */
+/* exist for string matching if str1 and str2 are long.      */
+/* Perhaps this should be fixed in a future version.         */
+/*                                                           */
+/*************************************************************/
+
+
+
+
+
+procedure str.index3( src1:string; offs:dword; src2:string ); 
+	@noframe;
+begin index3;
+
+	push( ebp );
+	mov( esp, ebp );
+	pushfd();
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( esi );
+	push( edi );
+	cld();
+	
+	mov( src2, edi );
+	mov( src1, esi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+
+	mov( (type str.strRec [edi]).length, ebx );
+	
+	// "edx" keeps track of how far into src1 we've scanned.
+	// When this value exceeds the length of src1 we cannot possibly
+	// match the string so we can stop.	  Note that the value is
+	// the initial length of the string minus the "offs" into the
+	// string where we start.  If "offs" exceeds the string's length
+	// then we've got to raise a string index exception.
+	
+	mov( (type str.strRec [esi]).length, edx );
+	sub( offs, edx );
+	jc StringIndexError;
+	
+	// Start the string scanning "offs" characters into src1:
+	
+	add( offs, esi );
+	
+	
+	begin FoundMatch;
+	
+		test( ebx, ebx );
+		jne not0;
+		
+			// If the length of src2 is zero, return failure.
+			
+			mov( -1, eax );
+			exit FoundMatch;
+			
+		not0:
+		cmp( edx, ebx );
+		jb notSubstr;
+
+			sub( ebx, edx );
+			mov( edi, eax );	// Save ptr to src2 so we can reset on failure.
+			repeatUntilEDXLT0:
+				
+				mov( ebx, ecx );
+				mov( eax, edi );
+				push( esi );
+				repe.cmpsb();
+				jne NotFound;
+				
+					// We found the string, so compute the
+					// index and exit the loop.
+						
+					pop( eax );			// Retrieve ptr into src1.				
+					sub( src1, eax );	// Compute index.
+					exit FoundMatch;
+					
+				NotFound:
+				
+				// Okay, src2 didn't match at the current position,
+				// try the next character position in src1.
+				
+				pop( esi );			// Retrieve ptr into src1.
+				inc( esi );			// Bump up by one character position.
+				dec( edx );			// Are we done yet?
+				jns repeatUntilEDXLT0;
+							
+		notSubstr:
+		
+		// If we get down here, then src2 is not a substring of src1.
+		
+		mov( -1, eax );		// Deprecated!
+			
+		
+	end FoundMatch;
+	pop( edi );
+	pop( esi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	popfd();
+	cmp( eax, -1 );		// Set carry on success, clear if no match.
+	pop( ebp );
+	ret( _parms_ );
+		
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+StringIndexError:
+	raise( ex.StringIndexError );
+
+end index3;
+
+
+end stringUnit;
+
+
+
+
+	
+

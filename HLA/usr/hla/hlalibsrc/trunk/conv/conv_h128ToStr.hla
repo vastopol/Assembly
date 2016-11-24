@@ -1,0 +1,153 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "strings.hhf" )
+
+
+
+
+/***********************************************************/
+/*                                                         */
+/* h128ToStr-                                              */
+/*                                                         */
+/* This procedure converts an lword	value to a string      */
+/* of hexadecimal digits.							       */
+/*                                                         */
+/* "l" is the value to convert.                            */
+/*                                                         */
+/* "width" is the minimum number of character positions    */
+/* to use during the conversion.  If the number requires   */
+/* more than this number of print positions, width's       */
+/* value is ignored, if the number requires fewer print    */
+/* positions, then the number is padded with the character */
+/* specified by the "fill" parameter.  If width is a       */
+/* positive value, then the number is right justified in   */
+/* the string.  If width is a negative value, then the     */
+/* number is left justified in the string.                 */
+/*                                                         */
+/* "fill" contains the padding character to use if the     */
+/* number requires fewer print positions than specified    */
+/* by the "width" parameter.                               */
+/*                                                         */
+/* "buffer" is a pointer to the string that will hold      */
+/* the converted result.  This buffer must be large        */
+/* enough to hold the converted data including any         */
+/* padding characters.                                     */
+/*                                                         */
+/***********************************************************/
+
+
+procedure conv.h128ToStr( l:lword; width:int32; fill:char; buffer:string );
+	 @nodisplay; 
+	 @noframe;
+	 @noalignstack;
+
+var
+	ediSave	:dword;
+	esiSave	:dword;
+	edxSave	:dword;
+	ecxSave	:dword;
+	eaxSave	:dword;
+
+	dWidth	:dword;
+	bufSize	:dword;
+	sign	:boolean;
+	
+begin h128ToStr;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( eax, eaxSave );
+	mov( ecx, ecxSave );
+	mov( edx, edxSave );
+	mov( esi, esiSave );
+	mov( edi, ediSave );
+
+	mov( width, eax );
+	mov( false, sign );
+	test( eax, eax );
+	jns sizeNotNegative;
+
+		neg( eax );
+		mov( true, sign );
+
+	sizeNotNegative:
+	mov( eax, bufSize );
+
+	mov( buffer, esi );
+	test( esi, esi );
+	jz refNULL;
+	
+	// Compute the size of the resulting string and check to
+	// see if it will exceed the maximum length of the supplied
+	// string variable.
+	//
+	// Compute the number of print positions the number requires.
+	
+	conv.h128Size( l );
+	mov( eax, dWidth );		// Save # of print positions required.
+
+	// Determine the larger of the computed print positions
+	// and the minimum size value.
+
+	cmp( eax, bufSize );
+	cmovb( bufSize, eax );
+	mov( eax, bufSize );
+	
+	// Note that, at this point, EAX contains the number of print
+	// positions we will use (including underscores).  Save this
+	// as the ultimate length of the string.
+	
+	mov( eax, (type str.strRec [esi]).length );
+
+	// If the string won't fit, raise an exception.
+
+	cmp( eax, (type str.strRec [esi]).maxlen );
+	ja strOvfl;
+	
+	movzx( fill, eax );
+	conv._hexToBuf128Size
+	( 
+		l, 
+		width, 
+		dWidth, 
+		al, 
+		[esi], 
+		bufSize
+	);
+	mov( 0, (type byte [edi+ecx]));	
+
+	mov( eaxSave, eax );
+	mov( ecxSave, ecx );
+	mov( edxSave, edx );
+	mov( esiSave, esi );
+	mov( ediSave, edi );
+	leave();
+	ret( _parms_ );
+
+refNULL:
+	raise( ex.AttemptToDerefNULL );
+
+strOvfl:
+	raise( ex.StringOverflow );
+
+end h128ToStr;
+
+end ConvUnit;

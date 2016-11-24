@@ -1,0 +1,146 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+/****************************************************/
+/*                                                  */
+/* eq,                                              */
+/* ne,                                              */
+/* lt,                                              */
+/* gt,                                              */
+/* le,                                              */
+/* gt- These routines perform string comparisons.   */
+/*     They compare the src1 string against the     */
+/* 	src2 string and return true or false (1 or 0)   */
+/* 	in the carry flag depending upon the result     */
+/* 	of the comparison.                              */
+/* 	                                                */
+/****************************************************/
+
+procedure str.eq( src1:string; src2:string ); @noframe;
+begin eq;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( esi );
+	push( edi );
+	push( ecx );
+	xor( eax, eax ); // Assume not equal.
+	
+	
+		// Get the string pointers and make sure they are non-NULL.
+		
+		mov( src1, esi );
+		mov( src2, edi );
+		test( esi, esi );
+		jz AttemptToDerefNULL;
+		test( edi, edi );
+		jz AttemptToDerefNULL;
+		 				
+		mov( (type str.strRec [esi]).length, ecx );
+		
+		// If the lengths are not equal, the strings
+		// cannot be equal; so do a quick check for that
+		// first.
+
+		cmp( ecx, (type str.strRec [edi]).length );
+		jne strcmp;
+		
+		// Okay, the lengths are equal, so compare the strings.
+		//
+		// repe.cmpsb(); -- This is slow, don't use it!
+		
+			test( ecx, ecx );
+			je StrsNE;			// If lengths are zero, they're equal.
+			cmp( ecx, 4 );
+			jb CmpLT4;
+			
+		whileGE4:
+			mov( [esi+ecx-4], eax );
+			cmp( eax, [edi+ecx-4] );
+			jne StrsNE;
+			
+			sub( 4, ecx );
+			ja whileGE4;
+			je StrsNE;
+			add( 4, ecx );
+			
+		// Less than four bytes, but greater than zero, to compare here.
+		
+		CmpLT4:
+			cmp( ecx, 2 );
+			jb	Cmp1;
+			ja Cmp3;
+			
+			// Two extra bytes, compare them here:
+			
+			mov( [esi+ecx-2], ax );
+			cmp( ax, [edi+ecx-2] );
+			jmp StrsNE;
+			
+		Cmp1:
+		
+			// One extra pair of bytes, compare them here:
+			
+			mov( [esi+ecx-1], al );
+			cmp( al, [edi+ecx-1] );
+			jmp StrsNE;
+			
+		Cmp3:
+		
+			// Three extra bytes, compare them here:
+			
+			mov( [esi+ecx-2], ax );
+			cmp( ax, [edi+ecx-2] );
+			jne	StrsNE;
+			mov( [esi+ecx-3], al );
+			cmp( al, [edi+ecx-3] );
+ 
+
+		// Set EAX according to the comparison result.
+		
+		StrsNE:
+			mov( 0, eax );	// Clear H.O. three bytes of EAX.
+			sete( al );
+		
+	strcmp:
+	pop( ecx );
+	pop( edi );
+	pop( esi );
+	cmp( al, 1 );		// Set carry flag for return.
+	cmc();
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+			
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end eq;
+
+end stringUnit;
+
+
+
+
+	
+

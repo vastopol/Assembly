@@ -1,0 +1,74 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "stdlibdata.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "memory.hhf" )
+
+/************************************************************/
+/*                                                          */
+/* a_bToStr-                                                */
+/*                                                          */
+/* Converts a byte value to a string of hexadecimal digits. */
+/* This function allocates storage for the string on the    */
+/* heap.                                                    */
+/*                                                          */
+/* Inputs:                                                  */
+/* 	b-	                                                    */
+/* 		contains the byte to convert.                       */
+/* 		                                                    */
+/************************************************************/
+
+
+procedure conv.a_bToStr( b:byte ); 
+	@nodisplay;
+	@noframe;
+	@noalignstack;
+	
+begin a_bToStr;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ebx );
+	
+	// Allocate storage for the string on the heap.
+	
+	str.alloc( 2 );
+
+	// Create the two-character string from the hex value:
+	
+	mov( 2, (type str.strRec [eax]).length );
+	movzx( b, ebx );
+	mov( (type word stdlib.hexTbl[ebx*2]), bx );
+	mov( bx, [eax] );
+	mov( 0, (type byte [eax+2]));
+	
+	pop( ebx );
+	pop( ebp );
+	ret( _parms_ );
+	
+strOvfl:
+	raise( ex.StringOverflow );
+	
+refNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end a_bToStr;
+
+end ConvUnit;

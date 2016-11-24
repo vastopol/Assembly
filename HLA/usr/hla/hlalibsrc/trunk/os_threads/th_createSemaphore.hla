@@ -1,0 +1,175 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit threads;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "os.hhf" )
+#includeOnce( "threads.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "../include/thread_private.hhf" )
+
+#if( os.win32 )
+	#include( "w.hhf" )
+#elseif( os.linux )
+	#include( "linux.hhf" )
+	
+	const
+		IPC_CREATE	:= linux.IPC_CREATE;
+		SETVAL		:= linux.SETVAL;
+
+#elseif( os.freeBSD )
+	#include( "bsd.hhf" )
+	
+	const
+		IPC_CREATE	:= bsd.IPC_CREATE;
+		SETVAL		:= bsd.SETVAL;
+		
+#elseif( os.macOS )
+	#include( "mac.hhf" )
+	
+	const
+		IPC_CREATE	:= mac.IPC_CREATE;
+		SETVAL		:= mac.SETVAL;
+		
+#else
+	#error( "Unsupported OS" )
+#endif
+
+// thread.createSemaphore-
+//
+// Creates a semaphore and returns a handle to that object in EAX.
+
+#if( os.win32 )
+
+	procedure thread.createSemaphore( maxCnt:dword; semName:string );
+	begin createSemaphore;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( ecx );
+		push( edx );
+		
+		w.CreateSemaphore( NULL, maxCnt, maxCnt, semName );
+		test( eax, eax );
+		jz ThreadError;
+
+		pop( edx );
+		pop( ecx );
+		leave();
+		ret( _parms_ );
+		
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end createSemaphore;
+
+
+#elseif( os.linux | os.freeBSD | os.macOS )
+
+	procedure thread.createSemaphore( maxCnt:dword; semName:string );
+	begin createSemaphore;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( ecx );
+		push( edx );
+		
+		// Under *NIX, the semaphore name has to be an existing
+		// file name or we'll get an error when calling ftok.
+		
+		ftok( semName, ' ' );
+		cmp( eax, -1 );
+		jne GotKey;
+		
+			// If ftok fails, then semName is probably not a valid
+			// filename. Create a hash of semName and use that as the key.
+			
+			xor( eax, eax );
+			mov( semName, ecx );
+			mov( (type str.strRec [ecx]).length, edx );
+			
+			// If the string length is zero, so is the key value:
+			
+			test( edx, edx );
+			jz GotKey;
+			
+			// We'll use a better hashing algorithm for strings that
+			// are four characters or longer:
+			
+			cmp( edx, 4 );
+			jb doByteKey;
+			
+				mov( [ecx], eax );
+				DWKeyLoop:
+					rol( 1, eax );
+					xor( [ecx+edx-4], eax );
+					sub( 1, edx );
+					jnz DWKeyLoop;
+					jmp GotKey;
+				
+			// Weaker hash function for strings of length 1..3, but
+			// what more can we do?  Note that we cannot depend upon
+			// all padding bytes being zero (which may not be true after
+			// considerable string manipulation).
+				
+			doByteKey:
+				BKeyLoop:
+					rol( 1, eax );
+					xor( [ecx+edx-1], al );
+					sub( 1, edx );
+					jnz BKeyLoop;
+							
+		GotKey:
+		semget
+		( 
+			eax, 
+			1,
+			IPC_CREATE | %110110110 // rw-rw-rw
+		);
+		cmp( eax, -1 );
+		je ThreadError;
+		
+		// Separate call to initialize the semaphore count.
+		// Note that this is non-atomic and is a known problem
+		// with the *NIX (SYSV) semaphore interface.
+		
+		push( eax );
+		semctl( eax, 0, SETVAL, maxCnt );
+		cmp( eax, -1 );
+		je ThreadError;
+		pop( eax ); 
+
+		pop( edx );
+		pop( ecx );
+		leave();
+		ret( _parms_ );
+		
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end createSemaphore;
+
+
+#else
+
+	#error( "Unknown OS!" )
+	
+#endif
+
+
+end threads;

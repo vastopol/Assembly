@@ -1,0 +1,1009 @@
+unit wScrollBar_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( wScrollBar_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wScrollBar objects here:
+
+				
+procedure wScrollBar_t.create_wScrollBar
+(
+	wtbName		:string;
+	parent		:dword; 									
+	x			:dword; 
+	y			:dword;
+	width		:dword;
+	height		:dword;
+	style		:dword;
+	onChange	:widgetProc 
+);;
+	
+_begin( wScrollBar_t, create_wScrollBar );
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wScrollBar_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+
+	// We need to create a window that will hold this object.
+
+	(type wVisual_t [esi]).create_wVisual
+	(
+		wtbName,
+		parent,									
+		x,		
+		y,		
+		width,	
+		height	  
+	);	
+	mov( cl, this.wBase_private.onHeap );
+		
+	
+	mov( style, eax );
+	or( w.WS_CHILD | w.WS_VISIBLE, eax );
+	mov( eax, this.wVisual_private.style );
+	w.CreateWindowEx
+	(
+		0,
+		"SCROLLBAR",						// ScrollBar class name
+		NULL,								// ScrollBar caption
+		eax,
+		x,
+		y,
+		width,
+		height,
+		parent,
+		this.wBase_private.objectID,
+		howl.howlInstance,
+		NULL
+	);
+	mov( eax, this.handle );
+	w.SetWindowLong( eax, w.GWL_USERDATA, esi );
+	
+	// Initialize the type string field:
+		
+	howl.setType( wScrollBar_c );
+	
+	// Initialize the VMT pointer:
+	
+	mov( &wScrollBar_t._VMT_, this._pVMT_ );
+	
+	
+	// Initialize the range to the Windows default (0..100);
+	
+	this.set_range( 0, 100 );
+	this.set_position( 50 );
+	
+	// Initialize the widgetProc fields:
+	
+	mov( onChange, eax );
+	mov( eax, this.wScrollBar_private.onChange );
+	xor( eax, eax );
+	mov( eax, this.wScrollBar_private.onThumbPosn );
+	mov( eax, this.wScrollBar_private.onThumbTrack );  
+	mov( eax, this.wScrollBar_private.onLineDown );	  
+	mov( eax, this.wScrollBar_private.onLineUp );	  
+	mov( eax, this.wScrollBar_private.onLineLeft );	  
+	mov( eax, this.wScrollBar_private.onLineRight );	  
+	mov( eax, this.wScrollBar_private.onEndScroll );	  
+	mov( eax, this.wScrollBar_private.onPageDown );	  
+	mov( eax, this.wScrollBar_private.onPageUp );	  
+	mov( eax, this.wScrollBar_private.onPageLeft );	  
+	mov( eax, this.wScrollBar_private.onPageRight );	  
+	mov( eax, this.wScrollBar_private.onTop );	  
+	mov( eax, this.wScrollBar_private.onBottom );
+	mov( 1, this.wScrollBar_private.lineInc );
+	mov( 10, this.wScrollBar_private.pageInc );	  
+			   
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, create_wScrollBar );
+	
+
+
+
+// Accessor functions:
+
+method wScrollBar_t.get_textColor; @noframe;;
+_begin( wScrollBar_t, get_textColor );
+
+	mov( this.wScrollBar_private.textColor, eax );
+	ret();
+	 
+_end( wScrollBar_t, get_textColor );
+
+
+
+// Mutator functions:
+
+
+method wScrollBar_t.set_textColor( textColor:dword );;
+_begin( wScrollBar_t, set_textColor );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( textColor, eax );
+	mov( eax, this.wScrollBar_private.textColor );
+	w.InvalidateRect( this.handle, NULL, true );
+			
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, set_textColor );
+
+
+
+
+	
+	
+method wScrollBar_t.get_lineInc;;
+_begin( wScrollBar_t, get_lineInc );
+	
+	mov( this.wScrollBar_private.lineInc, eax );
+		
+_end( wScrollBar_t, get_lineInc );
+	
+
+
+method wScrollBar_t.get_pageInc;;
+_begin( wScrollBar_t, get_pageInc );
+	
+	mov( this.wScrollBar_private.pageInc, eax );
+		
+_end( wScrollBar_t, get_pageInc );
+	
+
+method wScrollBar_t.set_lineInc( lineInc:dword );;
+_begin( wScrollBar_t, set_lineInc );
+	
+	push( eax );
+	mov( lineInc, eax );
+	mov( eax, this.wScrollBar_private.lineInc );
+	pop( eax );
+	
+_end( wScrollBar_t, set_lineInc );
+	
+
+method wScrollBar_t.set_pageInc( pageInc:dword );;
+_begin( wScrollBar_t, set_pageInc );
+	
+	push( eax );
+	mov( pageInc, eax );
+	mov( eax, this.wScrollBar_private.pageInc );
+	pop( eax );
+	
+_end( wScrollBar_t, set_pageInc );
+	
+
+
+
+
+
+
+method wScrollBar_t.enable;;
+_begin( wScrollBar_t, enable );
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	w.EnableScrollBar( this.handle, w.SB_CTL, w.ESB_ENABLE_BOTH );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, enable );
+	
+
+method wScrollBar_t.disable;;
+_begin( wScrollBar_t, disable );
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	w.EnableScrollBar( this.handle, w.SB_CTL, w.ESB_DISABLE_BOTH );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, disable );
+	
+	
+
+method wScrollBar_t.show;;
+_begin( wScrollBar_t, show );
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	w.ShowScrollBar( this.handle, w.SB_CTL, true );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, show );
+	
+
+method wScrollBar_t.hide;;
+_begin( wScrollBar_t, hide );
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	w.ShowScrollBar( this.handle, w.SB_CTL, false );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, hide );
+	
+	
+			
+method wScrollBar_t.get_position;;
+_begin( wScrollBar_t, get_position );
+
+	push( ecx );
+	push( edx );
+	w.GetScrollPos( this.handle, w.SB_CTL );
+	pop( edx );
+	pop( ecx );
+
+_end( wScrollBar_t, get_position );
+
+	   
+method wScrollBar_t.set_position( position:dword );;
+_begin( wScrollBar_t, set_position );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	w.SetScrollPos( this.handle, w.SB_CTL, position, true );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wScrollBar_t, set_position );
+
+	   
+
+method wScrollBar_t.get_lowRange;
+var
+	low		:dword;
+	high	:dword;
+_begin( wScrollBar_t, get_lowRange );
+
+	push( ecx );
+	push( edx );
+	lea( eax, low );
+	lea( ecx, high );
+	w.GetScrollRange( this.handle, w.SB_CTL, [eax], [ecx] );
+	mov( low, eax );
+	pop( edx );
+	pop( ecx );
+	
+_end( wScrollBar_t, get_lowRange );
+
+
+   
+method wScrollBar_t.get_hiRange;
+var
+	low		:dword;
+	high	:dword;
+
+_begin( wScrollBar_t, get_hiRange );
+
+	push( ecx );
+	push( edx );
+	lea( eax, low );
+	lea( ecx, high );
+	w.GetScrollRange( this.handle, w.SB_CTL, [eax], [ecx] );
+	mov( high, eax );
+	pop( edx );
+	pop( ecx );
+	
+_end( wScrollBar_t, get_hiRange );
+
+    
+method wScrollBar_t.set_range( low:dword; high:dword );;
+_begin( wScrollBar_t, set_range );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	w.SetScrollRange( this.handle, w.SB_CTL, low, high, true );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+
+_end( wScrollBar_t, set_range ); 
+
+
+
+// Accessor/Mutator functions
+
+method wScrollBar_t.get_onThumbPosn;;		
+_begin( wScrollBar_t, get_onThumbPosn );
+
+	push( ecx );
+	push( edx );
+	mov( this.wScrollBar_private.onThumbPosn, eax );
+	pop( edx );
+	pop( ecx );
+	
+_end( wScrollBar_t, get_onThumbPosn );
+
+method wScrollBar_t.get_onThumbTrack;;		
+_begin( wScrollBar_t, get_onThumbTrack );
+
+	push( ecx );
+	push( edx );
+	mov( this.wScrollBar_private.onThumbTrack, eax );
+	pop( edx );
+	pop( ecx );
+	
+_end( wScrollBar_t, get_onThumbTrack );
+
+
+method wScrollBar_t.get_onChange;;	
+_begin( wScrollBar_t, get_onChange );
+
+	push( ecx );
+	push( edx );
+	mov( this.wScrollBar_private.onChange, eax );
+	pop( edx );
+	pop( ecx );
+	
+_end( wScrollBar_t, get_onChange );
+
+
+method wScrollBar_t.get_onLineDown;;	
+_begin( wScrollBar_t, get_onLineDown );
+
+	push( ecx );
+	push( edx );
+	mov( this.wScrollBar_private.onLineDown, eax );
+	pop( edx );
+	pop( ecx );
+	
+_end( wScrollBar_t, get_onLineDown );
+
+
+method wScrollBar_t.get_onLineUp;;	
+_begin( wScrollBar_t, get_onLineUp );
+
+	push( ecx );
+	push( edx );
+	mov( this.wScrollBar_private.onLineUp, eax );
+	pop( edx );
+	pop( ecx );
+	
+_end( wScrollBar_t, get_onLineUp );
+
+
+method wScrollBar_t.get_onLineLeft;;	
+_begin( wScrollBar_t, get_onLineLeft );
+
+	push( ecx );
+	push( edx );
+	mov( this.wScrollBar_private.onLineLeft, eax );
+	pop( edx );
+	pop( ecx );
+	
+_end( wScrollBar_t, get_onLineLeft );
+
+
+method wScrollBar_t.get_onLineRight;;	
+_begin( wScrollBar_t, get_onLineRight );
+
+	push( ecx );
+	push( edx );
+	mov( this.wScrollBar_private.onLineRight, eax );
+	pop( edx );
+	pop( ecx );
+	
+_end( wScrollBar_t, get_onLineRight );
+
+
+
+method wScrollBar_t.get_onEndScroll;;	
+_begin( wScrollBar_t, get_onEndScroll );
+
+	push( ecx );
+	push( edx );
+	mov( this.wScrollBar_private.onEndScroll, eax );
+	pop( edx );
+	pop( ecx );
+	
+_end( wScrollBar_t, get_onEndScroll );
+
+
+method wScrollBar_t.get_onPageDown;;	
+_begin( wScrollBar_t, get_onPageDown );
+
+	push( ecx );
+	push( edx );
+	mov( this.wScrollBar_private.onPageDown, eax );
+	pop( edx );
+	pop( ecx );
+	
+_end( wScrollBar_t, get_onPageDown );
+
+
+method wScrollBar_t.get_onPageUp;;	
+_begin( wScrollBar_t, get_onPageUp );
+
+	push( ecx );
+	push( edx );
+	mov( this.wScrollBar_private.onPageUp, eax );
+	pop( edx );
+	pop( ecx );
+	
+_end( wScrollBar_t, get_onPageUp );
+
+
+method wScrollBar_t.get_onPageLeft;;	
+_begin( wScrollBar_t, get_onPageLeft );
+
+	push( ecx );
+	push( edx );
+	mov( this.wScrollBar_private.onPageLeft, eax );
+	pop( edx );
+	pop( ecx );
+	
+_end( wScrollBar_t, get_onPageLeft );
+
+
+method wScrollBar_t.get_onPageRight;;	
+_begin( wScrollBar_t, get_onPageRight );
+
+	push( ecx );
+	push( edx );
+	mov( this.wScrollBar_private.onPageRight, eax );
+	pop( edx );
+	pop( ecx );
+	
+_end( wScrollBar_t, get_onPageRight );
+
+
+method wScrollBar_t.get_onTop;;	
+_begin( wScrollBar_t, get_onTop );
+
+	push( ecx );
+	push( edx );
+	mov( this.wScrollBar_private.onTop, eax );
+	pop( edx );
+	pop( ecx );
+	
+_end( wScrollBar_t, get_onTop );
+
+
+method wScrollBar_t.get_onBottom;;	
+_begin( wScrollBar_t, get_onBottom );
+
+	push( ecx );
+	push( edx );
+	mov( this.wScrollBar_private.onBottom, eax );
+	pop( edx );
+	pop( ecx );
+	
+_end( wScrollBar_t, get_onBottom );
+
+
+
+
+
+method wScrollBar_t.set_onThumbTrack( onThumbTrack:widgetProc );;	  
+_begin( wScrollBar_t, set_onThumbTrack );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	mov( onThumbTrack, eax );
+	mov( eax, this.wScrollBar_private.onThumbTrack );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, set_onThumbTrack );
+
+
+
+method wScrollBar_t.set_onThumbPosn( onThumbPosn:widgetProc );;	  
+_begin( wScrollBar_t, set_onThumbPosn );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	mov( onThumbPosn, eax );
+	mov( eax, this.wScrollBar_private.onThumbPosn );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, set_onThumbPosn );
+
+
+
+method wScrollBar_t.set_onChange( onChange:widgetProc );;
+_begin( wScrollBar_t, set_onChange );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	mov( onChange, eax );
+	mov( eax, this.wScrollBar_private.onChange );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, set_onChange );
+
+
+
+method wScrollBar_t.set_onLineDown( onLineDown:widgetProc );;
+_begin( wScrollBar_t, set_onLineDown );					   
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	mov( onLineDown, eax );
+	mov( eax, this.wScrollBar_private.onLineDown );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, set_onLineDown );
+
+
+
+method wScrollBar_t.set_onLineUp( onLineUp:widgetProc );;	  
+_begin( wScrollBar_t, set_onLineUp );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	mov( onLineUp, eax );
+	mov( eax, this.wScrollBar_private.onLineUp );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, set_onLineUp );
+
+
+
+method wScrollBar_t.set_onLineLeft( onLineLeft:widgetProc );;	  
+_begin( wScrollBar_t, set_onLineLeft );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	mov( onLineLeft, eax );
+	mov( eax, this.wScrollBar_private.onLineLeft );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, set_onLineLeft );
+
+
+
+method wScrollBar_t.set_onLineRight( onLineRight:widgetProc );;	  
+_begin( wScrollBar_t, set_onLineRight );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	mov( onLineRight, eax );
+	mov( eax, this.wScrollBar_private.onLineRight );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, set_onLineRight );
+
+
+
+method wScrollBar_t.set_onEndScroll( onEndScroll:widgetProc );;
+_begin( wScrollBar_t, set_onEndScroll );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	mov( onEndScroll, eax );
+	mov( eax, this.wScrollBar_private.onEndScroll );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, set_onEndScroll );
+
+
+
+method wScrollBar_t.set_onPageDown( onPageDown:widgetProc );;
+_begin( wScrollBar_t, set_onPageDown );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	mov( onPageDown, eax );
+	mov( eax, this.wScrollBar_private.onPageDown );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, set_onPageDown );
+
+
+
+method wScrollBar_t.set_onPageUp( onPageUp:widgetProc );;	  
+_begin( wScrollBar_t, set_onPageUp );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	mov( onPageUp, eax );
+	mov( eax, this.wScrollBar_private.onPageUp );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, set_onPageUp );
+
+
+
+method wScrollBar_t.set_onPageLeft( onPageLeft:widgetProc );;	  
+_begin( wScrollBar_t, set_onPageLeft );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	mov( onPageLeft, eax );
+	mov( eax, this.wScrollBar_private.onPageLeft );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, set_onPageLeft );
+
+
+
+method wScrollBar_t.set_onPageRight( onPageRight:widgetProc );;	  
+_begin( wScrollBar_t, set_onPageRight );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	mov( onPageRight, eax );
+	mov( eax, this.wScrollBar_private.onPageRight );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, set_onPageRight );
+
+
+
+method wScrollBar_t.set_onBottom( onBottom:widgetProc );;	  
+_begin( wScrollBar_t, set_onBottom );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	mov( onBottom, eax );
+	mov( eax, this.wScrollBar_private.onBottom );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, set_onBottom );
+
+
+
+method wScrollBar_t.set_onTop( onTop:widgetProc );;	  
+_begin( wScrollBar_t, set_onTop );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	mov( onTop, eax );
+	mov( eax, this.wScrollBar_private.onTop );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wScrollBar_t, set_onTop );
+
+
+
+
+
+// Handle ScrollBar notification messages:
+
+method wScrollBar_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);;
+_begin( wScrollBar_t, processMessage );
+
+	// Get a pointer to the corresponding wScrollBar_ object:
+
+	mov( uMsg, eax );	 
+	if( eax = w.WM_CTLCOLORSCROLLBAR ) then
+			
+		// If we've got a ctlcolorbtn message,
+		// set the text and background colors.
+		
+		w.SelectObject( wParam, this.wVisual_private.bkgBrush );
+		w.SetTextColor( wParam, this.wScrollBar_private.textColor );
+		w.SetBkColor( wParam, this.wVisual_private.bkgColor );
+		mov( this.wVisual_private.bkgBrush, eax );
+		exit processMessage;
+				
+	endif;
+	
+	w.GetWindowLong( lParam, w.GWL_USERDATA );
+	mov( eax, esi );
+	mov( uMsg, eax );
+	if( esi = NULL || (eax <> w.WM_VSCROLL && eax <> w.WM_HSCROLL) ) then
+	
+		// If it's not a scroll bar scrolling message, do the default
+		// processing:
+		
+		w.DefWindowProc( hwnd, uMsg, wParam, lParam );
+		exit processMessage;
+		
+	endif;
+		
+	
+	// Process the HSCROLL/VSCROLL command:
+	
+	movzx( (type word wParam[2]), eax );
+	mov( eax, this.wScrollBar_private.curPosn );
+	mov
+	( 
+		@size( this.wScrollBar_private.info ), 
+		this.wScrollBar_private.info.cbSize 
+	);
+	mov( w.SIF_ALL, this.wScrollBar_private.info.fMask ); 
+	w.GetScrollInfo( this.handle, w.SB_CTL, this.wScrollBar_private.info );
+	
+	movzx( (type word wParam), ecx );
+	switch( ecx  )
+	
+		case( w.SB_THUMBPOSITION )
+	
+			if( this.wScrollBar_private.onThumbPosn <> NULL ) then
+
+				this.wScrollBar_private.onThumbPosn( esi, wParam, lParam );
+				
+			endif;
+		
+		case( w.SB_THUMBTRACK )
+		
+			if( this.wScrollBar_private.onThumbTrack <> NULL ) then
+
+				this.wScrollBar_private.onThumbTrack( esi, wParam, lParam );
+				
+			else
+			
+				mov( this.wScrollBar_private.curPosn, eax );
+				mov( eax, this.wScrollBar_private.info.nPos );
+				
+			endif;
+		
+		case( w.SB_ENDSCROLL )
+		
+			if( this.wScrollBar_private.onEndScroll <> NULL ) then
+
+				this.wScrollBar_private.onEndScroll( esi, wParam, lParam );
+				
+			endif;
+			
+		case( w.SB_TOP )
+		
+			if( this.wScrollBar_private.onTop <> NULL ) then
+
+				this.wScrollBar_private.onTop( esi, wParam, lParam );
+				
+			else
+			
+				mov( this.wScrollBar_private.info.nMax, eax );
+				mov( eax, this.wScrollBar_private.info.nPos );
+				
+			endif;
+			
+		case( w.SB_BOTTOM )
+		
+			if( this.wScrollBar_private.onBottom <> NULL ) then
+
+				this.wScrollBar_private.onBottom( esi, wParam, lParam );
+				
+			else
+			
+				mov( 0, this.wScrollBar_private.info.nPos );
+				
+			endif;
+			
+			
+		default
+		
+			if( uMsg = w.WM_HSCROLL ) then
+			
+				switch( ecx )
+				
+					case( w.SB_LINERIGHT )
+					
+						if( this.wScrollBar_private.onLineRight <> NULL ) then
+
+							this.wScrollBar_private.onLineRight( esi, wParam, lParam );
+							
+						else
+						
+							mov( this.wScrollBar_private.lineInc, eax );
+							add( eax, this.wScrollBar_private.info.nPos );
+							
+						endif;
+						
+					case( w.SB_LINELEFT )
+											
+						if( this.wScrollBar_private.onLineLeft <> NULL ) then
+
+							this.wScrollBar_private.onLineLeft( esi, wParam, lParam );
+						
+						else
+						
+							mov( this.wScrollBar_private.lineInc, eax );
+							sub( eax, this.wScrollBar_private.info.nPos );
+							
+						endif;
+						
+					case( w.SB_PAGELEFT )
+					
+						if( this.wScrollBar_private.onPageLeft <> NULL ) then
+
+							this.wScrollBar_private.onPageLeft( esi, wParam, lParam );
+							
+						else
+						
+							mov( this.wScrollBar_private.pageInc, eax );
+							sub( eax, this.wScrollBar_private.info.nPos );
+							
+						endif;
+		
+					case( w.SB_PAGERIGHT )
+					
+						if( this.wScrollBar_private.onPageRight <> NULL ) then
+
+							this.wScrollBar_private.onPageRight( esi, wParam, lParam );
+							
+						else
+						
+							mov( this.wScrollBar_private.pageInc, eax );
+							add( eax, this.wScrollBar_private.info.nPos );
+							
+						endif;
+						
+					default
+						w.DefWindowProc( hwnd, uMsg, wParam, lParam );
+						exit processMessage;
+		
+						
+				endswitch;
+			
+			else // must be w.WM_VSCROLL
+			
+				switch( ecx )
+		
+					case( w.SB_LINEDOWN )
+					
+						if( this.wScrollBar_private.onLineDown <> NULL ) then
+
+							this.wScrollBar_private.onLineDown( esi, wParam, lParam );
+							
+						else
+						
+							mov( this.wScrollBar_private.lineInc, eax );
+							add( eax, this.wScrollBar_private.info.nPos );
+							
+						endif;
+		
+					case( w.SB_LINEUP )
+					
+						if( this.wScrollBar_private.onLineUp <> NULL ) then
+
+							this.wScrollBar_private.onLineUp( esi, wParam, lParam );
+							
+						else
+						
+							mov( this.wScrollBar_private.lineInc, eax );
+							sub( eax, this.wScrollBar_private.info.nPos );
+							
+						endif;
+		
+					case( w.SB_PAGEDOWN )
+					
+						if( this.wScrollBar_private.onPageDown <> NULL ) then
+
+							this.wScrollBar_private.onPageDown( esi, wParam, lParam );
+							
+						else
+						
+							mov( this.wScrollBar_private.pageInc, eax );
+							add( eax, this.wScrollBar_private.info.nPos );
+							
+						endif;
+		
+					case( w.SB_PAGEUP )
+					
+						if( this.wScrollBar_private.onPageUp <> NULL ) then
+
+							this.wScrollBar_private.onPageUp( esi, wParam, lParam );
+							
+						else
+						
+							mov( this.wScrollBar_private.pageInc, eax );
+							sub( eax, this.wScrollBar_private.info.nPos );
+							
+						endif;
+		
+					default
+						w.DefWindowProc( hwnd, uMsg, wParam, lParam );
+						exit processMessage;
+		
+				endswitch;
+			
+			endif;
+		
+		
+	endswitch;
+	w.SetScrollInfo( this.handle, w.SB_CTL, this.wScrollBar_private.info, true );
+	
+	// Whenever anything causes the thumb position to change,
+	// call the onChange event handler.
+	
+	if( this.wScrollBar_private.onChange <> NULL ) then
+
+		mov( this.wScrollBar_private.info.nPos, eax );
+		mov( ax, (type word wParam[2]) );
+		this.wScrollBar_private.onChange( esi, wParam, lParam );
+		
+	endif;
+	xor( eax, eax );
+
+_end( wScrollBar_t, processMessage );
+
+end	wScrollBar_u;

@@ -1,0 +1,200 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+/*
+** DefaultExceptionHandler-
+**
+** This module defines the default exception handler to use if
+** the user hasn't included the EXCEPT.HHF header file.
+**	
+*/
+
+
+
+unit dfltExceptsUnit;
+?@noframe := true;
+?@nodisplay := true;
+
+#include( "os.hhf" )
+#include( "excepts.hhf" );
+
+#if( os.win32 )
+
+	static 
+		messageBox:procedure
+		( 
+			code:uns32; 
+			var title:var; 
+			var msg:var; 
+			n:uns32 
+		); external( "__imp__MessageBoxA@16" );
+
+		ExitProcess:procedure( code:uns32 ); 
+			external( "__imp__ExitProcess@4" );
+
+
+	readonly
+		DefaultMessage:byte; @nostorage;
+			byte "Unhandled exception error.", 0;
+
+		HLAException: byte; @nostorage;
+			byte "HLA Exception Handler", 0;
+			
+	#macro fallsThrough( procName, externalName );
+	
+		procedure procName; @external( @string:externalName );
+		procedure procName; begin procName; end procName;
+	
+	#endmacro
+	
+		
+
+	procedure defaultException; external( "SHORTDFLTEXCEPT__HLA_" );
+
+	fallsThrough( defaultException2, shortDfltExcept__hla_ );
+	fallsThrough( defaultException3, _shortDfltExcept__hla_ );
+	
+	procedure defaultException;
+	begin defaultException;
+		
+		messageBox( $30, HLAException, DefaultMessage, 0 );
+		ExitProcess( 0 );			
+
+	end defaultException;
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+#elseif( os.linux )
+	#include( "linux.hhf" )
+
+ 
+	// shortDfltExcept-
+	//
+	//	A really short exception handler that HLA will call if
+	// the user hasn't linked in the full exception processing
+	// code.  Under Linux, this is irrelevent since the full
+	// exception handler is avialable anyway.  This may change
+	// for graphic user environments, so the mechanism remains
+	// even though both handlers are currently in this file.
+	
+	procedure shortDfltExcept; external( "shortDfltExcept__hla_" );
+		
+	procedure shortDfltExcept;
+	const
+		dfltmsg	:string := #$a #$7 "Unhandled Exception Error." #$a;
+
+	readonly
+		DefaultMessage	:string := dfltmsg;
+		
+	begin shortDfltExcept;
+		
+		// Send the default message to the stderr device
+		// and then quit the program:
+		
+		push( eax );	// Save the exception code.
+		
+		mov( DefaultMessage, eax );
+		linux.write( 2, [eax], @length( dfltmsg ));
+		
+		pop( eax );		// return exception code as pgm status.
+		linux._exit( eax );
+		
+	end shortDfltExcept;
+
+
+#elseif( os.freeBSD )
+
+	#include( "bsd.hhf" )
+
+ 
+	// shortDfltExcept-
+	//
+	//	A really short exception handler that HLA will call if
+	// the user hasn't linked in the full exception processing
+	// code.  Under Linux, this is irrelevent since the full
+	// exception handler is avialable anyway.  This may change
+	// for graphic user environments, so the mechanism remains
+	// even though both handlers are currently in this file.
+	
+	procedure shortDfltExcept; external( "shortDfltExcept__hla_" );
+		
+	procedure shortDfltExcept;
+	const
+		dfltmsg	:string := #$a #$7 "Unhandled Exception Error." #$a;
+
+	readonly
+		DefaultMessage	:string := dfltmsg;
+		
+	begin shortDfltExcept;
+		
+		// Send the default message to the stderr device
+		// and then quit the program:
+		
+		push( eax );	// Save the exception code.
+		
+		mov( DefaultMessage, eax );
+		bsd.write( 2, [eax], @length( dfltmsg ));
+		
+		pop( eax );		// return exception code as pgm status.
+		bsd._exit( eax );
+		
+	end shortDfltExcept;
+
+
+#elseif( os.macOS )
+
+	#include( "mac.hhf" )
+
+ 
+	// shortDfltExcept-
+	//
+	//	A really short exception handler that HLA will call if
+	// the user hasn't linked in the full exception processing
+	// code.  Under Linux, this is irrelevent since the full
+	// exception handler is avialable anyway.  This may change
+	// for graphic user environments, so the mechanism remains
+	// even though both handlers are currently in this file.
+	
+	procedure shortDfltExcept; external( "shortDfltExcept__hla_" );
+		
+	procedure shortDfltExcept;
+	const
+		dfltmsg	:string := #$a #$7 "Unhandled Exception Error." #$a;
+
+	readonly
+		DefaultMessage	:string := dfltmsg;
+		
+	begin shortDfltExcept;
+		
+		// Send the default message to the stderr device
+		// and then quit the program:
+		
+		push( eax );	// Save the exception code.
+		
+		mov( DefaultMessage, eax );
+		mac.write( 2, [eax], @length( dfltmsg ));
+		
+		pop( eax );		// return exception code as pgm status.
+		mac._exit( eax );
+		
+	end shortDfltExcept;
+
+
+#endif
+end dfltExceptsUnit;
+
+
+	
+

@@ -1,0 +1,101 @@
+unit wGroupBox_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( wGroupBox_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+//
+// Handle wGroupBox_t objects here:
+
+
+
+procedure wGroupBox_t.create_wGroupBox
+(
+	wgbName	:string;
+	caption	:string;
+	parent	:dword; 									
+	x		:dword; 
+	y		:dword; 
+	width	:dword; 
+	height	:dword  
+);;
+	
+_begin( wGroupBox_t, create_wGroupBox );
+	
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wGroupBox_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+
+	// We need to create a window that will hold this object.
+
+	(type wContainer_t [esi]).create_wContainer
+	(
+		wgbName,
+		parent,									
+		x,		
+		y,		
+		width,	
+		height	  
+	);	
+	mov( cl, this.wBase_private.onHeap );
+	
+	w.CreateWindowEx
+	(
+		0,
+		"button",							// Button class name
+		caption,							// Button caption
+		w.WS_CHILD | w.WS_VISIBLE | w.BS_GROUPBOX | w.WS_GROUP,
+		x,
+		y,
+		width,
+		height,
+		parent,
+		this.wBase_private.objectID,
+		howl.howlInstance,
+		NULL
+	);
+	mov( eax, this.handle );
+	w.SetWindowLong( eax, w.GWL_USERDATA, esi );
+	
+	// Initialize the type string field:
+		
+	howl.setType( wGroupBox_c );
+	
+	// Initialize the VMT pointer:
+	
+	mov( &wGroupBox_t._VMT_, this._pVMT_ );
+			   
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wGroupBox_t, create_wGroupBox );
+
+
+end	wGroupBox_u;

@@ -1,0 +1,111 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileClass;
+
+#include( "fileclass.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+
+?@NoStackAlign := true;
+?@NoDisplay := true;
+?@NoFrame := true;		
+		
+
+
+method virtualFile_t.gets( s:string );
+var
+	Index		:uns32;
+	eaxSave		:dword;
+	ebxSave		:dword;
+	ediSave		:dword;
+	c			:byte;
+	
+	
+begin gets;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( eax, eaxSave );
+	mov( ebx, ebxSave );
+	mov( edi, ediSave );
+			
+	// Initialize string length to zero.
+	
+	mov( 0, Index );
+	repeatUntilEOS:
+	
+		this.read( c, 1 );
+		test( eax, eax );
+		jz checkEOF;
+				
+		// If the current character is a line feed, then
+		// terminate reading characters from the file.
+		
+		mov( c, al );
+		cmp( al, stdio.lf );
+		je doneReading;
+		
+		// If it's not a lf, then append this character
+		// to the end of the string and check for overflow.
+		
+		mov( Index, ebx );
+		mov( s, edi );
+		mov( al, [edi+ebx] );
+		inc( Index );
+		inc( ebx );
+		cmp( ebx, (type str.strRec [edi]).maxlen );
+		jb repeatUntilEOS;
+		jmp doneReading;
+		
+	checkEOF:
+		cmp( Index, 0 );
+		je EOF;
+		
+	doneReading:
+	
+	// If the character immediately before the LF is a CR, then
+	// eat the CR:
+	
+	mov( s, edi );
+	mov( Index, ebx );
+	test( ebx, ebx );
+	jz noCR;
+	
+		cmp( (type byte [edi+ebx-1]), stdio.cr );
+		jne noCR;
+		dec( ebx );
+	
+	noCR:
+	
+	// Zero terminate the string and store away the
+	// length of the string.
+	
+	mov( 0, (type byte [edi+ebx]));
+	mov( ebx, (type str.strRec [edi]).length );
+	
+	mov( eaxSave, eax );
+	mov( ebxSave, ebx );
+	mov( ediSave, edi );	
+	leave( );
+	ret( _parms_ );
+	
+EOF:
+	raise( ex.EndOfFile );
+	
+end gets;
+ 
+
+end FileClass;

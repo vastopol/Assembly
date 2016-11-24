@@ -1,0 +1,416 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit memory;
+
+#includeonce( "os.hhf" )
+#includeonce( "../include/mem.hhf" )
+
+
+// coalesceBlocks- merges the two memory blocks pointed
+// at by before and after;  returns a pointer to the
+// combined block in EBX. Note that if the two blocks
+// cannot be combined (because they are not contiguous
+// in memory), then EBX returns a pointer to the "before"
+// block.
+
+procedure coalesceBlocks( before:dword; after:dword ); 
+	@nodisplay;
+	@noframe;
+	
+const
+	afterBlkEAX		:text := "(type memblock [eax])";
+	beforeBlkEBX	:text := "(type memblock [ebx])";
+	
+begin coalesceBlocks;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ecx );
+
+	// First, determine if the "after" block immediately
+	// follows the "before" block in memory. Don't coalesce
+	// the two if this is not the case.
+	
+	mov( before, ebx );
+	assert( ebx <> NULL );
+	mov( beforeBlkEBX.size, eax );
+	add( ebx, eax );
+	cmp( eax, after );
+	jne	dontCoalesce;
+				
+		// After might be part of the free list.
+		// Unlink it from the free list.
+		
+		mov( afterBlkEAX.prevInList, ecx );
+		mov( afterBlkEAX.nextInList, ebx );
+		test( ecx, ecx );
+		jz noNext;
+			mov( ebx, memblkECX.nextInList );
+		noNext:
+		test( ebx, ebx );
+		jz noPrev;                                                 
+			mov( ecx, memblkEBX.prevInList );
+		noPrev:
+		cmp( eax, freeList );
+		jne noNext2;
+
+			mov( afterBlkEAX.nextInList, ecx );
+			mov( ecx, freeList );
+
+		noNext2: 
+			
+		
+		
+		// As we are coalescing these two blocks, remove
+		// the "after" block from the block list.
+		//
+		// The "next" block after "after" becomes
+		// the "next" block for the coalesed block:
+
+		mov( before, ebx );
+		mov( afterBlkEAX.next, ecx );
+		mov( ecx, beforeBlkEBX.next );
+		test( ecx, ecx );
+		jz noPrev2;
+			mov( ebx, memblkECX.prev );
+		noPrev2: 
+		
+		// Before becomes the new list end if
+		// "after" is currently the list end:
+		
+		cmp( eax, listEnd );
+		jne noEnd;
+			mov( ebx, listEnd );
+		noEnd:
+					
+		
+		// The new block's size is the
+		// sum of the two blocks.
+
+		mov( afterBlkEAX.size, ecx );
+		add( ecx, beforeBlkEBX.size );
+		
+		
+		// If the "before" block is on the free list,
+		// remove it from the free list ("free" will
+		// put it back on the free list, later):
+		
+		mov( beforeBlkEBX.nextInList, eax );
+		mov( beforeBlkEBX.prevInList, ecx );
+		test( eax, eax );
+		jz noPrev3;
+			mov( ecx, memblkEAX.prevInList );
+		noPrev3:
+		test( ecx, ecx );
+		jz noNext3;
+			mov( eax, memblkECX.nextInList );
+		noNext3:
+		cmp( ebx, freeList );
+		jne noFree2;
+			mov( eax, freeList );
+			
+		noFree2:
+		mov( NULL, memblkEBX.nextInList );
+		mov( NULL, memblkEBX.prevInList );
+		pop( ecx );
+		pop( eax );
+		pop( ebp );
+		stc();
+		ret( _parms_ );
+		
+			
+	dontCoalesce:
+	pop( ecx );
+	pop( eax );
+	pop( ebp );
+	clc();
+	ret( _parms_ );
+	
+end coalesceBlocks;
+
+
+
+
+
+// free:
+//
+//	Deallocates storage that was allocated by malloc,
+// putting the block on the free list.
+//
+//
+// hla_free- a macro that provides the body of the free function.
+//			 Invoker must supply three labels: MemoryAllocationCorruption, 
+//			 AttemptToFreeNULL, and MemoryFreeFailure, that are targets
+//			 for the associated exceptions.
+
+
+
+
+#macro hla_free;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	
+	// If they attempt to free the NULL pointer,
+	// raise an exception.
+	
+	mov( memptr, ebx );
+	test( ebx, ebx );
+	jz AttemptToFreeNULL;
+
+	// Next, a few sanity checks to see if we're
+	// freeing a block that was allocated on the heap.
+	// In particular, we'll see if the block we're
+	// freeing is part of a linked list before blindly
+	// messing with memory.
+	
+	sub( @size( memblock ), ebx );
+
+	// Raise an exception if we don't seem to be a
+	// part of a memory block linked list (the check
+	// doesn't do any good if the next/prev ptrs are
+	// NULL, but it's a decent check to try, anyway;
+	// of course, we'll probably get a seg fault if
+	// the pointers are invalid, but better to get
+	// it at the point of the problem rather than
+	// much later).
+	
+	mov( memblkEBX.next, eax );
+	test( eax, eax );
+	jz tryListEnd;
+	
+		cmp( ebx, memblkEAX.prev );
+		jne MemoryAllocationCorruption;
+		jmp MemorySeemsOk;
+		
+	// If we are the last item in the list, then
+	// listEnd better point at us.
+	
+	tryListEnd:
+		cmp( ebx, listEnd );
+		jne MemoryAllocationCorruption;	
+		
+	MemorySeemsOk:
+	
+	mov( memblkEBX.prev, eax );
+	test( eax, eax );
+	jz firstBlockInList;
+	
+		// If we're not the first block in the list,
+		// then the previous item's next pointer had
+		// better point at us.
+		
+		cmp( ebx, memblkEAX.next );
+		jne MemoryAllocationCorruption;
+		
+	firstBlockInList:
+	
+	// Okay, it *looks* like we've got a valid
+	// memory block (we could scan the entire
+	// list, but that's too expensive to consider
+	// here).  Now let's decrement the reference
+	// counter and free the storage if the
+	// counter hits zero (error if it already
+	// was zero).
+	
+	cmp(memblkEBX.refCount, 0 );
+	je MemoryFreeFailure;
+	
+	dec( memblkEBX.refCount );
+	jnz allDone;
+	
+		// Clear out the freeList links so we
+		// don't try to remove this guy from
+		// the free list (it's not on the freeList,
+		// but the links may contain garbage values):
+		
+		mov( NULL, memblkEBX.nextInList );
+		mov( NULL, memblkEBX.prevInList );
+	
+		// Okay, the reference counter
+		// just hit zero, so move this block
+		// onto the free list.  First, let's look
+		// at the nodes immediately before and after
+		// this node to see if we can coalesce them.
+		//
+		// Start with the block after:
+		
+		mov( memblkEBX.next, eax );
+		test( eax, eax );
+		jz noNext;
+		
+			cmp( memblkEAX.refCount, 0 );
+			jne noNext;
+
+				coalesceBlocks( ebx, eax );
+
+		noNext:	
+		
+		// Now check the block before to see if we can
+		// coalesce it with the current block:
+		
+		mov( memblkEBX.prev, eax );
+		test( eax, eax );
+		jz noPrev;
+			
+			cmp( memblkEAX.refCount, 0 );
+			jne noPrev;
+
+				push( ebx );
+				coalesceBlocks( eax, ebx );
+				pop( eax );
+				jc didCoalesce;
+				
+					mov( eax, ebx );
+					
+				didCoalesce:
+				
+		noPrev:
+
+		
+		// Note that this inserts the new block at the 
+		// beginning of the free list, which is good 
+		// since the block is probably in real memory 
+		// right now and we'll allocate it next.
+		
+		mov( NULL, memblkEBX.prevInList );
+		mov( freeList, eax );
+		mov( eax, memblkEBX.nextInList );
+		assert( eax <> ebx );
+		test( eax, eax );
+		jz isInFront;
+		
+			mov( ebx, memblkEAX.prevInList );
+			
+		isInFront:
+		mov( ebx, freeList );
+		
+	
+	allDone: 
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+		
+#endmacro
+
+
+#if( @thread )
+
+	// The following (thread-safe library) version of mem.free
+	// is called only from stdlib code that has already entered
+	// the memCS critical section.
+	//
+	// If an exception occurs, this code returns with the carry
+	// flag set and the exception # in eax.
+	
+	procedure _hla.free( memptr:dword ); 
+		@nodisplay;
+		@noframe;
+
+	begin free;
+
+		hla_free
+		clc();
+		ret( _parms_ );
+		
+		MemoryAllocationCorruption:
+			mov( ex.MemoryAllocationCorruption, eax );
+			stc();
+			ret( _parms_ );
+
+			
+		AttemptToFreeNULL:
+			mov( ex.AttemptToFreeNULL, eax );
+			stc();
+			ret( _parms_ );
+			 
+		// Down here, the reference count was zero on the
+		// attempted free, so raise a memory allocation failure
+		// exception.
+
+		MemoryFreeFailure:
+			mov( ex.MemoryFreeFailure, eax );
+			stc();
+			ret( _parms_ );
+		
+	end free;
+	 
+	 
+	// In the thread-safe version of the library, the following is
+	// the interface to the free routine called by non-library code.
+	// This protects the memory management data structures via a
+	// critical section. 
+	 
+	procedure mem.free( memptr:dword ); 
+		@nodisplay;
+		@noframe;
+		
+	begin free;
+	 
+		_hla.memCSenter();
+		_hla.free( (type dword [esp+4]) );
+		jc freeException;
+		_hla.memCSleave();
+		ret( _parms_ );
+		
+	freeException:
+		_hla.memCSleave();
+		raise( eax );
+		
+	end free;
+	 
+		
+
+#else // !@thread
+
+	// Here is the non-thread-safe version of the mem.free procedure.
+	
+	procedure mem.free( memptr:dword ); 
+		@nodisplay;
+		@noframe;
+	begin free;
+
+		hla_free
+		ret( _parms_ );
+		
+		MemoryAllocationCorruption:
+			raise( ex.MemoryAllocationCorruption );
+
+			
+		AttemptToFreeNULL:
+			raise( ex.AttemptToFreeNULL );
+			 
+		// Down here, the reference count was zero on the
+		// attempted free, so raise a memory allocation failure
+		// exception.
+
+		MemoryFreeFailure:
+			raise( ex.MemoryFreeFailure );
+		
+	end free;
+	
+#endif
+
+
+end memory;
+
+
+
+
+	
+

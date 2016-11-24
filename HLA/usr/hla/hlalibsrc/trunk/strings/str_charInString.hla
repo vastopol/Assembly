@@ -1,0 +1,127 @@
+unit charInString_unit;
+
+// synopsis
+//	An iterator that makes a local copy of the string and
+//	yields one character at a time from the local copy.
+
+//	Version History:
+//
+//	Revision:	4
+//	Author:		Randall Hyde
+//	Date:		Jan. 30, 2008
+//	Note:		Register preservation changes, cld for rep.movsb, reorganized
+//				loop body.
+//
+//	Revision:	3
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 26, 2007
+//	Note:		changed to library format, code improvement
+//
+//	Revision:	2
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 06, 2007
+//	Note:		removed some unnecessary instructions
+//
+//	Revision:	1
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 05, 2007
+//	Note:		1st release
+//				Are there any special register preservation
+//				convention for iterators and foreach loops?
+
+
+	#includeonce ("strings.hhf")
+	#includeonce ("excepts.hhf")
+
+iterator str.charInString( s:string );
+		@nodisplay; @noframe; @noalignstack;
+		
+		var
+			saveECX	:dword;
+			saveESI	:dword;
+			saveEDI	:dword;
+			
+		
+	begin charInString;
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+
+		mov( ecx, saveECX );
+		mov( esi, saveESI );
+		mov( edi, saveEDI );
+
+		mov( s, esi );
+		test( esi, esi );
+		jz raiseDerefNULL;
+
+		// make local copy of string character data.
+
+		mov( (type str.strRec[esi]).length, ecx );
+		test( ecx, ecx );
+		jz noYield;
+		
+			sub( ecx, esp );
+			and( $FFFF_FFFC, esp );		// Stack must be dword aligned.
+
+			mov( esp, edi );	// edi = dest
+			push( edi );		// Save ptr to data for later.
+			pushfd();
+			cld();
+			rep.movsb();
+			popfd();
+			mov( #0, (type byte[edi]) );
+			mov( saveECX, ecx );	// foreach body might expect these
+			mov( saveEDI, edi );	// guys to contain original values
+			
+			// we have a local copy of s starting at
+			// esi, yield 1 character at a time in AL
+			
+			pop( esi );
+			jmp yield1st;
+			
+			_iterator:
+				add( 1, esi );
+				
+				// esi is important for us, we need to preserve it
+				// in case the user changes it in the procedure body
+				
+				push( esi );
+				mov( saveESI, esi );	// foreach body might use original esi.
+				yield();
+				mov( esi, saveESI );
+				mov( ecx, saveECX );
+				mov( edi, saveEDI );
+				pop( esi );
+				
+				
+			yield1st:
+				movzx( (type byte [esi]), eax );
+				test( eax, eax );
+				jnz _iterator;
+				
+
+		noYield:
+		mov( saveECX, ecx );
+		mov( saveEDI, edi );
+		mov( saveESI, esi );
+
+
+		// restore stack!
+		
+		mov( ebp, esp );
+		pop( ebp );
+		
+		// return "failure" to exit iterator
+		
+		add( 4, esp );	
+		ret();
+		
+
+		raiseDerefNULL:
+			raise( ex.AttemptToDerefNULL );
+	
+	end charInString;
+
+
+end charInString_unit;

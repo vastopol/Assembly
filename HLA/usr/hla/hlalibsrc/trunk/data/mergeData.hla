@@ -1,0 +1,87 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit bitsUnit;
+
+#include( "bits.hhf" );
+
+namespace bits;
+
+#macro SpreadEm( b ):BitCnt, value, rslt;
+
+	?BitCnt := 0;
+	?rslt := 0;
+	?value := b;
+	#while( BitCnt < 8 )
+	
+		?rslt := rslt << 2;
+		#if( (value & $80) == $80 )
+		
+			?rslt := rslt + 1;
+			
+		#endif
+		?value := value << 1;
+		?BitCnt := BitCnt + 1;
+		
+	#endwhile
+	rslt
+	
+#endmacro
+
+
+
+
+// Lookup tables that have an 8-bit index and produce (that is,
+// whose entry at the specified index) consists of those eight
+// bits spread out across 16 bits (with zeros in the alternate
+// bit positions). There are two tables -- one which spreads
+// the original 8 bits out into the odd numbered bit positions,
+// and one that spreads the 8 bits out into the even numbered
+// bit positions.
+//
+// Examples:
+//
+// SpreadBitsOdd8[ %1111 ] = %1010_1010
+// SpreadBitsEven8[ %1111 ] = %0101_0101
+
+
+readonly
+
+	SpreadBitsOdd8: word[256] :=
+		[
+			?i := 0;
+			#while( i < 255 )
+			
+				(SpreadEm( i )) << 1,
+				?i := i + 1;
+				
+			#endwhile
+			$AAAA
+		];
+	SpreadBitsEven8: word[256] :=
+		[
+			?i := 0;
+			#while( i < 255 )
+			
+				SpreadEm( i ),
+				?i := i + 1;
+				
+			#endwhile
+			$5555
+		];
+		
+end bits;
+
+		
+end bitsUnit;

@@ -1,0 +1,119 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit StdInput;
+#include( "../include/stdinunit.hhf" )
+
+
+
+/*****************************************************************/
+/*                                                               */
+/* getf-                                                         */
+/*                                                               */
+/* Reads a floating point value from the standard input device   */
+/* and leaves this value on the FPU stack.                       */
+/*                                                               */
+/* Usual exceptions.  Set the other getXXX routines for details. */
+/*                                                               */
+/*****************************************************************/
+
+procedure getf; @noframe;
+var
+	delims:	cset;
+	
+begin getf;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( esi );
+
+	// If the input buffer is empty, read a new line from the
+	// standard input device.
+	
+	cmp( NeedsInput, false );
+	je dontReadLn;
+	
+		ReadLn();
+		
+	dontReadLn:
+
+	conv.getDelimiters( delims );
+	
+	xor( eax, eax );
+	mov( InputIndex, ebx );
+	mov( CharsInBuf, ecx );
+	SkipDelimsLoop:
+	
+		mov( InputBuffer[ ebx ], al );
+		cmp( al, '_' );
+		je isDelim;
+		
+			bt( eax, (type dword delims ));
+			jnc NoMoreDelims;
+			
+		isDelim:
+		inc( ebx );
+		cmp( ebx, ecx );
+		jb SkipDelimsLoop;
+		
+		// We are at the end of the line, so read a new line from the user.
+		
+		ReadLn();
+		mov( InputIndex, ebx );
+		mov( CharsInBuf, ecx );
+		jmp SkipDelimsLoop;
+		
+	NoMoreDelims:
+
+	// Point esi at the start of the text and call atoi to
+	// convert this text to a real value.
+	
+	lea( esi, InputBuffer[ebx] );	
+	try
+	
+		conv.atof();
+		
+	  anyexception
+
+		mov( true, NeedsInput );
+		reraise( eax );
+		
+	endtry;
+	
+	// Compute new InputIndex value.
+	
+	sub( &InputBuffer, esi );
+	mov( esi, InputIndex );
+	
+	pop( esi );
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	leave();
+	ret();
+	
+end getf;
+
+
+end StdInput;
+
+
+
+
+	
+

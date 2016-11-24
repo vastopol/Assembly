@@ -1,0 +1,108 @@
+unit srt_reverse_unit;
+
+// synopsis
+//	reverse characters in a string
+//	Version History:
+//
+//	Revision:	3
+//	Author:		Sevag Krikorian
+//	Date:		Oct. 10, 2007
+//	Note:		changed to library format, some code optimization
+//
+//	Revision:	2
+//	Author:		Sevag Krikorian
+//	Date:		Sep. 06, 2007
+//	Note:		removed some unnecessary instructions
+//
+//	Revision:	1
+//	Author:		Sevag Krikorian
+//	Date:		Aug. 31, 2007
+//	Note:		1st release
+//				reversing an empty string returns an
+//				empty string
+
+
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "excepts.hhf" )
+
+
+
+	procedure str.reverse2( src:string; dest:string );
+		@nodisplay; @noframe; @noalignstack;
+		
+		// copies src into dest in reverse order
+		var
+			saveEAX	:dword;
+			saveEBX	:dword;
+			saveECX	:dword;
+			saveEDX	:dword;
+
+		
+	begin reverse2;
+		
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( eax, saveEAX );
+		mov( ebx, saveEBX );
+		mov( ecx, saveECX );
+		mov( edx, saveEDX );
+		
+		mov( src, ebx );
+		mov( dest, edx );
+		test( ebx, ebx );
+		jz raiseDerefNULL;
+		test( edx, edx );
+		jz raiseDerefNULL;
+		
+		mov( (type str.strRec[ebx]).length, eax );
+		cmp( eax, (type str.strRec[edx]).maxlen );
+		ja raiseStringOverflow;
+		
+		// start at end of src
+		mov( ebx, ecx );
+		add( (type str.strRec[ebx]).length, ebx );
+		
+		// stop at 1 char before start of src
+		sub( 1, ecx );
+		sub( 1, edx );
+		
+		reverseLoop:
+
+			add( 1, edx );
+			sub( 1, ebx );
+			cmp( ebx, ecx );
+			je doneLoop;
+			mov( [ebx], al );
+			mov( al, [edx] );
+			jmp reverseLoop;
+			
+		doneLoop:
+		
+		mov( #0, (type byte[edx]) );
+		mov( dest, eax );
+		sub( eax, edx );
+		mov( edx, (type str.strRec[eax]).length );
+		
+		mov( saveEAX, eax );
+		mov( saveEBX, ebx );
+		mov( saveECX, ecx );
+		mov( saveEDX, edx );
+		
+		mov( ebp, esp );
+		pop( ebp );
+		ret( _parms_ );
+		
+		raiseDerefNULL:
+			raise( ex.AttemptToDerefNULL );
+			
+		raiseStringOverflow:
+			raise( ex.StringOverflow );
+
+	end reverse2;
+
+
+
+
+end srt_reverse_unit;

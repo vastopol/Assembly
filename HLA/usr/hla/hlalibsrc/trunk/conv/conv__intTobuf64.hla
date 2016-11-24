@@ -1,0 +1,82 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 8/17/2006, by Randall Hyde
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+
+/*****************************************************************************/
+/*                                                                           */
+/* _intToBuf64-                                                              */
+/*                                                                           */
+/* On entry:                                                                 */
+/* 	q contains a numeric value to convert to an unsigned decimal string.     */
+/*  ECX contains the number of digits to print (from L.O.->H.O.)             */
+/*    including counts for the underscores if some are to be inserted and a  */
+/*    count for the minus sign if the number is negative.                    */
+/* 	                                                                         */
+/* 	EDI points at the end of a memory buffer large enough to hold an         */
+/* 	int64 value (at least 21 bytes if OutputUnderscores is                   */
+/*  false, at least 25 bytes if OutputUnderscores is true).                  */
+/*                                                                           */
+/* On exit:                                                                  */
+/* 	The buffer will contain a string that is the                             */
+/* 	string representation of the int64 value and EDI will point at the       */
+/* 	start of the string. If OutputUnderscores is true then this routine will */
+/*  insert underscores between each group of three digits.                   */
+/*                                                                           */
+/*****************************************************************************/
+
+
+
+
+
+procedure conv._intToBuf64
+( 
+		q		:qword;
+		width	:dword; 
+	var buffer	:char in edi 
+);
+	@noframe; 
+	@nodisplay; 
+	@noalignstack;
+
+		
+begin _intToBuf64;
+
+	push( ebp );
+	mov( esp, ebp );
+	mov( (type dword q[4]), edx );
+	test( edx, edx );
+	jns JMPunsToBuf64;
+		mov( (type dword q), eax );
+		neg( edx );
+		neg( eax );
+		sbb( 0, edx );
+		mov( eax, (type dword q ));
+		mov( edx, (type dword q[4] ));
+		dec( width );
+		conv._unsToBuf64( q, width, [edi] );
+		sub( 1, edi );
+		mov( '-', (type char [edi]));
+		pop( ebp );
+		ret( _parms_ );
+
+	JMPunsToBuf64:
+		pop( ebp );
+		jmp conv._unsToBuf64;
+
+end _intToBuf64;
+
+end ConvUnit;

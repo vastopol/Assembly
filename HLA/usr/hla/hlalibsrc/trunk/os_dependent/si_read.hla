@@ -1,0 +1,164 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit StdInput;
+#include( "../include/stdinunit.hhf" )
+#include( "os.hhf" )
+
+/*************************************************************/
+/*                                                           */
+/* read-                                                     */
+/*                                                           */
+/* Standard input block read routine.                        */
+/*                                                           */
+/* Reads *at most* "count" characters from the standard      */
+/* input device and stores those characters in the specified */
+/* buffer.                                                   */
+/*                                                           */
+/* Will read up to the specified number of characters, or    */
+/* up until a newln is encountered, whichever occurs first.  */
+/*                                                           */
+/* Returns the actual number of characters read in EAX.      */
+/*                                                           */
+/*************************************************************/
+
+#if( os.linux )
+
+	procedure stdin.read( var buffer:byte; count:dword ); 
+		@nodisplay; 
+		@noframe;
+		
+	begin read;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( StdInHandle );	// Standard input file handle.
+		push( buffer );
+		push( count );
+		call linux.read;
+		cmp( eax, -1 );
+		je FileReadError;
+		
+		pop( ebp );
+		ret( _parms_ );
+				
+	FileReadError:
+		raise( ex.FileReadError );
+		
+	end read;
+
+#elseif( os.freeBSD )
+
+	procedure stdin.read( var buffer:byte; count:dword ); 
+		@nodisplay; 
+		@noframe;
+		
+	begin read;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( StdInHandle );	// Standard input file handle.
+		push( buffer );
+		push( count );
+		call bsd.read;
+		jc FileReadError;
+		
+		pop( ebp );
+		ret( _parms_ );
+				
+	FileReadError:
+		raise( ex.FileReadError );
+		
+	end read;
+
+#elseif( os.macOS )
+
+	procedure stdin.read( var buffer:byte; count:dword ); 
+		@nodisplay; 
+		@noframe;
+		
+	begin read;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( StdInHandle );	// Standard input file handle.
+		push( buffer );
+		push( count );
+		call mac.read;
+		jc FileReadError;
+		
+		pop( ebp );
+		ret( _parms_ );
+				
+	FileReadError:
+		raise( ex.FileReadError );
+		
+	end read;
+
+#elseif( os.win32 )
+
+
+	procedure stdin.read( var buffer:byte; count:dword );
+		@nodisplay; 
+		@noframe;
+	var
+		BytesRead: dword;
+		
+	begin read;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( ecx );
+		push( edx );
+		pushfd();
+		cld();
+
+		cmp( HasStdInHandle, false );
+		jne hasHandle;
+		
+			GetStdHandle( -10 );
+			mov( eax, StdInHandle );
+			mov( true, HasStdInHandle );
+			
+		hasHandle:
+		
+		ReadFile( 0, BytesRead, count, buffer, StdInHandle );
+		test( eax, eax );
+		jz FileReadError;
+		
+		popfd();
+		pop( edx );
+		pop( ecx );
+		mov( BytesRead, eax );
+		leave();
+		ret( _parms_ );
+		
+	FileReadError:
+		raise( ex.FileReadError );
+	
+	end read;
+
+#endif
+
+end StdInput;
+
+
+
+
+	
+

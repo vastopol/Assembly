@@ -1,0 +1,91 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit charSets;
+
+#include( "cset.hhf" )
+#include( "memory.hhf" )
+#include( "excepts.hhf" )
+
+
+/*******************************************/
+/*                                         */
+/* removeStr-                              */
+/*                                         */
+/* Removes the characters in a string from */
+/* a character set.                        */
+/*                                         */
+/*******************************************/
+
+procedure cs.removeStr( s:string; var dest:cset ); 
+	@nodisplay; 
+	@noframe;
+const
+	_s		:text := "(type string [esp+20])";
+	_dest	:text := "(type dword [esp+16])";
+	
+begin removeStr;
+
+	push( eax );
+	push( ebx );
+	push( ecx );
+
+	// Stack at this point:
+	//
+	//	esp+20	_s:string
+	//	esp+16	dest:dword
+	//	esp+12	return address
+	//	esp+8	eax
+	//	esp+4	ebx
+	//	esp		ecx
+	
+	mov( _dest, ebx );
+	mov( _s, ecx );
+	test( ebx, ebx );
+	jz NULLptr;
+	test( ecx, ecx );
+	jz NULLptr;
+	
+	// Union in the characters from the string:
+	
+	xor( eax, eax );
+	mov( [ecx], al );
+	cmp( al, 0 );
+	jz atEOS;
+	whileNotAtEOS:
+	
+		btr( eax, [ebx] );
+		inc( ecx );
+		mov( [ecx], al );
+		cmp( al, 0 );
+		jnz whileNotAtEOS;
+		
+	atEOS:
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	ret( _parms_ );
+		
+NULLptr:
+	raise( ex.AttemptToDerefNULL );
+
+end removeStr;
+
+end charSets;
+
+
+
+
+	
+

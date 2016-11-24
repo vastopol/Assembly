@@ -1,0 +1,100 @@
+unit filesys_extName_unit;
+
+// synopsis
+//	These functions return an extension of a filename
+//	Extensions are the characters that follow the '.' in
+//	the filename.  If there is no extension, an empty string
+//	is returned and the z-flag is set. If there is an extension,
+//  allocates storage on the stack, copies the extension to
+//	the new string, returns a pointer in EAX and clears the z-flag.
+//  In all cases, returns a pointer to the string allocated on the
+//	heap in the EAX register (even if this is the empty string).
+//	It is the caller's responsibility to free this storage.
+//
+//	Version History:
+//
+//	Revision:	2
+//	Author:		Randall Hyde
+//	Date:		Jan. 30, 2008
+//	Note:		Filled in the code body.
+
+//	Revision:	1
+//	Author:		Sevag Krikorian
+//	Date:		
+//	Note:		1st release
+
+	
+	#includeOnce( "filesys.hhf" )
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "excepts.hhf" )
+	#includeOnce( "memory.hhf" )
+		
+
+	procedure filesys.a_extractExt( pathname:string );
+		@nodisplay; @noalignstack; @noframe;
+		
+	begin a_extractExt;
+		
+		
+		push( ebp );
+		mov( esp, ebp );
+		push( ebx );
+		push( edx );
+		
+		// Note: this code assumes that filesys.hasExtension checks
+		// its parameter to make sure it is not NULL. There is no
+		// need to repeat that check here.
+		
+		mov( pathname, ebx );
+		mov( ebx, edx );
+		filesys.hasExtension( ebx );
+		jnc returnFalse;
+		
+		// eax = index to start of extension in pathname.
+		// edx = pointer to start of extension in pathname.
+		// ebx = length of extension.
+		
+		add( eax, edx );
+		mov( (type str.strRec[ebx]).length, ebx );
+		sub( eax, ebx );
+		
+		// ebx = space we need in dest
+		
+		str.alloc( ebx );
+		push( eax );
+		mov( ebx, (type str.strRec[eax]).length );
+		
+		sub( 1, eax );
+		sub( 1, edx );
+		copyToDest:
+			add( 1, eax );
+			add( 1, edx );
+			mov( [edx], bl );
+			mov( bl, [eax] );
+			test( bl, bl );
+			jnz copyToDest;
+			
+			pop( eax );		// Retrieve ptr to string we allocated.
+			stc();			// Return success.
+			jmp done;
+		
+		returnFalse:
+			str.alloc( 1 );
+			mov( 0, ( type str.strRec[eax]).length );
+			mov( 0, ( type byte[eax] ) );
+			clc();
+		
+		done:
+			pop( edx );
+			pop( ebx );
+			pop( ebp );
+			ret( _parms_ );
+		
+		radn:
+			raise( ex.AttemptToDerefNULL );
+			 
+	end a_extractExt;
+
+
+
+end filesys_extName_unit;

@@ -1,0 +1,79 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit mathUnit;
+
+#include( "math.hhf" )
+
+/*****************************************************************/
+/*                                                               */
+/* cos-                                                          */
+/*                                                               */
+/* The x87 fcos instruction requires the operand to be in the    */
+/* range -2**63..2**63. If it is outside this range, the cos     */
+/* instruction leaves ST0 unchanged and sets the C2 flag in the  */
+/* FP status register. This function will handle the case of     */
+/* st0 being outside this range (it will compute the remainder   */
+/* of st0 divided by 2pi prior to computing fcos).            */
+/*                                                               */
+/*****************************************************************/
+
+
+procedure math._cos; @nodisplay; @noframe;
+begin _cos;
+
+	push( eax );
+	
+	// Because the vast majority of the time, cos/cos
+	// is invoked for small values (e.g., less than 360 degrees),
+	// we'll just execute fcos and adjust things if fcos
+	// fails.
+	
+	fcos();
+	fstsw( ax );
+	test( %100, ah );
+	jz goodcos;
+		
+		// cos failed. We need to reduce the value
+		// to a range smaller than _/+2**63. We'll
+		// put it in the range -2pi..+2pi.
+		
+		// Get the value into the range -2pi..2pi:
+		
+			fldpi();	// Compute 2pi (the divisor)
+			fldpi();
+			faddp();
+			fld( st1 );
+		mod2pi:
+			fprem1();
+			fstsw( ax );	// Determine if we are done (c2=0)
+			and( %100, ah );
+			jnz mod2pi;
+			
+			fstp( st2 );
+			fstp( st0 );			
+
+			// Okay, now that we've got it in range,
+			// recompute the cos value.
+			 
+			fcos();			
+	
+	goodcos:
+	pop( eax );
+	ret();
+
+end _cos;
+
+
+end mathUnit;

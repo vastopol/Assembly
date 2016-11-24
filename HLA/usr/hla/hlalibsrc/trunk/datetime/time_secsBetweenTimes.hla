@@ -1,0 +1,81 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "excepts.hhf" )
+
+	
+// secsBetweenTimes-
+//
+//	This procedure computes the number of seconds between
+//	two times. Note that the result is the absolute value
+//	of their difference (that is, the order of the arguments
+//	does not matter).
+
+procedure time.secsBetweenTimes( time1:time.timerec; time2:time.timerec );
+	@nodisplay; 
+	@noframe;
+begin secsBetweenTimes;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ebx );
+	push( edx );
+	
+	// Convert time1 to seconds:
+	
+	movzx( time1.secs, eax );
+	movzx( time1.mins, edx );
+	intmul( 60, edx );
+	add( edx, eax );
+	movzx( time1.hours, edx );
+	intmul( 60*60, edx );
+	add( edx, eax );
+	
+	push( eax );	// Save time1 in seconds
+	
+	// Convert time2 to seconds:
+	
+	movzx( time2.secs, eax );
+	movzx( time2.mins, edx );
+	intmul( 60, edx );
+	add( edx, eax );
+	movzx( time2.hours, edx );
+	intmul( 60*60, edx );
+	add( edx, eax );
+	
+	pop( edx );			// Retrieve time1
+	
+	// Because seconds is an unsigned value and
+	// we want to compute the absolute value of
+	// the difference, we must subtract the smaller
+	// value from the larger value to ensure we
+	// end up with a non-negative value:
+	
+	cmp( eax, edx );
+	ja dontSwap;
+	
+		xchg( eax, edx );
+		
+	dontSwap:
+	sub( edx, eax );	// Compute the difference.	
+	pop( edx );
+	pop( ebx );
+	pop( ebp );
+	ret( _parms_ );
+					
+end secsBetweenTimes;
+	
+end DateTime;			

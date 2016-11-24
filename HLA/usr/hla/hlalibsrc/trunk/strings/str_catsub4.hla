@@ -1,0 +1,189 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+/************************************************************/
+/*                                                          */
+/* catsub4-                                                 */
+/* catsub5-                                                 */
+/* a_catsub-                                                */
+/*                                                          */
+/* Extracts a substring from the first string operand and   */
+/* concatentates it to the end of the string specified by   */
+/* the second string operand.                               */
+/*                                                          */
+/* catsub4-                                                 */
+/* Concatenates the substring to the end of the dest        */
+/* substring (the second string operand).                   */
+/*                                                          */
+/* catsub5-                                                 */
+/* Concatenates the substring of src2 (the first string     */
+/* operand) to the end of the src1 string (the second       */
+/* string operand), and stores the result into dest.        */
+/*                                                          */
+/* a_catsub-                                                */
+/* Like catsub5, except it creates a new string on the heap */
+/* rather than storing the string in a destination string.  */
+/*                                                          */
+/*                                                          */
+/*                                                          */
+/* Possible errors:                                         */
+/*                                                          */
+/* Raises a StringIndexError exception if start is a value  */
+/* greater than the length of the source string.            */
+/*                                                          */
+/* Raises a StringOverflow exception if the actual length   */
+/* of the substring is greater than the maximum length      */
+/* of the destination string.                               */
+/*                                                          */
+/* If start+len is greater than the length of the src       */
+/* string, but start is less than src's length, then        */
+/* substr simply copies the characters through to the       */
+/* end of the string.                                       */
+/*                                                          */
+/* If start is equal to the length of src, substr does      */
+/* not raise an exception;  it just returns a string        */
+/* of zero length.                                          */
+/*                                                          */
+/************************************************************/
+
+
+ 
+procedure str.catsub4
+(
+	src:string; 
+	start:dword; 
+	len:dword; 
+	dest:string 
+); @noframe;
+begin catsub4;
+
+	push( ebp );
+	mov( esp, ebp );
+	pushfd();
+	push( eax );
+	push( ecx );
+	push( esi );
+	push( edi );
+	cld();
+	
+	// Get the string pointers and make sure they are non-NULL.
+	
+	mov( src, esi );
+	mov( dest, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+
+
+	// Make sure the destination can hold the result.
+	
+	mov( len, eax );
+	add( start, eax );
+	jc useLength;
+		cmp( eax, (type str.strRec [esi]).length );
+		jb lenOK;
+		
+	useLength:
+		mov( (type str.strRec [esi]).length, eax );
+		
+	lenOK:
+	sub( start, eax );								// remove ADD from above
+	mov( eax, ecx );								// Save for later use.
+	add( (type str.strRec [edi]).length, eax );		// Include dest str length.
+	cmp( eax, (type str.strRec [edi]).maxlen );		// Will result fit?
+	ja StringOverflow;
+	
+	// Make sure the starting index is within the limits of
+	// the source string.
+	
+	mov( (type str.strRec [esi]).length, eax );
+	cmp( eax, start );
+	jb StringIndexError;
+		
+	// Compute the number of characters to copy.  This is either
+	// "len" if (start+len) is less than or equal to src.len, or
+	// it is len - (start+len-src.len) if (start+len) is greater
+	// than src.len.
+	//
+	// Note: len is in ECX, as computed above.
+	 
+	mov( start, eax );
+	add( ecx, eax );
+	cmp( eax, (type str.strRec [esi]).length );
+	jna fullLength;
+	
+		sub( (type str.strRec [esi]).length, eax );
+		sub( eax, ecx );
+		
+	fullLength:
+
+	
+	// Okay, copy the characters.
+	
+	add( start, esi );								// SUBSTRING STARTING LOCATION.
+	add( (type str.strRec [edi]).length, edi );		// Point at dest location.
+	test( ecx, ecx );
+	jz noMove;
+	
+		rep.movsb();
+		
+	noMove:
+
+	// Zero terminate the string:
+
+	mov( 0, (type byte [edi]));
+	
+	// Compute the new length:
+	
+	mov( dest, eax );
+	sub( eax, edi );
+	mov( edi, (type str.strRec [eax]).length );
+	
+	// Clean up and leave.
+	
+	pop( edi );
+	pop( esi );
+	pop( ecx );
+	pop( eax );
+	popfd();
+	pop( ebp );
+	ret( _parms_ );
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+StringOverflow:
+	raise( ex.StringOverflow );
+		 
+StringIndexError:
+		raise( ex.StringIndexError );
+
+end catsub4;
+
+end stringUnit;
+
+
+
+
+	
+

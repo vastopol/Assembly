@@ -1,0 +1,117 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit randomUnit;
+#include( "rand.hhf" )
+#include( "../include/random.hhf" )
+
+// Random number generator.
+// Original author: unknown.  This code was pulled off one of the nets and
+//		   added to the library.  Any information on the original
+//		   author would be appreciated.
+//
+//		   Modified for use with UCR Standard library 10/24/91 rhyde
+//		   Modified for use with the HLA Standard Library 10/14/99 rhyde
+//
+//
+//
+// Note:  24 and 55 are not arbitrary.  They have been chosen so that the least
+// significant bits in the sequence of pseudorandom integers have a period of
+// length 2^55 - 1.  The sequence of pseudorandom numbers themselves have period
+// 2^f*(2^55 - 1) where 0 <= f <= 16.  See Knuth's Volume 2 "Seminumerical
+// Algorithms" of the second edition of the three volume set THE ART OF COMPUTER
+// PROGRAMMING (pages 26 & 27).
+
+
+static
+	align( 4 );
+	
+	j					:dword :=	24;
+	k					:dword :=	55;
+
+	// Array of 55 seed elements for the additive pseudorandom number generator.
+	// (Note: element zero of this array is not used.)
+
+	add_array: dword[ 56 ] :=
+		[	
+			$0000_0000, $1F10_AE10, $A6E0_35E0, $DE6D_6D6D, 
+			$BAD1_49D1, $CC81_5B81, $12DD_A1DD, $7D85_0C85, 
+			$745B_035B, $1B74_AA74, $F354_8254, $B430_4330, 
+			$8828_1728, $F89E_879E, $5228_E128, $F4C4_83C4, 
+			$EF3C_7E3C, $88F1_17F1, $907D_1F7D, $ABD5_3AD5, 
+			$B3DB_42DB, $BDA3_4CA3, $AAB8_39B8, $7435_0335, 
+			$558A_E48A, $2827_B727, $BC7C_4B7C, $8AFA_19FA, 
+			$6D0C_FC0C, $0E31_9D31, $C4AD_53AD, $8377_1277, 
+			$9065_1F65, $BDB6_4CB6, $A96F_386F, $3B40_CA40, 
+			$76D9_05D9, $20E9_AFE9, $7C27_0B27, $0E29_9D29, 
+			$5CED_EBED, $923E_213E, $FD77_8C77, $4A47_D947, 
+			$A864_3764, $F069_7F69, $6145_F045, $E3ED_72ED, 
+			$CC42_5B42, $F25F_815F, $52B5_E1B5, $69AF_F8AF, 
+			$6CCB_FBCB, $BB53_4A53, $3829_C729, $3862_C762 
+		];
+
+
+
+
+// uniform-	Returns random number in EAX (random bit values).
+//			In theory, values are uniformly distributed.
+
+procedure rand.uniform; @nodisplay; @noframe;
+begin uniform;
+
+	push( ebx );
+	push( ecx );
+
+	#if( @thread )
+	
+		rand._enterCS();
+		
+	#endif
+	mov( j, ebx );
+	mov( add_array[ ebx*4 ], ecx );
+	mov( k, ebx );
+	mov( add_array[ ebx*4 ], eax );
+	add( ecx, eax );
+	mov( eax, add_array[ ebx*4 ]);
+	
+	dec( j );
+	jnz dontAdd;
+
+		mov( 55, j );
+
+	dontAdd:
+
+	dec( k );
+	jnz dontAdd55;
+	
+		mov( 55, k );
+
+	dontAdd55:
+	
+	#if( @thread )
+	
+		rand._leaveCS();
+		
+	#endif
+	
+	pop( ecx );
+	pop( ebx );
+	ret();
+
+end uniform;
+
+
+
+
+end randomUnit;

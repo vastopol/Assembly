@@ -1,0 +1,93 @@
+unit stringUnit;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+/***************************************************************/
+/*                                                             */
+/* truncate2,                                                  */
+/* truncate3,                                                  */
+/*                                                             */
+/* These routines remove characters from the end of a string.  */
+/* The truncate routine destructively removes characters       */
+/* from a specified string variable.  The a_truncate routine   */
+/* allocates storage for a new string and copies the string,   */
+/* minus the deleted portion, to the newly allocated storage.  */
+/* The original string is left unchanged by a_truncate.        */
+/*                                                             */
+/* Inputs-                                                     */
+/*                                                             */
+/* dest-   Pointer to string to remove characters from.        */
+/* length- Number of characters to delete from the end         */
+/*         of the string.                                      */
+/*                                                             */
+/***************************************************************/
+
+// Written by Sevag Krikorian  -=[Kain]=-
+// Rewritten for HLA stdlib v2.x by Randy Hyde
+
+
+
+procedure str.truncate2
+(
+      dest		:string;
+      rmvlen	:dword
+); 
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+begin truncate2;
+      
+	push( ebp );
+	mov( esp, ebp );
+	push( ecx );
+	push( esi );
+
+	// verify that dest is non-NULL
+
+	mov( dest, esi );
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+
+	cmp( rmvlen, 0 );
+	je noTruncate;
+
+		mov((type str.strRec [esi]).length, ecx);
+		cmp( ecx, rmvlen );
+		jae rmvFromEnd;
+		
+			// just erase the whole string
+
+			mov( 0, (type byte [esi]) );      			// zero terminate
+			mov( 0, (type str.strRec [esi]).length );	// adjust length
+			clc();										// Return failure.
+			jmp noTruncate;
+			  
+		rmvFromEnd:
+		
+			// remove len characters from end of string
+
+			sub( rmvlen, ecx );
+			mov( 0, (type byte [esi+ecx]) );      		// zero terminate
+			mov( ecx, (type str.strRec[esi]).length );	// adjust length
+			stc(); 										// Return success.                   
+
+	noTruncate:
+
+	pop( esi );
+	pop( ecx );
+	pop( ebp );
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise(ex.AttemptToDerefNULL);
+	
+end truncate2;
+end stringUnit;
+
+
+
+
+	
+

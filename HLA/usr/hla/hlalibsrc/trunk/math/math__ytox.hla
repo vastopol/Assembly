@@ -1,0 +1,51 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit mathUnit;
+
+#include( "math.hhf" )
+
+
+
+/**********************************************************/
+/*                                                        */
+/* YtoX(y,x)- Computes y**x (y=st(1), x=st(0)).           */
+/*            This routine requires three free registers. */
+/*                                                        */
+/* 	Y must be greater than zero.                          */
+/*                                                        */
+/* YtoX(y,x) = 2 ** (x * lg(y))                           */
+/*                                                        */
+/**********************************************************/
+
+
+procedure math._yToX; @nodisplay; @noframe;
+begin _yToX;
+
+		// Note: y = st1, x=st0.
+		
+		fxch(); 		// Compute lg(y).
+		fld1();			// 
+		fxch();			// 
+		fyl2x();		// 
+						// 
+		fmulp(); 		// Compute x*lg(y).
+		math._twoToX();	// Compute 2**(x*lg(y)).
+		ret();
+
+end _yToX;
+
+
+
+end mathUnit;

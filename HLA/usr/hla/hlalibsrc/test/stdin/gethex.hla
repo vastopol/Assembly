@@ -1,0 +1,459 @@
+program fgethex_test;
+#include( "stdlib.hhf" )
+
+var
+	inputL		:lword;
+	
+	procedure cmp128( left:int128; right:int128 ); @returns( "@ne" );
+	begin cmp128;
+	
+		cld();
+		lea( esi, left );
+		lea( edi, right );
+		mov( 4, ecx );
+		repe.cmpsd();
+		
+	end cmp128;
+	
+	
+begin fgethex_test;
+
+	// Testing fileio.geth128
+	
+	try
+	
+		stdin.geth128( inputL );
+		if( cmp128( inputL, 1 ) ) then
+		
+			raise(2001);
+		
+		endif;	
+		
+		stdin.geth128( inputL );
+		if( cmp128( inputL, 2 ) ) then
+		
+			raise(2002);
+		
+		endif;	
+		
+		stdin.geth128( inputL );
+		if( cmp128( inputL, $FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF ) ) then
+		
+			raise(2003);
+		
+		endif;	
+		
+		stdin.geth128( inputL );
+		if( cmp128( inputL, 0 ) ) then
+		
+			raise(2004);
+		
+		endif;
+		
+		try
+		
+			stdin.geth128( inputL );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise a conversion error.
+			
+		  	Raise( 2005 );
+			
+		  exception( ex.ConversionError )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( 2006 );
+			
+		endtry;
+		stdin.readLn();	// Clean up after ourselves.
+		  		
+		
+		try
+		
+			stdin.geth128( inputL );
+
+		  unprotected
+		  
+		  	// If we got to this point, we failed to raise an overflow error.
+			
+		  	Raise( 2007 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( 2008 );
+			
+		endtry;
+		stdin.readLn();
+		stderr.put( "stdin.geth128 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"stdin.geth128 failed! eax=", (type uns32 eax), nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+	// Testing stdin.geth64
+	
+	try
+	
+		stdin.geth64();
+		if( eax <> 1 && edx <> 0 ) then
+		
+			raise(1001);
+		
+		endif;	
+		
+		stdin.geth64();
+		if( eax <> 2 && edx <> 0 ) then
+		
+			raise(1002);
+		
+		endif;	
+		
+		stdin.geth64();
+		if( eax<> $30 && edx <> 0 ) then
+		
+			raise(1003);
+		
+		endif;	
+		
+		stdin.geth64();
+		if( eax<> $4a && edx <> 0 ) then
+		
+			raise(1004);
+		
+		endif;
+		
+		try
+		
+			stdin.geth64();
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise a conversion error.
+			
+		  	Raise( 1005 );
+			
+		  exception( ex.ConversionError )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( 1006 );
+			
+		endtry;
+		stdin.readLn();	// Clean up after ourselves.
+		  		
+		
+		try
+		
+			stdin.geth64();
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	Raise( 1007 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( 1008 );
+			
+		endtry;
+		stdin.readLn();
+		stderr.put( "stdin.geth64 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"stdin.geth64 failed! eax=", (type uns32 eax), nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+	// Testing stdin.geth32
+	
+	try
+	
+		stdin.geth32();
+		if( eax <> $A ) then
+		
+			raise(1011);
+		
+		endif;	
+		
+		stdin.geth32();
+		if( eax <> $B ) then
+		
+			raise(1012);
+		
+		endif;	
+		
+		stdin.geth32();
+		if( eax <> $C0 ) then
+		
+			raise(1013);
+		
+		endif;	
+		
+		stdin.geth32();
+		if( eax <> -1 ) then
+		
+			raise(1014);
+		
+		endif;
+		
+		try
+		
+			stdin.geth32();
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	Raise( 1015 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( 1016 );
+			
+		endtry;
+		stdin.readLn();
+		stderr.put( "stdin.geth32 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"stdin.geth32 failed! eax=", (type uns32 eax), nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+
+
+
+	// Testing stdin.geth16
+	
+	try
+	
+		stdin.geth16();
+		if( eax <> $1000 ) then
+		
+			raise(1021);
+		
+		endif;	
+		
+		stdin.geth16();
+		if( eax <> $FFFF ) then
+		
+			raise(1022);
+		
+		endif;	
+		
+		stdin.geth16();
+		if( eax <> $0C ) then
+		
+			raise(1023);
+		
+		endif;	
+		
+		stdin.geth16();
+		if( eax <> $ff ) then
+		
+			raise(1024);
+		
+		endif;
+		
+		try
+		
+			stdin.geth16();
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	Raise( 1025 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( 1026 );
+			
+		endtry;
+		stdin.readLn();
+		stderr.put( "stdin.geth16 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"stdin.geth16 failed! eax=", (type uns32 eax), nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+	// Testing stdin.geth8
+	
+	try
+	
+		stdin.geth8();
+		if( eax <> $b ) then
+		
+			raise(1031);
+		
+		endif;	
+		
+		stdin.geth8();
+		if( eax <> $bb ) then
+		
+			raise(1032);
+		
+		endif;	
+		
+		stdin.geth8();
+		if( eax <> $0 ) then
+		
+			raise(1033);
+		
+		endif;	
+		
+		stdin.geth8();
+		if( eax <> $ff ) then
+		
+			raise(1034);
+		
+		endif;
+		
+		try
+		
+			stdin.geth8();
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	Raise( 1035 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( 1036 );
+			
+		endtry;
+		stdin.readLn();
+		stderr.put( "stdin.geth8 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"stdin.geth8 failed! eax=", (type uns32 eax), nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+			
+end fgethex_test;
+
+													

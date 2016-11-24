@@ -1,0 +1,250 @@
+unit wRoundRect_u;
+?@NoDisplay := true;
+?@NoStackAlign := true;
+
+#include( "howl.hhf" )
+#include( "excepts.hhf" )
+#include( "strings.hhf" )
+#include( "memory.hhf" )
+
+#includeOnce( "../include/howlunit.hhf" )		
+#includeOnce( "stdio.hhf" )
+#includeOnce( "stdout.hhf" )
+
+readonly
+	align( 4 );		
+	vmt( wRoundRect_t );
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Handle wRoundRect objects here:
+
+
+					
+procedure wRoundRect_t.create_wRoundRect
+(
+	wrName			:string;
+	parent			:dword;
+	x				:dword; 
+	y				:dword;
+	width			:dword;
+	height			:dword;
+	cornerWidth		:dword;
+	cornerHeight	:dword;
+	lineColor		:dword;
+	fillColor		:dword;
+	bkgColor		:dword 
+);;
+	
+_begin( wRoundRect_t, create_wRoundRect );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( wRoundRect_t ));
+		mov( eax, esi );
+		mov( true, cl );
+		
+	else
+	
+		mov( this.wBase_private.onHeap, cl );
+		
+	endif;
+	
+	// We're going to create a wFilledFrame object here.
+	
+	(type wFilledFrame_t [esi]).create_wFilledFrame
+	(
+		wrName,
+		parent,									
+		x,	  
+		y,	  
+		width, 
+		height,
+		lineColor,
+		fillColor,
+		bkgColor
+	);
+	mov( cl, this.wBase_private.onHeap );
+	
+	// Set up the roundRect-specific fields:
+		
+	howl.setType( wRoundRect_c );
+	mov( &wRoundRect_t._VMT_, this._pVMT_ );
+	
+
+	mov( cornerWidth, eax );
+	mov( eax, this.wRoundRect_private.cornerWidth );
+	mov( cornerHeight, eax );
+	mov( eax, this.wRoundRect_private.cornerHeight );
+		
+	pop( edx );
+	pop( ecx );			   
+	pop( eax );
+	
+_end( wRoundRect_t, create_wRoundRect );
+
+
+
+
+
+
+// Accessor/mutator functions:
+
+method wRoundRect_t.get_cornerWidth; @noframe;;
+_begin( wRoundRect_t, get_cornerWidth );
+
+	mov( this.wRoundRect_private.cornerWidth, eax );
+	ret();
+	 
+_end( wRoundRect_t, get_cornerWidth );
+
+
+
+method wRoundRect_t.get_cornerHeight; @noframe;;
+_begin( wRoundRect_t, get_cornerHeight );
+
+	mov( this.wRoundRect_private.cornerHeight, eax );
+	ret();
+	 
+_end( wRoundRect_t, get_cornerHeight );
+
+
+
+
+// Mutator functions:
+
+
+method wRoundRect_t.set_cornerWidth( cornerWidth:dword );;
+_begin( wRoundRect_t, set_cornerWidth );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( cornerWidth, eax );
+	mov( eax, this.wRoundRect_private.cornerWidth );
+	w.InvalidateRect( this.handle, NULL, true );
+			
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wRoundRect_t,set_cornerWidth );
+
+
+method wRoundRect_t.set_cornerHeight( cornerHeight:dword );;
+_begin( wRoundRect_t, set_cornerHeight );
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	
+	mov( cornerHeight, eax );
+	mov( eax, this.wRoundRect_private.cornerHeight );
+	w.InvalidateRect( this.handle, NULL, true );
+			
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+	
+_end( wRoundRect_t,set_cornerHeight );
+
+
+
+
+
+
+
+
+method wRoundRect_t.processMessage
+( 
+	hwnd	:dword; 
+	uMsg	:dword; 
+	wParam	:dword; 
+	lParam	:dword 
+);
+var
+	r			:w.RECT;
+	hdc			:dword;
+	oldBrush	:dword;
+	oldPen		:dword;
+	ps			:w.PAINTSTRUCT;
+
+_begin( wRoundRect_t, processMessage );
+
+	if( uMsg = w.WM_PAINT ) then
+	
+		w.BeginPaint( this.handle, ps );
+			
+			mov( eax, hdc );
+			
+			mov( 0, r.left );
+			mov( this.wVisual_private.width, eax );
+			mov( eax, r.right );
+			
+			mov( 0, r.top );
+			mov( this.wVisual_private.height, eax );
+			mov( eax, r.bottom );
+			
+			// If the H.O. byte is $FF, then don't paint the background
+			// color.
+				
+			if
+			( 
+					ps.fErase 
+				||	(type byte this.wVisual_private.bkgColor[3]) <> $FF 
+			) then
+			
+				// Fill the wRoundRect's window with the background color:
+				
+				w.FillRect( hdc, r, this.wVisual_private.bkgBrush );
+				
+			endif;
+			
+			// Select the object's pen and fill values:
+			
+			w.SelectObject( hdc, this.wFilledFrame_private._linePen );
+			mov( eax, oldPen );
+			w.SelectObject( hdc, this.wFilledFrame_private._fillBrush );
+			mov( eax, oldBrush );
+								   			
+			// Draw the wRoundRect:
+			
+			w.RoundRect
+			( 
+				hdc, 
+				0,
+				0,
+				this.wVisual_private.width,
+				this.wVisual_private.height,
+				this.wRoundRect_private.cornerWidth,
+				this.wRoundRect_private.cornerHeight
+			);
+			
+			w.SelectObject( hdc, oldBrush );
+			w.SelectObject( hdc, oldPen );
+						
+		w.EndPaint( this.handle, ps );
+		exit processMessage;
+		
+	elseif( uMsg = w.WM_MOUSEACTIVATE ) then
+	
+		if( this.wClickable_private.onClick <> NULL ) then
+		
+			this.wClickable_private.onClick( esi, wParam, lParam );
+			mov( w.MA_NOACTIVATEANDEAT, eax );
+			exit processMessage;
+		
+		endif;
+	
+	endif;
+	super.processMessage( hwnd, uMsg, wParam, lParam );
+	
+_end( wRoundRect_t, processMessage );
+
+end	wRoundRect_u;

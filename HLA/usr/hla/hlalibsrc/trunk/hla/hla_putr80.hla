@@ -1,0 +1,68 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit hlaUnit;
+		
+#includeOnce( "hla.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+
+
+procedure hla.putr80
+(
+	putstr	:thunk; 
+	r		:real80; 
+	width	:uns32; 
+	decpts	:uns32; 
+	fill	:char 
+); @noframe; @nodisplay;
+var
+	eaxSave	:dword;
+	s		:string;
+	buffer	:char[4200];
+	
+begin putr80;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( eax, eaxSave );
+	
+	str.init( buffer, 4200 );
+	mov( eax, s );
+		
+	mov( width, eax );		// Get size we need to allocate.
+	cmp( eax, 4096 );
+	ja wtb;
+
+	// Convert the real80 value to a string and emit it.
+
+	conv.r80ToStr( r, width, decpts, fill, s );
+	mov( s, eax );
+	putstr();
+		
+	mov( eaxSave, eax );
+	leave();
+	ret( _parms_ );
+
+wtb:
+	raise( ex.WidthTooBig );		  	
+
+	
+end putr80;
+
+	
+end hlaUnit;
+

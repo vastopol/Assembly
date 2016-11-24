@@ -1,0 +1,210 @@
+unit consoleUnit;
+
+#include( "console.hhf" )
+#includeonce( "os.hhf" )
+#includeonce( "stdout.hhf" )
+
+?@nodisplay := true;
+?@noalignstack := true;	
+
+#if( os.linux | os.freeBSD | os.macOS )
+	
+	
+	// deleteChar-
+	//
+	// Deletes the character at the current cursor position
+	// by shifting the characters after the cursor over one cell
+	// to the left.
+
+	procedure console.deleteChar; @nodisplay; @noframe;
+	const
+		sys_write		:= 4;
+ 
+	readonly
+		delCharStr:byte; @nostorage;
+				byte #$1b "[1P";
+				
+	begin deleteChar;
+
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+
+		stdout.write( &delCharStr, 4 );
+		
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		ret();
+
+	end deleteChar;
+
+#elseif( os.win32 )
+
+	#include( "stdout.hhf" )
+	
+	type 
+	 	COORD: record
+			x: word;
+			y: word;
+		endrecord;
+
+
+	 	SMALL_RECT: record
+			Left: word;
+			Top: word;
+			Right: word;
+			Bottom: word;
+		endrecord;
+	
+	 	CHARTYPE: union
+			UnicodeChar: word;
+			AsciiChar: byte;
+		endunion;
+
+	 	CHAR_INFO: record
+			CharVal: CHARTYPE;
+			Attributes: word;
+		endrecord;
+
+		CONSOLE_SCREEN_BUFFER_INFO: record
+
+			dwSize: COORD;
+			dwCursorPosition: COORD;
+			wAttributes: word;
+			srWindow: SMALL_RECT;
+			dwMaximumWindowSize: COORD;
+			
+		endrecord;
+		
+	static
+		FillConsoleOutputAttribute: procedure
+		( 
+				hConsoleOutput			:dword; 
+				wAttribute				:word; 
+				nLength					:dword; 
+				dwWriteCoord			:COORD; 
+			var	lpNumberOfAttrsWritten	:dword
+		);
+			@stdcall;
+			@returns( "eax" );
+			@external( "__imp__FillConsoleOutputAttribute@20" );
+
+		FillConsoleOutputCharacter: procedure
+		( 
+			hConsoleOutput:				dword; 
+			cCharacter:					char; 
+			nLength:					dword; 
+			dwWriteCoord:				COORD; 
+			var	lpNumberOfAttrsWritten:	dword
+		);
+			@stdcall;
+			@returns( "eax" );
+			@external( "__imp__FillConsoleOutputCharacterA@20" );
+
+			
+		GetConsoleScreenBufferInfo: procedure
+		( 
+				handle:	dword; 
+			var csbi:	CONSOLE_SCREEN_BUFFER_INFO
+		);
+			@stdcall;
+			@returns( "eax" );
+			@external( "__imp__GetConsoleScreenBufferInfo@8" );
+		
+		ScrollConsoleScreenBuffer: procedure
+		( 
+				hConsoleOutput:			dword; 
+			var	lpScrollRectangle:		SMALL_RECT; 
+			var	lpClipRectangle:		SMALL_RECT; 
+				dwDestinationOrigin:	COORD; 
+			var	lpFill:					CHAR_INFO
+		);
+			@stdcall;
+			@returns( "eax" );
+			@external( "__imp__ScrollConsoleScreenBufferA@20" );
+	
+
+	
+	
+	procedure console.deleteChar; @noframe; @nodisplay;
+	var
+		handle			:dword;
+		size			:dword;
+		src				:SMALL_RECT;
+		dest			:COORD;
+		ci				:CHAR_INFO;
+		csbi			:CONSOLE_SCREEN_BUFFER_INFO;
+		
+	begin deleteChar;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		pushad();
+		
+		stdout.handle();
+		mov( eax, handle );
+		
+		GetConsoleScreenBufferInfo( handle, csbi );
+
+		// If n is greater than the number of characters 
+		// left on the line, then just do a clrToEOLN.
+
+		mov( csbi.dwCursorPosition.x, ax );
+		inc( ax );
+		if( ax >= csbi.dwSize.x ) then
+
+			console.clrToEOLN();
+
+		else
+
+			// Compute the bounds of the rectangle to move.
+			// And the destination coordinate to move it to.
+
+			mov( csbi.dwCursorPosition.x, ax );
+			mov( ax, dest.x );
+			inc( ax );
+			mov( ax, src.Left );
+
+			mov( csbi.dwCursorPosition.y, ax );
+			mov( ax, dest.y );
+			mov( ax, src.Top );
+			mov( ax, src.Bottom );
+
+			mov( csbi.dwSize.x, ax );
+			mov( ax, src.Right );
+
+			// Set up the fill char and attribute:
+
+			mov( ' ', ci.CharVal.AsciiChar );
+			mov( csbi.wAttributes, ax );
+			mov( ax, ci.Attributes );
+
+			// Okay, scroll the screen up one line:
+
+			ScrollConsoleScreenBuffer
+			(
+				handle,
+				src,
+				NULL,	// NULL clipping region.
+				#{
+					pushd( (type dword dest));
+				}#,
+				ci
+			);
+
+		endif;
+		popad();	
+		leave();
+		ret();
+		
+	end deleteChar;
+	
+
+#endif
+	
+end consoleUnit;

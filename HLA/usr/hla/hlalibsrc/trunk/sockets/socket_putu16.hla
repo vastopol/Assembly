@@ -1,0 +1,73 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit socketUnit;
+		
+#includeOnce( "sockets.hhf" )
+#includeOnce( "hla.hhf" )
+
+// baseSocketClass_t.putu16-
+// Outputs a 16-bit unsigned integer to the socket.
+
+
+procedure baseSocketClass_t.putu16( w:word ); @noframe; @nodisplay;  
+var
+	eaxSave		:dword;
+	ediSave		:dword;
+	esiSave		:pointer to baseSocketClass_t;
+
+
+	procedure putu16Thunk( thunksEBPval:dword ); @noframe; @nodisplay;
+	begin putu16Thunk;
+	
+		push( ebp );			// Thunks always do this.
+		mov( [esp+8], ebp );	// Retrieve EBP value passed as parameter
+		
+		mov( ebp::esiSave, esi );
+		(type baseSocketClass_t [esi]).puts( (type string eax));
+		
+		pop( ebp );
+		ret( _parms_ );
+		
+	end putu16Thunk;
+	
+begin putu16;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( esi, esiSave );
+	mov( edi, ediSave );
+	mov( eax, eaxSave );
+	
+	hla.putu16
+	( 
+		#{	// Push thunk object on stack: 
+			pushd( &putu16Thunk );
+			push( ebp );
+		}#, 
+		w 
+	);
+
+	mov( eaxSave, eax );
+	mov( ediSave, edi );
+	mov( esiSave, esi );
+	leave();
+	ret( _parms_ );
+		
+end putu16;
+
+	
+end socketUnit;
+

@@ -1,0 +1,140 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit threads;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "os.hhf" )
+#includeOnce( "threads.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "../include/thread_private.hhf" )
+
+
+#if( os.win32 )
+	#include( "w.hhf" )
+#elseif( os.linux )
+	#include( "linux.hhf" )
+#elseif( os.freeBSD )
+	#include( "bsd.hhf" )
+#elseif( os.macOS )
+	#include( "mac.hhf" )
+#else
+	#error( "Unsupported OS" )
+#endif
+
+// thread.waitForEvent-
+//
+//	Waits until an event is signalled.
+
+#if( os.win32 )
+
+	procedure thread.waitForEvent( event:dword );
+	begin waitForEvent;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( eax );
+		push( ecx );
+		push( edx );
+		
+		w.WaitForSingleObject( event, w.INFINITE );
+		cmp( eax, w.WAIT_OBJECT_0 );
+		jne ThreadError;
+
+		pop( edx );
+		pop( ecx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	ThreadError:
+		mov( eax, edx );
+		raise( ex.ThreadError );
+		
+	end waitForEvent;
+
+
+#elseif( os.linux | os.freeBSD | os.macOS )
+
+	procedure thread.waitForEvent( event:dword );
+	begin waitForEvent;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( eax );
+		push( ebx );
+		
+		mov( event, ebx );
+		pthread_mutex_lock( (type event_t [ebx]).mutex );
+		test( eax, eax );
+		#if( os.linux )
+			jnz linuxThreadError;
+		#else
+			jnz ThreadError;
+		#endif
+		
+		whileNotSignaled:
+			cmp( (type event_t [ebx]).signal, true );
+			je itsSignaled;
+				
+			pthread_cond_wait
+			( 
+				(type event_t [ebx]).cond, 
+				(type event_t [ebx]).mutex 
+			);
+			test( eax, eax );
+			#if( os.linux )
+				jnz linuxThreadError;
+			#else
+				jnz ThreadError;
+			#endif
+			jmp whileNotSignaled;
+			
+		itsSignaled:
+		mov( false, (type event_t [ebx]).signal );
+		pthread_mutex_unlock( (type event_t [ebx]).mutex );
+		test( eax, eax );
+		#if( os.linux )
+			jnz linuxThreadError;
+		#else
+			jnz ThreadError;
+		#endif
+		
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	#if( os.linux )
+	linuxThreadError:
+		neg( eax );
+		mov( eax, edx );
+	#endif
+	
+	ThreadError:
+		raise( ex.ThreadError );
+		
+	end waitForEvent;
+
+
+#else
+
+	#error( "Unknown OS!" )
+	
+#endif
+
+
+end threads;

@@ -1,0 +1,353 @@
+program fgetu_test;
+#include( "stdlib.hhf" )
+
+var
+	f			:pointer to virtualFile;
+	inputF		:real80;
+	
+begin fgetu_test;
+
+
+	// Testing fileio.getu32
+	
+	try
+	
+	virtualFile.create();
+	mov( esi, f );
+	
+		f.open( "fc_getu32.data", fileio.r );
+
+
+		f.getu32();
+		if( eax <> 1 ) then
+		
+			raise($1011);
+		
+		endif;	
+		
+		f.getu32();
+		if( eax <> 4294967295 ) then
+		
+			raise($1012);
+		
+		endif;	
+				
+		f.getu32();
+		if( eax <> 2147483647 ) then
+		
+			raise($1014);
+		
+		endif;
+
+
+		
+		try
+		
+			f.getu32();
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise a conversion error.
+			
+		  	raise($1005 );
+			
+		  exception( ex.ConversionError )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	raise($1006 );
+			
+		endtry;
+		f.readLn();	// Clean up after ourselves.
+		
+		
+		try
+		
+			f.getu32();
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	raise($1015 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	raise($1016 );
+			
+		endtry;
+		f.readLn();
+		
+		
+		// Better be at end of file.
+		
+		if( !f.eof()) then
+		
+			raise($1010);
+			
+		endif;
+		stderr.put( "f.getu32 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"f.getu32 failed! eax=", eax, nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+
+
+
+	// Testing f.getu16
+	
+	try
+	
+		f.open( "fc_getu16.data", fileio.r );
+
+
+		f.getu16();
+		if( eax <> 0 ) then
+		
+			raise($1021);
+		
+		endif;	
+		
+		f.getu16();
+		if( eax <> 1 ) then
+		
+			raise($1022);
+		
+		endif;	
+		
+		f.getu16();
+		if( eax <> 65535 ) then
+		
+			raise($1024);
+		
+		endif;	
+		
+		f.getu16();
+		if( eax <> 32767 ) then
+		
+			raise($1025);
+		
+		endif;
+		
+		try
+		
+			f.getu16();
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise a conversion error.
+			
+		  	raise($1005 );
+			
+		  exception( ex.ConversionError )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	raise($1006 );
+			
+		endtry;
+		f.readLn();	// Clean up after ourselves.
+		
+		
+		try
+		
+			f.getu16();
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	raise($1026 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	raise($1027 );
+			
+		endtry;
+		f.readLn();
+		
+		
+		// Better be at end of file.
+		
+		if( !f.eof()) then
+		
+			raise($1020);
+			
+		endif;
+		stderr.put( "f.getu16 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"f.getu16 failed! eax=", eax, nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+
+	// Testing f.getu8
+	
+	try
+	
+		f.open( "fc_getu8.data", fileio.r );
+
+
+		f.getu8();
+		if( eax <> 0 ) then
+		
+			raise($1031);
+		
+		endif;	
+		
+		f.getu8();
+		if( eax <> 1 ) then
+		
+			raise($1032);
+		
+		endif;	
+		
+		f.getu8();
+		if( eax <> 255 ) then
+		
+			raise($1033);
+		
+		endif;	
+		
+		f.getu8();
+		if( eax <> 127 ) then
+		
+			raise($1035);
+		
+		endif;
+		
+		try
+		
+			f.getu8();
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise a conversion error.
+			
+		  	raise($1005 );
+			
+		  exception( ex.ConversionError )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	raise($1006 );
+			
+		endtry;
+		f.readLn();	// Clean up after ourselves.
+		
+		
+		try
+		
+			f.getu8();
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	raise($1036 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	raise($1037 );
+			
+		endtry;
+		f.readLn();
+		
+		
+		// Better be at end of file.
+		
+		if( !f.eof()) then
+		
+			raise($1030);
+			
+		endif;
+		stderr.put( "f.getu8 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"f.getu8 failed! eax=", eax, nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+			
+end fgetu_test;
+
+													

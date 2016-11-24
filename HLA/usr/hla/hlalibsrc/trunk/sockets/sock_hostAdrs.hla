@@ -1,0 +1,61 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit sockets;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "sockets.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "strings.hhf" )
+
+
+// socket_t.hostAdrs-
+//
+//	Returns the IP address (in little endian form) of the
+// host (the current machine).  If the machine has multiple
+// IP addresses, this function returns the first one it finds.
+
+procedure sock.hostAdrs;
+var
+	_name		:hla.sockaddr;
+	namelen		:hla.socklen_t;
+	hostName	:string;
+	hstEnt		:hla.hostent;
+	
+	hostNameBuf	:char[4096];
+	
+	
+begin hostAdrs;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	str.init( hostNameBuf, @size( hostNameBuf ));
+	mov( eax, hostName );
+	sock.gethostname( hostName );
+	sock.gethostbyname( hostName, hstEnt );
+	
+	mov( hstEnt.h_addr_list, eax );
+	mov( [eax], eax );
+	mov( [eax], eax );
+	bswap( eax );
+
+	leave();
+	ret();
+	
+end hostAdrs;
+
+
+end sockets;

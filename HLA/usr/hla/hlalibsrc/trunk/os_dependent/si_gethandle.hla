@@ -1,0 +1,82 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit StdInput;
+#include( "../include/stdinunit.hhf" )
+#include( "os.hhf" )
+
+/***********************************************************/
+/*                                                         */
+/* GetStdInHandle-                                         */
+/*                                                         */
+/* Returns the Windows standard input device handle        */
+/* in the EAX register.                                    */
+/*                                                         */
+/* If this module has already called Windows to obtain     */
+/* the stdin handle, then this procedure simply returns    */
+/* the handle stored in the StdInHandle variable.          */
+/* Otherwise, it calls Windows to obtain the handle and    */
+/* initializes the static variables above with appropriate */
+/* values and then returns the handle obtained from        */
+/* MS Windows.                                             */
+/*                                                         */
+/***********************************************************/
+
+#if( os.win32 )
+
+	procedure GetStdInHandle; @nodisplay; @noframe;
+	begin GetStdInHandle;
+
+		pushad();
+		pushfd();
+		cld();
+		cmp( HasStdInHandle, false );
+		jne hasHandle;
+		
+			GetStdHandle( -10 );
+			mov( eax, StdInHandle );
+			mov( true, HasStdInHandle );
+			
+		hasHandle:
+		popfd();
+		popad();
+		mov( StdInHandle, eax );
+		ret();
+
+	end GetStdInHandle;
+
+#elseif( os.linux | os.freeBSD | os.macOS )
+
+	procedure GetStdInHandle; @nodisplay; @noframe;
+	begin GetStdInHandle;
+
+		mov( 0, eax );
+		ret();
+
+	end GetStdInHandle;
+
+
+#else
+
+	#error( "Unknown OS!" )
+
+#endif
+
+end StdInput;
+
+
+
+
+	
+

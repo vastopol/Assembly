@@ -1,0 +1,14 @@
+date_utcDate_safe.o
+so_gethandle_safe.o
+rand_randomize_safe.o
+si_gethandle_safe.o
+mem_blkAlloc_safe.o
+arg_cmdln_safe.o
+os_sleep_safe.o
+os_bkgnd_safe.o
+se_gethandle_safe.o
+time_curtime_safe.o
+si_read_safe.o
+os_system_safe.o
+date_today_safe.o
+arg_BuildArgv_safe.o

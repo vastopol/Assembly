@@ -1,0 +1,109 @@
+program subMonths_test;
+#include( "stdlib.hhf" )
+
+static
+	baseDate	:date.daterec;
+	incDate		:date.daterec;
+	addDate		:date.daterec;
+	
+	altDate		:date.daterec;
+	endDate		:date.daterec;
+	
+	months		:dword;
+	dc			:dateClass;
+	vdc			:virtualDateClass;
+	
+	
+begin subMonths_test;
+
+	 
+	dc.create();
+	vdc.create();
+	date.setFormat( date.mmddyyyy );
+	dc.setFormat( date.mmddyyyy );
+	vdc.setFormat( date.mmddyyyy );
+	
+	date.pack( 12, 1, date.maxYear-1, baseDate );
+	mov( (type dword baseDate), eax );
+	mov( eax, (type dword incDate));
+	mov( eax, (type dword addDate));
+	mov( eax, (type dword altDate));
+	mov( eax, dc.theDate );
+	mov( eax, vdc.theDate );
+	
+	date.pack( 12, 1, date.minYear, endDate );
+	
+	mov( 0, months );
+	while( mov( endDate, eax ) >= (type dword altDate) ) do
+	
+		inc( months );
+		mov( (type dword baseDate), eax );
+		mov( eax, addDate );
+		date.subMonths( months, addDate ); 
+		date.subMonths( 1, incDate );
+		dc.subMonths( 1 );
+		vdc.subMonths( 1 );
+		
+		dec( altDate.month );
+		if( altDate.month = 0 ) then
+			
+			mov( 12, altDate.month );
+			dec( altDate.year );
+			
+		endif;
+		mov( addDate, eax );
+		mov( incDate, ebx );
+		mov( altDate, ecx );
+		if
+		( 
+				eax <> ebx 
+			||	eax <> ecx
+			||	eax <> (type dword dc.theDate) 
+			||	eax <> (type dword vdc.theDate) 
+		) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"dateClass.subMonths failed!", nl,
+				"incDate= '"
+			);
+			date.a_toString( incDate );
+			stderr.put
+			(
+				(type string eax), "'" nl
+				"addDate=  '"
+			);
+			date.a_toString( addDate );
+			stderr.put
+			(
+				(type string eax), "'" nl
+				"altDate= '"
+			);
+			date.a_toString( altDate );
+			stderr.put
+			(
+				(type string eax), "'" nl
+				"dc.Date=  '", dc, "'" nl
+				"vdc.Date= '", vdc, "'" nl
+			);
+			stderr.put
+			(
+				"***************************************************" nl
+				nl 
+			);
+			str.free( eax );
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		
+	endwhile;
+	stderr.put( "dateClass.subMonths succeeded!" nl );
+	os.exitProcess(0);
+		
+end subMonths_test;
+
+													

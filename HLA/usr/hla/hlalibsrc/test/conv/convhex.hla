@@ -1,0 +1,580 @@
+program convhex_test;
+#include( "stdlib.hhf" )
+
+static
+	Handle			:dword;
+	inputQ			:qword;
+	inputL			:lword;
+	input			:str.strvar(256);
+	IllegalCharStr	:string := #$80;
+	
+	procedure cmp128( left:int128; right:int128 ); @returns( "@ne" );
+	begin cmp128;
+	
+		cld();
+		lea( esi, left );
+		lea( edi, right );
+		mov( 4, ecx );
+		repe.cmpsd();
+		
+	end cmp128;
+	
+	
+begin convhex_test;
+
+
+	// Testing conv.atoh8
+
+	try
+	
+		conv.strToh8( "abc 12", 4 );
+		if( eax <> $12 ) then
+		
+			raise( $1000 );
+			
+		endif;
+		stdout.put( "conv.strToh8 succeeded!" nl );
+	
+		lea( esi, "b" );
+		conv.atoh8( [esi] );
+		if( eax <> $b ) then
+		
+			raise($1031);
+		
+		endif;	
+		
+		lea( esi, "bb" );
+		conv.atoh8( [esi] );
+		if( eax <> $bb ) then
+		
+			raise($1032);
+		
+		endif;	
+		
+		lea( esi, "0  " );
+		conv.atoh8( [esi] );
+		if( eax <> $0 ) then
+		
+			raise($1033);
+		
+		endif;	
+		
+		lea( esi, " ff" );
+		conv.atoh8( [esi] );
+		if( eax <> $ff ) then
+		
+			raise($1034);
+		
+		endif;
+		
+		try
+		
+			lea( esi, "100" );
+			conv.atoh8( [esi] );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	Raise( $1035 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( eax );
+			
+		endtry;
+		
+		try
+		
+			mov( IllegalCharStr, esi );
+			conv.atoh8( [esi] );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an illegal
+		  	// character exception.
+			
+		  	Raise( $1036 );
+			
+		  exception( ex.IllegalChar )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( eax );
+			
+		endtry;
+
+		stderr.put( "conv.atoh8 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"conv.atoh8 failed! eax=", eax, nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+	// Testing conv.atoh128
+	
+	try
+	
+		conv.strToh128( "128_0000_0000_0000_0000_0000", 0, inputL );
+		if( cmp128( inputL, $128_0000_0000_0000_0000_0000 ) ) then
+		
+			raise($1001);
+		
+		endif;	
+		stdout.put( "conv.strToh128 succeeded!" nl );
+	
+		lea( esi, "   1" );
+		conv.atoh128( [esi], inputL );
+		if( cmp128( inputL, 1 ) ) then
+		
+			raise($2001);
+		
+		endif;	
+		
+		lea( esi, "2" );
+		conv.atoh128( [esi], inputL );
+		if( cmp128( inputL, 2 ) ) then
+		
+			raise($2002);
+		
+		endif;	
+		
+		lea( esi, "FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF" );
+		conv.atoh128( [esi], inputL );
+		if( cmp128( inputL, $FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF ) ) then
+		
+			raise($2003);
+		
+		endif;	
+		
+		lea( esi, "   0    " );
+		conv.atoh128( [esi], inputL );
+		if( cmp128( inputL, 0 ) ) then
+		
+			raise($2004);
+		
+		endif;
+		
+		try
+		
+			lea( esi, " conversion error " );
+			conv.atoh128( [esi], inputL );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise a conversion error.
+			
+		  	Raise( $2005 );
+			
+		  exception( ex.ConversionError )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( $2006 );
+			
+		endtry;
+		  		
+		
+		try
+		
+			lea( esi, "1_ffff_ffff_FFFF_FFFF_FFFF_ffff_FFFF_ffff" );
+			conv.atoh128( [esi], inputL );
+
+		  unprotected
+		  
+		  	// If we got to this point, we failed to raise an overflow error.
+			
+		  	Raise( $2007 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( $2008 );
+			
+		endtry;
+		
+		stderr.put( "conv.atoh128 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"conv.atoh128 failed! eax=", (type uns32 eax), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+	// Testing conv.atoh64
+	
+	try
+	
+		conv.strToh64( ".64_0000_0000_0000", 1, inputQ );
+		if( (type dword inputQ[4]) <> $64_0000 || (type dword inputQ) <> 0 ) then
+		
+			raise($1_1002);
+		
+		endif;	
+		stdout.put( "conv.strToh64 succeeded!" nl );
+		
+		lea( esi, "  1" );
+		conv.atoh64( [esi] );
+		if( eax <> 1 || edx <> 0 ) then
+		
+			raise($1001);
+		
+		endif;	
+		
+		lea( esi, "  2" );
+		conv.atoh64( [esi] );
+		if( eax <> 2 || edx <> 0 ) then
+		
+			raise($1002);
+		
+		endif;	
+		
+		lea( esi, "  30   " );
+		conv.atoh64( [esi] );
+		if( eax<> $30 || edx <> 0 ) then
+		
+			raise($1003);
+		
+		endif;	
+		
+		lea( esi, "4a" );
+		conv.atoh64( [esi] );
+		if( eax<> $4a || edx <> 0 ) then
+		
+			raise($1004);
+		
+		endif;
+		
+		try
+		
+			lea( esi, "conversion error" );
+			conv.atoh64( [esi] );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise a conversion error.
+			
+		  	Raise( $1005 );
+			
+		  exception( ex.ConversionError )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( $1006 );
+			
+		endtry;
+		  		
+		
+		try
+		
+			lea( esi, "1_FFFF_FFFF_FFFF_FFFF" );
+			conv.atoh64( [esi] );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	Raise( $1007 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( $1008 );
+			
+		endtry;
+		stderr.put( "conv.atoh64 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"conv.atoh64 failed! eax=", (type uns32 eax), nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+	// Testing fileio.getd
+	
+	try
+	
+		conv.strToh32( " 1234_0000 ", 1 );
+		if( eax <> $1234_0000 ) then
+		
+			raise( $1_1011 );
+			
+		endif;
+		stdout.put( "conv.strToh32 succeeded!" nl );
+		
+		lea( esi, "  A   " );
+		conv.atoh32( [esi] );
+		if( eax <> $A ) then
+		
+			raise($1011);
+		
+		endif;	
+		
+		lea( esi, "  B   " );
+		conv.atoh32( [esi] );
+		if( eax <> $B ) then
+		
+			raise($1012);
+		
+		endif;	
+		
+		lea( esi, "C0" );
+		conv.atoh32( [esi] );
+		if( eax <> $C0 ) then
+		
+			raise($1013);
+		
+		endif;	
+		
+		lea( esi, "FFFF_FFFF" );
+		conv.atoh32( [esi] );
+		if( eax <> -1 ) then
+		
+			raise($1014);
+		
+		endif;
+		
+		
+		try
+		
+			lea( esi, "conversion error" );
+			conv.atoh32( [esi] );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise a conversion error.
+			
+		  	Raise( $1015 );
+			
+		  exception( ex.ConversionError )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( $1016 );
+			
+		endtry;
+
+
+		try
+		
+			lea( esi, "1_FFFF_FFFF" );
+			conv.atoh32( [esi] );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	Raise( $1017 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( $1018 );
+			
+		endtry;
+		stderr.put( "conv.atoh32 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"conv.atoh32 failed! eax=", (type uns32 eax), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+
+	// Testing conv.atoh16
+	
+	try
+	
+		conv.strToh16( "1234", 0 );
+		if( eax <> $1234 ) then
+		
+			raise( $1_1021 );
+			
+		endif;
+		stdout.put( "conv.strToh16 succeeded!" nl );
+		
+		lea( esi, "  1000  " );
+		conv.atoh16( [esi] );
+		if( eax <> $1000 ) then
+		
+			raise($1021);
+		
+		endif;	
+		
+		lea( esi, "  ffff  " );
+		conv.atoh16( [esi] );
+		if( eax <> $FFFF ) then
+		
+			raise($1022);
+		
+		endif;	
+		
+		lea( esi, "c" );
+		conv.atoh16( [esi] );
+		if( eax <> $0C ) then
+		
+			raise($1023);
+		
+		endif;	
+		
+		lea( esi, "ff" );
+		conv.atoh16( [esi] );
+		if( eax <> $ff ) then
+		
+			raise($1024);
+		
+		endif;
+		
+		try
+		
+			lea( esi, "1_ffff" );
+			conv.atoh16( [esi] );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	Raise( $1025 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( $1026 );
+			
+		endtry;
+		
+		try
+		
+			lea( esi, "conversion error" );
+			conv.atoh16( [esi] );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise a conversion error.
+			
+		  	Raise( $1027 );
+			
+		  exception( ex.ConversionError )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( $1028 );
+			
+		endtry;
+		stderr.put( "conv.atoh16 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"conv.atoh16 failed! eax=", eax, nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;	
+
+end convhex_test;
+
+													

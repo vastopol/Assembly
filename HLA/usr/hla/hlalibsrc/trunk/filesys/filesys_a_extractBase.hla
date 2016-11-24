@@ -1,0 +1,50 @@
+unit filesys_extName_unit;
+
+// filesys.a_extractBase:
+//
+//	Extracts the base name component of a pathname.
+//	Returns a pointer to the base name that is allocated on the heap.
+//
+//	Return values:
+//		EAX = pointer to basename on heap and carry = 1 if basename exists.
+//		EAX = empty string (on heap) and carry = 0 if there is no basename.
+
+	
+	#includeOnce( "filesys.hhf" )
+	#includeOnce( "strings.hhf" )
+	#includeOnce( "excepts.hhf" )
+	#includeOnce( "memory.hhf" )
+		
+
+	procedure filesys.a_extractBase( pathname:string );
+		@nodisplay; @noalignstack; @noframe;
+		
+	begin a_extractBase;
+		
+		push( ebp );
+		mov( esp, ebp );
+		
+		// Sanity check:
+		
+		mov( pathname, eax );
+		test( eax, eax );
+		jz radn;
+		
+		// The basename's length is always less than or equal to
+		// the pathname's length, so use that as the size of the 
+		// string we're going to allocate.
+		
+		mov( (type str.strRec [eax]).length, eax );
+		str.alloc( eax );
+		filesys.extractBase( pathname, eax );
+		pop( ebp );
+		ret( _parms_ );
+	
+	radn:
+		raise( ex.AttemptToDerefNULL );
+			 
+	end a_extractBase;
+
+
+
+end filesys_extName_unit;

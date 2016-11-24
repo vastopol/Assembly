@@ -1,0 +1,553 @@
+#if( !@defined( fs_hhf ))
+?fs_hhf := true;
+
+#includeonce( "os/quota.hhf" )
+
+namespace linux; @fast;
+
+const
+
+		
+	// Filesystem constants
+	
+	nr_open			:= 1024*1024;
+	inr_open		:= 1024;
+	block_size_bits	:= 10;
+	block_size		:= 1 << block_size_bits;
+	maxpathlen		:= 1024;
+	max_iovec		:= 10;
+	
+	nr_file				:= 8192;
+	nr_reserved_files	:= 10;
+	nr_super			:= 256;
+	
+	may_exec		:= 1;
+	may_write		:= 2;
+	may_read		:= 4;
+	fmode_read		:= 1;
+	fmode_write		:= 2;
+	
+	fs_read			:= 0;
+	fs_write		:= 1;
+	fs_reada		:= 2;
+	fs_special		:= 4;
+	
+	sel_in			:= 1;
+	sel_out			:= 2;
+	sel_ex			:= 4;
+	
+	fs_requires_dev	:= 1;
+	fs_no_dcache	:= 2;
+	fs_no_prelim	:= 4;
+	fs_single		:= 8;
+	fs_nomount		:= 16;
+	fs_litter		:= 32;
+	fs_odd_rename	:= 32768;
+	
+	
+	ms_rdonly		:= 1;
+	ms_nosuid		:= 2;
+	ms_nodev		:= 4;
+	ms_noexec		:= 8;
+	ms_synchronous	:= 16;
+	ms_remount		:= 32;
+	ms_mandlock		:= 64;
+	ms_noatime		:= 1024;
+	ms_nodiratime	:= 2048;
+	ms_bind			:= 4096;
+	
+	ms_rmt_mask		:= ms_rdonly | ms_nosuid | ms_nodev | ms_noexec
+						| ms_synchronous | ms_mandlock | ms_noatime 
+						| ms_nodiratime;
+						
+	ms_mgc_val		:= $c0ed_0000;
+	ms_mgc_mask		:= $ffff_0000;
+	
+	s_sync			:= 1;
+	s_noatime		:= 2;
+	s_quota			:= 4;
+	s_append		:= 8;
+	s_immutable		:= 16;
+	s_dead			:= 32;
+		
+type
+	
+	address_space: record
+		clean_pages	:list_head;
+		dirty_pages	:list_head;
+		locked_pages:list_head;
+		
+		nrpages			:dword;
+		page_lock		:spinlock_t;
+		a_ops			:dword;	// pointer to address_space_operations
+		host			:dword;	// pointer to inode;
+		i_mmap			:dword;	// pointer to vm_area_struct
+		i_mmap_shared	:dword;	// pointer to vm_area_struct
+		i_shared_lock	:spinlock_t;
+		gfp_mask		:dword;
+	endrecord;
+
+  	statfs_t:record
+		f_type		:dword;
+		f_bsize		:dword;
+		f_blocks	:dword;
+		f_bfree		:dword;
+		f_bavail	:dword;
+		f_files		:dword;
+		f_ffree		:dword;
+		f_fsid		:__kernel_fsid_t;
+		f_namelen	:dword;
+		f_spare		:dword[6];
+		align(4);
+	endrecord;
+			
+	ustat_t: record
+		f_tfree		:__kernel_daddr_t;
+		f_tinode	:__kernel_ino_t;
+		f_fname		:char[6];
+		f_fpack		:char[6];
+		align( 4 );
+	endrecord;
+	
+
+#if( @defined( __kernel__ ))
+
+  	// Kernel file owner structure:
+  	
+  	fown_struct: record
+  		pid		:dword;
+  		uid		:uid_t;	align(4);
+  		euid	:uid_t;	align(4);
+  		signum	:dword;
+  	endrecord;
+  	
+  	
+  	// Kernel file structure:
+  	
+  	file: record
+  		f_list		:list_head;
+  		f_dentry	:dword;		//pointer to dentry.
+  		f_vfsmnt	:dword;		//pointer to vfsmount.
+  		f_op		:dword;		//pointer to file_operations.
+  		f_count		:atomic_t;
+  		f_flags		:dword;
+  		f_mode		:mode_t; align(4);
+  		f_pos		:loff_t;
+  		freada		:dword;
+  		framax		:dword;
+  		fraend		:dword;
+  		fralen		:dword;
+  		frawin		:dword;
+  		f_owner		:fown_struct;
+  		f_uid		:dword;
+  		f_gid		:dword;
+  		f_error		:int32;
+  		f_version	:dword;
+  		private_data:dword;
+  	endrecord;
+  	  	
+  	// file_operations record for drivers:
+  	
+	file_operations:record
+		owner		:dword;  // Pointer to module_t;
+		llseek		:procedure
+					 ( 
+					 	file	:dword; // Pointer to file 
+					 	offset	:qword; // 64-bit offset
+					 	whence	:dword 	// Type of seek.
+					 ); @cdecl;
+					 
+		read		:procedure
+					 ( 
+					 		file	:dword; // Pointer to file 
+					 		buf		:dword; // Buffer address.
+					 		size	:dword; // Size of transfer
+					 	var offset	:qword  // Store new ofs here.
+					 ); @cdecl;
+					 
+		write		:procedure
+					 ( 
+					 		file	:dword; // Pointer to file 
+					 		buf		:dword; // Buffer address.
+					 		size	:dword; // Size of transfer
+					 	var offset	:qword  // Store new ofs here.
+					 ); @cdecl;
+					 
+		readdir		:procedure
+					 ( 
+					 	file	:dword;	// Pointer to file. 
+					 	buf		:dword; // data buffer.
+					 	count	:dword	// ignored (?) 
+					 ); @cdecl;
+					 
+		poll		:procedure
+					 ( 
+					 	file:dword; 
+					 	poll_table_struct:dword 
+					 ); @cdecl;
+					 
+		_ioctl		:procedure( inode:dword; file:dword ); @cdecl;
+		
+		mmap		:procedure
+					 (
+					 	file:dword;	// pointer to file
+					 	vmas:dword  // pointer to vm_area_struct
+					 ); @cdecl;
+					 
+		open		:procedure
+					 (
+					 	inod	:dword;	//pointer to inode
+					 	file	:dword  //pointer to file
+					 );  @cdecl;
+					 
+		flush		:procedure
+					 (
+					 	file	:dword	//pointer to file
+					 ); @cdecl;
+					 
+		release		:procedure
+					 (
+					 	inod	:dword;	//pointer to inode
+					 	file	:dword	//pointer to file
+					 );
+					 
+		fsync		:procedure
+					 (
+					 	inod	:dword;	//pointer to inode
+					 	de		:dword;	//pointer to dentry
+					 	datasync:dword					 	
+					 ); @cdecl;
+					 
+		fasync		:procedure
+					 (
+					 	fd		:dword;	//file descriptor
+					 	file	:dword; //pointer to file
+					 	on		:dword
+					 );  @cdecl;
+					 
+		lock		:procedure
+					 (
+					 	file	:dword;	//file pointer
+					 	typ		:dword;
+					 	filock	:dword	//pointer to file_lock
+					 ); @cdecl;
+					 
+		readv		:procedure
+					 (
+					 	file	:dword;	//pointer to file
+					 	iov		:dword; //pointer to iovec
+					 	count	:dword;
+					 	offs	:dword
+					 ); @cdecl;
+					 
+		writev		:procedure
+					 (
+					 	file	:dword;	//pointer to file
+					 	iov		:dword; //pointer to iovec
+					 	count	:dword;
+					 	offs	:dword
+					 ); @cdecl;
+
+		
+		// New entries I haven't yet looked up:
+		
+		sendpage	:procedure
+					 (
+					 		file	:dword;	// Pointer to file.
+					 		thePage	:dword;	// Pointer to page struct.
+					 		pgNum	:dword;	// ???
+					 		size	:dword;
+					 	var	offset	:qword
+					 );
+					 	
+		get_unmapped_area:
+					 procedure
+					 (
+					 	file	:dword;
+					 	u1		:dword;
+					 	u2		:dword;
+					 	u3		:dword;
+					 	u4		:dword
+					 );
+	endrecord;
+	
+	
+	// The fileops_c macro allows the user to create
+	// a file_operations record constant whose fields
+	// are specified by name rather than position, e.g.,
+	//
+	//	linux.fileops_c
+	//	( 
+	//		read:&readproc, 
+	//		open:&openproc,
+	//		release:&releaseproc,
+	//		llseek:&llseekproc
+	//	);
+	//
+	//	Entries that are absent in the list are filled with NULLs.
+	//  The entries may appear in any order.
+	//
+	// Using this macro rather than a file_operations record
+	// constant to initialize a file_operations variable helps
+	// reduce maintenence of your driver when the file_operations
+	// record structure changes (as it does every now and then).
+	
+const
+  	_fops_fields:= @localsyms( file_operations );
+
+	#macro fileops_c(__ops[]):
+			__opsIndex, 
+			__exit,
+			__syntaxError,
+			__namesIndex, 
+			__maxIndex, 
+			__maxNames,
+			__curLine,
+			__curVal,
+			__curName,
+			__curField,
+			__thisField;
+			
+		// This is a file_operations record constant, so output
+		// some syntax to begin the constant:
+		
+		linux.file_operations:[
+		
+		// Now generate the "guts" for this constant:
+		
+		?__curVal	:string;
+		?__curName	:string;
+		?__maxIndex := @elements( __ops );
+		?__maxNames := @elements( linux._fops_fields );
+		?__namesIndex := 0;
+		?__syntaxError := false;
+		#while( __namesIndex < __maxNames & !__syntaxError )
+		
+			?__curField := linux._fops_fields[ __namesIndex ];
+			?__opsIndex := 0;
+			?__exit := false;
+			?__thisField := "NULL";
+			#while( __opsIndex < __maxIndex & !__exit )
+			
+				?__curLine :string := __ops[ __opsIndex ];
+				?__exit := 
+					@uptoChar
+					( 
+						__curLine, 
+						':', 
+						__curVal, 
+						__curName 
+					);
+				
+				#if( !__exit )
+				
+					#error
+					( 
+						"Syntax error in file_operations constant: "+
+						__curLine
+					)
+					?__exit := true;
+					?__syntaxError := true;
+				
+				#else
+				
+					?__curName := @trim( __curName, 0 );
+					?__exit := __curName = __curField;
+					#if( __exit )
+				
+					?__thisField := @substr( __curVal, 1, 1024 );
+
+					#endif
+					
+				#endif
+				?__opsIndex += 1;
+				
+			#endwhile
+			
+			// If not the first table entry, emit a comma:
+			
+			#if( __namesIndex <> 0 )
+				,
+			#endif
+			
+			// emit the table entry:
+		
+			@text( __thisField )
+			
+			?__namesIndex += 1;
+			
+		#endwhile
+		
+		// Okay, close up the constant:
+		
+		]
+		
+		// Now, to be on the safe side, verify that there
+		// weren't any extra fields in the parameter list:
+		
+		?__opsIndex := 0;
+		#while( __opsIndex < __maxIndex & !__syntaxError )
+		
+			?__namesIndex := 0;
+			?__exit := false;
+			#while( __namesIndex < __maxNames & !__exit )
+			
+				?__exit := 
+					@uptoChar
+					( 
+						__ops[ __opsIndex ], 
+						':', 
+						__curVal, 
+						__curName 
+					); 
+				
+				?__curName := @trim( __curName, 0 );	
+				?__exit := 
+					__curName = linux._fops_fields[ __namesIndex ];
+						
+				?__namesIndex += 1;
+				
+			#endwhile
+			#if( !__exit )
+			
+				#error
+				(
+					"Unexpected field in fileops_c (" +
+					__curName +
+					")"
+				)
+				
+			#endif
+		
+			?__opsIndex += 1;
+		
+		#endwhile 
+			
+	#endmacro
+
+	
+	
+type
+	
+	//?ext3_fragments := @global:true;
+	//?ext3_preallocate := @global:true;
+	
+	ext3_inode_info: record
+	
+		i_data				:dword[15];
+		i_flags				:dword;
+		
+		#if( @defined( ext3_fragments ))
+		
+			i_faddr				:dword;
+			i_frag_no			:byte;
+			i_frag_size			:byte;
+			i_osync				:word;
+		#endif
+		
+		i_file_acl			:dword;
+		i_dir_acl			:dword;
+		i_dtime				:dword;
+		i_block_group		:dword;
+		i_state				:dword;
+		i_next_alloc_block	:dword;
+		i_next_alloc_goal	:dword;
+		
+		#if( @defined( ext3_preallocate ))
+		
+			i_prealloc_block	:dword;
+			i_prealloc_count	:dword;
+		#endif
+		
+		i_orphan			:list_head;
+		i_disksize			:loff_t;
+		truncate_sem		:rw_semaphore;
+
+	endrecord;
+	
+		
+	ext2_inode_info: record
+	
+		i_data				:dword[15];
+		i_flags				:dword;
+		i_faddr				:dword;
+		i_frag_no			:byte;
+		i_frag_size			:byte;
+		i_osync				:word;
+		i_file_acl			:dword;
+		i_dir_acl			:dword;
+		i_dtime				:dword;
+		i_block_group		:dword;
+		i_next_alloc_block	:dword;
+		i_next_alloc_goal	:dword;
+		i_prealloc_block	:dword;
+		i_prealloc_count	:dword;
+		i_new_node			:dword;
+		
+	endrecord;
+	
+	inode: record
+	
+		i_hash			:list_head;
+		i_list			:list_head;
+		i_dentry		:list_head;
+		i_dirty_buffers	:list_head;
+		
+		i_no			:dword;
+		i_count			:atomic_t;
+		i_dev			:kdev_t;
+		i_mode			:umode_t;
+		i_nlink			:nlink_t;	align(4);
+		i_uid			:uid_t;		align(4);
+		i_gid			:gid_t;		align(4);
+		i_rdev			:kdev_t;	align(4);
+		i_size			:loff_t;
+		i_atime			:time_t;
+		i_mtime			:time_t;
+		i_ctime			:time_t;
+		i_blksize		:dword;
+		i_blocks		:dword;
+		i_version		:dword;
+		i_bytes			:word;		align(4);
+		i_sem			:semaphore;
+		i_truncate_sem	:rw_semaphore;
+		i_zombie		:semaphore;
+		i_op			:dword; // pointer to inode_operations
+		i_fop			:dword;	// pointer to file_operations
+		i_sb			:dword; // pointer to super block.
+		i_wait			:wait_queue_head_t;
+		i_flock			:dword;	// pointer to file_lock.
+		i_mapping		:dword; // pointer to address_space;
+		i_data			:address_space;
+		i_dquot			:dword[ maxquotas ]; //ptrs to dquot
+		i_pipe			:dword;	// pointer to pipe_inode_info
+		i_bdev			:dword; // pointer to block_device
+		i_cdev			:dword; // pointer to char_device
+		i_dnotify_mask	:dword;
+		i_dnotify		:dword; // pointer to dnotify_struct
+		i_state			:dword;
+		i_flags			:dword;
+		i_sock			:byte;	align(4);
+		i_writecount	:atomic_t;
+		i_attr_flags	:dword;
+		i_generation	:dword;
+		
+		u: union
+		
+			ext2_i		:ext2_inode_info;
+			ext3_i		:ext3_inode_info;
+			
+			// Need to add all the other file system structs here!
+		
+		
+		endunion;
+		
+	endrecord;
+
+#endif //__kernel__
+  	
+
+	
+
+end linux;
+#endif //fs_hhf.hhf

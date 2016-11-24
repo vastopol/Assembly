@@ -1,0 +1,64 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+
+
+//  catbuf3b( buffer:buf_t; src:string; dest:string );
+//  catbuf4( startBuf:dword; endBuf:dword; src:string; dest:string );
+//
+//  These two functions are the same. They are just different prototypes
+//  for the exact same code (the buf_t data type maps to the two dword
+//  arguments for catbuf4).
+//
+//  This function copies the string src to dest and then
+//	concatenates the sequence of characters of length
+//  (endBuf-startBuf) starting at memory address startBuf to the
+//  end of the string dest. 
+
+
+ 
+procedure str.catbuf4
+(
+	startBuf	:dword; 
+	endBuf		:dword;
+	src2		:string;
+	dest		:string 
+); @noframe;	
+begin catbuf4;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	str.cpy( src2, dest );
+	str.catbuf3a( startBuf, endBuf, dest );
+
+	pop( ebp );
+	ret( _parms_ );
+	
+end catbuf4;
+
+end stringUnit;
+
+
+
+
+	
+

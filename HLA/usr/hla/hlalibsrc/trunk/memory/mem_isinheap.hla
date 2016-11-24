@@ -1,0 +1,118 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit memory;
+
+#include( "strings.hhf" )
+#include( "../include/mem.hhf" )
+
+// mem.isInHeap:
+//
+//	Returns NULL if memptr does not point within a valid, allocated,
+// block on the heap. Returns a pointer to the start of the block
+// if memptr does point within the heap space, in the data area
+// of a valid, allocated, block.
+
+
+procedure isInHeap( memPtr:dword );
+	@nodisplay;
+	@noframe;
+begin isInHeap;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	#if( @thread )
+	
+		_hla.memCSenter();
+		
+	#endif
+	
+	_hla.isInHeap( memPtr );
+	
+	#if( @thread )
+	
+		_hla.memCSleave();
+		
+	#endif
+	pop( ebp );
+	ret( _parms_ );
+	
+
+end isInHeap;
+
+
+procedure _hla.isInHeap( memptr: dword ); 
+	@nodisplay;
+	@noframe;
+begin isInHeap;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	push( ebx );
+	push( ecx );
+	push( edx );
+	mov( listHead, ebx );
+	mov( memptr, edx );
+	mov( NULL, eax );
+	whileEBXnotNULL:
+		test( ebx, ebx );
+		jz allDone;
+		
+	
+		mov( (type memblock [ebx]).size, ecx );
+		add( ebx, ecx );
+		add( @size( memblock ), ebx );
+		
+		cmp( edx, ebx );	// edx >= ebx
+		jnae nextBlock;		// &&
+		cmp( edx, ecx );	// edx < ecx?
+		jb checkInBlock;
+		 
+		nextBlock:
+			// Move on to the next block:
+			
+			mov( (type memblock [ebx-@size( memblock )]).next, ebx );
+			jmp whileEBXnotNULL;
+		
+	
+		checkInBlock:
+		
+			// Pointer is within the current block,
+			// return a pointer to the start of the
+			// data area, but only if it's currently
+			// allocated (otherwise return NULL).
+			
+			cmp( (type memblock [ebx-@size( memblock )]).refCount, 0 );
+			je allDone;
+			
+				mov( ebx, eax );
+						
+	allDone:
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( ebp );
+	ret( _parms_ );
+		
+end isInHeap;
+	
+end memory;
+
+
+
+
+	
+

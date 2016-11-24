@@ -1,0 +1,169 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+
+/*************************************************************************/
+/*                                                                       */
+/* rindex3-                                                              */
+/*                                                                       */
+/* Similar to the rindex function except this one has an                 */
+/* extra parameter that specifies the starting scan location             */
+/* in the src1 string.  The rindex2 function scans from the              */
+/* specified position *backwards* towards the start of the               */
+/* string.                                                               */
+/*                                                                       */
+/*************************************************************************/
+
+
+
+
+procedure str.rindex3( src1:string; offs:dword; src2:string ); 
+	@noframe;
+const
+	src1ESI	:text := "(type str.strRec [esi])";
+	src2EDI	:text := "(type str.strRec [edi])";
+	
+var
+	ebxSave		:dword;
+	ecxSave		:dword;
+	edxSave		:dword;
+	ediSave		:dword;
+	esiSave		:dword;
+	
+	startCmp	:dword;
+	
+begin rindex3;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	pushfd();
+	mov( esi, esiSave );
+	mov( edi, ediSave );
+	mov( edx, edxSave );
+	mov( ecx, ecxSave );
+	mov( ebx, ebxSave );
+	cld();
+	
+	mov( src2, edi );
+	mov( src1, esi );
+	
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+	
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+	
+	// Ensure that offs does not exceed the string
+	// length.  If not, set "edx" to the offs
+	// value since we're shortening the string by that
+	// amount.
+
+	mov( src1ESI.length, eax );
+	mov( offs, edx );
+	cmp( edx, eax );
+	jae StringIndexError;
+	
+		add( esi, edx );		// Compute last address to compare at
+		mov( edx, startCmp );
+		
+		// If the length of src2 is zero, return failure.
+
+		mov( src2EDI.length, ebx );
+		test( ebx, ebx );
+		jz notFound;
+		
+		// If src2's length is greater than src1's length, return failure
+		
+		cmp( ebx, eax );
+		ja notFound;
+
+		// Compute the last possible position we can compare
+		// src2 against src1 at in src1 and verify that this
+		// is greater than offs:
+		
+		sub( ebx, eax );
+		cmp( eax, offs );
+		jnae notFound; 
+
+			lea( esi, [esi+eax] );	// Start comparing src1 here.
+			mov( edi, eax );		// Save ptr to src2 so we can reset.
+			repeatUntilEDXlt0:
+				
+				mov( ebx, ecx );	// Reset src2 length in ECX
+				mov( eax, edi );	// Restore edi to src2 for comparison.
+				push( esi );		// Save ptr into src1.
+				repe.cmpsb();		// See if the string is at the current
+				jne notAtCurPosn;	// position.
+				
+					// We found the string, so compute the
+					// index and exit the loop.
+						
+					pop( eax );			// Retrieve ptr into src1.				
+					sub( src1, eax );	// Compute index.
+					jmp FoundMatch;
+					
+				notAtCurPosn:
+				
+				// Okay, src2 didn't match at the current position,
+				// try the previous character position in src1.
+				
+				pop( esi );			// Retrieve ptr into src1.
+				dec( esi );			// Bump down by one character position.
+				cmp( esi, startCmp );
+				jae repeatUntilEDXlt0;
+				
+			
+		notFound:
+		
+		// If we get down here, then src2 is not a substring of src1.
+		
+		mov( -1, eax );		// Deprecated!
+			
+		
+	FoundMatch:
+	mov( esiSave, esi );
+	mov( ediSave, edi );
+	mov( edxSave, edx );
+	mov( ecxSave, ecx );
+	mov( ebxSave, ebx );
+	popfd();
+	cmp( eax, -1 );		// Set carry on success, clear if no match.
+	leave();
+	ret( _parms_ );
+		
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+StringIndexError:
+	raise( ex.StringIndexError );
+
+end rindex3;
+
+end stringUnit;
+
+
+
+
+	
+

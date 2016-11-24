@@ -1,0 +1,35 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit LinuxUnit;
+#include( "linux.hhf" )
+
+// reboot: Reboots the system.
+
+procedure linux.reboot( magic:dword; magic2:dword; flag:dword; var arg:var );
+	@nodisplay;
+begin reboot;
+
+	linux.pushregs;
+	mov( linux.sys_reboot, eax );
+	mov( magic, ebx );
+	mov( magic2, ecx );
+	mov( flag, edx );
+	mov( arg, esi );
+	int( $80 );
+	linux.popregs;	
+	
+end reboot;
+
+end LinuxUnit;

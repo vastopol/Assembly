@@ -1,0 +1,86 @@
+program DateMinusDays_test;
+#include( "stdlib.hhf" )
+
+static
+	baseDate	:date.daterec;
+	decDate		:date.daterec;
+	subDate		:date.daterec;
+	
+	tmp			:date.daterec;
+	
+	baseJul		:dword;
+	decJul		:dword;
+	finalJul	:dword;
+	
+	days		:dword;
+	
+	
+begin DateMinusDays_test;
+
+	 
+	date.setFormat( date.mmddyyyy );
+
+	date.toJulian( 12, 31, date.maxYear-1 );
+	mov( eax, baseJul );
+	mov( eax, decJul );
+	
+	date.toJulian( 1, 2, date.minYear );
+	mov( eax, finalJul );
+	
+	date.pack( 12, 31, date.maxYear-1, baseDate );
+	mov( (type dword baseDate), eax );
+	mov( eax, (type dword decDate));
+	mov( eax, (type dword subDate));
+	
+	mov( 0, days );
+	while( mov( decJul, eax ) >= finalJul ) do
+	
+		inc( days );
+		dec( decJul );
+		mov( (type dword baseDate), eax );
+		mov( eax, subDate );
+		date.subDays( days, subDate ); 
+		date.subDays( 1, decDate );
+		
+		date.toJulian( decDate );
+		mov( eax, ebx );
+		date.toJulian( subDate );
+		if( eax <> ebx || eax <> decJul ) then
+		
+			stderr.put
+			( 
+				nl nl 
+				"***************************************************" nl
+				"date.dateSubDays failed!", nl,
+				"decDate= '"
+			);
+			date.a_toString( decDate );
+			stderr.put
+			(
+				(type string eax), "'" nl
+				"decJul=  '"
+			);
+			str.free( eax );
+			date.fromJulian( decJul, tmp );
+			date.a_toString( tmp );
+			stderr.put
+			(
+				(type string eax), "'" nl
+			
+				"***************************************************" nl
+				nl 
+			);
+			str.free( eax );
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		
+	endwhile;
+	stderr.put( "date.dateSubDays succeeded!" nl );
+	os.exitProcess(0);
+		
+end DateMinusDays_test;
+
+													

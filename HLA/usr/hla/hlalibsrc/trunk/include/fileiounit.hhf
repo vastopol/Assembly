@@ -1,0 +1,252 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+#if( ! @defined( fileioUnit_hhf ))
+?fileioUnit_hhf := true;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeOnce( "fileio.hhf" )
+#includeOnce( "filesys.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "memory.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "os.hhf" )
+
+procedure fPutPad( Handle:dword; fill:char; size:uns32 );
+	@global:_hla._ext( "FILEIO_FPUTPAD" );
+
+
+#if( os.linux )
+
+	#include( "linux.hhf" )
+		
+		
+	// Macros used to save registers across API calls:
+
+	#macro pushRegs;
+		push( ebx );
+		push( ecx );
+		push( edx );
+		push( esi );
+		push( edi );
+	#endmacro;
+
+	#macro popRegs;
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+	#endmacro;
+
+
+
+#elseif( os.freeBSD )
+
+	#include( "bsd.hhf" )
+		
+	#macro pushregs;
+	
+		push( ebx );
+		push( ecx );
+		push( edx );
+		push( esi );
+		push( edi );
+		
+	#endmacro
+	
+	#macro popregs;
+	
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		
+	#endmacro
+
+
+#elseif( os.macOS )
+
+	#include( "mac.hhf" )
+		
+	#macro pushregs;
+	
+		push( ebx );
+		push( ecx );
+		push( edx );
+		push( esi );
+		push( edi );
+		
+	#endmacro
+	
+	#macro popregs;
+	
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		
+	#endmacro
+
+
+#elseif( os.win32 )
+
+	#include( "../include/win32.hhf" )
+
+		/*
+		** Links to the Win32 API:
+		*/
+
+
+	static
+		WriteFile:procedure
+		(
+				overlapped:		dword;
+			var	bytesWritten:	dword;
+				len:			dword;
+			var buffer:			byte;
+				Handle:			dword
+		); 
+			external( "__imp__WriteFile@20" );
+
+
+		ReadFile:procedure
+		(
+				overlapped:	dword;
+			var	bytesRead:	dword;
+				len:		dword;
+			var buffer:		byte;
+				Handle:		dword
+		); 
+			external( "__imp__ReadFile@20" );
+
+
+
+		CreateFile:procedure
+		( 
+			hTemplateFile:	 		dword;
+			dwFlagsAndAttributes:	dword;
+			dwCreationDistribution:	dword;
+			lpSecurityAttributes:	dword;
+			dwShareMode: 			dword;
+			dwDesiredAccess:		dword;
+			lpFileName:				string
+		);
+			external( "__imp__CreateFileA@28" );
+
+
+
+		CloseHandle:procedure( handle:dword ); 
+			external( "__imp__CloseHandle@4" );
+
+		FlushFileBuffers:procedure( handle:dword ); 
+			external( "__imp__FlushFileBuffers@4" );
+
+
+		SetFilePointer:procedure
+		( 
+			HowToMove:		dword; 
+			PtrToHighDist:	dword;
+			Dist:			dword;
+			Handle:			dword
+		);
+			external( "__imp__SetFilePointer@16" );
+					
+
+		CopyFile:procedure
+		( 
+			failIfFileExists: dword;
+			dest:string;
+			source:string
+		);
+			external( "__imp__CopyFileA@12" );
+					
+		MoveFile:procedure
+		( 
+			source:string;
+			dest:string
+		);
+			@stdcall;
+			external( "__imp__MoveFileA@8" );
+					
+		GetFileSize:procedure
+		( 
+			sizeHighPtr:dword;
+			handle:dword
+		);
+			external( "__imp__GetFileSize@8" );
+					
+		DeleteFile:procedure
+		( 
+			fileName:string
+		);
+			external( "__imp__DeleteFileA@4" );
+					
+
+					
+
+		GetCurrentDirectory:procedure
+		( 
+			directory:string;
+			bufsize:dword
+		);
+			external( "__imp__GetCurrentDirectoryA@8" );
+					
+		CreateDirectory:procedure
+		( 
+			MustBeNULL:dword;
+			directory:string
+		);
+			external( "__imp__CreateDirectoryA@8" );
+					
+		RemoveDirectory:procedure
+		( 
+			directory:string
+		);
+			external( "__imp__RemoveDirectoryA@4" );
+					
+		SetCurrentDirectory:procedure
+		( 
+			fileName:string
+		);
+			external( "__imp__SetCurrentDirectoryA@4" );
+					
+
+
+	GetLastError:procedure; external( "__imp__GetLastError@0" );
+		
+
+
+	#macro pushRegs;
+		push( ebx );
+		push( ecx );
+		push( edx );
+		push( esi );
+		push( edi );
+	#endmacro;
+
+	#macro popRegs;
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+	#endmacro;
+
+
+#endif

@@ -1,0 +1,189 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit StdInput;
+#includeOnce( "stdlibdata.hhf" )
+#includeOnce( "../include/stdinunit.hhf" )
+#includeOnce( "../include/conversions.hhf" )
+
+
+// _getl-
+//
+//	Support routine used by the getl function.
+// Converts string of hexadecimal digits pointed at by ESI
+// to a 128-bit value in EDI:EDX:ECX:EBX.
+
+procedure _getl; 
+	@noframe;
+	@nodisplay;
+	@nostackalign;
+
+begin _getl;
+
+
+	push( ebp );
+	mov( esp, ebp );
+
+	// If the input buffer is empty, read a new line from the
+	// standard input device.
+	
+	cmp( NeedsInput, false );
+	je dontNeedInput;
+	
+		ReadLn();
+		
+	dontNeedInput:
+
+	mov( _hla.get_Delimiters(), edx );
+	mov( InputIndex, ebx );
+	mov( CharsInBuf, ecx );
+	SkipDelimsLoop:
+	
+		movzx( InputBuffer[ ebx ], eax );
+		cmp( eax, '_' );
+		je isDelim;
+		
+			bt( eax, (type dword [edx] ));	// Delimiters
+			jnc NoMoreDelims;
+			
+		isDelim:
+		inc( ebx );
+		cmp( ebx, ecx );
+		jb SkipDelimsLoop;
+		
+		// We are at the end of the line, so read a new line from the user.
+		
+		ReadLn();
+		mov( InputIndex, ebx );
+		mov( CharsInBuf, ecx );
+		jmp SkipDelimsLoop;
+		
+	NoMoreDelims:
+
+	// Point esi at the start of the text and
+	// convert this text to an integer.
+	
+	lea( esi, InputBuffer[ebx] );	
+	
+	xor( ebx, ebx );	// Initialize EDI:EDX:ECX:EBX with zero.
+	mov( ebx, ecx );
+	mov( ebx, edx );
+	mov( ebx, edi );
+	
+	// The first (non-delimiter) character *must* be a legal hex digit.
+	
+	bt( eax, stdlib.hexCS );
+	jnc convError;
+	movzx( stdlib.hexConvTbl[ eax ], eax );	// Convert to numeric form.
+	
+	// For each legal character that ESI points at, repeat
+	// the following until we encounter a delimiter or
+	// illegal character.
+	
+	whileHexChar:
+	
+		// Okay, we've got a hex digit, so add it into EDI:EDX:ECX:EBX.
+		
+		cmp( edi, $1000_0000 );
+		jae Overflow;
+		
+		shld( 4, edx, edi );
+		shld( 4, ecx, edx );
+		shld( 4, ebx, ecx );
+		shl( 4, ebx );
+		add( eax, ebx );	// Never a carry!
+			
+		// Move on to the next (non-underscore) character:
+		
+		NextChar;
+
+		// Repeat if it's a hexadecimal digit.
+
+		movsx( stdlib.hexConvTbl[ eax ], eax );
+		test( eax, eax );
+		jns whileHexChar;
+		
+	// Verify that we've ended with a delimiter char:
+	
+	push( edx );
+	mov( _hla.get_Delimiters(), edx );
+	movzx( (type byte [esi]), eax );
+	cmp( eax, $80 );
+	jae illegalChar;
+	bt( eax, [edx] );	// Delimiters
+	jnc convError;
+	pop( edx );
+	
+	// Compute new InputIndex value.
+	
+	sub( &InputBuffer, esi );
+	mov( esi, InputIndex );
+	pop( ebp );
+	ret( _parms_ );
+
+convError:
+	mov( true, NeedsInput );
+	raise( ex.ConversionError );
+	
+Overflow:
+	mov( true, NeedsInput );
+	raise( ex.ValueOutOfRange );
+	
+illegalChar:
+	mov( true, NeedsInput );
+	raise( ex.IllegalChar );
+
+	
+end _getl;
+
+
+procedure geth128( var dest:lword ); @noframe; @nodisplay;
+begin geth128;
+
+	push( ebp );
+	mov( esp, ebp );
+
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( edi );
+	push( esi );
+	
+	_getl();
+
+	mov( dest, eax );
+	mov( ebx, [eax] );
+	mov( ecx, [eax+4] );
+	mov( edx, [eax+8] );
+	mov( edi, [eax+12] );
+	
+	pop( esi );
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+
+end geth128;
+
+end StdInput;
+
+
+
+
+	
+

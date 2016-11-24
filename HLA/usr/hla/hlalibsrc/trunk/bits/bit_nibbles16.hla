@@ -1,0 +1,52 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit bitsUnit;
+
+#include( "bits.hhf" );
+
+
+/**************************************************************/
+/*                                                            */
+/* nibbles16-                                                 */
+/*                                                            */
+/* This routine unpacks the four nibbles in the word passed   */
+/* as a parameter.  It returns the individual nibbles in the  */
+/* four bytes found in EAX.                                   */
+/*                                                            */
+/*                                                            */
+/**************************************************************/
+
+	
+procedure bits.nibbles16( theWord:word in ax ); @nodisplay; @noframe;
+begin nibbles16;
+
+	push( eax );
+	mov( [esp+1], al );
+	mov( al, ah );
+	and( $f, al );
+	shr( 4,  ah );
+	shl( 16, eax );
+
+	mov( [esp+0], al );
+	mov( al, ah );
+	and( $f, al );
+	shr( 4, ah );
+	add( 4, esp );
+	ret();
+	
+end nibbles16;
+	
+	
+end bitsUnit;	

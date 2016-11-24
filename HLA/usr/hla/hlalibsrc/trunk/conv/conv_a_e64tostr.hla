@@ -1,0 +1,67 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "stdlibdata.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "memory.hhf" )
+
+
+
+/**************************************************************/
+/*                                                            */
+/* a_e64ToStr-                                                */
+/*                                                            */
+/* Just like e64ToStr except that this function automatically */
+/* allocates storage for the string on the heap.              */
+/*                                                            */
+/**************************************************************/
+
+
+procedure conv.a_e64ToStr
+( 
+	r64:		real64;	
+	width:		uns32
+);  
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+	
+begin a_e64ToStr;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( edi );
+	
+	mov( width, eax );
+	str.alloc( eax );
+	push( eax );	// Save ptr to string
+	mov( eax, edi );
+	mov( width, eax );
+	mov( eax, (type str.strRec [edi]).length );	// Set the string's length
+	mov( 0, (type byte [edi+eax]));				// Zero-terminate the string
+	conv.e64ToBuf( r64, eax, [edi] );			// Produce the string data
+	
+	pop( eax );		// Retrieve ptr to the string
+	pop( edi );
+	pop( ebp );
+	ret( _parms_ );
+	
+end a_e64ToStr;
+
+
+end ConvUnit;

@@ -1,0 +1,155 @@
+program bgeti128_test;
+#include( "stdlib.hhf" )
+
+readonly
+	max128 :int128 :=  170141183460469231731687303715884105727;
+	min128 :int128 := -170141183460469231731687303715884105728;
+
+var
+	b			:blob.blob;
+	input128	:int128;
+	
+	procedure cmp128( left:int128; right:int128 );
+	begin cmp128;
+	
+		cld();
+		lea( esi, left );
+		lea( edi, right );
+		mov( 4, ecx );
+		repe.cmpsd();
+		
+	end cmp128;
+	
+begin bgeti128_test;
+
+
+	// Testing blob.geti128
+	
+	try
+	
+		blob.a_load( "bgeti128.data" );
+		mov( eax, b );
+
+		blob.geti128( b, input128 );
+		cmp128( input128, 0 );
+		if( @ne ) then
+		
+			raise(1011);
+		
+		endif;	
+		
+		blob.geti128( b, input128 );
+		cmp128( input128, 1 );
+		if( @ne ) then
+		
+			raise(1012);
+		
+		endif;	
+		
+		blob.geti128( b, input128 );
+		cmp128( input128, -1 );
+		if( @ne ) then
+		
+			raise(1013);
+		
+		endif;	
+		
+		blob.geti128( b, input128 );
+		cmp128( input128, max128 );
+		if( @ne ) then
+		
+			raise(1014);
+		
+		endif;
+
+
+		blob.geti128( b, input128 );
+		cmp128( input128, min128 );
+		if( @ne ) then
+		
+			raise(1015);
+		
+		endif;
+
+
+		
+		try
+		
+			blob.geti128( b, input128 );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise a conversion error.
+			
+		  	Raise( 1016 );
+			
+		  exception( ex.ConversionError )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( 1017 );
+			
+		endtry;
+		blob.readLn( b );	// Clean up after ourselves.
+		
+		
+		try
+		
+			blob.geti128( b, input128 );
+
+		  unprotected
+		  
+		  	// We we got to this point, we failed to raise an overflow error.
+			
+		  	Raise( 1018 );
+			
+		  exception( ex.ValueOutOfRange )
+		  
+		  	// Okay, we succeeded if we got this exception.
+			
+		  anyexception
+		  
+		  	// Anything else? Pass it on.
+			
+		  	Raise( 1019 );
+			
+		endtry;
+		blob.readLn( b );
+		
+		
+		// Better be at end of file.
+		
+		if( !blob.eof( b )) then
+		
+			raise(1010);
+			
+		endif;
+		stderr.put( "blob.geti128 succeeded!" nl );
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"blob.geti128 failed! eax=", (type uns32 eax), nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+
+			
+end bgeti128_test;
+
+													

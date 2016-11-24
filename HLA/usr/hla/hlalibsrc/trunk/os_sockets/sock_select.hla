@@ -1,0 +1,307 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit sockets;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#include( "sockets.hhf" )
+#include( "excepts.hhf" )
+#include( "os.hhf" )
+	
+#if( os.win32 )
+	#include( "w.hhf" )
+#elseif( os.linux )
+	#include( "linux.hhf" )
+#elseif( os.freeBSD )
+	#include( "bsd.hhf" )
+#elseif( os.macOS )
+	#include( "mac.hhf" )
+#else
+	#error( "select.hla: unsupported OS" )
+#endif
+	
+	
+	
+#if( os.win32 )
+
+	
+	procedure sock.select
+	( 
+			n			:dword; 
+		var	readSet		:hla.fd_set_t;
+		var	writeSet	:hla.fd_set_t;
+		var	exceptSet	:hla.fd_set_t;
+		var	timeout		:hla.timeval
+	);
+	begin select;
+
+		push( ebp );
+		mov( esp, ebp );
+		
+		push( ecx );
+		push( edx );
+		
+		// Do the select operation:
+		
+		w.select
+		( 
+			n, 
+			readSet, 
+			writeSet, 
+			exceptSet, 
+			val (type dword timeout)	// Pass the address straight through. 
+		);
+		
+		// Check for error return:
+		
+		cmp( eax, w.SOCKET_ERROR );
+		je SocketError;
+		
+		// EAX contains the number of descriptors that are ready.
+		// If this is zero, we timed out.
+		
+		noneReady:
+		pop( edx );
+		pop( ecx );
+						
+		leave();
+		ret( _parms_ );
+		
+	SocketError:
+		w.WSAGetLastError();
+		mov( eax, edx );
+		raise( ex.SocketError );
+		
+	end select;
+	
+
+#else
+
+	#if( os.linux )
+		type unix_fd_set :linux.fd_set;
+		?_os 		:text := "linux";
+		?sigmask	:text := ",NULL";
+		#macro selectError;
+			test( eax, eax );
+			js LinuxSocketError
+		#endmacro
+		
+	#elseif( os.freeBSD )
+		type unix_fd_set :bsd.fd_set;
+		?_os :text := "bsd";
+		?sigmask	:text := "";
+		#macro selectError;
+			jc SocketError
+		#endmacro
+	
+	#elseif( os.macOS )
+	
+		type unix_fd_set :mac.fd_set;
+		?_os :text := "mac";
+		?sigmask	:text := "";
+		#macro selectError;
+			jc SocketError
+		#endmacro
+		
+	
+	#endif
+	
+
+
+	
+    // Windows uses a lame implementation of fd_set. Because the
+	// socket handles can be any arbitrary value, we cannot use the
+	// neat and nifty bitset that UNIX systems use. For consistency,
+	// we have to map UNIX fd_set types to a form that is compatible
+	// with Windows.
+	
+	
+	// bm2fd_set-
+	//
+	//	Converts and copies a unix_fd_set bitmap to the form that
+	// the standard library can use (Windows-compatible format).
+		  
+	procedure bm2fd_set
+	( 
+			maxSet	:dword; 
+		var	bitmap	:unix_fd_set; 
+		var	array	:hla.fd_set_t 
+	);
+	begin bm2fd_set;
+	
+		push( ebp );
+		mov( esp, ebp );
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		push( esi );
+		
+		// For each set bit in bitmap, we need to append an entry to array.
+		
+		xor( esi, esi );
+		mov( array, edx );
+		mov( bitmap, ebx );
+		test( edx, edx );
+		jz noSet;
+		
+			mov( -1, eax );
+			whileLTmaxSet:
+				add( 1, eax );
+				cmp( eax, maxSet );
+				jae setLength;
+				bt( eax, [ebx]);
+				jnc whileLTmaxSet;
+				
+				mov( eax, (type hla.fd_set_t [edx]).fd_array[esi*4] );
+				add( 1, esi );
+				jmp whileLTmaxSet; 
+				
+			setLength:
+			mov( esi, (type hla.fd_set_t [edx]).fd_count );
+				
+		noSet:
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+		leave();
+		ret( _parms_ );
+		
+	end bm2fd_set;
+
+
+	  
+	  
+	// fd2bm_set-
+	//
+	//	Converts and copies an HLA stdlib FD_SET to the fd_set format
+	// that Unix uses:
+		  
+	procedure fd2bm_set
+	(
+		var	array	:hla.fd_set_t;
+		var	bitmap	:unix_fd_set 
+	);
+	begin fd2bm_set;
+	
+		push( ebp );
+		mov( esp, ebp );
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edi );
+		pushfd();
+		cld();
+		
+		// Clear the bitmap:
+		
+	    mov( bitmap, edi );
+	    xor( eax, eax );
+	    mov( @size( unix_fd_set ) div 4, ecx );
+	    rep.stosd();
+				
+		// We need to set the corresponding bit in bitmap for
+		// each entry in array.fd_array. The socket # in fd_array
+		// specifies the bit to set.
+		
+		mov( array, edi );
+		mov( bitmap, ebx );
+		test( edi, edi );
+		jz noBitsSet;
+		
+			mov( (type hla.fd_set_t [edi]).fd_count, ecx );
+			jecxz noBitsSet;
+			whileECXnotZero:
+				mov( (type hla.fd_set_t [edi+ecx*4-4]).fd_array, eax );
+				assert( eax < 256 );
+				bts( eax, [ebx] );
+				sub( 1, ecx );
+				jnz whileECXnotZero;
+			
+		noBitsSet:
+		popfd();
+		pop( eax );
+		pop( ebx );
+		pop( ecx );
+		pop( edi );
+		leave();
+		ret( _parms_ );
+		
+	end fd2bm_set; 
+	
+	
+	procedure sock.select
+	( 
+			n			:dword; 
+		var	readSet		:hla.fd_set_t;
+		var	writeSet	:hla.fd_set_t;
+		var	exceptSet	:hla.fd_set_t;
+		var	timeout		:hla.timeval
+	);
+	var
+		unix_readset	:unix_fd_set;
+		unix_writeset	:unix_fd_set;
+		unix_exceptset	:unix_fd_set;
+		
+	begin select;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		push( edx );
+		
+		// Need to convert the HLA fd_sets passed to us to a bitmapped form
+		// that is acceptable to Unix:
+		
+		fd2bm_set( readSet,   unix_readset   );
+		fd2bm_set( writeSet,  unix_writeset  );
+		fd2bm_set( exceptSet, unix_exceptset );
+	
+		mov( n, eax );
+		inc( eax );
+	    _os.select
+		( 
+			eax, 
+			unix_readset, 
+			unix_writeset, 
+			unix_exceptset, 
+			val (type dword timeout)	// Note: no comma here!
+			sigmask 
+		);
+	    selectError;
+		
+		bm2fd_set( n, unix_readset,   readSet   );
+		bm2fd_set( n, unix_writeset,  writeSet  );
+		bm2fd_set( n, unix_exceptset, exceptSet );
+		
+		pop( edx );
+		leave();
+		ret( _parms_ );
+		
+	#if( os.linux )
+	LinuxSocketError:
+		neg( eax );
+		mov( eax, edx );
+	#endif
+		
+	SocketError:
+		raise( ex.SocketError );
+		
+	end select;
+	
+#endif	
+
+end sockets;

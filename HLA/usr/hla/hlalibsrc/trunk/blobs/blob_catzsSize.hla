@@ -1,0 +1,142 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" )
+#include( "strings.hhf" )
+#include( "zstrings.hhf" )
+#include( "memory.hhf" )
+
+
+// catzsSize-                                                  
+// 	Concatenates a zstring to some blob, using
+// 	a minimum field width for the zstring.                     
+
+procedure blob.catzsSize( dest:blob.blob; s:zstring; width:int32; fill:char ); 
+	@noframe;
+
+var
+	eaxSave		:dword;
+	ecxSave		:dword;
+	esiSave		:dword;
+	ediSave		:dword;
+	sLen		:dword;
+	
+	FillStr:	string;
+	saveFlags	:dword;
+	
+begin catzsSize;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_-4), esp );
+	pushfd();		// Allocates and initializes saveFlags
+	cld();
+	
+	mov( eax, eaxSave );
+	mov( ecx, ecxSave );
+	mov( esi, esiSave );
+	mov( edi, ediSave );
+	
+	// Get the absolute value of width into ECX:
+	
+	mov( width, ecx );
+	test( ecx, ecx );
+	jns notNeg;
+	
+		neg( ecx );
+		
+	notNeg:
+	
+	
+	// Compute the maximum of abs(width) and length(s):
+
+	zstr.len( s );
+	mov( eax, sLen );
+	cmp( eax, ecx );
+	jb eaxIsSmaller;
+	
+		// If EAX >= ECX, then the zstring's length is greater than
+		// or equal to the width. In this case, just concatenate the
+		// zstring to the end of the blob (this includes the special
+		// case with width is zero):
+		
+		blob._catbuf( dest, val s, eax );
+		jmp AllDone;
+		
+		
+		// If EAX < ECX, then we need to create a new string with the
+		// fill characters:
+		
+	eaxIsSmaller:
+	
+		str.talloc( ecx );
+		mov( eax, FillStr );
+		str.setstr( fill, ecx, eax );
+		
+		cmp( width, 1 );
+		jl fillAtEnd;
+		
+			// If the width is positive, the source string needs to go at
+			// the start of the concatenated result.
+			
+			mov( FillStr, edi );
+			mov( s, esi );
+			mov( sLen, ecx );
+			rep.movsb();
+			jmp MadeStr;
+			
+		
+		
+		// If the width is negative, the source string needs to go at
+		// the end of the concatenated result:
+		
+		fillAtEnd:
+			mov( FillStr, edi );
+			mov( s, esi );
+			mov( sLen, ecx );
+			mov( width, eax );
+			sub( ecx, eax );
+			add( eax, edi );
+			rep.movsb();
+			
+			
+		MadeStr:
+		mov( FillStr, eax );
+		blob._cats( dest );
+		 
+	AllDone: 
+	mov( eaxSave, eax );
+	mov( ecxSave, ecx );
+	mov( esiSave, esi );
+	mov( ediSave, edi );
+	push( saveFlags );
+	popfd();
+	leave();
+	ret( _parms_ );
+	
+end catzsSize;
+
+
+
+end blobUnit;
+
+
+
+
+	
+

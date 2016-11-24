@@ -1,0 +1,97 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+
+
+/***************************************************************/
+/*                                                             */
+/* first2,                                                     */
+/* first3,                                                     */
+/* a_first-                                                    */
+/*                                                             */
+/* These routines remove characters from the end of a string.  */
+/* (that is, they return the characters at the start of the    */
+/* string). The first2 routine destructively removes characters*/
+/* from a specified string variable.  The a_start routine      */
+/* allocates storage for a new string and copies the string,   */
+/* minus the deleted portion, to the newly allocated storage.  */
+/* The original string is left unchanged by a_start.           */
+/* The first3 copies the substring to a destination string.	   */
+/*                                                             */
+/* Inputs-                                                     */
+/*                                                             */
+/* dest-   Pointer to string to remove characters from.        */
+/* length- Number of characters to delete from the end         */
+/*         of the string.                                      */
+/*                                                             */
+/***************************************************************/
+
+
+
+
+// str.a_first - returns pointer to newly allocated string in EAX.
+
+procedure str.a_first
+(
+      src: string;
+      len:	dword
+); 
+	@noframe;
+begin a_first;
+
+	push( ebp );
+	mov( esp, ebp );
+	mov( src, eax );
+	test( eax, eax );
+	jz AttemptToDerefNULL;			 
+
+	mov( (type str.strRec [eax]).length, eax );
+	cmp( eax, len  );
+	jb copyStr;			// not jbe! Note how the carry is set!
+	
+		str.a_substr( src, 0, len );
+		stc();		// Return true -- full substring operation.
+		jmp allDone;
+		
+	// If the desired length is greater than the length of the
+	// string, then just do an a_cpy operation:
+	
+	copyStr:
+		str.a_cpy( src );
+		clc();		// Return false to indicate partial substring result.
+		
+	allDone:
+	pop( ebp );
+	ret( _parms_ );
+	
+AttemptToDerefNULL:			 
+	raise(ex.AttemptToDerefNULL);
+		
+end a_first;
+ 
+
+end stringUnit;
+
+
+
+
+	
+

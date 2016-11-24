@@ -1,0 +1,23 @@
+program bputbool_test;
+#include( "stdlib.hhf" )
+
+static
+	b	:blob.t;
+	blb	:byte[300];
+	
+begin bputbool_test;
+
+	blob.init( blb, 300 );
+	mov( eax, b );
+	blob.reset( b );
+
+	blob.putbool( b, true );
+	blob.newln( b );
+	blob.putbool( b, false );
+	blob.newln( b );
+
+	blob.save( "bputbool.txt", b );
+
+end bputbool_test;
+
+													

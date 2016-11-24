@@ -1,0 +1,52 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit sockets;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#includeOnce( "sockets.hhf" )
+#includeOnce( "hla.hhf" )
+
+procedure baseSocketClass_t.getTimeout( var timeout:hla.timeval );
+begin getTimeout;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	mov( timeout, ebx );
+	mov( this.timeout.tv_sec, eax );
+	mov( eax, (type hla.timeval [ebx]).tv_sec );
+	mov( this.timeout.tv_usec, eax );
+	mov( eax, (type hla.timeval [ebx]).tv_usec );
+	
+	// Whenever they do a "get", the following code will set the
+	// timeout for that socket to ensure that the object's timeout
+	// value is in sync with the socket's.
+	
+	sock.setTimeout
+	( 
+		this.handle,
+		this.timeout
+	);
+	
+	pop( ebx );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+		
+end getTimeout;
+
+
+end sockets;

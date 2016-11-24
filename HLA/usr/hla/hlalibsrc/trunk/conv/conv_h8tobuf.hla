@@ -1,0 +1,66 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#include( "conv.hhf" )
+#include( "stdlibdata.hhf" )
+
+
+/************************************************************************/
+/*                                                                      */
+/* h8ToBuf,                                                             */
+/*                                                                      */
+/* This routine converts the value passed in AL to a sequence of        */
+/* characters that form the hexadecimal representation of the value.    */
+/* It stores the  character output starting at the location specified   */
+/* by the EDI register.  Note that the buffer pointed at by EDI must be */
+/* large enough to hold the result (up to two bytes), no checking is    */
+/* done.                                                                */
+/*                                                                      */
+/* This routine preserves EAX and ECX and leaves EDI pointing at        */
+/* the first byte position beyond the last converted character.         */
+/*                                                                      */
+/* Unlike bToBuf, this routine will produce only one char of output     */
+/* if the number is in the range $00..$0F.                              */
+/*                                                                      */
+/************************************************************************/
+
+
+procedure conv.h8ToBuf( b:byte in al; var buffer:var in edi );  
+	@nodisplay; 
+	@noalignstack; 
+	@noframe; 
+begin h8ToBuf;
+
+	push( eax );
+	movzx( al, eax );
+	cmp( eax, $10 );
+	jb oneDigit;
+		mov( (type word stdlib.hexTbl[eax*2]), ax );
+		mov( ax, [edi] );
+		add( 2, edi );
+		pop( eax );
+		ret();
+
+	oneDigit:
+		mov( stdlib.hexDigits[eax], al );
+		mov( al, [edi] );
+		add( 1, edi );
+		pop( eax );
+		ret();
+		
+end h8ToBuf;
+
+end ConvUnit;

@@ -1,0 +1,67 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+
+/******************************************************************/
+/*                                                                */
+/* h16Size                                                        */
+/*                                                                */
+/* This routine computes the minimum number of print              */
+/* positions needed to display a word value.                      */
+/* The size, in digits, is returned in the EAX register.          */                                   
+/*                                                                */
+/* Input (wsize):                                                 */
+/* 	AX-		Contains the value to compute the size of.            */
+/* 	                                                              */
+/* Returns:                                                       */
+/* 	EAX-	1 if AX < $10, 2 if AX < $100, 3 if AX =< $1000,      */
+/* 			else 4.                                               */
+/*                                                                */
+/******************************************************************/
+
+
+
+
+
+procedure conv.h16Size( wValue:word in ax ); @nodisplay; @noframe;
+begin h16Size;
+
+	cmp( ax, $10 );
+	jb One;
+	cmp( ax, $100 );
+	jb Two;
+	cmp( ax, $1000 );
+	jb Three;
+	mov( 4, eax );
+	ret();
+	
+	Three: 
+		mov( 3, eax );
+		ret();
+		
+	Two:
+		mov( 2, eax );
+		ret();
+		
+	One:
+		mov( 1, eax );
+		ret();
+
+end h16Size;
+
+end ConvUnit;

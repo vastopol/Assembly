@@ -1,0 +1,228 @@
+program nibble_test;
+#include( "stdlib.hhf" )
+
+type
+	nibbles_t:
+		record
+			nibbles		:dword;
+			resultValue	:qword;
+			align(4);
+		endrecord;
+		
+#macro spreadNibbles(b);
+
+	(b&$f) | ((b & $f0)<<4)
+	
+#endmacro
+
+		
+val					
+	nibbles8_c :nibbles_t[ 256 ];
+		#for( i := 0 to 255 )
+		
+			?nibbles8_c[ i ] :=
+				nibbles_t:[ i, spreadNibbles(i) ]; 
+				
+		#endfor
+	
+	nibbles16_c: nibbles_t[256];
+		#for( i := 0 to 255 )
+		
+			?resultValue := nibbles8_c[i].resultValue |
+								(nibbles8_c[i].resultValue << 16);
+								
+			?nibbles16_c[ i ] :=
+				nibbles_t:[ i + (i<<8), resultValue ];
+				
+		#endfor			
+	
+	nibbles32_c: nibbles_t[256];
+		#for( i := 0 to 255 )
+		
+			?resultValue := 
+					 nibbles8_c[i].resultValue 
+				|	(nibbles8_c[i].resultValue << 16)
+				|	(nibbles8_c[i].resultValue << 32)
+				|	(nibbles8_c[i].resultValue << 48);
+			
+			?nibbles32_c[ i ] :=
+				nibbles_t:[ i<<24 + i<<16 + i <<8 + i, resultValue ];
+				
+		#endfor			
+	
+		
+		
+static
+	nibbles8  : nibbles_t[ @elements( nibbles8_c ) ]  := nibbles8_c;
+	nibbles16 : nibbles_t[ @elements( nibbles16_c ) ] := nibbles16_c;
+	nibbles32 : nibbles_t[ @elements( nibbles32_c ) ] := nibbles32_c;
+	
+begin nibble_test;
+
+		xor( edi, edi );
+		for( mov( 0, ecx ); ecx<@elements( nibbles8 ); add(@size(nibbles_t),ecx) )do
+		
+			bits.nibbles8( (type byte nibbles8.nibbles[ecx]) );
+			if( ax <> (type word nibbles8.resultValue[ecx]) ) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"bits.nibbles8 failed!" nl
+					" index = $", edi, nl
+					" input = $", nibbles8.nibbles[ecx], nl,
+					" result= $", eax, nl,
+					" Should be: $", nibbles8.resultValue[ecx], nl,
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+					
+			bits.nibbles16( (type word nibbles8.nibbles[ecx]) );
+			if( eax <> (type dword nibbles8.resultValue[ecx]) ) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"bits.nibbles16 failed!" nl
+					" index = $", edi, nl
+					" input = $", nibbles8.nibbles[ecx], nl,
+					" result= $", eax, nl,
+					" Should be: $", nibbles8.resultValue[ecx], nl,
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+					
+			bits.nibbles32( nibbles8.nibbles[ecx] );
+			if
+			( 
+					eax <> (type dword nibbles8.resultValue[ecx])
+				||	edx <> (type dword nibbles8.resultValue[ecx+4]) 
+			) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"bits.nibbles32 failed!" nl
+					" index = $", edi, nl
+					" input = $", nibbles8.nibbles[ecx], nl,
+					" result= $", eax, nl,
+					" Should be: $", nibbles8.resultValue[ecx], nl,
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			inc( edi );		
+			
+		endfor;
+		stderr.put( "bits.nibbles8 succeeded!" nl );
+
+	
+		xor( edi, edi );
+		for( mov( 0, ecx ); ecx<@elements( nibbles16 ); add(@size(nibbles_t),ecx) )do
+		
+			bits.nibbles16( (type word nibbles16.nibbles[ecx]) );
+			if( eax <> (type dword nibbles16.resultValue[ecx]) ) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"bits.nibbles16 failed!" nl
+					" index = $", edi, nl
+					" input = $", nibbles16.nibbles[ecx], nl,
+					" result= $", eax, nl,
+					" Should be: $", nibbles16.resultValue[ecx], nl,
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+					
+			bits.nibbles32( nibbles16.nibbles[ecx] );
+			if
+			( 
+					eax <> (type dword nibbles16.resultValue[ecx])
+				||	edx <> (type dword nibbles16.resultValue[ecx+4]) 
+			) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"bits.nibbles32 failed!" nl
+					" index = $", edi, nl
+					" input = $", nibbles16.nibbles[ecx], nl,
+					" result= $", eax, nl,
+					" Should be: $", nibbles16.resultValue[ecx], nl,
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			inc( edi );		
+			
+		endfor;
+		stderr.put( "bits.nibbles16 succeeded!" nl );
+
+	
+		xor( edi, edi );
+		for( mov( 0, ecx ); ecx<@elements( nibbles32 ); add(@size(nibbles_t),ecx) )do
+		
+			bits.nibbles32( nibbles32.nibbles[ecx] );
+			if
+			( 
+					eax <> (type dword nibbles32.resultValue[ecx])
+				||	edx <> (type dword nibbles32.resultValue[ecx+4]) 
+			) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"bits.nibbles32 failed!" nl
+					" index = $", edi, nl
+					" input = $", nibbles32.nibbles[ecx], nl,
+					" result= $", eax, nl,
+					" Should be: $", nibbles32.resultValue[ecx], nl,
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			inc( edi );		
+			
+		endfor;
+		stderr.put( "bits.nibbles32 succeeded!" nl );
+
+	
+		os.exitProcess(0);
+		
+end nibble_test;
+
+													

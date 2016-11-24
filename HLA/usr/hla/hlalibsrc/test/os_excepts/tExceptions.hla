@@ -1,0 +1,731 @@
+program tExceptions;
+#include( "stdlib.hhf" )
+
+const
+	exceptNames := @localsyms( ex.exceptionCodes );
+	
+val
+	s		:string;
+	xCodes	:dword[] :=
+			[
+				#for( i := 0 to @elements( exceptNames ) - 1 )
+				
+					@text( "ex." + exceptNames[i] ),
+					
+				#endfor
+			];
+	
+static
+	fpcw		:word;
+	r80			:real80;
+	msg			:str.strvar( 256 );
+	assertion	:string := "";
+			
+readonly
+	codes	:dword[ @elements( xCodes ) ] := xCodes;
+	msgs	:array.lookupTable
+	(
+		string,
+		"",
+		"Unknown Exception ($00)"					: ex.UnknownException,
+		
+		"String Overflow" 							: ex.StringOverflow,
+		"Index into string is out of range" 		: ex.StringIndexError,
+		"String operands must not overlap"			: ex.StringOverlap,
+		"String metadata error"						: ex.StringMetaData,
+		"String alignment error"					: ex.StringAlignment,
+		"String Underflow"							: ex.StringUnderflow,
+		"Illegal string operation"					: ex.IllegalStringOperation,
+		
+		"Value out of range" 						: ex.ValueOutOfRange,
+		"Illegal character"							: ex.IllegalChar,
+		"Attempt to dereference a NULL pointer"  	: ex.AttemptToDerefNULL,
+		"Too many command line parameters"			: ex.TooManyCmdLnParms,
+		"Assertion Failed - "						: ex.AssertionFailed,
+		"Attempted to execute abstract method"   	: ex.ExecutedAbstract,
+		"Bad THIS pointer in class function"		: ex.BadObjPtr,
+		"Invalid memory alignment value"			: ex.InvalidAlignment,
+		"Invalid argument"							: ex.InvalidArgument,
+		"Buffer overflow"							: ex.BufferOverflow,
+		"Buffer underflow"							: ex.BufferUnderflow,
+		"Illegal size"								: ex.IllegalSize,
+		
+		"Conversion error"							: ex.ConversionError,
+		"Field width specification is too large" 	: ex.WidthTooBig,
+		"Decimal width specification is too large"	: ex.FractionTooBig,
+		
+		"Illegal file handle"						: ex.BadFileHandle,
+		"File not found"							: ex.FileNotFound,
+		"File open failure"							: ex.FileOpenFailure,
+		"File close failure"						: ex.FileCloseError,
+		"File write error"							: ex.FileWriteError,
+		"File read error"							: ex.FileReadError,
+		"File seek error"							: ex.FileSeekError,
+		"Disk full error"							: ex.DiskFullError,
+		"Access denied"								: ex.AccessDenied,
+		"End of file error"							: ex.EndOfFile,
+		
+		"Cannot create directory"					: ex.CannotCreateDir,
+		"Cannot remove directory"					: ex.CannotRemoveDir,
+		"Cannot delete file"						: ex.CannotRemoveFile,
+		"Change directory operation failed"			: ex.CDFailed,
+		"Cannot rename file"						: ex.CannotRenameFile,
+		
+		"Memory allocation failure"					: ex.MemoryAllocationFailure,
+		"Error attempting to free memory"			: ex.MemoryFreeFailure,
+		"Heap corruption"							: ex.MemoryAllocationCorruption,
+		"Attempt to FREE a NULL pointer"			: ex.AttemptToFreeNULL,
+		"Attempted to free an unallocated block" 	: ex.BlockAlreadyFree,
+		"Cannot free specified storage"				: ex.CannotFreeMemory,
+		"Pointer is not valid heap pointer"			: ex.PointerNotInHeap,
+		
+		"Array shape violation"						: ex.ArrayShapeViolation,
+		"Array bounds violation"					: ex.ArrayBounds,
+		
+		"Invalid date"								: ex.InvalidDate,
+		"Invalid date format"						: ex.InvalidDateFormat,
+		"Time overflow (value out of range)"		: ex.TimeOverflow,
+		"Invalid time"								: ex.InvalidTime,
+		"Invalid time format"						: ex.InvalidTimeFormat,
+		
+		"Socket error"								: ex.SocketError,
+		"Thread error"								: ex.ThreadError,
+		
+		"Memory Access Violation"					: ex.AccessViolation,
+		"In page memory error"						: ex.InPageError,
+		"Out of memory"								: ex.NoMemory,
+		"Invalid handle"							: ex.InvalidHandle,
+		"Control-C exception"						: ex.ControlC,
+		"Stack overflow"							: ex.StackOverflow,
+		"Breakpoint encountered"					: ex.Breakpoint,
+		"Single step exception"						: ex.SingleStep,
+		"Priviledged instruction exception" 		: ex.PrivInstr,
+		"Illegal instruction exception"				: ex.IllegalInstr,
+		"BOUND instuction bounds violation"			: ex.BoundInstr,
+		"Integer overflow (INTO)"					: ex.IntoInstr,
+		"Division error"							: ex.DivideError,
+		
+		"Floating point division by zero"			: ex.fDivByZero,
+		"Inexact FP result exception"				: ex.fInexactResult,
+		"Invalid floating point operation"			: ex.fInvalidOperation,
+		"Floating point overflow"					: ex.fOverflow,
+		"Floating point underflow"					: ex.fUnderflow,
+		"FPU stack exception"						: ex.fStackCheck,			
+		"Denormalized FP value exception"			: ex.fDenormal
+	);
+
+begin tExceptions;
+
+
+	// First of all, check out the ex.exceptMsg function
+	// to make sure it returns all the proper strings:
+	
+	for( mov( 0, ecx ); ecx < @elements( codes ) - 1; inc( ecx )) do
+	
+		if( ecx = ex.AssertionFailed ) then
+		
+			mov( assertion, eax );
+			mov( eax, ex.AssertionStr );
+		
+		endif;
+		
+		ex.exceptionMsg( ecx, msg );
+		if( str.ne( msg, msgs[ecx*4] )) then
+		
+			stderr.put
+			( 
+				"ex.exceptionMsg failed on index=",
+				(type uns32 ecx), nl
+				"Expected: '", msgs[ecx*4], "'" nl
+				"Got:      '", msg, "'" nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endif;
+		
+	endfor;
+	stderr.put( "ex.exceptionMsg test succeeded!" nl );
+	
+	
+	
+	
+	// Test raising each of the exceptions:
+	
+	#macro testRaise( excpt );
+		
+		try
+		
+			raise( excpt );
+			
+		  exception( excpt )
+		  
+		  	// This is what we expect
+			
+		  anyexception
+		  
+		  	mov( excpt, ebx );
+		  	stderr.put
+			(
+				"raise( ",
+				codes[ ebx*4 ],
+				") failed!" nl
+				"Should have code $", ebx, " but got $", eax, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endtry
+		
+	#endmacro
+	
+	#for( i := 0 to @elements( exceptNames ) - 2 )
+	
+		testRaise( @text( "ex." + exceptNames[i] ));
+		
+	#endfor 
+	stderr.put( "testRaise succeeded!" nl );
+	
+	
+	
+	
+	
+	
+	// Test raising some hardware exceptions (at least, the ones
+	// that are portable across platforms):
+	
+	stdout.put( "Testing integer division by zero" nl );
+	try
+	
+		idiv( 0, edx:eax );
+	  	stderr.put
+		( 
+			"tExceptions failed!" nl
+			"Expected exception $", ebx, nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	#if( os.win32 | os.freeBSD | os.macOS )
+	
+	  exception( ex.DivideError )
+	  
+	#elseif( os.linux )
+	
+	  exception( ex.IntoInstr )	// Linux returns this for some reason.
+	  
+	#endif
+	  
+	  	// This is what we expect
+		
+	  anyexception
+	  
+	  	mov( ex.DivideError, ebx );
+	  	stderr.put
+		( 
+			"tExceptions failed!" nl
+			"Expected exception $", ebx, nl
+			"Got instead        $", eax, nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "Integer Divide by zero test succeeded!" nl );
+	
+	stdout.put( "Testing bound violation" nl );
+	try
+	
+		mov( 100, eax );
+		bound( eax, 1, 20 );
+		mov( ex.BoundInstr, ebx );
+	  	stderr.put
+		( 
+			"tExceptions failed!" nl
+			"Expected bounds exception $", ebx, nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+			
+	  exception( ex.BoundInstr )
+	  	  
+	  	// This is what we expect
+		
+	  anyexception
+	  
+	  	mov( ex.BoundInstr, ebx );
+	  	stderr.put
+		( 
+			"tExceptions failed!" nl
+			"Expected exception $", ebx, nl
+			"Got instead        $", eax, nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "Bound violation test succeeded!" nl );
+	
+	
+	
+	
+	#if( !os.linux )
+	
+		stdout.put( "Testing real division by zero" nl );
+		try
+		
+			finit();
+			fstcw( fpcw );
+			btr( 2, fpcw );
+			fldcw( fpcw );
+			fld1();
+			fldz();
+			fdivp();
+			fstp( r80 );
+			mov( ex.fDivByZero, ebx );
+		  	stderr.put
+			( 
+				"tExceptions failed!" nl
+				"Expected ex.fDivByZero exception $", ebx, nl
+				"Real Result = ", r80, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		  exception( ex.fDivByZero )
+		  	  
+		  	// This is what we expect
+			
+		  anyexception
+		  
+		  	mov( ex.fDivByZero, ebx );
+		  	stderr.put
+			( 
+				"tExceptions failed!" nl
+				"Expected exception $", ebx, nl
+				"Got instead        $", eax, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endtry;
+		stderr.put( "Real Divide by zero test succeeded!" nl );
+		
+		
+		
+		stdout.put( "Testing real invalid operation" nl );
+		try
+		
+			//fnclex();
+			fninit();
+			fstcw( fpcw );
+			btr( 0, fpcw );	// Unmask invalid operation.
+			fldcw( fpcw );
+			fld1();
+			fchs();
+			fsqrt();
+			fstp( r80 );
+			mov( ex.fInvalidOperation, ebx );
+		  	stderr.put
+			( 
+				"tExceptions failed!" nl
+				"Expected ex.fInvalidOperation exception $", ebx, nl
+				"Real Result = ", r80, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		  exception( ex.fInvalidOperation )
+		  	  
+		  	// This is what we expect
+		  	
+
+		  anyexception
+		  
+		  	mov( ex.fInvalidOperation, ebx );
+		  	stderr.put
+			( 
+				"tExceptions failed!" nl
+				"Expected exception $", ebx, nl
+				"Got instead        $", eax, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endtry;
+		stderr.put( "Real Invalid Operation test succeeded!" nl );
+			
+		
+		
+		stdout.put( "Testing real inexact result" nl );
+		try
+		
+			fninit();
+			fstcw( fpcw );
+			btr( 5, fpcw );	// Unmask precision exception.
+			fldcw( fpcw );
+			
+			fld1();
+			fldpi();
+			fdivp();
+			
+			fstp( r80 );
+			mov( ex.fInexactResult, ebx );
+		  	stderr.put
+			( 
+				"tExceptions failed!" nl
+				"Expected ex.fInexactResult exception $", ebx, nl
+				"Real Result = ", r80, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		  exception( ex.fInexactResult )
+		  	  
+		  	// This is what we expect
+		  	
+
+		  anyexception
+		  
+		  	mov( ex.fInexactResult, ebx );
+		  	stderr.put
+			( 
+				"tExceptions failed!" nl
+				"Expected exception $", ebx, nl
+				"Got instead        $", eax, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endtry;
+		stderr.put( "Real inexact result test succeeded!" nl );
+				
+		
+		
+		stdout.put( "Testing real overflow" nl );
+		try
+		
+			fninit();
+			fstcw( fpcw );
+			btr( 3, fpcw );	// Unmask overflow exception.
+			fldcw( fpcw );
+			
+			fld( 1e4000 );
+			fld( 1e4000 );
+			fmulp();
+			
+			fstp( r80 );
+			mov( ex.fOverflow, ebx );
+		  	stderr.put
+			( 
+				"tExceptions failed!" nl
+				"Expected ex.fOverflow exception $", ebx, nl
+				"Real Result = ", r80, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		  exception( ex.fOverflow )
+		  	  
+		  	// This is what we expect
+		  	
+
+		  anyexception
+		  
+		  	mov( ex.fOverflow, ebx );
+		  	stderr.put
+			( 
+				"tExceptions failed!" nl
+				"Expected exception $", ebx, nl
+				"Got instead        $", eax, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endtry;
+		stderr.put( "Real overflow test succeeded!" nl );
+		
+				
+		
+		
+		stdout.put( "Testing real underflow" nl );
+		try
+		
+			fninit();
+			fstcw( fpcw );
+			btr( 4, fpcw );	// Unmask overflow exception.
+			fldcw( fpcw );
+			
+			fld( 1e-4000 );
+			fld( 1e4000 );
+			fdivp();
+			
+			fstp( r80 );
+			mov( ex.fUnderflow, ebx );
+		  	stderr.put
+			( 
+				"tExceptions failed!" nl
+				"Expected ex.fUnderflow exception $", ebx, nl
+				"Real Result = ", r80, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		  exception( ex.fUnderflow )
+		  	  
+		  	// This is what we expect
+		  	
+
+		  anyexception
+		  
+		  	mov( ex.fUnderflow, ebx );
+		  	stderr.put
+			( 
+				"tExceptions failed!" nl
+				"Expected exception $", ebx, nl
+				"Got instead        $", eax, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endtry;
+		stderr.put( "Real underflow test succeeded!" nl );
+		fnclex();
+		finit();
+		
+
+
+		// Trying an access violation here:
+		
+		stdout.put( "Testing EX.ACCESSVIOLATION" nl );
+		try
+		
+			xor( ebx, ebx );
+			mov( [ebx], ebx );
+		  	mov( ex.AccessViolation, ebx );
+		  	stderr.put
+			( 
+				"tExceptions failed!" nl
+				"Expected exception $", ebx, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		  exception( ex.AccessViolation )
+		  
+		  	// This is what we expect
+			
+		  anyexception
+		  
+		  	mov( ex.AccessViolation, ebx );
+		  	stderr.put
+			( 
+				"tExceptions failed!" nl
+				"Expected exception $", ebx, nl
+				"Got instead        $", eax, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endtry;
+		stderr.put( "Access violation test succeeded!" nl );
+		
+		#if( os.macOS | os.win32 )
+		
+			// Really would like to see ex.PrivInstr raise, but on the Mac
+			// we get AccessViolation.
+			
+			stdout.put( "Testing priviliged instruction exception" nl );
+			try
+			
+				invlpg( r80 );
+				
+				mov( ex.AccessViolation, ebx );
+			  	stderr.put
+				( 
+					"tExceptions failed!" nl
+					"Expected AccessViolation exception $", ebx, nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+					
+			  exception( ex.AccessViolation )
+			  	  
+			  	// This is what we expect
+				
+			  anyexception
+			  
+			  	mov( ex.AccessViolation, ebx );
+			  	stderr.put
+				( 
+					"tExceptions failed!" nl
+					"Expected exception $", ebx, nl
+					"Got instead        $", eax, nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endtry;
+			stderr.put( "Priviliged instruction test succeeded!" nl );
+			
+		#else
+		
+			// Really would like to see ex.PrivInstr raise, but on the Mac
+			// we get AccessViolation.
+			
+			stdout.put( "Testing priviliged instruction exception" nl );
+			try
+			
+				invlpg( r80 );
+				
+				mov( ex.PrivInstr, ebx );
+			  	stderr.put
+				( 
+					"tExceptions failed!" nl
+					"Expected PrivInstr exception $", ebx, nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+					
+			  exception( ex.PrivInstr )
+			  	  
+			  	// This is what we expect
+				
+			  anyexception
+			  
+			  	mov( ex.PrivInstr, ebx );
+			  	stderr.put
+				( 
+					"tExceptions failed!" nl
+					"Expected exception $", ebx, nl
+					"Got instead        $", eax, nl
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endtry;
+			stderr.put( "Priviliged instruction test succeeded!" nl );
+		
+		#endif
+		
+	
+	#endif
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	#if( !os.macOS )	// Can't seem to trap INT(3) under MacOSX.
+	
+		stderr.put( "Testing INT(3)/Breakpoint instruction" nl );
+		try
+		
+			int(3);
+		  	mov( ex.Breakpoint, ebx );
+		  	stderr.put
+			( 
+				"tExceptions failed!" nl
+				"Expected exception $", ebx, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		  exception( ex.Breakpoint )
+		  
+		  	// This is what we expect
+			
+		  anyexception
+		  
+		  	mov( ex.Breakpoint, ebx );
+		  	stderr.put
+			( 
+				"tExceptions failed!" nl
+				"Expected exception $", ebx, nl
+				"Got instead        $", eax, nl
+			);
+			stdout.put( "Press Enter to Continue: " );
+			stdin.readLn();
+			os.exitProcess(1);
+			
+		endtry;
+		stderr.put( "Breakpoint test succeeded!" nl );
+		
+	#endif
+	
+	
+	
+	  
+	
+	
+	
+	// Trying an Illegal instruction here:
+	
+	stdout.put( "Testing EX.IllegalInstr" nl );
+	try
+	
+		ud2();
+	  	mov( ex.IllegalInstr, ebx );
+	  	stderr.put
+		( 
+			"tExceptions failed!" nl
+			"Expected exception $", ebx, nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.IllegalInstr )
+	  
+	  	// This is what we expect
+		
+	  anyexception
+	  
+	  	mov( ex.IllegalInstr, ebx );
+	  	stderr.put
+		( 
+			"tExceptions failed!" nl
+			"Expected exception $", ebx, nl
+			"Got instead        $", eax, nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put( "Illegal instruction test succeeded!" nl );
+		
+	  
+	
+	stderr.put( "tExceptions Succeeded!" nl );
+	
+end tExceptions;

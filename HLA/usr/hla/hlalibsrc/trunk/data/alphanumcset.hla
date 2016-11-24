@@ -1,0 +1,16 @@
+unit stdlib_data;
+#include( "chars.hhf" )
+
+namespace chars;
+
+	readonly(16)
+	
+		Alphanum :cset; @nostorage;	
+			cset { 'a'..'z', 'A'..'Z', '0'..'9' };
+			cset {};
+	 
+end chars;
+
+end stdlib_data;
+
+													

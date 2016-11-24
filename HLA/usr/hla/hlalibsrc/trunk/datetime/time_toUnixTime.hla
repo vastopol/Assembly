@@ -1,0 +1,92 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "excepts.hhf" )
+
+	
+// toUnixTime-
+//
+//	This procedure converts a stdlib date/time to
+//  the number of seconds since Jan 1, 1970.
+//  It returns the 64-bit result in EDX:EAX.
+//
+//  Note: Some Unix system define time_t as a 32-bit
+//	signed integer. Others as a 32-bit unsigned
+//	integer. You must explicitly contract this 64-bit
+//	value to 32 bits (and check for overflow) if
+//	your system uses a smaller integer value.
+
+procedure time.toUnixTime( DMY:date.daterec; HMS:time.timerec ); 
+	@nodisplay; 
+	@noframe;
+const
+	jan1_1970 := $00253D8C;	// Julian day # for 1/1/1970
+	
+var
+	ebxSave	:dword;
+	ecxSave	:dword;
+	ediSave	:dword;
+	
+begin toUnixTime;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( edi, ediSave );
+	mov( ecx, ecxSave );
+	mov( ebx, ebxSave );
+	
+	date.toJulian( DMY );
+	sub( jan1_1970, eax );
+	js invalidDate;
+	
+	// Convert days since 1/1/1970
+	// to seconds (producing a 64-bit 
+	// value in edx:ebx):
+	
+	mul( 60*60*24, eax );
+	mov( eax, ebx );
+	
+	// Convert time since midnight
+	// to seconds:
+	
+	movzx( HMS.hours, eax );
+	intmul( 60, eax );
+	movzx( HMS.mins, ecx );
+	add( ecx, eax );
+	intmul( 60, eax );
+	movzx( HMS.secs, ecx );
+	add( ecx, eax );
+	
+	// Add the seconds since 1/1/1970
+	// and the seconds since midnight together:
+	
+	add( ebx, eax );
+	adc( 0, edx );
+	jc invalidDate;
+		
+	mov( ediSave, edi );
+	mov( ecxSave, ecx );
+	mov( ebxSave, ebx );
+	leave();
+	ret( _parms_ );
+	
+invalidDate:
+	raise( ex.InvalidDate );
+					
+end toUnixTime;
+	
+end DateTime;			

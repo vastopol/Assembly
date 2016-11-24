@@ -1,0 +1,77 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "stdlibdata.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "memory.hhf" )
+#includeOnce( "excepts.hhf" )
+
+
+/************************************************************/
+/*                                                          */
+/* a_lToStr-                                                */
+/*                                                          */
+/* Converts an lword value to a string of hexadecimal digits*/
+/* This function allocates storage for the string on the    */
+/* heap.                                                    */
+/*                                                          */
+/* Inputs:                                                  */
+/* 	l-	                                                    */
+/* 		contains the lword to convert.                      */
+/* 		                                                    */
+/************************************************************/
+
+
+procedure conv.a_lToStr( l:lword ); 
+	@nodisplay;
+	@noframe;
+	@noalignstack;
+	
+begin a_lToStr;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( edi );
+	
+	// Allocate storage for the string on the heap.
+	
+	conv.getUnderscores();
+	intmul( 7, eax );			// Compute the string length
+	add( 32, eax );				// (32 digits + underscores)
+	mov( eax, edi );			// Save string length
+	str.alloc( eax );
+	push( eax );				// Save ptr to string.
+	mov( edi, (type str.strRec [eax]).length );	// Set length.
+	
+	conv.lToBuf( l, [eax] );	
+	mov( 0, (type byte [edi]));	// Zero-terminate.
+	
+	pop( eax );	// Retrive ptr to string.
+	pop( edi );
+	pop( ebp );
+	ret( _parms_ );
+	
+strOvfl:
+	raise( ex.StringOverflow );
+	
+refNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end a_lToStr;
+
+end ConvUnit;

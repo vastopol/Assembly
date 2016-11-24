@@ -1,0 +1,103 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "excepts.hhf" );
+
+
+	
+// fromUnixTime-
+//
+//	This procedure converts a UNIX time_t
+//	data type to stdlib date and time values.
+//  Unix times are the number of seconds
+//	since midnight, Jan 1, 1970.
+//
+//	The Unix time is passed as a 64-bit unsigned
+//	value. Note that many older Unix apps use
+//	a signed 32-bit time_t type (they will "roll-over"
+//  in 2038) and some use an unsigned value. The
+//  momentum is towards a 64-bit time_t type, however.
+//	If you use one of the earlier formats, simply
+//	zero-extend the value before passing it to this
+//	function.
+//
+//  Note that this function does not consider
+//	leap seconds.
+
+procedure time.fromUnixTime
+( 
+		unixTime	:qword; 
+	var HMS			:time.timerec; 
+	var DMY			:date.daterec 
+);
+	@nodisplay; 
+	@noframe;
+const
+	jan1_1970 := $00253D8C;	// Julian day # for 1/1/1970
+	
+var
+	eaxSave	:dword;
+	ebxSave	:dword;
+	ecxSave	:dword;
+	edxSave	:dword;
+	
+begin fromUnixTime;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( edx, edxSave );
+	mov( ecx, ecxSave );
+	mov( ebx, ebxSave );
+	mov( eax, eaxSave );
+	
+	
+	// Okay, unixTime now contains the
+	// number of seconds since jan 1, 1970.
+	// A division by 86,000 (the number of
+	// seconds in a day) gives us the number
+	// of days since jan 1, 1970 and the number
+	// of seconds since midnight:
+	
+	mov( (type dword unixTime[4]), eax );
+	xor( edx, edx );
+	div( 60*60*24, edx:eax );
+	mov( (type dword unixTime), eax );
+	div( 60*60*24, edx:eax );
+ 
+	// Okay, edx contains the number of seconds
+	// since midnight and eax contains the number
+	// of days since jan 1, 1970.
+	
+	add( jan1_1970, eax );
+	jc invalidDate;
+	
+	date.fromJulian( eax, DMY );
+	time.fromSecs( edx, HMS ); 
+	
+	mov( edxSave, edx );
+	mov( ecxSave, ecx );
+	mov( ebxSave, ebx );
+	mov( eaxSave, eax );
+	leave();
+	ret( _parms_ );
+	
+invalidDate:
+	raise( ex.InvalidDate );
+					
+end fromUnixTime;
+	
+end DateTime;			

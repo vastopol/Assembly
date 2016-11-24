@@ -1,0 +1,52 @@
+#if( ! @defined( os_hhf ))
+?os_hhf := true;
+
+
+namespace os;
+
+
+
+
+	// Note: os.win32, os.linux, os.bsd, and os.mac specify the operating 
+	//		 system in use.  This file must be manually edited as appropriate
+	//		 for use under Windows, Linux, freeBSD, or Mac OSX so that these 
+	//		 constants contain the appropriate values.
+	
+	const
+		win32 		:= @global:true;
+		linux 		:= @global:false;
+		freeBSD	 	:= @global:false;
+		macOS 		:= @global:false;
+		qnx			:= @global:false;
+		
+		dir_sep		:string := "\";
+		obj_suffix	:string	:= ".obj";
+		exe_suffix	:string := ".exe";
+		lib_suffix	:string := ".lib";
+		
+		
+		
+
+	procedure system( cmdLn	:string );	_ext( "OS_SYSTEM" );
+	procedure bkgnd( cmdLn	:string );	_ext( "OS_BKGND" );
+
+	// sleep and mSleep were moved to sleep.hhf because they
+	// might force loading the C Standard Library.	
+
+	static
+		ExitWinProcess: procedure
+		( 
+			uExitCode:dword
+		);
+			@stdcall;
+			@returns( "eax" );
+			external( "__imp__ExitProcess@4" );
+	
+	#macro exitProcess( _rtnCode_ );
+		@global:os.ExitWinProcess( _rtnCode_ );
+	#endmacro	
+		
+end os;
+	
+
+#endif

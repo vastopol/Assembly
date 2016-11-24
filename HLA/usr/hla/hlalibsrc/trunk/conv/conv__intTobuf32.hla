@@ -1,0 +1,73 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 8/17/2006, by Randall Hyde
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+
+
+/*****************************************************************************/
+/*                                                                           */
+/* _intToBuf32-                                                              */
+/*                                                                           */
+/* On entry:                                                                 */
+/* 	EAX contains a numeric value to convert to an unsigned decimal string.   */
+/*  ECX contains the number of digits to print (from L.O.->H.O.)             */
+/*    including counts for the underscores if some are to be inserted and a  */
+/*    count for the minus sign if the number is negative.                    */
+/* 	                                                                         */
+/* 	EDI points at the end of a memory buffer large enough to hold an         */
+/* 	int32 value (at least 11 bytes if OutputUnderscores is                   */
+/*  false, at least 14 bytes if OutputUnderscores is true).                  */
+/*                                                                           */
+/* On exit:                                                                  */
+/*  The buffer will contain a string that is the string                      */
+/*  representation of the int32 value and EDI will point at the              */
+/*  start of the string. If OutputUnderscores is true then this              */
+/*  routine will insert underscores between each group of three              */
+/*  digits.                                                                  */
+/* 	                                                                         */
+/*****************************************************************************/
+
+
+
+
+procedure conv._intToBuf32
+( 
+		d		:dword in eax;
+		width	:dword in ecx; 
+	var buffer	:char in edi 
+);
+	@noframe; 
+	@nodisplay; 
+	@noalignstack;
+
+		
+begin _intToBuf32;
+
+	test( eax, eax );
+	jns JMPunsToBuf32;
+		neg( eax );
+		dec( ecx );
+		call conv._unsToBuf32;
+		sub( 1, edi );
+		mov( '-', (type char [edi]));
+		ret();
+
+	JMPunsToBuf32:
+		jmp conv._unsToBuf32;
+
+end _intToBuf32;
+
+end ConvUnit;

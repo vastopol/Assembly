@@ -1,0 +1,101 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileClass;
+
+#include( "fileclass.hhf" )
+
+?@NoStackAlign := true;
+?@NoDisplay := true;
+?@NoFrame := true;		
+		
+
+
+
+
+method virtualFile_t.putcset( cs:cset );
+	/*
+	** Put32CS- Outputs the 32 characters appearing
+	** in the EDX register (one bit per character).
+	** ECX contains the ASCII code for the character
+	** in bit zero.
+	*/
+	
+	procedure vfPut32CS; @noframe;
+	begin vfPut32CS;
+	
+		mov( ecx, ebx );
+		add( 32, ebx );
+		repeatUntilECXeqEBX:
+		
+			shr( 1, edx );
+			jnc noOverflow;
+			
+				mov( cl, al );
+				cmp( al, ' ' );
+				ja isGraphic;
+				
+					(type virtualFile_t [esi]).puts( "#$" );
+					(type virtualFile_t [esi]).putb( al );
+					(type virtualFile_t [esi]).putc( ' ' );
+					jmp wasNonGraphic;
+
+				isGraphic:
+					
+					(type virtualFile_t [esi]).putc( al );
+
+				wasNonGraphic:
+									
+			noOverflow:
+				add( 1, ecx );
+				cmp( ecx, ebx );
+				jne repeatUntilECXeqEBX;
+			
+		ret();
+		
+	end vfPut32CS;
+	
+	
+begin putcset;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	
+	mov( 0, ecx );
+	mov( (type dword cs), edx );
+	vfPut32CS();
+	
+	mov( (type dword cs[4]), edx );
+	vfPut32CS();
+	
+	mov( (type dword cs[8]), edx );
+	vfPut32CS();
+	
+	mov( (type dword cs[12]), edx );
+	vfPut32CS();
+
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+		
+end putcset;
+	
+end FileClass;

@@ -1,0 +1,91 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+/*************************************************************/
+/*                                                           */
+/* rskipInCset2,                                             */
+/* rskipInCset3-                                             */
+/*		Similar to skipInCset2 and skipInCset3 above, except */
+/* 		these functions scan from the end of the string      */
+/* 		towards the front of the string (rspan) or from the  */
+/* 		specified starting position towards the front of     */
+/* 		the string (rskipInCset3).                           */
+/* 		                                                     */
+/* 		These routines return -1 if all the characters       */
+/* 		in the src1 string are members of the src2 set.      */
+/* 		                                                     */
+/*************************************************************/
+		
+
+procedure str.rskipInCset2( src1: string; src2:cset ); @noframe;
+begin rskipInCset2;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ecx );
+	push( edi );
+	
+	mov( src1, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+
+	mov( edi, ecx );							// Save starting position.
+	add((type str.strRec [edi]).length, edi );	// Compute last char position.
+	dec( edi );									// Start scanning on last char.
+	
+	xor( eax, eax );			// Zero out H.O. three bytes of char-index.
+	cmp( edi, ecx );
+	jnae ExitWhlLoop;
+	whileLoop:
+	
+		mov( [edi], al );				// Get the next char in string.
+		bt( eax, (type dword src2) );	// See if a member of the set.
+		jnc ExitWhlLoop;				// Exit loop if it isn't.
+		dec( edi );						// Move to previous character.
+		cmp( edi, ecx );
+		jae whileLoop;
+		
+		mov( src1, edi );	// Force result to -1 if we didn't
+		dec( edi );			// match anything.
+		
+	ExitWhlLoop:
+	
+	sub( src1, edi );		// Compute index of first char not in string
+	mov( edi, eax );		//  and move index into EAX (string length if
+	pop( edi );				//  all chars are members of src2).
+	pop( ecx );
+	pop( ebp );
+	cmp( eax, -1 );			// Set carry on success, clear if no match.
+	ret( _parms_ );	
+		 
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end rskipInCset2;
+
+end stringUnit;
+
+
+
+
+	
+

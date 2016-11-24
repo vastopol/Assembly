@@ -1,0 +1,125 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeOnce( "blobs.hhf" );
+#includeOnce( "fileio.hhf" );
+#includeOnce( "filesys.hhf" );
+#includeOnce( "excepts.hhf" );
+#includeOnce( "memory.hhf" );
+#includeOnce( "threads.hhf" );
+
+
+
+// blob.a_appendFile-
+//
+//	Creates a new blob on the heap by taking an existing blob, reading a file,
+// and appending that file data to the existing blob.  Returns a pointer to
+// the new blob in the EAX register.
+
+procedure blob.a_appendFile( filename:string; b:blob.blob ); @noframe;
+var
+	f			:dword;
+	fileSize	:dword;
+	theBlob		:blob.blob;
+	ecxSave		:dword;
+	esiSave		:dword;
+	ediSave		:dword;
+
+	
+begin a_appendFile;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	pushfd();
+	cld();
+	
+	mov( ecx, ecxSave ); 
+	mov( esi, esiSave ); 
+	mov( edi, ediSave ); 
+	
+	// Get the size of the file so we know how much storage to
+	// allocate for the blob:
+	
+	filesys.size( filename );
+	mov( eax, fileSize );
+	
+	// Compute size of new blob and allocate it:
+	
+	mov( b, esi );
+	mov( (type blob.blobRec [esi]).length, ecx );
+	add( ecx, eax );
+	mov( eax, edi );
+	add( 16, eax );			// Buffer space
+	blob.alloc( eax );
+	mov( eax, theBlob );
+	
+	mov( edi, (type blob.blobRec [eax]).length );
+	mov( edi, (type blob.blobRec [eax]).wcursor );
+	mov( 0, (type blob.blobRec [eax]).rcursor );
+	mov( eax, edi );
+	#if( @thread )
+	try
+	
+		thread.enterCriticalSection( (type blob.blobRec [esi]).criticalSection );
+	
+	#endif
+	
+		// Copy the source blob:
+		
+		rep.movsb();
+		
+	#if( @thread )
+	
+	  anyexception
+	  	mov( b, esi );
+		thread.leaveCriticalSection( (type blob.blobRec [esi]).criticalSection );
+		blob.free( theBlob );
+		reraise( eax );
+		
+	endtry;
+  	mov( b, esi );
+	thread.leaveCriticalSection( (type blob.blobRec [esi]).criticalSection );
+	#endif
+		
+	// Append the file data to the blob:
+	
+	fileio.open( filename, fileio.r );
+	mov( eax, f );
+	fileio.read( f, [edi], fileSize );
+	fileio.close( f );
+
+	mov( ecxSave, ecx ); 
+	mov( esiSave, esi ); 
+	mov( ediSave, edi );
+	mov( theBlob, eax );
+	popfd(); 
+	leave();
+	ret( _parms_ );
+
+end a_appendFile;
+
+
+
+end blobUnit;
+
+
+
+
+	
+

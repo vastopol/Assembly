@@ -1,0 +1,31 @@
+program curTime_test;
+#include( "stdlib.hhf" )
+
+static
+	localTime	:time.timerec;
+	utcTime		:time.timerec;
+	
+begin curTime_test;
+
+
+	// Can't really do much more than call these
+	// routines and print their results:
+	
+	time.curTime( localTime );
+	stdout.put( "Local time = " );
+	time.a_toString( localTime );
+	stdout.put( (type string eax), nl );
+	str.free( eax );
+	
+	time.utcTime( utcTime );
+	stdout.put( "UTC time = " );
+	time.a_toString( utcTime );
+	stdout.put( (type string eax), nl );
+	str.free( eax );
+			
+	stderr.put( "time.curTime/utcTime succeeded!" nl );
+	os.exitProcess(0);
+		
+end curTime_test;
+
+													

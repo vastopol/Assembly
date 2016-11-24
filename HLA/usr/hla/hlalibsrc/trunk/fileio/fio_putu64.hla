@@ -1,0 +1,42 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+
+#include( "../include/fileiounit.hhf" )
+
+
+// putu64-
+//	Prints the 64-bit unsigned value passed as a parameter. 
+//	(minimum field width)
+
+procedure fileio.putu64( Handle:dword; q:qword ); 
+	@noframe;  
+begin putu64;
+
+	// Convert this stack frame to one acceptable by putu64Size:
+	
+	sub( 4, esp );						// Make room for fill.
+	push( (type dword [esp+4]) );		// Copy the return address
+	mov( 0, (type dword [esp+8]) );		// Width = 0.
+	mov( ' ', (type dword [esp+4]) );	// Fill = ' '
+	jmp fileio.putu64Size;
+	
+end putu64;
+
+
+	
+end FileIOUnit;
+

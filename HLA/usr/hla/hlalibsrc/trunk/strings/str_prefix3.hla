@@ -1,0 +1,115 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+/*****************************************************************/
+/*                                                               */
+/* str.prefix3-                                                  */
+/*                                                               */
+/* Similar to the str.prefix2 function, except this one          */
+/* allows an index into src1 that specifies where the            */
+/* comparison is to begin.                                       */
+/*                                                               */
+/* Returns true in EAX if src1[offs] begins with the string src2 */
+/* (that is, if src2 is a prefix of src1[offs]).                 */
+/*                                                               */
+/*****************************************************************/
+
+procedure str.prefix3( src1:string; offs:dword; src2:string ); 
+	@noframe;
+begin prefix3;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	pushfd();
+	push( esi );
+	push( edi );
+	push( ecx );
+	cld();
+	
+	
+		// Get the string pointers and make sure they are non-NULL.
+		
+		mov( src1, esi );
+		mov( src2, edi );
+		
+		test( esi, esi );
+		jz AttemptToDerefNULL;
+		
+		test( edi, edi );
+		jz AttemptToDerefNULL;
+		
+		// Make sure that offs doesn't exceed src1's length.
+		
+		mov( (type str.strRec [esi]).length, eax );
+		cmp( offs, eax );
+		ja StringIndexError;
+	
+		
+		// If src2's length is greater than src1's length
+		// (after adjusting for the offset value),
+		// then src2 cannot be a prefix of src1.
+
+		mov( (type str.strRec [edi]).length, ecx );
+		sub( offs, eax );
+		cmp( ecx, eax );
+		mov( 0, eax );			// Assume not equal.
+		ja notPrefix;
+		test( ecx, ecx );
+		jz notPrefix;			// Fail if src2's length is zero.
+		
+			// Okay, length( src2 ) <= length( src1 + offs ), so compare the 
+			// strings up to the length of src2 starting at index "offs":
+			
+			add( offs, esi );
+			repe.cmpsb();
+
+			// Set EAX according to the comparison result.
+			
+			sete( al );
+		
+	notPrefix:
+	pop( ecx );
+	pop( edi );
+	pop( esi );
+	popfd();
+	cmp( al, 1 );		// Set carry flag for return if equal.
+	cmc();
+	pop( eax );
+	pop( ebp );
+	ret( _parms_);
+		
+StringIndexError:
+	raise( ex.StringIndexError );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+end prefix3;
+
+end stringUnit;
+
+
+
+
+	
+

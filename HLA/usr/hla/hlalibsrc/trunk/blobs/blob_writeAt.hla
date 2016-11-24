@@ -1,0 +1,144 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobClass;
+?@NoStackAlign := true;
+?@NoDisplay := true;
+?@NoFrame := true;		
+
+#includeOnce( "excepts.hhf" )
+#includeOnce( "hla.hhf" )
+#includeOnce( "blobs.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "threads.hhf" )
+
+
+// blob.writeAt-
+//
+//	Writes "len" bytes to the blob starting at offset "index". 
+// This function will not use (nor change) the "wcursor" field, but
+// it will update the length field if the write operation extends
+// the size of the blob.
+//
+// Returns the number of bytes written in EAX.
+
+procedure blob.writeAt( b:blob.blob; var src:var; index:dword; len:dword );
+var
+	saveEBX		:dword;
+	saveECX		:dword;
+	saveESI		:dword;
+	saveEDI		:dword;
+	saveFlags	:dword;
+	 
+begin writeAt;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( (_vars_-4), esp );
+	pushfd();	// Allocates and initializes saveFlags
+	mov( ebx, saveEBX );
+	mov( ecx, saveECX );
+	mov( esi, saveESI );
+	mov( edi, saveEDI );
+	cld();
+	
+	mov( b, ebx );
+	test( ebx, ebx );
+	jz AttemptToDerefNULL;
+	
+	mov( src, esi );
+	test( esi, esi );
+	jz AttemptToDerefNULL;
+	
+	#if( @thread )
+	try
+	
+		thread.enterCriticalSection
+		( 
+			(type blob.blobRec [ebx]).criticalSection 
+		);
+	
+	#endif
+	
+		// Compute the start of the data transfer:
+		
+		xor( eax, eax );	// Return zero if index is out of range
+		mov( index, edi );
+		cmp( edi, (type blob.blobRec [ebx]).length );
+		ja noBytesCopied;
+		
+			// Compute starting address of read operation.
+			
+			add( ebx, edi );
+			
+			// Compute the number of bytes to transfer.  This is "len" if there
+			// are more than "len" bytes left in the blob; it is "maxlen"-"index"
+			// if there are fewer than "len" bytes left in the blob.
+			
+			mov( (type blob.blobRec [ebx]).maxlen, ecx );	// Compute bytes left
+			sub( index, ecx );								//  in blob.
+			cmp( ecx, len );
+			jb useRemainderOfBlob;
+			
+				mov( len, ecx );
+				
+			useRemainderOfBlob:
+			mov( ecx, eax );		// Bytes transferred is returned in EAX.
+			jecxz noBytesCopied;	 
+			
+				
+				// Okay, copy ECX characters from the blob to the
+				// destination buffer.
+				
+				rep.movsb();
+				
+				// See if the length has been extended by this write operation:
+				
+				sub( ebx, edi );
+				cmp( edi, (type blob.blobRec [ebx]).length );
+				jb noBytesCopied;
+				
+					mov( edi, (type blob.blobRec [ebx]).length );
+				
+				
+		noBytesCopied:
+	
+	#if( @thread )
+	
+	  anyexception
+	
+		mov( b, edx );
+		thread.leaveCriticalSection( (type blob.blobRec [edx]).criticalSection );
+		push( saveFlags );
+		popfd();
+		reraise( eax );
+		
+	endtry;
+	thread.leaveCriticalSection( (type blob.blobRec [ebx]).criticalSection );
+		
+	#endif
+	popfd();
+	mov( saveEBX, ebx );
+	mov( saveECX, ecx );
+	mov( saveESI, esi );
+	mov( saveEDI, edi );
+	leave();
+	ret( _parms_ );
+
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+	
+end writeAt;
+
+end blobClass;

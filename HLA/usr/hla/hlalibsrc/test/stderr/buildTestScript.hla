@@ -1,0 +1,115 @@
+program buildTestScript;
+#include( "stdlib.hhf" )
+#include( "sleep.hhf" )
+
+static
+	script :string :=
+		#if( os.win32 )
+		
+			"hla -p:temp -obj:temp puthex		  " nl 
+			"puthex 2>puthex.txt				  " nl 
+			"hlacmp puthex.data puthex.txt  " nl 
+			"if errorlevel 1	exit 1			  " nl 
+			"									  " nl
+			"hla -p:temp -obj:temp putu			  " nl 
+			"putu 2>putu.txt					  " nl 
+			"hlacmp putu.data putu.txt	  " nl 
+			"if errorlevel 1	exit 1			  " nl 
+			"									  " nl
+			"hla -p:temp -obj:temp puti			  " nl 
+			"puti 2>puti.txt					  " nl 
+			"hlacmp puti.data puti.txt	  " nl 
+			"if errorlevel 1	exit 1			  " nl 
+			"									  " nl
+			"hla -p:temp -obj:temp putbool		  " nl 
+			"putbool	2>putbool.txt			  " nl 
+			"hlacmp putbool.data putbool.txt" nl 
+			"if errorlevel 1	exit 1			  " nl 
+			"									  " nl
+			"hla -p:temp -obj:temp putcset		  " nl 
+			"putcset	2>putcset.txt			  " nl 
+			"hlacmp putcset.data putcset.txt" nl 
+			"if errorlevel 1	exit 1			  " nl 
+			"									  " nl
+			"hla -p:temp -obj:temp pute			  " nl 
+			"pute 2>pute.txt					  " nl 
+			"hlacmp pute.data pute.txt	  " nl 
+			"if errorlevel 1	exit 1			  " nl 
+			"									  " nl
+			"hla -p:temp -obj:temp putr			  " nl 
+			"putr 2>putr.txt					  " nl 
+			"hlacmp putr.data putr.txt	  " nl 
+			"if errorlevel 1	exit 1			  " nl;
+			
+		#else
+		
+			"hla -p:temp -obj:temp puthex 		   " nl 
+			"./puthex >&puthex.txt				   " nl 
+			"hlacmp puthex.data puthex.txt   " nl 
+
+			"hla -p:temp -obj:temp putu			   " nl 
+			"./putu >&putu.txt					   " nl 
+			"hlacmp putu.data putu.txt	   " nl 
+
+			"hla -p:temp -obj:temp puti			   " nl 
+			"./puti >&puti.txt					   " nl 
+			"hlacmp puti.data puti.txt	   " nl 
+
+			"hla -p:temp -obj:temp putbool		   " nl 
+			"./putbool	>&putbool.txt			   " nl 
+			"hlacmp putbool.data putbool.txt " nl 
+
+			"hla -p:temp -obj:temp putcset		   " nl 
+			"./putcset	>&putcset.txt			   " nl 
+			"hlacmp putcset.data putcset.txt " nl 
+
+			"hla -p:temp -obj:temp pute			   " nl 
+			"./pute >&pute.txt					   " nl 
+			"hlacmp pute.data pute.txt	   " nl 
+
+			"hla -p:temp -obj:temp putr			   " nl 
+			"./putr >&putr.txt					   " nl 
+			"hlacmp putr.data putr.txt	   " nl
+			"exit 0"								 nl; 
+
+		#endif 
+				
+static
+	fd		:dword;
+	envVar	:str.strvar(4096);
+	
+begin buildTestScript;
+
+	fileio.openNew( "stderr.bat" );
+	mov( eax, fd );
+	
+
+	#if( !os.win32 )
+	
+		fileio.puts( fd, "#!/bin/bash" nl );
+		env.get( "hlainc", envVar );
+		fileio.put( fd, "hlainc=", envVar, nl );
+		fileio.put( fd, "export hlainc" nl );
+		
+		env.get( "hlalib", envVar );
+		fileio.put( fd, "hlalib=", envVar, nl );
+		fileio.put( fd, "export hlalib" nl );
+		
+		env.get( "PATH", envVar );
+		fileio.put( fd, "PATH=$PATH:", envVar, nl );
+		fileio.put( fd, "export PATH" nl );
+		
+	#endif
+	fileio.puts( fd, script );
+	fileio.close( fd );
+	#if( !os.win32 )
+	
+		os.system( "chmod 777 stderr.bat" );
+		
+	#endif
+	os.sleep(1);
+
+
+end buildTestScript;
+
+													

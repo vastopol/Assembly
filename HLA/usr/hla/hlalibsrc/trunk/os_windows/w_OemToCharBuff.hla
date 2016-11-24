@@ -1,0 +1,60 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit windowsUnit;
+
+#includeonce( "w.hhf" );
+#includeonce( "strings.hhf" );
+
+
+	// w_OemToCharBuff-
+	//
+	//	Interface to windows GetWindowText that automatically
+	// converts return characters to an HLA string.
+	
+	procedure w.w_OemToCharBuff
+	( 
+		lpszSrc			:string; 
+		lpszDst			:string
+	);
+		@nodisplay;
+		@noframe;
+		
+	begin w_OemToCharBuff;
+	
+		push( ebp );
+		mov( esp, ebp );
+		
+		// Note: Windows API calls use the Intel ABI,
+		// so we're free to walk all over EAX, ECX, and EDX
+		
+		mov( lpszSrc, edx );							// Grab max length
+		mov( (type str.strRec [edx]).maxlen, eax );	// from HLA string
+		w.OemToCharBuffA
+		( 
+			lpszSrc,
+			lpszSrc,
+			eax
+		);
+		
+		// Set the actual length based on the return value:
+		
+		mov( lpszSrc, edx );
+		mov( eax, (type str.strRec [edx]).length );
+		pop( ebp );
+		ret( _parms_ );
+		
+	end w_OemToCharBuff;
+	
+end windowsUnit;	

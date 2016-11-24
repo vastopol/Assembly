@@ -1,0 +1,103 @@
+program tEnv;
+#include( "stdlib.hhf" )
+
+static
+	hlainc1	:string;
+	hlainc2	:str.strvar( 4069 );
+	hlalib1	:string;
+	hlalib2	:str.strvar( 4069 );
+	empty2	:str.strvar( 4069 );
+	
+begin tEnv;
+
+	// Not much we can do to portably test the environment string
+	// functions because we don't have much control over which
+	// environment strings are present and what their values are.
+	//
+	// This code assumes that there are environment variables
+	// "hlainc" and "hlalib", though it does not make any assumptions
+	// about the values of these variables. It also assumes that there
+	// is *not* an environment variable "hlanotpresent".
+	
+	env.a_get( "hlainc" );
+	mov( eax, hlainc1 );
+	if( eax = NULL ) then
+	
+		stderr.put( "env.a_get failed on hlainc! (1)" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+	env.get( "hlainc", hlainc2 );
+	if( !eax ) then
+	
+		stderr.put( "env.a_get failed on hlainc! (2)" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+	if( str.ne( hlainc1, hlainc2 )) then
+	
+		stderr.put( "environment strings don't match!" nl );
+		stderr.put( "hlainc1='", hlainc1, "', hlainc2=", hlainc2, nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+	
+	env.a_get( "hlalib" );
+	mov( eax, hlalib1 );
+	if( eax = NULL ) then
+	
+		stderr.put( "env.a_get failed on hlalib! (1)" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+	env.get( "hlalib", hlalib2 );
+	if( !eax ) then
+	
+		stderr.put( "env.a_get failed on hlalib! (2)" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+	if( str.ne( hlalib1, hlalib2 )) then
+	
+		stderr.put( "environment strings don't match!" nl );
+		stderr.put( "hlalib1='", hlalib1, "', hlalib2=", hlalib2, nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+	
+	env.a_get( "hlanotpresent" );
+	if( eax <> NULL ) then
+	
+		stderr.put( "env.a_get failed on hlanotpresent!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+	
+	env.get( "hlanotpresent", empty2 );
+	if( eax  ) then
+	
+		stderr.put( "env.get failed on hlanotpresent!" nl );
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endif;
+	stderr.put( "tEnv Succeeded!" nl );
+		
+	
+	
+end tEnv;

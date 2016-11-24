@@ -1,0 +1,119 @@
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/7/2008, by Randall Hyde
+
+
+unit sockets;
+?@nostackalign := true;
+?@noframe := true;
+?@nodisplay := true;
+
+#include( "sockets.hhf" )
+#include( "excepts.hhf" )
+#include( "os.hhf" )
+
+#if( os.win32 )
+
+	// Note: must explicitly include wsock32.lib under Windows
+
+	#include( "w.hhf" )
+
+#elseif( os.linux )
+	#include( "linux.hhf" )
+#elseif( os.freeBSD )
+
+	#include( "bsd.hhf" )
+	procedure _socket( domain:dword; _type:dword; protocol:dword );
+		@cdecl;
+		@external( "socket" );
+		
+#elseif( os.macOS )
+	#include( "mac.hhf" )
+#else
+	#error( "socket.hla: unsupported OS" )
+#endif
+
+static
+	WSAGetLastError:procedure;
+		@external( "__imp__WSAGetLastError@0" );
+
+		
+procedure sock.socket
+( 
+	domain		:dword;		// AF_* or PF_* constants
+	_type		:dword;		// SOCK_* constants
+	protocol	:dword		// Usually zero. 
+);
+begin socket;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	#if( os.win32 )
+	
+		push( ecx );
+		push( edx );
+		
+		w.socket( domain, _type, protocol );
+		cmp( eax, w.INVALID_SOCKET );
+		je WinSocketError;
+		
+		pop( edx );
+		pop( ecx );
+		
+	#elseif( os.linux )
+	
+		linux.socket( domain, _type, protocol );
+		test( eax, eax );
+		js LinuxSocketError;
+		
+	#elseif( os.freeBSD )
+	
+		push( ecx );
+		push( edx );
+		_socket( domain, _type, protocol );
+		add( 12, esp );
+		cmp( eax, -1 );
+		je SocketError;
+		pop( edx );
+		pop( ecx );
+		
+	#elseif( os.macOS )
+	
+		mac.socket( domain, _type, protocol );
+		jc SocketError;
+		
+	#else
+	
+		#error( "Unknown OS!" );
+		
+	#endif	
+	leave();
+	ret( _parms_ );
+	
+#if( os.win32 )
+WinSocketError:
+	w.WSAGetLastError();
+	mov( eax, edx );
+#endif
+	
+#if( os.linux )
+LinuxSocketError:
+	neg( eax );
+	mov( eax, edx );
+#endif
+
+SocketError:
+	raise( ex.SocketError );
+	
+end socket;
+
+
+end sockets;

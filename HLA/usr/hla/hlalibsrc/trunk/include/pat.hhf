@@ -1,0 +1,111 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+#if( ! @defined( patUnit_hhf ))
+?patUnit_hhf := true;
+?@nodisplay := true;
+?@nostackalign := true;
+
+	#includeOnce( "patterns.hhf" )
+	#includeOnce( "_hla.hhf" )
+
+	#macro UCase( reg8 );
+
+		if
+		(#{
+			cmp( reg8, 'a' );
+			jb false;
+			cmp( reg8, 'z' );
+			ja false;
+		}#) then
+
+			and( $5f, reg8 );
+
+		endif;
+
+	#endmacro;
+
+
+namespace _hla;
+
+	// Pattern data accessor functions.
+	
+	
+	procedure member_WordDelims( theChar:char );
+		@returns( "@c" );
+		_ext( "HLA_MEMBER_WORDDELIMS" );
+					
+	procedure get_WordDelims( var wd:cset );
+		_ext( "HLA_GET_WORDDELIMS" );
+					
+	procedure get_FailTo( var ft:@global:pat.FailRec );				
+		_ext( "HLA_GET_FAILTO" );
+					
+	procedure get_FailToEBPsave;
+		@returns( "eax" );				
+		_ext( "HLA_GET_FAILTOEBPSAVE" );
+					
+	procedure get_FailToJmpAdrs;
+		@returns( "eax" );				
+		_ext( "HLA_GET_FAILTOJMPADRS" );
+					
+	procedure get_onePatBase;
+		@returns( "eax" );			
+		_ext( "HLA_GET_ONEPATBASE" );
+					
+	procedure get_zeroOrOnePatBase;	
+		@returns( "eax" );			
+		_ext( "HLA_GET_ZEROORONEPATBASE" );
+					
+	procedure get_zeroOrMorePatBase;	
+		@returns( "eax" );			
+		_ext( "HLA_GET_ZEROORMOREPATBASE" );
+					
+	procedure get_oneOrMorePatBase;	
+		@returns( "eax" );			
+		_ext( "HLA_GET_ONEORMOREPATBASE" );
+					
+		
+	
+	procedure set_WordDelims( var wd:cset );
+		_ext( "set_WordDelims" );
+					
+	procedure set_FailTo( var ft:@global:pat.FailRec );				
+		_ext( "HLA_set_FAILTO" );
+		
+	procedure set_FailTo2( ebpSave:dword; jmpAdrs:dword );				
+		_ext( "HLA_GET_FAILTO2" );
+		
+	procedure set_FailToEBP( ebpSave:dword );				
+		_ext( "HLA_GET_FAILTOEBP" );
+		
+	procedure set_FailToJmp( jmpAdrs:dword );				
+		_ext( "HLA_GET_FAILTOJMP" );
+								
+	procedure set_onePatBase( base:dword );
+		_ext( "HLA_SET_ONEPATBASE" );
+					
+	procedure set_zeroOrOnePatBase( base:dword );	
+		_ext( "HLA_SET_ZEROORONEPATBASE" );
+					
+	procedure set_zeroOrMorePatBase( base:dword );	
+		_ext( "HLA_SET_ZEROORMOREPATBASE" );
+					
+	procedure set_oneOrMorePatBase( base:dword );	
+		_ext( "HLA_SET_ONEORMOREPATBASE" );
+					
+
+end _hla;
+
+#endif

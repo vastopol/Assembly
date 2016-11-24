@@ -1,0 +1,190 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit patterns;
+#includeOnce( "../include/pat.hhf" )
+#includeOnce( "patterns.hhf" )
+#includeOnce( "misctypes.hhf" )
+
+	
+	
+
+/*************************************************/
+/*                                               */
+/* l_NtoMiChar-                                  */
+/*                                               */
+/* A lazy matching version of the above routine. */
+/*                                               */
+/*************************************************/
+		
+		
+procedure pat.l_NtoMiChar( c:char; n:uns32; m:uns32 ); 
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+	
+var
+	cursor: 	misc.pChar;		// Save last matched posn here.
+	startPosn:	misc.pChar; 	// Save start of str here.
+	startMatch:	misc.pChar;		// Start of matched string.
+	endPosn:	misc.pChar; 	// Save last match posn here.
+	endStr:		misc.pChar;		// End of string goes here.
+	espSave:	dword;			// To clean stk after back trk.
+	FailToSave:	pat.FailRec;	// Save global FailTo value here.
+	
+begin l_NtoMiChar;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	
+	// If n > m, then fail.
+
+	mov( n, eax );
+	cmp( eax, m );
+	ja fail1;
+
+
+	// If some routine after this one fails and transfers
+	// control via backtracking to this code, the stack
+	// will be a mess.  So save esp so we can clean up
+	// the stack if backtracking is necessary.
+	
+	mov( esp, espSave );
+	
+	// Save pointer to end of string to match.
+	// This is needed to restore this value when
+	// backtracking occurs.
+
+	mov( edi, endStr );
+
+	// Save the pointer to the start of the string.
+
+	mov( esi, startPosn );
+	mov( esi, ebx );
+	
+	// Compute the address of the character position
+	// we must match to in order to succeed.
+	
+	mov( esi, eax );
+	add( n, eax );
+
+	// If we must match to a position beyond the
+	// end of the current string, then fail immediately.
+
+	cmp( eax, edi );
+	ja fail1;
+	mov( eax, startMatch );
+
+	// Compute that last address we can match.
+
+	mov( esi, eax );
+	add( m, eax );
+	cmp( eax, edi );
+	cmovae( edi, eax );
+	mov( eax, endPosn );
+
+	// We have to match to at least position "startPosn":
+		
+	mov( c, al );
+	UCase( al );
+	cmp( esi, startMatch );
+	jnb whileDone;
+	whileLoop:
+
+		mov( [esi], ah );
+		UCase( ah );
+		cmp( al, ah );
+		jne fail2;
+		inc( esi );
+		cmp( esi, startMatch );
+		jb whileLoop;
+
+	whileDone:
+
+	// Okay, we've matched "n" characters.
+	// Save the pointer to the start of the string
+	// to match.  This is used as a "fence" value
+	// to prevent backtracking past the start of
+	// the string if things go really wrong.
+	
+	mov( esi, cursor );
+	pat._success_( FailToSave, FailToHere );
+
+
+
+
+	// If someone after us fails and invokes
+	// backtracking, control is transfered to
+	// this point.  First, we need to restore
+	// ESP to clean up the junk on the stack.
+	// Then we need to see if we match the
+	// current character and skip it if we do.
+	
+	FailToHere:
+
+		mov( espSave, esp );		// Clean up stack.
+		
+		mov( cursor, esi );			// Get last posn we matched.
+		mov( endStr, edi );			// Restore to original value.
+
+		// If we've exceeded the maximum limit on the string,
+		// then fail.
+
+		cmp( esi, endPosn );
+		jae fail3;
+
+		// If the character is not equal to c, then fail.
+
+		mov( c, al );
+		UCase( al );
+		mov( [esi], ah );
+		UCase( ah );
+		cmp( al, ah );
+		jne fail3;
+	
+		// If we drop down here, there is at least one
+		// character left in the string that we've
+		// matched, so call the next matching routine
+		// (by jumping to the return address) to continue
+		// the pattern match.
+		
+		mov( startPosn, ebx );
+		inc( esi );						// Advanced to next position
+		mov( esi, cursor );				// Save in case caller fails.
+		mov( [ebp+4], eax );			// and call next routine.
+		mov( [ebp], ebp );
+		jmp( eax );
+
+	
+	
+fail2:	
+	mov( ebx, esi );
+fail1:
+	pat._fail_( pat.FailTo );
+
+fail3:
+
+	// Need to restore FailTo address because it
+	// currently points at us.  We want to jump
+	// to the correct location.
+
+	mov( startPosn, esi );
+	mov( FailToSave.ebpSave, pat.FailTo.ebpSave );
+	mov( FailToSave.jmpAdrs, pat.FailTo.jmpAdrs );
+	pat._fail_( pat.FailTo );
+
+end l_NtoMiChar;
+
+end patterns;

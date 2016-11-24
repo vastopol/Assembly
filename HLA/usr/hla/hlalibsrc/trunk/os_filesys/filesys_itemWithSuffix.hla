@@ -1,0 +1,648 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+		
+#include( "excepts.hhf" )
+#include( "../include/fileiounit.hhf" )
+#include( "os.hhf" )
+
+/****************************************************************/
+/*                                                              */
+/* itemWithSuffix-                                              */
+/*                                                              */
+/* Returns all the files in the current working directory that  */
+/* have the suffix specified by the parameter string. Note that */
+/* the suffix is just a trailing set of characters, no '.' is   */
+/* implied by the use of this term. The suffix string should    */
+/* contain a leading "." character if you expect the suffix to  */
+/* immediately follow a '.'                                     */
+/*                                                              */
+/****************************************************************/
+
+
+
+#if( os.win32 )
+
+	iterator filesys.itemWithSuffix
+	( 
+		directory	:string; 
+		suffix		:string 
+		); 
+			@nodisplay;
+			@noframe;
+			
+	var
+		eaxSave		:dword;
+		ecxSave		:dword;
+		edxSave		:dword;
+		handle		:dword;
+		wildCard	:string;
+		filename	:string;
+		FileData	:win.Win32FindData;
+		stringBuf	:char[1024];
+		
+	begin itemWithSuffix;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( edx, edxSave );
+		mov( ecx, ecxSave );
+		mov( eax, eaxSave );
+		
+		// Initialize string that will hold the wildcard sequence:
+		
+		str.init( stringBuf, 1024 );
+		mov( eax, wildCard );
+		str.cpy( directory, (type string eax) );
+		mov( (type str.strRec [eax]).length, ecx );
+		cmp( (type char [eax+ecx-1] ), '/' );
+		je haveSeparator;
+		cmp( (type char [eax+ecx-1] ), '\' );
+		je haveSeparator;
+		
+			str.catc( eax, '\' );
+			
+		haveSeparator:
+		str.catc( eax, '*' );
+		str.cat( suffix, (type string eax) );
+		 
+		// Find the first matching file (if one exists).
+		// Save the handle for use by FindNextFile.
+		
+		win.FindFirstFile( wildCard, FileData );
+		mov( eax, handle );
+		
+		// If we matched at least one filename, return
+		// the corresponding string and call the
+		// FindNextFile routine to match any additional
+		// filenames.
+		
+		cmp( eax, win.INVALID_HANDLE_VALUE );
+		je allDone;
+		
+			repeatUntilNoMore:
+			
+				
+				// FindFirstFile & FindNextFile return
+				// zero-terminated strings.  Convert these
+				// to HLA compatible strings and return
+				// the converted string:
+				
+				lea( eax, FileData.FileName );
+				str.a_cpyz( eax );
+				mov( eax, filename );
+				
+				// Don't return '.' and '..':
+			
+				cmp( (type byte [eax]), '.' );
+				jne yieldItem;
+				cmp( (type byte [eax+1]), 0 );
+				je notAnItem;
+				cmp( (type byte [eax+1]), '.' );
+				jne yieldItem;
+				cmp( (type byte [eax+2]), 0 );
+				je notAnItem;
+				
+				yieldItem:
+				
+					// Return the converted string to the FOREACH
+					// loop and then free the storage associated
+					// with the string.
+					
+					mov( ecxSave, ecx );
+					mov( edxSave, edx );
+					yield();		// Return string to FOREACH loop.
+					mov( edx, edxSave );
+					mov( ecx, ecxSave );
+					jmp wasAnItem;
+					
+				notAnItem:
+					str.free( filename );
+					
+				wasAnItem:
+			
+				// Get the next filename in the list:
+				
+				win.FindNextFile( handle, FileData );
+				cmp( al, false );
+				jne repeatUntilNoMore;
+
+						
+			// When we've processed all the filenames in the list,
+			// call FindClose to free the handle and other resources.
+			
+			win.FindClose( handle );
+			
+		allDone:
+		mov( edxSave, edx );
+		mov( ecxSave, ecx );
+		mov( eaxSave, eax );
+		leave();
+		add( 4, esp );		// Remove ptr to foreach loop body
+		ret( _parms_ );
+
+	end itemWithSuffix;
+	
+#elseif( os.linux )
+
+	iterator filesys.itemWithSuffix
+	( 
+		directory	:string;
+		suffix		:string 
+	); 
+		@nodisplay;
+		@noframe;
+		
+	var
+		handle		:dword;
+		filename	:string;
+		suffixLen	:dword;
+		eaxSave		:dword;
+		ebxSave		:dword;
+		ecxSave		:dword;
+		edxSave		:dword;
+		ediSave		:dword;
+		esiSave		:dword;
+		s			:linux.stat64_t;
+		dBuf		:byte[4096];
+		
+	readonly
+		curDir	:string := ".";
+			
+	begin itemWithSuffix;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( esi, esiSave );
+		mov( edi, ediSave );
+		mov( edx, edxSave );
+		mov( ecx, ecxSave );
+		mov( ebx, ebxSave );
+		mov( eax, eaxSave );
+		pushfd();
+		
+		str.length( suffix );
+		mov( eax, suffixLen );
+		
+		mov( directory, eax );
+		test( eax, eax );
+		jz emptyString;
+		cmp( (type str.strRec [eax]).length, 0 );
+		jne notEmptyString;
+		
+		emptyString:
+			mov( curDir, eax );
+			mov( eax, directory );
+			
+		notEmptyString:
+		
+		linux.open( directory, linux.o_rdonly, linux.s_irwxu );
+		mov( eax, handle );
+		test( eax, eax );
+		jz noFiles;
+
+			forEachEntry:
+
+				linux.getdents
+				( 
+					handle, 
+					(type linux.dirent64 dBuf), 
+					@size(dBuf) 
+				);
+				cmp( eax, 0 );
+				jle noFiles;
+				mov( eax, ecx );
+				lea( ebx, dBuf );
+				repeatUntilNoFiles:
+
+					lea( eax, (type linux.dirent64 [ebx]).d_name );
+					str.a_cpyz( eax );
+					mov( eax, esi );
+					mov( eax, filename );
+					mov( (type str.strRec [esi]).length, eax );					
+					cmp( eax, suffixLen );
+					jb notAnItem;
+				
+					// Don't return '.' and '..':
+				
+					cmp( (type byte [esi]), '.' );
+					jne yieldItem;
+					cmp( (type byte [esi+1]), 0 );
+					je notAnItem;
+					cmp( (type byte [esi+1]), '.' );
+					jne yieldItem;
+					cmp( (type byte [esi+2]), 0 );
+					je notAnItem;
+					
+					yieldItem:
+					
+						push( ecx );
+						mov( suffixLen, ecx );
+						test( ecx, ecx );
+						jz doYield;
+						add( (type str.strRec [esi]).length, esi );
+						sub( ecx, esi );
+						mov( suffix, edi );
+						cld();
+						repe.cmpsb();
+						jnz noYield;
+						
+						doYield:
+							push( ebx );
+							mov( esiSave, esi );
+							mov( ediSave, edi );
+							mov( edxSave, edx );
+							mov( ecxSave, ecx );
+							mov( ebxSave, ebx );
+							mov( filename, eax );
+							yield();
+							mov( esi, esiSave );
+							mov( edi, ediSave );
+							mov( edx, edxSave );
+							mov( ecx, ecxSave );
+							mov( ebx, ebxSave );
+							pop( ebx );
+							
+						noYield:
+						pop( ecx );
+						jmp nextItem;
+						
+					notAnItem:
+					
+						str.free( filename );
+						
+					nextItem:
+						 
+					movzx( (type linux.dirent64[ebx]).d_reclen, edx );
+					sub( edx, ecx );
+					add( edx, ebx );
+					cmp( ecx, 0 );
+					jg repeatUntilNoFiles;
+
+				jmp forEachEntry;
+
+		noFiles:
+		linux.close(handle);
+		mov( esiSave, esi );
+		mov( ediSave, edi );
+		mov( edxSave, edx );
+		mov( ecxSave, ecx );
+		mov( ebxSave, ebx );
+		mov( eaxSave, eax );
+		popfd();
+		leave();
+		add( 4, esp );		// Remove ptr to foreach loop body
+		ret( _parms_ );
+
+	end itemWithSuffix;
+
+
+
+
+
+#elseif( os.freeBSD )
+
+	iterator filesys.itemWithSuffix
+	( 
+		directory	:string;
+		suffix		:string 
+	); 
+		@nodisplay;
+		@noframe;
+		
+	var
+		handle		:dword;
+		filename	:string;
+		suffixLen	:dword;
+		eaxSave		:dword;
+		ebxSave		:dword;
+		ecxSave		:dword;
+		edxSave		:dword;
+		ediSave		:dword;
+		esiSave		:dword;
+		s			:bsd.stat_t;
+		dBuf		:byte[4096];
+		
+		
+	readonly
+		curDir	:string := ".";
+			
+	begin itemWithSuffix;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( esi, esiSave );
+		mov( edi, ediSave );
+		mov( edx, edxSave );
+		mov( ecx, ecxSave );
+		mov( ebx, ebxSave );
+		mov( eax, eaxSave );
+		pushfd();
+		
+		str.length( suffix );
+		mov( eax, suffixLen );
+		
+		
+		mov( directory, eax );
+		test( eax, eax );
+		jz emptyString;
+		cmp( (type str.strRec [eax]).length, 0 );
+		jne notEmptyString;
+		
+		emptyString:
+			mov( curDir, eax );
+			mov( eax, directory );
+			
+		notEmptyString:
+
+		bsd.open( directory, bsd.O_RDONLY, bsd.S_IRWXU );
+		mov( eax, handle );
+		jc openFailed;
+
+			forEachEntry:
+
+				bsd.getdents
+				( 
+					handle, 
+					(type bsd.dirent dBuf), 
+					@size(dBuf) 
+				);
+				jc noFiles;
+				cmp( eax, 0 );
+				jle noFiles;
+				mov( eax, ecx );
+				lea( ebx, dBuf );
+				repeatUntilNoFiles:
+
+					lea( eax, (type bsd.dirent [ebx]).d_name );
+					str.a_cpyz( eax );
+					mov( eax, esi );
+					mov( eax, filename );
+					mov( (type str.strRec [esi]).length, eax );					
+					cmp( eax, suffixLen );
+					jb notAnItem;
+				
+					// Don't return '.' and '..':
+				
+					cmp( (type byte [esi]), '.' );
+					jne yieldItem;
+					cmp( (type byte [esi+1]), 0 );
+					je notAnItem;
+					cmp( (type byte [esi+1]), '.' );
+					jne yieldItem;
+					cmp( (type byte [esi+2]), 0 );
+					je notAnItem;
+					
+					yieldItem:
+					
+						push( ecx );
+						mov( suffixLen, ecx );
+						test( ecx, ecx );
+						jz doYield;
+						add( (type str.strRec [esi]).length, esi );
+						sub( ecx, esi );
+						mov( suffix, edi );
+						cld();
+						repe.cmpsb();
+						jnz noYield;
+						
+						doYield:
+							push( ebx );
+							mov( esiSave, esi );
+							mov( ediSave, edi );
+							mov( edxSave, edx );
+							mov( ecxSave, ecx );
+							mov( ebxSave, ebx );
+							mov( filename, eax );
+							yield();
+							mov( esi, esiSave );
+							mov( edi, ediSave );
+							mov( edx, edxSave );
+							mov( ecx, ecxSave );
+							mov( ebx, ebxSave );
+							pop( ebx );
+							
+						noYield:
+						pop( ecx );
+						jmp nextItem;
+						
+					notAnItem:
+					
+						str.free( filename );
+						
+					nextItem:
+						 
+					movzx( (type bsd.dirent [ebx]).d_reclen, edx );
+					sub( edx, ecx );
+					add( edx, ebx );
+					cmp( ecx, 0 );
+					jg repeatUntilNoFiles;
+
+				jmp forEachEntry;
+
+		  noFiles:
+		    bsd.close(handle);
+		    
+		openFailed:
+		mov( esiSave, esi );
+		mov( ediSave, edi );
+		mov( edxSave, edx );
+		mov( ecxSave, ecx );
+		mov( ebxSave, ebx );
+		mov( eaxSave, eax );
+		popfd();
+		leave();
+		add( 4, esp );		// Remove ptr to foreach loop body
+		ret( _parms_ );
+
+	end itemWithSuffix;
+
+
+
+
+
+#elseif( os.macOS )
+
+	iterator filesys.itemWithSuffix
+	( 
+		directory	:string;
+		suffix		:string 
+	); 
+		@nodisplay;
+		@noframe;
+		
+	var
+		handle		:dword;
+		filename	:string;
+		suffixLen	:dword;
+		eaxSave		:dword;
+		ebxSave		:dword;
+		ecxSave		:dword;
+		edxSave		:dword;
+		ediSave		:dword;
+		esiSave		:dword;
+		s			:mac.stat_t;
+		dBuf		:byte[4096];
+		
+		
+	readonly
+		curDir	:string := ".";
+			
+	begin itemWithSuffix;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		mov( esi, esiSave );
+		mov( edi, ediSave );
+		mov( edx, edxSave );
+		mov( ecx, ecxSave );
+		mov( ebx, ebxSave );
+		mov( eax, eaxSave );
+		pushfd();
+		
+		str.length( suffix );
+		mov( eax, suffixLen );
+		
+		
+		mov( directory, eax );
+		test( eax, eax );
+		jz emptyString;
+		cmp( (type str.strRec [eax]).length, 0 );
+		jne notEmptyString;
+		
+		emptyString:
+			mov( curDir, eax );
+			mov( eax, directory );
+			
+		notEmptyString:
+
+		mac.open( directory, mac.O_RDONLY, mac.S_IRWXU );
+		mov( eax, handle );
+		jc openFailed;
+
+			forEachEntry:
+
+				mac.getdents
+				( 
+					handle, 
+					(type mac.dirent dBuf), 
+					@size(dBuf) 
+				);
+				jc noFiles;
+				cmp( eax, 0 );
+				jle noFiles;
+				mov( eax, ecx );
+				lea( ebx, dBuf );
+				repeatUntilNoFiles:
+
+					lea( eax, (type mac.dirent [ebx]).d_name );
+					str.a_cpyz( eax );
+					mov( eax, esi );
+					mov( eax, filename );
+					mov( (type str.strRec [esi]).length, eax );					
+					cmp( eax, suffixLen );
+					jb notAnItem;
+				
+					// Don't return '.' and '..':
+				
+					cmp( (type byte [esi]), '.' );
+					jne yieldItem;
+					cmp( (type byte [esi+1]), 0 );
+					je notAnItem;
+					cmp( (type byte [esi+1]), '.' );
+					jne yieldItem;
+					cmp( (type byte [esi+2]), 0 );
+					je notAnItem;
+					
+					yieldItem:
+					
+						push( ecx );
+						mov( suffixLen, ecx );
+						test( ecx, ecx );
+						jz doYield;
+						add( (type str.strRec [esi]).length, esi );
+						sub( ecx, esi );
+						mov( suffix, edi );
+						cld();
+						repe.cmpsb();
+						jnz noYield;
+						
+						doYield:
+							push( ebx );
+							mov( esiSave, esi );
+							mov( ediSave, edi );
+							mov( edxSave, edx );
+							mov( ecxSave, ecx );
+							mov( ebxSave, ebx );
+							mov( filename, eax );
+							yield();
+							mov( esi, esiSave );
+							mov( edi, ediSave );
+							mov( edx, edxSave );
+							mov( ecx, ecxSave );
+							mov( ebx, ebxSave );
+							pop( ebx );
+							
+						noYield:
+						pop( ecx );
+						jmp nextItem;
+						
+					notAnItem:
+					
+						str.free( filename );
+						
+					nextItem:
+						 
+					movzx( (type mac.dirent [ebx]).d_reclen, edx );
+					sub( edx, ecx );
+					add( edx, ebx );
+					cmp( ecx, 0 );
+					jg repeatUntilNoFiles;
+
+				jmp forEachEntry;
+
+		  noFiles:
+		    mac.close(handle);
+		    
+		openFailed:
+		mov( esiSave, esi );
+		mov( ediSave, edi );
+		mov( edxSave, edx );
+		mov( ecxSave, ecx );
+		mov( ebxSave, ebx );
+		mov( eaxSave, eax );
+		popfd();
+		leave();
+		add( 4, esp );		// Remove ptr to foreach loop body
+		ret( _parms_ );
+
+	end itemWithSuffix;
+
+#else 
+
+	#print( "Unknown OS!" )
+	
+#endif
+
+end FileIOUnit;
+

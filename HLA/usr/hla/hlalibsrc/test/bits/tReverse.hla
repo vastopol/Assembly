@@ -1,0 +1,165 @@
+program reverse_test;
+#include( "stdlib.hhf" )
+
+type
+	reverse_t:
+		record
+			reversed	:dword;
+			resultValue	:dword;
+		endrecord;
+		
+#macro reverseBits(b);
+
+		(((b)>>7) & %0000_0001) | (((b)<<7) & %1000_0000)
+	|	(((b)>>5) & %0000_0010) | (((b)<<5) & %0100_0000)
+	|	(((b)>>3) & %0000_0100) | (((b)<<3) & %0010_0000)
+	|	(((b)>>1) & %0000_1000) | (((b)<<1) & %0001_0000)
+	
+#endmacro
+
+val
+	reversed	:byte[256];
+		#for( i := 0 to 255 )
+		
+			?reversed[i] := reverseBits(i);
+
+		#endfor
+							
+	reversed8_c :reverse_t[ 256 ];
+		#for( i := 0 to 255 )
+		
+			?reversed8_c[ i ] :=
+				reverse_t:[ i, reversed[i] ]; 
+				
+		#endfor
+	
+	reversed16_c: reverse_t[256];
+		#for( i := 0 to 255 )
+		
+			?resultValue := reversed[i] |
+								(reversed[255-i] << 8);
+								
+			?reversed16_c[ i ] :=
+				reverse_t:[ i + ((255-i)<<8), resultValue ];
+				
+		#endfor			
+	
+	reversed32_c: reverse_t[256];
+		#for( i := 0 to 255 )
+		
+			?resultValue := 
+					 reversed[i] 
+				|	(reversed[255-i] << 8)
+				|	(reversed[reversed[i]] << 16)
+				|	(reversed[reversed[255-i]] << 24);
+			
+			?reversed32_c[ i ] :=
+				reverse_t:
+				[ 
+					i + (255-i)<<8 + reversed[i]<<16 + reversed[255-i]<<24, 
+					resultValue 
+				];
+				
+		#endfor			
+	
+		
+		
+static
+	reversed8  : reverse_t[ @elements( reversed8_c ) ]  := reversed8_c;
+	reversed16 : reverse_t[ @elements( reversed16_c ) ] := reversed16_c;
+	reversed32 : reverse_t[ @elements( reversed32_c ) ] := reversed32_c;
+	
+begin reverse_test;
+
+		xor( edi, edi );
+		for( mov( 0, ecx ); ecx<@elements( reversed8 ); add(@size(reverse_t),ecx) )do
+		
+			bits.reverse8( (type byte reversed8.reversed[ecx]) );
+			if( ax <> (type word reversed8.resultValue[ecx]) ) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"bits.reverse8 failed!" nl
+					" index = $", edi, nl
+					" input = $", reversed8.reversed[ecx], nl,
+					" result= $", eax, nl,
+					" Should be: $", reversed8.resultValue[ecx], nl,
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			inc( edi );		
+			
+		endfor;
+		stderr.put( "bits.reverse8 succeeded!" nl );
+
+	
+		xor( edi, edi );
+		for( mov( 0, ecx ); ecx<@elements( reversed16 ); add(@size(reverse_t),ecx) )do
+		
+			bits.reverse16( (type word reversed16.reversed[ecx]) );
+			if( eax <> (type dword reversed16.resultValue[ecx]) ) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"bits.reverse16 failed!" nl
+					" index = $", edi, nl
+					" input = $", reversed16.reversed[ecx], nl,
+					" result= $", eax, nl,
+					" Should be: $", reversed16.resultValue[ecx], nl,
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			inc( edi );		
+			
+		endfor;
+		stderr.put( "bits.reverse16 succeeded!" nl );
+
+	
+		xor( edi, edi );
+		for( mov( 0, ecx ); ecx<@elements( reversed32 ); add(@size(reverse_t),ecx) )do
+		
+			bits.reverse32( reversed32.reversed[ecx] );
+			if( eax <> (type dword reversed32.resultValue[ecx]) ) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"bits.reverse32 failed!" nl
+					" index = $", edi, nl
+					" input = $", reversed32.reversed[ecx], nl,
+					" result= $", eax, nl,
+					" Should be: $", reversed32.resultValue[ecx], nl,
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+				
+			endif;
+			inc( edi );		
+			
+		endfor;
+		stderr.put( "bits.reverse32 succeeded!" nl );
+
+	
+		os.exitProcess(0);
+		
+end reverse_test;
+
+													

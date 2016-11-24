@@ -1,0 +1,82 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+#include( "memory.hhf" );
+#include( "conv.hhf" );
+
+
+/*************************************************************/
+/*                                                           */
+/* str.catr32-                                               */
+/*                                                           */
+/* Converts the "r" parameter from real32 format to a string */
+/* (using the format options) and concatenates this to the   */
+/* end of "dest".                                            */
+/*                                                           */
+/*************************************************************/
+
+
+procedure str.cate32
+( 
+	dest	:string; 
+	r		:real32; 
+	width	:int32 
+);  @noframe;
+var
+	eaxSave	:dword;
+	
+begin cate32;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( eax, eaxSave );	// Save this in a known location!
+
+	/*
+	** Allocate storage for a string large enough
+	** to hold the output result.  The output result
+	** is never bigger than "width", so just use that value.
+	*/
+	
+	mov( width, eax );		// Get size we need to allocate.
+	cmp( eax, 4096 );
+	jae ValueOutOfRange;	
+	str.talloc( eax );
+
+	// Convert the real80 value to a string and concatenate it to the
+	// end of dest.
+
+	conv.e32ToStr( r, (type uns32 width), (type string eax));
+	str.cat( (type string eax), dest );
+	mov( eaxSave, eax );	// Restore original eax value.
+	leave();
+	ret( _parms_ );
+	
+ValueOutOfRange:	
+	raise( ex.ValueOutOfRange );
+
+end cate32;
+
+end stringUnit;
+
+
+
+
+	
+

@@ -1,0 +1,16 @@
+unit stdlib_data;
+#include( "chars.hhf" )
+
+namespace chars;
+
+	readonly(16)
+	
+		CtrlCset :cset; @nostorage;
+			cset { #0..#$1f, #$7f };
+			cset {};
+	 
+end chars;
+
+end stdlib_data;
+
+													

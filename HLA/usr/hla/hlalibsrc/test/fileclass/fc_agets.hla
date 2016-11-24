@@ -1,0 +1,70 @@
+program fagets_test;
+#include( "stdlib.hhf" )
+
+var
+	f			:file;
+	inputLine	:string;
+	
+begin fagets_test;
+
+	f.create();
+	try
+	
+		f.open( "fc_agets.data", fileio.r );
+		f.a_gets( );
+		mov( eax, inputLine );
+		if( str.ne( inputLine, "This is a test of fagets" )) then
+		
+			raise( 0 );
+			
+		endif;
+		str.free( inputLine );
+		
+		f.a_gets( );
+		mov( eax, inputLine );
+		if( str.ne( inputLine, "This is a second line" )) then
+		
+			raise( 0 );
+			
+		endif;
+		str.free( inputLine );
+		
+		if( !f.eof( )) then
+		
+			raise(0);
+			
+		endif;
+		stderr.put( "f.agets succeeded!" nl );
+		os.exitProcess(0);
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"f.agets failed!" nl
+			"Data read did not match data expected in file" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	stderr.put
+	( 
+		nl nl 
+		"***************************************************" nl
+		"f.agets failed!" nl
+		"Unknown problem with fagets test" nl
+		nl 
+	);
+	stdout.put( "Press Enter to Continue: " );
+	stdin.readLn();
+	os.exitProcess(1);
+			
+end fagets_test;
+
+													

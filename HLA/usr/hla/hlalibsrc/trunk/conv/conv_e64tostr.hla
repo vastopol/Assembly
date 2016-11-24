@@ -1,0 +1,80 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "strings.hhf" )
+
+
+
+/**************************************************/
+/*                                                */
+/* e64ToStr-                                      */
+/*                                                */
+/* Just like e80ToStr above, except this routine  */
+/* translates 64-bit FP numbers into a string.    */
+/* This routine just converts the 64-bit value    */
+/* to an 80-bit value and then calls the e80ToStr */
+/* routine to do the real work.                   */
+/*                                                */
+/**************************************************/
+
+procedure conv.e64ToStr
+( 
+	r64:		real64;	
+	width:		uns32; 
+	buffer:		string
+);  
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+	
+var
+	r80: real80;
+	
+begin e64ToStr;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	push( eax );
+	push( edi );
+	
+	fld( r64 );
+	fstp( r80 );
+	
+	mov( width, eax );
+	mov( buffer, edi );
+	cmp( eax, (type str.strRec [edi]).maxlen );
+	ja strOvfl;
+	mov( eax, (type str.strRec [edi]).length );	// Set the string's length
+	mov( 0, (type byte [edi+eax]));				// Zero-terminate the string
+	conv.eToBuf( r80, eax, [edi], 3 );			// Produce the string data
+	
+	pop( edi );
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+strOvfl:
+	raise( ex.StringOverflow );
+	
+end e64ToStr;
+
+
+
+end ConvUnit;

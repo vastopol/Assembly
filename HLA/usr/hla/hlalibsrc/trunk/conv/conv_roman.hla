@@ -1,0 +1,102 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+#includeOnce( "strings.hhf" )
+
+/**************************************************/
+/*                                                */
+/* roman-                                         */
+/*                                                */
+/* This procedure converts the "arabic" parameter */
+/* to a string containing the Roman Numeral       */
+/* representation of the number.                  */
+/*                                                */
+/**************************************************/
+
+procedure conv.roman( arabic:dword; rmn:string );
+	 @nodisplay; 
+	 @noalignstack;
+	 @noframe;
+	 
+readonly
+	RomDigs: string[10] := 
+				[ 
+					"",
+					"i",
+					"ii",
+					"iii",
+					"iv",
+					"v",
+					"vi",
+					"vii",
+					"viii",
+					"ix"
+				];
+				
+begin roman;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( edx );
+	cmp( arabic, 0 );
+	jne processLSD;
+	
+		// Initialize rmn to the empty string.
+		
+		mov( rmn, eax );
+		mov( 0, (type byte [eax] ));
+		mov( 0, (type str.strRec [eax]).length );
+		jmp romanDone;
+
+	processLSD:
+	
+		// Extract the least significant digit from
+		// the Arabic number.
+		
+		mov( arabic, eax );
+		xor( edx, edx );
+		div( 10, edx:eax );
+		
+		// Convert the Arabic number, divided by ten,
+		// to a Roman number.  Leave the resulting string
+		// in "rmn".
+		
+		conv.roman( eax, rmn );
+		
+		// "Multiply" the Roman number by ten.  This is
+		// achieved by swapping the characters in the
+		// first literal string below with their corresponding
+		// character in the second string below.
+		
+		str.translate( rmn, "ivxlcdm", "xlcdm**", rmn );
+		
+		// Convert the current (LS) digit to a string
+		// and append to the end of "rmn".
+		
+		str.cat( (type string RomDigs[ edx*4 ]), rmn );
+		
+romanDone:	
+	pop( edx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+		
+end roman;
+
+end ConvUnit;

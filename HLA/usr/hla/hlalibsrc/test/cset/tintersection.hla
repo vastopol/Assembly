@@ -1,0 +1,110 @@
+program intersection_test;
+#include( "stdlib.hhf" )
+
+val
+	j := 0;
+	k := 0;
+		
+const
+	cs1_c :cset[ 256 ] :=
+		[
+			#for( i := 0 to 126 )
+				?j := @random(j) & $7f;
+				?k := @random(k) & $7f;
+				#if( j > k )
+					?l := j;
+					?j := k;
+					?k := j;
+				#endif
+				{char(j)..char(k)},
+				{#0..char(i)},
+			#endfor
+			{#0..#$7f},
+			{}
+		];
+		
+	cs2_c :cset[ 256 ] :=
+		[
+			#for( i := 0 to 126 )
+				?j := @random(j) & $7f;
+				?k := @random(k) & $7f;
+				#if( j > k )
+					?l := j;
+					?j := k;
+					?k := j;
+				#endif
+				{char(j)..char(k)},
+				{char(i)..#$7f},
+			#endfor
+			{#0..#$7f},
+			{}
+		];
+		
+	csintersect_c :cset[ 256 ] :=
+		[
+			#for( i := 0 to 254 )
+				cs1_c[i] * cs2_c[i],
+			#endfor
+			cs1_c[255] * cs2_c[255]
+		];
+		
+		
+		
+static
+	csresult	:cset;
+	cs1 		:cset[ @elements( cs1_c ) ] := cs1_c;
+	cs2 		:cset[ @elements( cs2_c ) ] := cs2_c;
+	csintersect	:cset[ @elements( csintersect_c ) ] := csintersect_c;
+	
+begin intersection_test;
+
+	
+		for( mov( 0, ecx ); ecx<128; inc(ecx) )do
+
+			intmul( @size( cset ), ecx, edx );
+		
+			cs.cpy( cs1[edx], csresult );
+			cs.intersection( cs2[edx], csresult );
+			if( cs.ne( csresult, csintersect[edx]) ) then
+			
+				stderr.put
+				( 
+					nl nl 
+					"***************************************************" nl
+					"cs.intersection failed!  ecx=", ecx, nl,
+					(type dword csresult[12]), '_',
+					(type dword csresult[8]), '_',
+					(type dword csresult[4]), '_',
+					(type dword csresult), nl,
+					
+					(type dword cs1[edx+12]), '_',
+					(type dword cs1[edx+8]), '_',
+					(type dword cs1[edx+4]), '_',
+					(type dword cs1[edx]), nl,
+					
+					(type dword cs2[edx+12]), '_',
+					(type dword cs2[edx+8]), '_',
+					(type dword cs2[edx+4]), '_',
+					(type dword cs2[edx]), nl,
+					
+					(type dword csintersect[edx+12]), '_',
+					(type dword csintersect[edx+8]), '_',
+					(type dword csintersect[edx+4]), '_',
+					(type dword csintersect[edx]), nl,
+										
+					"***************************************************" nl
+					nl 
+				);
+				stdout.put( "Press Enter to Continue: " );
+				stdin.readLn();
+				os.exitProcess(1);
+
+			endif;
+			
+		endfor;
+		stderr.put( "cs.intersection succeeded!" nl );
+		os.exitProcess(0);
+		
+end intersection_test;
+
+													

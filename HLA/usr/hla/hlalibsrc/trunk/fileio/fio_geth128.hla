@@ -1,0 +1,143 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit FileIOUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "../include/fileiounit.hhf" )
+#include( "stdout.hhf" )
+#include( "stdlibdata.hhf" )
+
+
+
+
+procedure fileio.geth128( Handle:dword; var dest:lword ); 
+	@noframe;
+	@nodisplay;
+	@nostackalign;
+	
+var
+	eaxSave		:dword;
+	ebxSave		:dword;
+	ecxSave		:dword;
+	edxSave		:dword;
+	ediSave		:dword;
+	Delimiters	:cset;
+	
+begin geth128;
+
+	push( ebp );
+	mov( esp, ebp );
+	sub( _vars_, esp );
+	mov( edi, ediSave );
+	mov( edx, edxSave );
+	mov( ecx, ecxSave );
+	mov( ebx, ebxSave );
+	mov( eax, eaxSave );
+	
+	
+	conv.getDelimiters( Delimiters );
+	
+	xor( eax, eax );
+	xor( edi, edi );
+	xor( edx, edx );
+	xor( ecx, ecx );
+	xor( ebx, ebx );
+	
+	// Skip over any leading delimiters:
+	
+	repeatUntilNC:
+	
+		fileio.getc( Handle );
+		movzx( al, eax );
+		bt( eax, Delimiters );
+		jc repeatUntilNC;
+
+
+	// Okay, input the digits and convert to a number:
+	
+	repeatUntilC:
+	
+		// EAX contains the zero-extended character.
+		// Translate it to the corresponding hex value.
+		// ($FF means illegal character):
+				
+		movsx( stdlib.hexConvTbl[ eax ], eax );
+		cmp( eax, -1 );
+		je convErr;
+
+		cmp( edi, $1000_0000 );
+		jae Overflow;
+		shld( 4, edx, edi );	// Multiply edi:edx:ecx:ebx by 16
+		shld( 4, ecx, edx );
+		shld( 4, ebx, ecx );
+		shl( 4, ebx );
+			
+		// Add in the current character:
+		
+		add( eax, ebx );	// Never a carry!
+		
+		// Skip any underscores in the middle of the number.
+		
+		repeatUntilALne_:
+		
+			fileio.eof( Handle );
+			test( eax, eax );
+			jne EncounteredEOF;
+
+			fileio.getc( Handle );
+			cmp( al, '_' );
+			je repeatUntilALne_;
+			
+		cmp( al, $80 );
+		jae illegalChar;
+		movzx( al, eax );
+		bt( eax, Delimiters );
+		jnc repeatUntilC;
+
+	
+	EncounteredEOF:
+		mov( dest, eax );		// Store away the result
+		test( eax, eax );
+		jz nullRef;
+		mov( ebx, [eax] );
+		mov( ecx, [eax+4] );
+		mov( edx, [eax+8] );
+		mov( edi, [eax+12] );
+		
+		mov( ediSave, edi );
+		mov( edxSave, edx );
+		mov( ecxSave, ecx );
+		mov( ebxSave, ebx );
+		mov( eaxSave, eax );
+		leave( );
+		ret( _parms_ );
+	
+convErr:
+	raise( ex.ConversionError );
+
+Overflow:
+	raise( ex.ValueOutOfRange );
+	
+illegalChar:
+	raise( ex.IllegalChar );
+	
+nullRef:
+	raise( ex.AttemptToDerefNULL );
+		
+end geth128;
+
+end FileIOUnit;
+

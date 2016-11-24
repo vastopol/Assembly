@@ -1,0 +1,137 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+
+unit argsUnit;
+
+#includeOnce( "../include/osargs.hhf" )
+#includeOnce( "excepts.hhf" )
+#includeOnce( "strings.hhf" )
+#includeOnce( "memory.hhf" )
+
+
+#if( os.linux | os.freeBSD | os.macOS )
+
+// BuildArgv-
+//
+//	Constructs an HLA array of strings for the argv value
+// passed in by Linux. Also creates the CommandLine string
+// as the concatenation (plus a space separator) of all
+// those strings.
+//
+// Assertion: CommandLine contains NULL when this guy is called.
+
+const
+	#if( os.linux );
+
+		_argc_os	:text := "_argc_Linux";
+		_argv_os	:text := "_argv_Linux";
+		
+	#elseif( os.freeBSD )
+
+		_argc_os	:text := "_argc_BSD";
+		_argv_os	:text := "_argv_BSD";
+		
+	#elseif( os.macOS )
+
+		_argc_os	:text := "_argc_MAC";
+		_argv_os	:text := "_argv_MAC";
+		
+	#endif
+
+procedure BuildArgv; @nodisplay; @noframe;
+begin BuildArgv;
+
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( edi );
+	push( esi );
+	
+	// First, compute the size of the command-line string:
+	
+	mov( _argc_os, ebx );
+	mov( _argv_os, edi );
+	_hla.set_argc( ebx );
+	mov( 1, ecx );
+	xor( esi, esi );
+	test( ebx, ebx );		// Shouldn't happen, but...
+	jz noCmdLn;
+		computeCLsize:
+			zstr.len( (type zstring [edi+esi*4]) );
+			add( eax, ecx );
+			add( 1, ecx );		// For separator character.
+			inc( esi );
+			dec( ebx );
+			jnz computeCLsize;
+			
+	noCmdLn:
+	
+	// Allocate storage to hold the command line:
+	
+	str.alloc( ecx );
+	_hla.set_CommandLine( eax );
+
+	
+	// Okay, construct the string by concatenating all
+	// the argv elements:
+	
+	mov( _argc_os, ebx );
+	mov( _argv_os, edi );
+	xor( esi, esi );
+	test( ebx, ebx );
+	jz noCmdLn2;
+	jmp enterLoop;
+	
+		repeatUntilEBX0:
+			push( eax );
+			_hla.get_CommandLine();
+			str.catc( eax, ' ' );
+			pop( eax );
+
+		enterLoop:
+		
+			cmp( esi, MaxCmdLnParms );
+			jae TooManyCmdLnParms;
+			
+			str.a_cpyz( (type zstring [ edi+esi*4]) );
+			_hla.set_argv( eax, esi );
+			mov( eax, edx );
+			_hla.get_CommandLine();
+			str.cat( (type string edx), (type string eax) );
+			mov( edx, eax );
+			inc( esi );
+			dec( ebx );
+			jnz repeatUntilEBX0;
+		
+	noCmdLn2:
+	
+	pop( esi );
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+	_hla.set_NeedsCmdLn( false );
+	ret();
+
+TooManyCmdLnParms:
+	raise( ex.TooManyCmdLnParms );
+
+end BuildArgv;
+
+#endif
+
+end argsUnit;

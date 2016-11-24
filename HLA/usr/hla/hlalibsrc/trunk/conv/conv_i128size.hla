@@ -1,0 +1,73 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit ConvUnit;
+
+#includeOnce( "../include/conversions.hhf" )
+#includeOnce( "conv.hhf" )
+
+/***************************************************************/
+/*                                                             */
+/* i128Size                                                    */
+/*                                                             */
+/* This routine computes the minimum number of print           */
+/* positions needed to display a 128-bit signed                */
+/* integer value.  The size, in digits, is returned            */
+/* in the EAX register.                                        */
+/*                                                             */
+/***************************************************************/
+
+procedure conv.i128Size( l:lword );  
+	@nodisplay;
+	@noframe; 
+	@noalignstack;
+
+begin i128Size;
+
+	push( ebp );
+	mov( esp, ebp );
+
+	xor( eax, eax );		// Assume no sign.
+	cmp( (type int8 l[15]), 0 );
+	jnl noAbs;
+	
+		// Comute abs(l) by negating it.
+		
+		sub( (type dword l[0]), eax );	// eax contains zero from above.
+		mov( eax, (type dword l[0]));
+		
+		mov( 0, eax );
+		sbb( (type dword l[4]), eax );
+		mov( eax, (type dword l[4]));
+		
+		mov( 0, eax );
+		sbb( (type dword l[8]), eax );
+		mov( eax, (type dword l[8]));
+		
+		mov( 0, eax );
+		sbb( (type dword l[12]), eax );
+		mov( eax, (type dword l[12]));
+		
+		mov( 1, eax );		// Add one for additional sign character.
+		
+	noAbs:
+		push( eax );
+		conv.u128Size( l );
+		add( [esp], eax ); 	// Add in width of possible sign.
+		leave();
+		ret( _parms_ );	
+	
+end i128Size;
+
+end ConvUnit;

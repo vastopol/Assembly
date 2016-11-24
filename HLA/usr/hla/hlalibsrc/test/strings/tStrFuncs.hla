@@ -1,0 +1,3415 @@
+program strcset_test;
+#include( "stdlib.hhf" )
+												 
+	
+type
+	zstrExp:
+		record
+			src		:zstring;
+			rslt	:string;
+		endrecord;
+	
+	
+const		
+	exStr	:= $8000;
+	zstrESI	:text := "(type zstrExp [esi])";
+	
+	zStrTest_c	
+		:zstrExp[] :=
+			[
+				zstrExp:[ "", "" ],
+				zstrExp:[ "1", "1" ],
+				zstrExp:[ "abcdefg0123456", "abcdefg0123456" ],
+				zstrExp:
+				[ 
+					"0123456789012345678901234567890", 
+					"0123456789012345678901234567890" 
+				],
+			];
+		
+	str32a_c:string[32] :=
+			[
+				#for( i:= 0 to 31 )
+					@substr
+					( 
+						"01234567890123456789012345678901", 
+						i, 
+						31-i 
+					),
+				#endfor
+			];
+		
+	str32b_c:string[32] :=
+			[
+				#for( i:= 0 to 31 )
+					@substr
+					( 
+						"abcdefghijklmnopqrstuvwxyz!@#$%", 
+						i, 
+						31-i 
+					),
+				#endfor
+			];
+				
+				
+	substr_c	:string := "0123456789abcdefghijklmnopqrstuv";
+	
+	substrs_c	:string[32,32] :=
+				[
+					#for( i := 0 to 31 )
+						#for( j := 0 to 31 )
+							@substr( substr_c, i, j ),
+						#endfor
+					#endfor
+				]; 
+			
+	catsub_c	:string[32,32] :=
+				[
+					#for( i := 0 to 31 )
+						#for( j := 0 to 31 )
+							substr_c + @substr( substr_c, i, j ),
+						#endfor
+					#endfor
+				]; 
+		
+	firsts_c	:string[32] :=
+				[
+					#for( i := 0 to 31 )
+						@substr( substr_c, 0, i ),
+					#endfor
+				]; 
+		
+	lasts_c	:string[32] :=
+				[
+					#for( i := 0 to 31 )
+						@substr( substr_c, 32-i, 32 ),
+					#endfor
+				]; 
+		
+	truncates_c	:string[32] :=
+				[
+					#for( i := 0 to 31 )
+						@substr( substr_c, 0, 32-i ),
+					#endfor
+				]; 
+		
+static
+	dynPtr	:dword;
+	freePtr	:dword;
+	index	:int32;
+	index2	:int32;
+	rslt	:int32;
+	length	:int32;
+	rsltStr	:str.strvar(256);
+	rsltPtr	:string;
+	
+	zstr31	:byte; @nostorage;
+			byte "0123456789012345678901234567890", 0;
+			
+	str256	:string[257] :=
+			[
+				#for( i:= 0 to 256 )
+					@substr
+					( 
+						"01234567890123456789012345678901" 
+						"01234567890123456789012345678901" 
+						"01234567890123456789012345678901" 
+						"01234567890123456789012345678901" 
+						"01234567890123456789012345678901" 
+						"01234567890123456789012345678901" 
+						"01234567890123456789012345678901" 
+						"01234567890123456789012345678901", 
+						i, 
+						256-i 
+					),
+				#endfor
+			];
+	
+	str32	:string[32] :=
+			[
+				#for( i:= 0 to 31 )
+					@substr
+					( 
+						"01234567890123456789012345678901", 
+						i, 
+						31-i 
+					),
+				#endfor
+			];
+	
+	zstrExperiment : 
+		zstrExp[ @elements( zStrTest_c )] := zStrTest_c;
+		
+	setStr	:string[256] :=
+			[
+				#for( i := 0 to 255 )
+					@strset( '*', i ),
+				#endfor
+			];	
+	
+	str32a	:string[32] := str32a_c;
+	str32b	:string[32] := str32b_c;
+	zstr32b	:zstring[32] := str32b_c;
+	str32ab	:string[32] :=
+			[
+				#for( i := 0 to 31 )
+					str32a_c[i] + str32b_c[i],
+				#endfor
+			];
+		
+	substr			:string := substr_c;	
+	substrs			:string[32,32] := substrs_c;
+	catsubs			:string[32,32] := catsub_c;
+	firsts			:string[32] := firsts_c;
+	lasts			:string[32] := lasts_c;
+	truncates 		:string[32] := truncates_c;
+			
+	
+
+	
+begin strcset_test;
+
+	try
+	
+		mem.alloc( 32 );	// Must be first allocation!
+		mov( eax, dynPtr );
+		mov( 32, ecx );
+		mov( dynPtr, edi );
+		lea( esi, zstr31 );
+		rep.movsb;
+		
+	  anyexception
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"movsb failure!  EAX=", eax, nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+			
+	//////////////////////////////////////////////////////////////////////////////		
+
+	// Testing cpy:
+	
+	try
+	
+
+		for( mov( 0, edx ); edx<=256; inc( edx )) do
+		
+			mov( edx, index );
+			str.cpy( str256[edx*4], rsltStr );
+			str.eq( rsltStr, str256[edx*4] );
+			je continueLoop;
+				raise( exStr );
+			continueLoop:
+		
+			mov( edx, index );
+			str.a_cpy( str256[edx*4] );
+			mov( eax, freePtr );
+			str.eq( eax, str256[edx*4] );
+			je continueLoop1;
+				raise( exStr );
+			continueLoop1:
+			str.free( freePtr );
+		
+		endfor;
+		
+	  anyexception
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cpy(a) failure!  EAX=", eax, nl
+			"index=", index, nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	
+	
+	// Check for proper handling of NULL input parameters:
+	
+	try
+	
+		str.cpy( NULL, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cpy(d) unknown failure!  EAX=", eax, nl,
+			"index=", (type uns32 ecx), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cpy(e) unknown failure!  EAX=", eax, nl,
+			"index=", (type uns32 ecx), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;	
+	try
+	
+		str.cpy( dynPtr, NULL );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cpy(d) unknown failure!  EAX=", eax, nl,
+			"index=", (type uns32 ecx), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cpy(e) unknown failure!  EAX=", eax, nl,
+			"index=", (type uns32 ecx), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	stdout.put( "str.cpy succeeded!" nl );
+	
+	//////////////////////////////////////////////////////////////////////////////		
+
+	// Testing bufToStr:
+	
+	try
+	
+
+		for( mov( 0, edx ); edx<=256; inc( edx )) do
+		
+			mov( edx, index );
+			mov( str256[edx*4], esi );
+			mov( (type str.strRec [esi]).length, ebx );
+			add( esi, ebx );
+			str.bufToStr( esi, ebx, rsltStr );
+			str.eq( rsltStr, str256[edx*4] );
+			je continueLoop0;
+				raise( exStr );
+			continueLoop0:
+		
+			mov( edx, index );
+			mov( str256[edx*4], esi );
+			mov( (type str.strRec [esi]).length, ebx );
+			add( esi, ebx );
+			str.a_bufToStr( esi, ebx );
+			mov( eax, freePtr );
+			str.eq( eax, str256[edx*4] );
+			je continueLoop5;
+				raise( exStr );
+			continueLoop5:
+			str.free( freePtr );
+		
+		endfor;
+		
+	  anyexception
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.bufToStr(a) failure!  EAX=", eax, nl
+			"index=", index, nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	
+	
+	// Check for proper handling of NULL input parameters:
+	
+	try
+	
+		str.bufToStr( NULL, NULL, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.bufToStr(d) unknown failure!  EAX=", eax, nl,
+			"index=", (type uns32 ecx), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.bufToStr(e) unknown failure!  EAX=", eax, nl,
+			"index=", (type uns32 ecx), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;	
+	
+	try
+	
+		lea( edx, rsltStr );
+		str.bufToStr( edx, NULL, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.bufToStr(f) unknown failure!  EAX=", eax, nl,
+			"index=", (type uns32 ecx), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.bufToStr(g) unknown failure!  EAX=", eax, nl,
+			"index=", (type uns32 ecx), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;	
+	
+	try
+	
+		lea( edx, rsltStr );
+		str.bufToStr( edx, edx, NULL );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.bufToStr(h) unknown failure!  EAX=", eax, nl,
+			"index=", (type uns32 ecx), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.bufToStr(i) unknown failure!  EAX=", eax, nl,
+			"index=", (type uns32 ecx), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;	
+	
+	try
+	
+		lea( edx, rsltStr );
+		lea( ebx, [edx-1] );
+		str.bufToStr( edx, ebx, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.bufToStr(j) unknown failure!  EAX=", eax, nl,
+			"index=", (type uns32 ecx), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.StringOverflow )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.bufToStr(k) unknown failure!  EAX=", eax, nl,
+			"index=", (type uns32 ecx), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;	
+	stdout.put( "str.bufToStr succeeded!" nl );
+	
+	//////////////////////////////////////////////////////////////////////////////		
+
+	// Testing cpyz:
+	
+	try
+	
+
+		mov( dynPtr, ebx );
+		for( mov( 0, edx ); edx<32; inc( edx )) do
+		
+			mov( edx, index );
+			lea( esi, [ebx+edx] );
+			str.cpyz( esi, rsltStr );
+			str.eq( rsltStr, str32[edx*4] );
+			je continueLoop2;
+				raise( exStr );
+			continueLoop2:
+		
+		endfor;
+		
+	  anyexception
+	  	mov( index, edx );
+		mov( dynPtr, ebx );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cpyz(a) failure!  EAX=", eax, nl
+			"index=", index, nl
+			"rsltStr = '", rsltStr, "'" nl
+			"str32  = '", str32[edx*4], "'" nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	
+		
+	
+	try
+	
+		lea( esi, zstrExperiment );
+		for( mov( 0, ecx ); ecx < @elements( zstrExperiment ); inc( ecx )) do
+		
+			mov( ecx, index );
+			intmul(@size( zstrExp ), ecx, edx );
+			
+			str.cpyz( zstrESI.src[edx], rsltStr );
+			str.eq( zstrESI.rslt[edx], rsltStr );
+			je okay1;
+				raise( exStr );
+			okay1:
+						
+			str.a_cpyz( zstrESI.src[edx] );
+			mov( eax, rsltPtr );
+
+			str.eq( zstrESI.rslt[edx], rsltPtr );
+			je okay2;
+				raise( exStr );
+			okay2:
+			str.free( rsltPtr );						
+			
+		endfor;  
+		
+	  exception( exStr )
+	  
+	  	mov( index, ecx );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cpyz(b) result failure!  EAX=", eax, nl
+			"index=", index, nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+			  
+	  anyexception
+	  
+	  	mov( index, ecx );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cpyz(c) unknown failure!  EAX=", eax, nl,
+			"index=", (type uns32 ecx), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+	
+	// Check for proper handling of NULL input parameters:
+	
+	try
+	
+		str.cpyz( NULL, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cpyz(d) unknown failure!  EAX=", eax, nl,
+			"index=", (type uns32 ecx), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cpyz(e) unknown failure!  EAX=", eax, nl,
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;	
+	try
+	
+		str.a_cpyz( NULL );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_cpyz(e) unknown failure!  EAX=", eax, nl,
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_cpyz(f) unknown failure!  EAX=", eax, nl,
+			"index=", (type uns32 ecx), nl
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;	
+
+	try
+	
+		str.cpyz( dynPtr, NULL );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cpyz(g) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cpyz(h) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	stdout.put( "str.cpyz succeeded!" nl );
+	
+	
+	
+	////////////////////////////////////////////////////////////////////////////
+	//
+	// Check out the string length function here:
+	
+	try
+	
+		for( mov( 0, ecx ); ecx <= 256; inc( ecx )) do
+		
+			mov( ecx, index );
+			str.length( str256[ecx*4] );
+			mov( eax, rslt );
+			mov( 256, eax );
+			sub( ecx, eax );
+			mov( eax, length );
+			cmp( eax, rslt );
+			je nextIteration;
+				raise( exStr );
+			nextIteration:
+			 
+		endfor;
+		
+	  exception( exStr )
+	  
+	  	stderr.put
+		( 
+			"str.length failed!" nl
+			"Did not compute length properly. Expected ", length, " got ", rslt, nl
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  anyexception 
+		
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.length unknown exception! EAX = $", EAX, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	endtry;
+
+
+	try
+	
+		str.length( NULL );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.length did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.length, unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	stdout.put( "str.length succeeded!" nl );
+	
+	////////////////////////////////////////////////////////////////////////////////
+	//
+	// Check the str.setstr function here:
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < 256; inc( ecx )) do
+		
+			mov( ecx, index );
+			str.setstr( '*', ecx, rsltStr );
+			str.eq( setStr[ecx*4], rsltStr );
+			je setStrOk;
+				raise( exStr );
+			setStrOk:
+			
+			str.a_setstr( '*', ecx );
+			mov( eax, freePtr );
+			str.eq( setStr[ecx*4], eax );
+			je setStrOk2;
+				raise( exStr );
+			setStrOk2:
+			str.free( freePtr );
+			
+		endfor;
+		
+	  exception( exStr )
+	  	
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.setstr failed!" nl
+			"Index = ", index, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+	
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.setstr, unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+
+	try
+	
+		str.setstr( '*', 1, NULL );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.setstr did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.setstr, unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	stdout.put( "str.setstr succeeded!" nl );
+	
+	
+	///////////////////////////////////////////////////////////////////////////////
+	//
+	// Test str.cat here
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < 32; inc( ecx )) do
+		
+			mov( ecx, index );
+			str.cpy( str32a[ecx*4], rsltStr );
+			str.cat( str32b[ecx*4], rsltStr );
+			str.eq( str32ab[ecx*4], rsltStr );
+			je catOk2;
+				raise( exStr );
+			catOk2:
+						
+			mov( ecx, index );
+			str.cpy( str32a[ecx*4], rsltStr );
+			str.cat2( str32b[ecx*4], rsltStr );
+			str.eq( str32ab[ecx*4], rsltStr );
+			je catOk2a;
+				raise( exStr );
+			catOk2a:
+						
+		endfor;
+		
+	  exception( exStr )
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cat2(a) failed!" nl
+			"Index = ", index, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cat2(a), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		for( mov( 0, ecx ); ecx < 32; inc( ecx )) do
+		
+			mov( ecx, index );
+			str.cat( str32a[ecx*4], str32b[ecx*4], rsltStr );
+			str.eq( str32ab[ecx*4], rsltStr );
+			je catOk3;
+				raise( exStr );
+			catOk3:
+			
+			mov( ecx, index );
+			str.cat3( str32a[ecx*4], str32b[ecx*4], rsltStr );
+			str.eq( str32ab[ecx*4], rsltStr );
+			je catOk3a;
+				raise( exStr );
+			catOk3a:
+			
+			
+		endfor;
+		
+	  exception( exStr )
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cat3(a) failed!" nl
+			"Index = ", index, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cat3(a), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		for( mov( 0, ecx ); ecx < 32; inc( ecx )) do
+		
+			str.a_cat( str32a[ecx*4], str32b[ecx*4] );
+			mov( eax, freePtr );
+			str.eq( str32ab[ecx*4], freePtr );
+			je catOka;
+				raise( exStr );
+			catOka:
+			str.free( freePtr );
+			
+		endfor;
+		
+	  exception( exStr )
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_cat(a) failed!" nl
+			"Index = ", index, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_cat(a), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		str.cat2( NULL, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cat2(b) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cat2(b), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		str.cat2( str32a[0], NULL );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cat2(c) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cat2(c), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		str.cat3( NULL, rsltStr, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cat3(b) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cat3(b), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		str.cat3( rsltStr, NULL, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cat3(c) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cat3(c), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		str.cat3( rsltStr, rsltStr, NULL );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cat3(d) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.cat3(d), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		str.a_cat( NULL, str32a[0] );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_cat(d) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_cat(d), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+	try
+	
+		str.a_cat( str32a[0], NULL );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_cat(e) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_cat(e), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	
+	stdout.put( "str.cat succeeded!" nl );
+			
+
+			
+	///////////////////////////////////////////////////////////////////////////////
+	//
+	// Test str.catz here
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < 32; inc( ecx )) do
+		
+			mov( ecx, index );
+			str.cpy( str32a[ecx*4], rsltStr );
+			str.catz( zstr32b[ecx*4], rsltStr );
+			str.eq( str32ab[ecx*4], rsltStr );
+			je catzOk;
+				raise( exStr );
+			catzOk:
+			
+			str.a_catz( zstr32b[ecx*4], str32a[ecx*4] );
+			mov( eax, freePtr );
+			str.eq( str32ab[ecx*4], rsltStr );
+			je catzOk2;
+				raise( exStr );
+			catzOk2:
+			str.free( freePtr );
+			
+		endfor;
+		
+	  exception( exStr )
+
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catz(a) failed!" nl
+			"Index = ", index, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catz(a), unexpected exception! EAX=", EAX, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+	try
+	
+		str.catz( NULL, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catz(b) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catz(b), unexpected exception!, EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+	try
+	
+		str.catz( zstr32b[0], NULL );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catz(c) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catz(c), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+	try
+	
+		str.a_catz( NULL, str32a[0] );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_catz(d) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_catz(d), unexpected exception!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+	try
+	
+		str.a_catz( zstr32b[0], NULL );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_catz(e) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_catz(e), unexpected exception!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	
+	stdout.put( "str.catz succeeded!" nl );
+			
+
+			
+	///////////////////////////////////////////////////////////////////////////////
+	//
+	// Test str.substr here
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < 32; inc( ecx )) do
+		
+			for( mov( 0, edx ); edx < 32; inc( edx )) do
+		
+				mov( ecx, index );
+				mov( edx, index2 );
+				
+				str.substr( substr, ecx, edx, rsltStr );
+				intmul( 32, ecx, eax );
+				add( edx, eax );
+				str.eq( substrs[eax*4], rsltStr );
+				je substrOk;
+					raise( exStr );
+				substrOk:
+				
+				
+			endfor;
+			
+		endfor;
+		
+	  exception( exStr )
+
+		mov( index, ecx );
+		mov( index2, edx );
+		intmul( 32, ecx, eax );
+		add( edx, eax );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.substr(a) failed!" nl
+			"Index = ", index, nl 
+			"Index2 = ", index2, nl
+			"result ='", rsltStr, "'" nl
+			"Expctd ='", substrs[eax*4], "'" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.substr(a), unexpected exception! EAX=", EAX, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+	try
+	
+		for( mov( 0, ecx ); ecx < 32; inc( ecx )) do
+		
+			for( mov( 0, edx ); edx < 32; inc( edx )) do
+		
+				mov( ecx, index );
+				mov( edx, index2 );
+
+				str.a_substr( substr, ecx, edx );
+				lea( ebx, [ecx+edx] );
+				if( @c ) then
+				
+					if( ebx > 32 ) then
+					
+						stderr.put
+						( 
+							nl nl 
+							"********************************************" nl
+							"str.substr(b), should return carry clear" nl
+							"ECX=", (type uns32 ecx), ", EDX=", (type uns32 edx), nl 
+							"********************************************" nl
+							nl 
+						);
+						stdout.put( "Press Enter to Continue: " );
+						stdin.readLn();
+						os.exitProcess(1);
+						
+					endif;
+					
+				else
+				
+					if( ebx <= 32 ) then
+					
+						stderr.put
+						( 
+							nl nl 
+							"********************************************" nl
+							"str.substr(b), should return carry set" nl 
+							"ECX=", (type uns32 ecx), ", EDX=", (type uns32 edx), nl 
+							"********************************************" nl
+							nl 
+						);
+						stdout.put( "Press Enter to Continue: " );
+						stdin.readLn();
+						os.exitProcess(1);
+						
+					endif;
+
+				endif;	
+				mov( eax, freePtr );
+				intmul( 32, ecx, eax );
+				add( edx, eax );
+				str.eq( substrs[eax*4], freePtr );
+				je substrOk2;
+					raise( exStr );
+				substrOk2:
+				str.free( freePtr );
+				
+			endfor;
+			
+		endfor;
+		
+	  exception( exStr )
+
+		mov( index, ecx );
+		mov( index2, edx );
+		intmul( 32, ecx, eax );
+		add( edx, eax );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_substr(b) failed!" nl
+			"Index = ", index, nl 
+			"Index2 = ", index2, nl 
+			"result ='", (type string freePtr), "'" nl
+			"Expctd ='", substrs[eax*4], "'" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_substr(b), unexpected exception! EAX=", EAX, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+	try
+	
+		str.substr( NULL, 0, 0, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.substr(c) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.substr(c), unexpected exception!, EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	try
+	
+		str.a_substr( NULL, 0, 0 );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_substr(d) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_substr(d), unexpected exception!, EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+	try
+	
+		str.substr( str256[0], 0, 0, NULL );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.substr(e) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.substr(e), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	
+	try
+	
+		str.substr( substr, 33, 0, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.substr(f) did not catch invalid index!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.StringIndexError )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.substr(f), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	
+	try
+	
+		str.a_substr( substr, 33, 0 );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_substr(g) did not catch invalid index!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.StringIndexError )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_substr(g), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	
+	if( str.substr( substr, 30, 10, rsltStr ) )then
+	
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.substr(h), should have returned carry clear" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endif;		 
+	
+	if( str.a_substr( substr, 30, 10 ) )then
+	
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_substr(i), should have returned carry clear" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endif;
+	str.free( eax );
+			 
+	stdout.put( "str.substr succeeded!" nl );
+			
+
+			
+	///////////////////////////////////////////////////////////////////////////////
+	//
+	// Test str.first here
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < 32; inc( ecx )) do
+		
+			mov( ecx, index );
+			
+			str.first3( substr, ecx, rsltStr );
+			str.eq( firsts[ecx*4], rsltStr );
+			je firstOk;
+				raise( exStr );
+			firstOk:
+			
+			str.first( substr, ecx, rsltStr );
+			str.eq( firsts[ecx*4], rsltStr );
+			je firstOkay;
+				raise( exStr );
+			firstOkay:
+			
+		endfor;
+		
+	  exception( exStr )
+
+		mov( index, ecx );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.first3(a) failed!" nl
+			"Index  = ", index, nl
+			"result ='", rsltStr, "'" nl
+			"Expctd ='", firsts[ecx*4], "'" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.first3(a), unexpected exception! EAX=", EAX, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < 32; inc( ecx )) do
+		
+			mov( ecx, index );
+			
+			str.cpy( substr, rsltStr );
+			str.first2( rsltStr, ecx );
+			str.eq( firsts[ecx*4], rsltStr );
+			je firstOk2;
+				raise( exStr );
+			firstOk2:
+			
+			str.cpy( substr, rsltStr );
+			str.first( rsltStr, ecx );
+			str.eq( firsts[ecx*4], rsltStr );
+			je firstOkay2;
+				raise( exStr );
+			firstOkay2:
+			
+		endfor;
+		
+	  exception( exStr )
+
+		mov( index, ecx );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.first2(a) failed!" nl
+			"Index  = ", index, nl
+			"result ='", rsltStr, "'" nl
+			"Expctd ='", firsts[ecx*4], "'" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.first2(a), unexpected exception! EAX=", EAX, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		for( mov( 0, ecx ); ecx < 32; inc( ecx )) do
+		
+			mov( ecx, index );
+			
+			str.a_first( substr, ecx );
+			mov( eax, freePtr );
+			str.eq( firsts[ecx*4], eax );
+			je firstOka;
+				raise( exStr );
+			firstOka:
+			
+		endfor;
+		
+	  exception( exStr )
+
+		mov( index, ecx );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_first(a) failed!" nl
+			"Index  = ", index, nl
+			"result ='", (type string freePtr), "'" nl
+			"Expctd ='", firsts[ecx*4], "'" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_first(a), unexpected exception! EAX=", EAX, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		str.first3( NULL, 0, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.first3(b) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.first3(b), unexpected exception!, EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		str.first2( NULL, 0 );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.first2(b) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.first2(b), unexpected exception!, EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	
+	try
+	
+		str.a_first( NULL, 0 );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_first(b) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_first(b), unexpected exception!, EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+	try
+	
+		str.first3( substr, 0, NULL );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.first3(c) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.first3(c), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	stdout.put( "str.first succeeded!" nl );
+			
+
+			
+			
+
+			
+	///////////////////////////////////////////////////////////////////////////////
+	//
+	// Test str.last here
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < 32; inc( ecx )) do
+		
+			mov( ecx, index );
+			
+			str.last3( substr, ecx, rsltStr );
+			str.eq( lasts[ecx*4], rsltStr );
+			je lastOk;
+				raise( exStr );
+			lastOk:
+			
+			str.last( substr, ecx, rsltStr );
+			str.eq( lasts[ecx*4], rsltStr );
+			je lastOkay;
+				raise( exStr );
+			lastOkay:
+			
+		endfor;
+		
+	  exception( exStr )
+
+		mov( index, ecx );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.last3(a) failed!" nl
+			"Index  = ", index, nl
+			"result ='", rsltStr, "'" nl
+			"Expctd ='", lasts[ecx*4], "'" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.last3(a), unexpected exception! EAX=", EAX, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < 32; inc( ecx )) do
+		
+			mov( ecx, index );
+			
+			str.cpy( substr, rsltStr );
+			str.last2( rsltStr, ecx );
+			str.eq( lasts[ecx*4], rsltStr );
+			je lastOk2;
+				raise( exStr );
+			lastOk2:
+			
+			str.cpy( substr, rsltStr );
+			str.last( rsltStr, ecx );
+			str.eq( lasts[ecx*4], rsltStr );
+			je lastOkay2;
+				raise( exStr );
+			lastOkay2:
+			
+		endfor;
+		
+	  exception( exStr )
+
+		mov( index, ecx );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.last2(a) failed!" nl
+			"Index  = ", index, nl
+			"result ='", rsltStr, "'" nl
+			"Expctd ='", lasts[ecx*4], "'" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.last2(a), unexpected exception! EAX=", EAX, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		for( mov( 0, ecx ); ecx < 32; inc( ecx )) do
+		
+			mov( ecx, index );
+			
+			str.a_last( substr, ecx );
+			mov( eax, freePtr );
+			str.eq( lasts[ecx*4], eax );
+			je lastOka;
+				raise( exStr );
+			lastOka:
+			
+		endfor;
+		
+	  exception( exStr )
+
+		mov( index, ecx );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_last(a) failed!" nl
+			"Index  = ", index, nl
+			"result ='", (type string freePtr), "'" nl
+			"Expctd ='", lasts[ecx*4], "'" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_last(a), unexpected exception! EAX=", EAX, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		str.last3( NULL, 0, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.last3(b) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.last3(b), unexpected exception!, EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		str.last2( NULL, 0 );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.last2(b) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.last2(b), unexpected exception!, EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	
+	try
+	
+		str.a_last( NULL, 0 );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_last(b) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_last(b), unexpected exception!, EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+	try
+	
+		str.last3( substr, 0, NULL );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.last3(c) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.last3(c), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	stdout.put( "str.last succeeded!" nl );
+			
+
+	///////////////////////////////////////////////////////////////////////////////
+	//
+	// Test str.truncate here
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < 32; inc( ecx )) do
+		
+			mov( ecx, index );
+			
+			str.truncate3( substr, ecx, rsltStr );
+			str.eq( truncates[ecx*4], rsltStr );
+			je truncateOk;
+				raise( exStr );
+			truncateOk:
+			
+			str.truncate( substr, ecx, rsltStr );
+			str.eq( truncates[ecx*4], rsltStr );
+			je truncateOkay;
+				raise( exStr );
+			truncateOkay:
+			
+		endfor;
+		
+	  exception( exStr )
+
+		mov( index, ecx );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.truncate3(a) failed!" nl
+			"Index  = ", index, nl
+			"result ='", rsltStr, "'" nl
+			"Expctd ='", truncates[ecx*4], "'" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.truncate3(a), unexpected exception! EAX=", EAX, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < 32; inc( ecx )) do
+		
+			mov( ecx, index );
+			
+			str.cpy( substr, rsltStr );
+			str.truncate2( rsltStr, ecx );
+			str.eq( truncates[ecx*4], rsltStr );
+			je truncateOk2;
+				raise( exStr );
+			truncateOk2:
+			
+			str.cpy( substr, rsltStr );
+			str.truncate( rsltStr, ecx );
+			str.eq( truncates[ecx*4], rsltStr );
+			je truncateOkay2;
+				raise( exStr );
+			truncateOkay2:
+			
+		endfor;
+		
+	  exception( exStr )
+
+		mov( index, ecx );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.truncate2(a) failed!" nl
+			"Index  = ", index, nl
+			"result ='", rsltStr, "'" nl
+			"Expctd ='", truncates[ecx*4], "'" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.truncate2(a), unexpected exception! EAX=", EAX, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		for( mov( 0, ecx ); ecx < 32; inc( ecx )) do
+		
+			mov( ecx, index );
+			
+			str.a_truncate( substr, ecx );
+			mov( eax, freePtr );
+			str.eq( truncates[ecx*4], eax );
+			je truncateOka;
+				raise( exStr );
+			truncateOka:
+			
+		endfor;
+		
+	  exception( exStr )
+
+		mov( index, ecx );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_truncate(a) failed!" nl
+			"Index  = ", index, nl
+			"result ='", (type string freePtr), "'" nl
+			"Expctd ='", truncates[ecx*4], "'" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_truncate(a), unexpected exception! EAX=", EAX, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		str.truncate3( NULL, 0, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.truncate3(b) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.truncate3(b), unexpected exception!, EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		str.truncate2( NULL, 0 );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.truncate2(b) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.truncate2(b), unexpected exception!, EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	
+	try
+	
+		str.a_truncate( NULL, 0 );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_truncate(b) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_truncate(b), unexpected exception!, EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+	try
+	
+		str.truncate3( substr, 0, NULL );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.truncate3(c) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.truncate3(c), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	stdout.put( "str.truncate succeeded!" nl );
+			
+
+	///////////////////////////////////////////////////////////////////////////////
+	//
+	// Test str.catsub here
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < 32; inc( ecx )) do
+		
+			for( mov( 0, edx ); edx < 32; inc( edx )) do
+		
+				mov( ecx, index );
+				mov( edx, index2 );
+				str.cpy( substr, rsltStr );
+				str.catsub4( substr, ecx, edx, rsltStr );
+				intmul( 32, ecx, eax );
+				add( edx, eax );
+				str.eq( catsubs[eax*4], rsltStr );
+				je catsubstrOk;
+					raise( exStr );
+				catsubstrOk:
+				
+				mov( ecx, index );
+				mov( edx, index2 );
+				str.cpy( substr, rsltStr );
+				str.catsub( substr, ecx, edx, rsltStr );
+				intmul( 32, ecx, eax );
+				add( edx, eax );
+				str.eq( catsubs[eax*4], rsltStr );
+				je _catsubstrOk;
+					raise( exStr );
+				_catsubstrOk:
+				
+				
+			endfor;
+			
+		endfor;
+		
+	  exception( exStr )
+
+		mov( index, ecx );
+		mov( index2, edx );
+		intmul( 32, ecx, eax );
+		add( edx, eax );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catsub4(a) failed!" nl
+			"Index = ", index, nl 
+			"Index2 = ", index2, nl
+			"result ='", rsltStr, "'" nl
+			"Expctd ='", catsubs[eax*4], "'" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catsub4(a), unexpected exception! EAX=", EAX, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		str.catsub4( NULL, 0, 0, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catsub4(b) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catsub4(b), unexpected exception!, EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+	try
+	
+		str.catsub4( str256[0], 0, 0, NULL );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catsub4(c) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catsub4(c), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	
+	try
+	
+		str.catsub4( substr, 33, 0, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catsub4(d) did not catch invalid index!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.StringIndexError )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catsub4(d), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	
+	stdout.put( "str.catsub4 succeeded!" nl );
+			
+
+			
+			
+	///////////////////////////////////////////////////////////////////////////////
+	//
+	// Test str.catsub5 here
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < 32; inc( ecx )) do
+		
+			for( mov( 0, edx ); edx < 32; inc( edx )) do
+		
+				mov( ecx, index );
+				mov( edx, index2 );
+				str.catsub5( substr, ecx, edx, substr, rsltStr );
+				intmul( 32, ecx, eax );
+				add( edx, eax );
+				str.eq( catsubs[eax*4], rsltStr );
+				je catsubstrOka;
+					raise( exStr );
+				catsubstrOka:
+				
+				str.catsub( substr, ecx, edx, substr, rsltStr );
+				intmul( 32, ecx, eax );
+				add( edx, eax );
+				str.eq( catsubs[eax*4], rsltStr );
+				je _catsubstrOka;
+					raise( exStr );
+				_catsubstrOka:
+				
+				
+			endfor;
+			
+		endfor;
+		
+	  exception( exStr )
+
+		mov( index, ecx );
+		mov( index2, edx );
+		intmul( 32, ecx, eax );
+		add( edx, eax );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catsub5(a) failed!" nl
+			"Index = ", index, nl 
+			"Index2 = ", index2, nl
+			"result ='", rsltStr, "'" nl
+			"Expctd ='", substrs[eax*4], "'" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catsub5(a), unexpected exception! EAX=", EAX, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		str.catsub5( NULL, 0, 0, rsltStr, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catsub5(b) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catsub5(b), unexpected exception!, EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+	try
+	
+		str.catsub5( str256[0], 0, 0, NULL, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catsub5(c) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catsub5(c), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+	try
+	
+		str.catsub5( str256[0], 0, 0, rsltStr, NULL );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catsub5(d) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catsub5(d), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	
+	try
+	
+		str.catsub5( substr, 33, 0, rsltStr, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catsub5(d) did not catch invalid index!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.StringIndexError )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.catsub5(d), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	
+	stdout.put( "str.catsub5 succeeded!" nl );
+			
+
+			
+			
+	///////////////////////////////////////////////////////////////////////////////
+	//
+	// Test str.a_catsub here
+	
+	try
+	
+		for( mov( 0, ecx ); ecx < 32; inc( ecx )) do
+		
+			for( mov( 0, edx ); edx < 32; inc( edx )) do
+		
+				mov( ecx, index );
+				mov( edx, index2 );
+				str.a_catsub( substr, ecx, edx, substr );
+				mov( eax, freePtr );
+				intmul( 32, ecx, eax );
+				add( edx, eax );
+				str.eq( catsubs[eax*4], freePtr );
+				je catsubstrOkb;
+					raise( exStr );
+				catsubstrOkb:
+				str.free( freePtr );
+				
+				
+			endfor;
+			
+		endfor;
+		
+	  exception( exStr )
+
+		mov( index, ecx );
+		mov( index2, edx );
+		intmul( 32, ecx, eax );
+		add( edx, eax );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_catsub(a) failed!" nl
+			"Index = ", index, nl 
+			"Index2 = ", index2, nl
+			"result ='", (type string freePtr), "'" nl
+			"Expctd ='", substrs[eax*4], "'" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_catsub(a), unexpected exception! EAX=", EAX, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+
+	try
+	
+		str.a_catsub( NULL, 0, 0, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_catsub(b) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_catsub(b), unexpected exception!, EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+
+	try
+	
+		str.a_catsub( str256[0], 0, 0, NULL );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_catsub(c) did not catch NULL reference!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.AttemptToDerefNULL )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_catsub(c), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	
+	try
+	
+		str.a_catsub( substr, 33, 0, rsltStr );
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_catsub(d) did not catch invalid index!" nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+		
+	  exception( ex.StringIndexError )
+	  
+	  	// This is the case we expect
+		
+	  anyexception
+	  
+		stderr.put
+		( 
+			nl nl 
+			"***************************************************" nl
+			"str.a_catsub(d), unexpected exception! EAX=", eax, nl 
+			"***************************************************" nl
+			nl 
+		);
+		stdout.put( "Press Enter to Continue: " );
+		stdin.readLn();
+		os.exitProcess(1);
+
+	endtry;
+	stdout.put( "str.a_catsub succeeded!" nl );
+			
+
+			
+			
+end strcset_test;
+
+													

@@ -1,0 +1,82 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+#if( ! @defined( mem_hhf ))
+?mem_hhf := true;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#includeonce( "os.hhf" )
+#includeonce( "memory.hhf" )
+#includeonce( "excepts.hhf" )
+#includeonce( "_hla.hhf" )
+
+const
+
+	// Note: in order to allow aligned allocations of up to 64K, 
+	// allocChunk must be at least 128K.
+	
+	allocChunk	:= 1024*1024;	// Extend the heap by this amount.
+	
+	memblkEAX	:text := "(type memblock [eax])";
+	memblkEBX	:text := "(type memblock [ebx])";
+	memblkECX	:text := "(type memblock [ecx])";
+	memblkEDX	:text := "(type memblock [edx])";
+
+
+type
+	memblock:
+		record
+			prev		:dword;
+			next		:dword;
+			prevInList	:dword;
+			nextInList	:dword;
+			size		:dword;
+			refCount	:dword;
+		endrecord;
+	
+static
+	endDataSeg	:dword; @global:_hla._ext( "mem_hhf_endDataSeg" );
+	listHead	:dword; @global:_hla._ext( "mem_hhf_listHead" );
+	listEnd		:dword; @global:_hla._ext( "mem_hhf_listEnd" );
+	freeList	:dword; @global:_hla._ext( "mem_hhf_freeList" );
+	
+
+procedure blockAlloc( size:dword in eax ); @global:_hla._ext( "MEM_BLOCKALLOC" );
+
+#if( @thread )
+
+	namespace _hla;
+
+		procedure memCSenter; 				_ext( "MEM_MEMCSENTER" );
+		procedure memCSleave; 				_ext( "MEM_MEMCSLEAVE" );
+		procedure isInHeap( memptr:dword);	_ext( "HLA_ISINHEAP" );
+		procedure alloc1( size:dword );		_ext( "HLA_ALLOC1" );
+		procedure free( memptr:dword );		_ext( "HLA_FREE" );
+		
+	end _hla;
+
+#else	// !@thread
+
+	namespace _hla;
+
+		procedure isInHeap( memptr:dword);	_ext( "HLA_ISINHEAP" );
+		procedure alloc1( size:dword );		_ext( "MEM_ALLOC1" );
+		procedure free( memptr:dword );		_ext( "MEM_FREE" );
+		
+	end _hla;
+	
+#endif // @thread
+
+#endif

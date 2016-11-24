@@ -1,0 +1,121 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit stringUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "strings.hhf" );
+#include( "excepts.hhf" );
+
+
+/**********************************************************/
+/*                                                        */
+/* irchpos3-                                              */
+/*                                                        */
+/* Similar to rchpos3 except that this procedure does a   */
+/* case insensitive comparison.                           */
+/*                                                        */
+/**********************************************************/
+
+
+
+
+procedure str.irchpos3( src1:string; offs:dword; src2:char ); 
+	@noframe;
+begin irchpos3;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( ecx );
+	push( edi );
+	
+	mov( src1, edi );
+	test( edi, edi );
+	jz AttemptToDerefNULL;
+
+		// If there are any characters in this string, scan from the
+		// end of the string to the beginning of the string looking
+		// for the specified character.
+		
+		mov( (type str.strRec [edi]).length, ecx );
+		mov( offs, eax );
+		cmp( eax, ecx );
+		jae StringIndexError;
+		
+		test( ecx, ecx );				// Won't find the char in an empty string.
+		jz notFound;
+				
+			add( ecx, edi );			// Pt at end of string.
+			sub( eax, ecx );			// Compute # of chars to scan.
+			mov( src2, al );
+			add( 1, ecx );				// Make up for sub, below.
+			
+			// EDI points at zero byte, so no add(1, edi) here.
+			
+			scasbLoop:
+				sub( 1, edi );
+				sub( 1, ecx );
+				jz notFound;
+				
+				cmp( al, [edi] );
+				je foundIt;
+					
+					// If the chars did not match, try
+					// swapping the case of one of the chars
+					// and try again:
+					
+					mov( [edi], ah );
+					cmp( ah, 'a' );
+					jb scasbLoop;
+					cmp( ah, 'z' );
+					ja scasbLoop;
+					
+					and( $5f, ah );
+					cmp( al, ah );
+					jne scasbLoop;
+				
+				foundIt:
+				sub( src1, edi );		// Compute index+1 (edi was inc'd!).
+				mov( edi, eax );		// Return index in eax.
+				jmp Found;
+		
+				
+			
+		notFound:		
+		mov( -1, eax );		// Deprecated!
+			
+
+	Found:
+	pop( edi );
+	pop( ecx );
+	pop( ebp );
+	cmp( eax, -1 );		// Set carry on success, clear if no match.
+	ret( _parms_ );	
+	
+AttemptToDerefNULL:
+	raise( ex.AttemptToDerefNULL );
+
+StringIndexError:
+	raise( ex.StringIndexError );
+
+end irchpos3;
+
+end stringUnit;
+
+
+
+
+	
+

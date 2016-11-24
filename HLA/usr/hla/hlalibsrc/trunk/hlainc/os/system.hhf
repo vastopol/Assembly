@@ -1,0 +1,86 @@
+#if( ! @defined( system_hhf ))
+?system_hhf := true;
+
+namespace linux; @fast;
+
+	// The __dummy[] arguments forces the use
+	// of "()" after these macros so they better
+	// match the C syntax.
+	
+	#macro mb(__dummy[]);
+		returns
+		({
+			lock.add( 0, (type dword [esp]));
+		},"" )
+	#endmacro
+	
+	#macro rmb(__dummy[]);
+		returns
+		({
+			lock.add( 0, (type dword [esp]));
+		}, "" )
+	#endmacro
+	
+	#macro wmb(__dummy[]);
+		// Current intel CPUs already order writes.
+	#endmacro
+	
+	#macro set_mb(__var, __value);
+		returns
+		({
+			push( eax );
+			mov( __value, eax );
+			xchg( eax, __var );
+			pop( eax );
+		},"" )
+	#endmacro
+	
+	#macro set_wmb(__var, __value );
+		returns
+		({
+			push( eax );
+			mov( __value, eax );
+			mov( eax, __var );
+			pop( eax );
+		}, "", )
+	#endmacro
+
+
+	#if( @defined( __smp__ ))
+		
+		procedure __global_cli; @cdecl; @external;
+		procedure __global_sti; @cdecl; @external;
+		
+	#endif
+	
+	#macro _cli;
+		returns
+		({
+			#if( @defined( __smp__ ))
+				__global_cli();
+			#else
+				cli();
+			#endif
+		}, "eax" )
+	#endmacro
+	
+	
+	
+	#macro _sti;
+		returns
+		({
+			#if( @defined( __smp__ ))
+				__global_sti();
+			#else
+				sti();
+			#endif
+		}, "eax" )
+	#endmacro
+	
+	
+	
+	
+	
+
+end linux;
+#endif // system_hhf

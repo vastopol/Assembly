@@ -1,0 +1,69 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit DateTime;
+#include( "datetime.hhf" )
+#include( "excepts.hhf" )
+
+	
+// durationToSecs-
+//
+//	This procedure converts a duration expressed as hours, minutes
+// and seconds to an integral number of seconds. It returns the
+// result in EAX.
+
+procedure time.secsToDuration
+( 
+		seconds	:uns32; 
+	var hours	:word; 
+	var mins	:byte; 
+	var secs	:byte
+); 
+	@nodisplay; 
+	@noframe;
+begin secsToDuration;
+
+	push( ebp );
+	mov( esp, ebp );
+	push( eax );
+	push( ebx );
+	push( edx );
+	
+	mov( seconds, eax );
+	cmp( eax, ($FFFF << 16) + (59 << 8) + 59 );
+	ja badSecs;
+	
+	xor( edx, edx );
+	div( 60, edx:eax );
+	mov( secs, ebx );
+	mov( dl, [ebx] );
+	xor( edx, edx );
+	div( 60, edx:eax );
+	mov( mins, ebx );
+	mov( dl, [ebx] );
+	mov( hours, ebx );
+	mov( ax, [ebx] );
+	
+	pop( edx );
+	pop( ebx );
+	pop( eax );
+	pop( ebp );
+	ret( _parms_ );
+	
+badSecs:
+	raise( ex.TimeOverflow );
+					
+end secsToDuration;
+	
+end DateTime;			

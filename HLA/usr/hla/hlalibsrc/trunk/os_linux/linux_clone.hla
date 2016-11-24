@@ -1,0 +1,140 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit LinuxUnit;
+#include( "linux.hhf" )
+
+// clone: Starts a thread.
+//
+//	This one can't be a trivial wrapper function because
+// creating a new thread also creates a new stack for the
+// child thread.  Therefore, things like return addresses
+// and parameters only belong to the parent thread.  Since
+// this procedure gets called by the parent, we have to
+// pull some tricks to make sure we can still return to
+// the caller from both the parent and the child thread.
+
+procedure linux.sysclone( var child_stack:var; flags:dword ); 
+	@nodisplay; 
+	@noframe;
+	
+begin sysclone;
+
+	push( ebx );
+	push( ecx );
+	
+	// Okay, we've got to copy the EBX, ECX, and
+	// return address values to the child's stack.
+	// Note that the stack looks like this:
+	//
+	// Parent:
+	//
+	//	child_stack	+16
+	//	flags		+12
+	//	return		+8
+	//	ebx			+4
+	//	ecx			+0 (esp)
+	//
+
+	mov( [esp+16], eax );		// Get ptr to child's stack.
+	sub( 20, eax );				// Make it look like parent's.
+	mov( ebx, [eax+4] );		// Simulate the pushes
+	mov( ecx, [eax] ); 
+	mov( [esp+8], ebx );		// Copy the return address.
+	mov( ebx, [eax+8] );
+	
+	mov( eax, ecx );			// sys_clone expects ESP in ECX.
+	mov( [esp+12], ebx );		// Get flags parameter into EBX.
+	mov( linux.sys_clone, eax );
+	int( $80 );
+	
+	pop( ecx );					// Cleans up the stack for
+	pop( ebx );					//  both parent and child after
+	ret( 8 );					//  all the work above.
+		
+end sysclone;
+
+
+procedure linux.clone
+(
+		fn			:linux.clonefn_t;
+	var	child_stack	:var;
+		flags		:dword;
+		arg			:dword
+);
+	@nodisplay;
+	@noalignstack;
+	
+begin clone;
+	
+	begin InvalidArgument;
+	
+		xor( eax, eax );
+		cmp( eax, fn );
+		exitif( @e ) InvalidArgument;
+		cmp( eax, child_stack );
+		exitif( @e ) InvalidArgument;
+		
+		// Set up the new stack:
+		
+		mov( child_stack, eax );
+		sub( 16, eax );		// Create room on new stack for rtnadrs & arg
+		
+		// Copy the argument to the new stack:
+		
+		push( arg );
+		pop( (type dword [eax+12]) );
+		
+		// Copy the start address to the child stack as a temporary
+		// measure while we switch stacks:
+		
+		push( (type dword fn ) );
+		pop( (type dword [eax+8]) );
+		
+		// Save EBX and ECX on both stacks
+		
+		push( ebx );
+		push( ecx );
+		mov( ebx, [eax+4] );
+		mov( ecx, [eax] );
+		
+		// Do the sysclone system call:
+		
+		mov( flags, ebx );
+		mov( eax, ecx );
+		mov( linux.sys_clone, eax );
+		int( $80 );
+		
+		// Retrieve EBX and ECX from the stack (which stack depends upon
+		// the particular return from sys_clone).
+		
+		pop( ecx );
+		pop( ebx );
+		
+		test( eax, eax );
+		exitif( @s || @nz ) clone;	// Exit if parent or an error occurs.
+		
+		// Invoke the thread here
+		
+		xor( ebp, ebp );			// ebp=0 marks end of stack frame.
+		pop( eax );					// Get fn address (pushed on stack earlier)
+		call( eax );				// Call the thread's code.
+		linux._exit( eax );			// Terminate thread.
+	
+	end InvalidArgument;
+	mov( errno.einval, eax );
+
+end clone;
+
+end LinuxUnit;

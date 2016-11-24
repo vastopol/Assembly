@@ -1,0 +1,63 @@
+
+// I, Randall Hyde, hereby agree to waive all claim of copyright (economic
+// and moral) in all content contributed by me, the user, and immediately
+// place any and all contributions by me into the public domain; I grant
+// anyone the right to use my work for any purpose, without any
+// conditions, to be changed or destroyed in any manner whatsoever
+// without any attribution or notice to the creator.  I also absolve myself
+// of any responsibility for the use of this code, the user assumes all
+// responsibilities for using this software in an appropriate manner.
+//
+// Notice of declaration of public domain, 7/12/2006, by Randall Hyde
+
+
+
+unit blobUnit;
+?@nodisplay := true;
+?@nostackalign := true;
+
+#include( "blobs.hhf" )
+#include( "hla.hhf" )
+
+
+// blob.cate80-                                              
+//                                                          
+// Converts the "r" parameter from real80 format to a string
+// (using the format options) and concatenates this to the  
+// end of blob "dest".                                           
+
+
+procedure blob.cate80
+( 
+	dest	:blob.blob; 
+	r		:real80; 
+	width	:uns32 
+);  @noframe;
+begin cate80;
+
+	push( ebp );
+	mov( esp, ebp );
+	
+	push( eax );
+	hla.pute80
+	( 
+		#{	// Push (pseudo) thunk object on stack: 
+			pushd( &blob._cats );
+			push( dest );	// Fake EBP value
+		}#, 
+		r,
+		width 
+	);
+	pop( eax );
+	leave();
+	ret( _parms_ );
+	
+end cate80;
+
+end blobUnit;
+
+
+
+
+	
+
