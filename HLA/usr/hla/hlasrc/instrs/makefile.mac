@@ -1,0 +1,24 @@
+all: clearScrn clean otoolCmp hla/maketest
+	cd hla; maketest macos; make
+
+
+hla/maketest: maketest.hla
+	hla -gasx -source -p:tmp maketest.hla
+	cp maketest hla
+
+
+otoolCmp: otoolCmp.hla
+	hla -gasx -source -p:tmp otoolCmp
+	cp otoolCmp hla
+
+clearScrn:
+	clear
+	
+clean: 
+	rm -f -r tmp/*
+	rm -f -r hla/*
+	rm -f -r maketest
+	rm -f -r otoolCmp
+	
+
+

@@ -1,0 +1,242 @@
+program doInc;
+#include( "stdlib.hhf" )
+
+static
+
+	// Windows function that returns the value for the "hlainc"
+	// environment string:
+	
+	ExpandEnvironmentStrings: procedure
+	(
+		lpSrc: string;
+		lpDst: string;
+		nSize: dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		external( "__imp__ExpandEnvironmentStringsA@12" );
+
+
+/*
+.include "largeint.extpub.inc"
+include	largeint.extpub.inc
+#include( "hll.hhf" )
+*/
+
+static
+	filename	:string;
+	incTable	:pointer to table;
+	hlaincPath	:str.strvar(256);
+	
+	
+	procedure openFile( fname:string ); @nodisplay;
+	var
+		handle	:dword;
+		fullpath:string;
+		
+	begin openFile;
+	
+		try
+		
+			fileio.open( fname, fileio.r );
+			mov( eax, handle );
+			
+		  anyexception
+		  
+		  	str.a_cat( hlaincPath, fname );
+			mov( eax, fullpath );
+			try
+			
+				fileio.open( fullpath, fileio.r );
+				mov( eax, handle );
+				
+			  anyexception
+			  
+			  	stdout.put( "Could not open '", fullpath, "'" nl );
+				mov( 0, handle );
+				
+			endtry;
+			strfree( fullpath );
+			
+		endtry;
+		mov( handle, eax );	  	
+			
+	end openFile;
+	
+	procedure doFile( fname:string ); @nodisplay;
+	var
+		fileHandle	:dword;
+		tinput		:string;
+		lcinput		:string;
+		input		:string;
+		
+	begin doFile;
+	
+		stralloc( 256 );
+		mov( eax, input );
+		stralloc( 256 );
+		mov( eax, lcinput );
+		
+		openFile( fname );
+		mov( eax, fileHandle );
+		exitif( eax = 0 ) doFile;
+		
+		while( !fileio.eof( fileHandle )) do
+		
+			fileio.gets( fileHandle, input );
+			str.a_trim( input );
+			mov( eax, tinput );
+			str.cpy( tinput, lcinput );
+			str.lower( lcinput );
+			if( str.prefix( lcinput, "include" )) then
+			
+				str.length( tinput );
+				sub( 7, eax );
+				str.a_substr( tinput, 7, eax );
+				push( eax );
+				strfree( tinput );
+				pop( tinput );
+				str.trim( tinput );
+				
+				if( incTable.lookup( tinput ) = 0 ) then
+				
+					incTable.getNode( tinput );
+					doFile( tinput );
+					
+				endif;
+			
+			elseif( str.prefix( lcinput, ".include" )) then
+			
+				str.length( tinput );
+				sub( 8, eax );
+				str.a_substr( tinput, 8, eax );
+				push( eax );
+				strfree( tinput );
+				pop( tinput );
+				str.trim( tinput );
+				str.length( tinput );
+				sub( 2, eax );
+				str.a_substr( tinput, 1, eax );
+				push( eax );
+				strfree( tinput );
+				pop( tinput );
+				
+				if( incTable.lookup( tinput ) = 0 ) then
+				
+					incTable.getNode( tinput );
+					doFile( tinput );
+					
+				endif;
+			
+			elseif( str.prefix( lcinput, "#include(" )) then
+			
+				str.length( tinput );
+				sub( 9, eax );
+				str.a_substr( tinput, 9, eax );
+				push( eax );
+				strfree( tinput );
+				pop( tinput );
+				str.trim( tinput );
+				str.length( tinput );
+				str.rchpos( tinput, '"' );
+				dec( eax );
+				str.a_substr( tinput, 1, eax );
+				push( eax );
+				strfree( tinput );
+				pop( tinput );
+				
+				if( incTable.lookup( tinput ) = 0 ) then
+				
+					incTable.getNode( tinput );
+					doFile( tinput );
+					
+				endif;
+
+			elseif( str.prefix( lcinput, "#includeonce(" )) then
+			
+				str.length( tinput );
+				sub( 13, eax );
+				str.a_substr( tinput, 13, eax );
+				push( eax );
+				strfree( tinput );
+				pop( tinput );
+				str.trim( tinput );
+				str.length( tinput );
+				str.rchpos( tinput, '"' );
+				dec( eax );
+				str.a_substr( tinput, 1, eax );
+				push( eax );
+				strfree( tinput );
+				pop( tinput );
+				
+				if( incTable.lookup( tinput ) = 0 ) then
+				
+					incTable.getNode( tinput );
+					doFile( tinput );
+					
+				endif;
+			
+			else
+			
+				stdout.put( input, nl );
+				
+			endif;
+			strfree( tinput );
+					
+		endwhile;
+		
+		strfree( input );
+		strfree( lcinput );
+	
+	end doFile;
+	
+	procedure JustReturn;
+	begin JustReturn;
+	end JustReturn;
+	
+	
+begin doInc;
+
+	// Begin by getting the path to the HLA include directory:
+	
+	ExpandEnvironmentStrings( "%hlainc%", hlaincPath, 255 );
+	
+	// ExpandEnvironmentStrings returns a C-String, convert it
+	// to an HLA string:
+	
+	mov( hlaincPath, ebx );
+	dec( eax );
+	mov( eax, (type str.strRec [ebx]).length );
+	mov( 255, (type str.strRec [ebx]).MaxStrLen );
+	if( eax = 0 ) then
+	
+		stdout.put( "Could not find path to HLA include library" nl );
+		exit doInc;
+		
+	endif;
+	str.trim( hlaincPath );
+	str.cat( "\", hlaincPath );
+	
+	
+	// Initialize the table that will hold the include filenames:
+	
+	mov( table.create( 256 ), incTable );
+
+	// Get the filename from the command line:
+	
+	if( arg.c() != 2 ) then
+	
+		stdout.put( "Usage: doInc filename" nl );
+		exit doInc;
+		
+	endif;
+	mov( arg.v(1), filename );
+	
+	doFile( filename );
+	
+	incTable.destroy( &JustReturn );
+	
+	
+	
+		
+end doInc;

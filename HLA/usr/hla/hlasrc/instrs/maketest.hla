@@ -1,0 +1,4310 @@
+// HLA Instruction test program. 
+//
+// This program creates a set of HLA source files that can be compiled to
+// EXEs (or Linux executables) with MASM v6.14, MASM v7.x, FASM, or GAS.
+// It also produces a set of equivalent MASM6, MASM7, FASM, and Gas source
+// files that can also be assembled to EXEs (or Linux/FreeBSD/Mac executables). 
+// Finally, this program also produces a set of make files that will run the
+// executable, compile those output files, and compare them to see if they
+// are all the same.
+//
+// ----------------------------------------------------------------------------
+// NOTE: It is important to realize that this source file compiles into
+// an executable program the constructs the test files. This source file
+// is *not* the test file itself.  After compiling this source file, with
+// the appropriate arguments (for which assembler to test against), you
+// run the result to generate the actual test files.
+// ----------------------------------------------------------------------------
+//
+//
+// Note: this program just run in a directory with the following structure:
+//
+// test -- contains the makefile and this source file
+//  |
+//  +-- HLA
+//
+// CD'ing into test and executing "make" will produce all test files and run all
+// the tests. Alternately, you can run a single set of tests with one of the
+// following commands:
+//
+//	make
+//		(Creates all files and runs all tests)
+//
+//
+// You will need a *lot* of free disk space to run this set of tests.
+//
+// Also, expect this test to take a while to run. It's going to take a while to
+// generate all the test files and then turn around and assemble them.
+// BE PATIENT!
+
+
+program makeTest;
+#includeonce( "stdlib.hhf" )
+?@nodisplay := true;
+
+
+
+
+// Some global variables this program uses:
+
+static
+	fileHandle	:dword;		// Output file handle used by source emission code
+	destOp		:string;	// Instruction destination operand
+	srcOp		:string;	// Instruction source operand (or count)
+	cntOp		:string;	// Third operand for those instrs with 3 operands
+	
+	fileCnt		:uns32 := 0;	// Number of files created.
+	files		:string[4096];	// List of files created.
+	
+	theOS		:string;
+
+
+
+
+const
+
+	lock_add		:text := "lock.add";
+	lock_adc		:text := "lock.adc";
+	lock_sub		:text := "lock.sub";
+	lock_sbb		:text := "lock.sbb";
+	lock_and		:text := "lock.and";
+	lock_or			:text := "lock.or";
+	lock_xor		:text := "lock.xor";
+	lock_xadd		:text := "lock.xadd";
+	lock_cmpxchg	:text := "lock.cmpxchg";
+	lock_xchg		:text := "lock.xchg";
+	lock_dec		:text := "lock.dec";
+	lock_inc		:text := "lock.inc";
+	lock_neg		:text := "lock.neg";
+	lock_not		:text := "lock.not";
+	lock_btc		:text := "lock.btc";
+	lock_btr		:text := "lock.btr";
+	lock_bts		:text := "lock.bts";
+
+	typed_anon8		:text := 
+		"(type byte [eax]), (type byte [eax+ebx+1]), " 
+			"(type byte [eax+ebx*2+256])";
+
+	typed_anon16	:text := 
+		"(type word [eax]), (type word [eax+ebx+1]), " 
+			"(type word [eax+ebx*2+256])";
+
+	typed_anon32	:text := 
+		"(type dword [eax]), (type dword [eax+ebx+1]), " 
+			"(type dword [eax+ebx*2+256])";
+
+	typed_anon48	:text := 
+		"(type dword [eax]), (type dword [eax+ebx+1]), " 
+			"(type dword [eax+ebx*2+256])";
+
+	typed_anon64	:text := 
+		"(type qword [eax]), (type qword [eax+ebx+1]), " 
+			"(type qword [eax+ebx*2+256])";
+
+	typed_anon80	:text := 
+		"(type tbyte [eax]), (type tbyte [eax+ebx+1]), " 
+			"(type tbyte [eax+ebx*2+256])";
+	
+	anon80		:text := 
+		"(type tbyte [eax]), (type tbyte [eax+ebx+1]), " 
+			"(type tbyte [eax+ebx*2+256])";
+
+	typed_anon128	:text := 
+		"(type lword [eax]), (type lword [eax+ebx+1]), " 
+			"(type lword [eax+ebx*2+256])";
+
+
+	typed_anonR32	:text := 
+		"(type real32 [eax]), (type real32 [eax+ebx+1]), " 
+			"(type real32 [eax+ebx*2+256])";
+
+	typed_anonR64	:text := 
+		"(type real64 [eax]), (type real64 [eax+ebx+1]), " 
+			"(type real64 [eax+ebx*2+256])";
+
+	typed_anonR80	:text := 
+		"(type real80 [eax]), (type real80 [eax+ebx+1]), " 
+			"(type real80 [eax+ebx*2+256])";
+
+
+
+
+const
+	// The following is the list of registers that can be used as
+	// base registers in an 80x86 memory addressing mode:
+	 
+	baseRegs  		:= ["eax", "ebx", "ebp", "esp" ];
+	baseRegs_all	:= ["eax", "ebx", "ecx", "edx", "esp", "ebp", "esi", "edi"];
+
+	// The following are a few sample displacements. Note that the
+	// code generates positive and negative offsets using these
+	// values. The numbers have been chosen to exercise both one and
+	// four-byte displacements (notice the boundary values +/-127 and
+	// +/- 128, plus 65536 which guarantees a 4-byte displacement).
+
+	disps	  	:= ["0", "1", "127", "128", "65536" ];
+	disps_all	:= ["-32768", "-128", "-1", "0", "1", "127", "128", "65536" ];
+
+	// Construct a list of legal operands for use as scaled indexed
+	// addressing mode arguments. E.g., eax*1, ebx*2, ecx*4, edx*8, etc.
+	
+	#print( "Building scaled indexed addressing mode lists" )
+	
+	// The following are the registers that may legally be used
+	// in an 80x86 scaled index addressing mode as an index register.
+	// _indexRegs is a special version for the indexList loop below.  
+
+	indexRegs  := ["eax", "ebx", "ebp"];
+	_indexRegs := ["ebp", "esi" ];
+
+	indexRegs_all  := ["eax", "ebx", "ecx", "edx", "ebp", "esi", "edi"];
+	_indexRegs_all := ["eax", "ebx", "ecx", "edx", "ebp", "esi" ];
+
+	// The following are the list of scaling values (including the
+	// empty string, which is *generally* equivalent to "*1").
+
+	scales	  := ["", "*1", "*2", "*4", "*8"];
+
+	// Generate a list of all possible scaled index addressing modes
+	// by taking the cross-product of indexRegs with scales.
+
+	indexList :=
+	[
+		#for( curIndex in indexRegs )
+			#for( curScale in scales )
+				curIndex + curScale,
+			#endfor
+		#endfor
+	];
+	
+
+	indexList_all :=
+	[
+		#for( curIndex in indexRegs_all )
+			#for( curScale in scales )
+				curIndex + curScale,
+			#endfor
+		#endfor
+	];
+	
+
+///////////////////////////////////////////////////////////////////////////
+//
+// memList-
+//
+// Used to generate a (very large) list of addressing mode variants
+// of the identifier passed as a parameter. The resulting list is
+// to be passed to the makeList macro. Note: do not pass automatic
+// variable (VAR and parameter) to this guy as it will generate
+// illegal addressing modes if you do.
+//
+// Argument-
+//	m-	The name of some variable (e.g.: sgb, sgw, sgd, etc.)
+//
+// Returns:
+//	A list of strings (i.e., an array of strings constant) that consists
+//  of the variable name concatenated with each possible addressing mode
+//	variant, e.g.,
+//
+//		sgb, sgb[1], sgb[eax], sgb[eax+1], sgb[eax+eax], etc., etc.
+//
+// (the list is *very* long as there are a large number of possible
+//	combinations).
+
+val	// For performance (of compilation) reasons, use globals
+	// rather than local macro symbols for the following.
+	// The use of globals is okay, because no one else uses
+	// these and memList is not recursive
+
+	ml_name			:string;
+	ml_base			:string;
+	ml_index		:string;
+	ml_scale		:string;
+	ml_disp			:string;
+	ml_curPlusMode	:string;
+	ml_curMinusMode	:string; 
+	ml_mode			:string;
+	ml_mResult		:string;
+	ml_varPosition	:string;
+	ml_varPos2		:string;
+
+#macro memList( m[] );
+
+	#if( @elements(m) > 1 )
+		#error( "memList requires zero or one arguments" )
+	#elseif( @elements(m) = 1 )
+		?ml_name := m[0];
+	#else
+		?ml_name := "";
+	#endif
+	?ml_mResult := "";
+	
+		?ml_varPosition	:= ml_name + "[";  
+		?ml_varPos2		:= ml_varPosition;  
+	
+	
+	// Handle addressing mode items of the form [base+index+/-disp]:
+	
+	#for( ml_base in baseRegs )
+		#for( ml_disp in disps )
+			#for( ml_index in indexList )
+
+				// Because ml_mResult can get quite large, concatenate to
+				// it only once and build up the temp string to concatenate
+				// with it. This will speed up compilation a bit.
+
+				?ml_curPlusMode :=  ml_varPosition +
+					ml_base + "+" + ml_index + "+" + ml_disp + "],";
+
+				?ml_curMinusMode := ml_varPosition +
+					ml_base + "+" + ml_index + "-" + ml_disp + "],";
+
+				?ml_mode := ml_curPlusMode + ml_curMinusMode;
+				?ml_mResult := ml_mResult + ml_mode;
+
+			#endfor				
+		#endfor
+	#endfor
+	
+	// Handle addressing mode items of the form [base+/-disp]:
+	
+	#for( base in baseRegs )
+		#for( disp in disps )
+
+			?ml_curPlusMode := ml_varPosition + base + "+" + disp + "],";
+			?ml_curMinusMode := ml_varPosition + base + "-" + disp + "],"; 
+			?ml_mode := ml_curPlusMode + ml_curMinusMode;
+			?ml_mResult := ml_mResult + ml_mode;
+
+		#endfor
+	#endfor
+	
+	// Handle addressing mode items of the form [index+/-disp]:
+	
+	#for( index in indexRegs )
+		#for( disp in disps )
+
+			?ml_curPlusMode := ml_varPosition + index + "+" + disp + "],";
+			?ml_curMinusMode := ml_varPosition + index + "-" + disp + "],"; 
+			?ml_mode := ml_curPlusMode + ml_curMinusMode;
+			?ml_mResult := ml_mResult + ml_mode;
+
+		#endfor
+	#endfor
+	
+	// Handle addressing mode items of the form [base+index]:
+	
+	#for( base in baseRegs )
+		#for( index in indexRegs )
+
+			?ml_mode := ml_varPosition + base + "+" + index + "],";
+			?ml_mResult := ml_mResult + ml_mode;
+
+		#endfor
+	#endfor
+	
+	// Handle addressing mode items of the form [base] and [index]:
+	
+	#for( index in indexRegs )
+
+		?ml_mode := ml_varPosition + index + "],";
+		?ml_mResult := ml_mResult + ml_mode;
+
+	#endfor
+	
+	// Must do [ESP] manually as that's not part of the indexRegs list:
+	
+	?ml_mResult := ml_mResult +
+		ml_varPosition + "esp],";
+	
+
+	// Handle addressing mode items of the form [{-}disp]:
+	
+	#if( ml_name <> "" )
+
+		#for( disp in disps )
+
+			?ml_curPlusMode := ml_varPosition + disp + "],";
+			?ml_curMinusMode := ml_varPos2 + "-" + disp + "],"; 
+			?ml_mode := ml_curPlusMode + ml_curMinusMode;
+			?ml_mResult := ml_mResult + ml_mode;
+
+		#endfor
+
+	#endif
+	
+	// Handle the identifier by itself:
+	
+	ml_mResult + ml_name
+		
+	
+#endmacro  
+
+#macro memList_all( m[] );
+
+	#if( @elements(m) > 1 )
+		#error( "memList requires zero or one arguments" )
+	#elseif( @elements(m) = 1 )
+		?ml_name := m[0];
+	#else
+		?ml_name := "";
+	#endif
+	?ml_mResult := "";
+	
+		?ml_varPosition	:= ml_name + "[";  
+		?ml_varPos2		:= ml_varPosition;  
+	
+	
+	// Handle addressing mode items of the form [base+index+/-disp]:
+	
+	#for( ml_base in baseRegs_all )
+		#for( ml_disp in disps_all )
+			#for( ml_index in indexList_all )
+
+				// Because ml_mResult can get quite large, concatenate to
+				// it only once and build up the temp string to concatenate
+				// with it. This will speed up compilation a bit.
+
+				?ml_curPlusMode :=  ml_varPosition +
+					ml_base + "+" + ml_index + "+" + ml_disp + "],";
+
+				?ml_curMinusMode := ml_varPosition +
+					ml_base + "+" + ml_index + "-" + ml_disp + "],";
+
+				?ml_mode := ml_curPlusMode + ml_curMinusMode;
+				?ml_mResult := ml_mResult + ml_mode;
+
+			#endfor				
+		#endfor
+	#endfor
+	
+	// Handle addressing mode items of the form [base+/-disp]:
+	
+	#for( base in baseRegs_all )
+		#for( disp in disps_all )
+
+			?ml_curPlusMode := ml_varPosition + base + "+" + disp + "],";
+			?ml_curMinusMode := ml_varPosition + base + "-" + disp + "],"; 
+			?ml_mode := ml_curPlusMode + ml_curMinusMode;
+			?ml_mResult := ml_mResult + ml_mode;
+
+		#endfor
+	#endfor
+	
+	// Handle addressing mode items of the form [index+/-disp]:
+	
+	#for( index in indexRegs_all )
+		#for( disp in disps_all )
+
+			?ml_curPlusMode := ml_varPosition + index + "+" + disp + "],";
+			?ml_curMinusMode := ml_varPosition + index + "-" + disp + "],"; 
+			?ml_mode := ml_curPlusMode + ml_curMinusMode;
+			?ml_mResult := ml_mResult + ml_mode;
+
+		#endfor
+	#endfor
+	
+	// Handle addressing mode items of the form [base+index]:
+	
+	#for( base in baseRegs_all )
+		#for( index in indexRegs_all )
+
+			?ml_mode := ml_varPosition + base + "+" + index + "],";
+			?ml_mResult := ml_mResult + ml_mode;
+
+		#endfor
+	#endfor
+	
+	// Handle addressing mode items of the form [base] and [index]:
+	
+	#for( index in indexRegs_all )
+
+		?ml_mode := ml_varPosition + index + "],";
+		?ml_mResult := ml_mResult + ml_mode;
+
+	#endfor
+	
+	// Must do [ESP] manually as that's not part of the indexRegs list:
+	
+	?ml_mResult := ml_mResult +
+		ml_varPosition + "esp],";
+	
+
+	// Handle addressing mode items of the form [{-}disp]:
+	
+	#if( ml_name <> "" )
+
+		#for( disp in disps_all )
+
+			?ml_curPlusMode := ml_varPosition + disp + "],";
+			?ml_curMinusMode := ml_varPos2 + "-" + disp + "],"; 
+			?ml_mode := ml_curPlusMode + ml_curMinusMode;
+			?ml_mResult := ml_mResult + ml_mode;
+
+		#endfor
+
+	#endif
+	
+	// Handle the identifier by itself:
+	
+	ml_mResult + ml_name
+		
+	
+#endmacro  
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// memIndex-
+//	Similar to memList, but this macro generates addressing modes that
+// have *only* an index register, with no base register. This is primarily
+// used when accessing automatic variables and parameters, which already
+// use the EBP register as a base register.
+//
+//	The result of this macro's expansion is something like the following:
+//
+//		vlb[1], vlb[eax], vlb[eax+1], vlb[eax*2], vlb[eax*8+1], etc.
+// 
+// As for memList, we'll make the following objects globals to save
+// a little compile time.
+
+val
+	mi_index		:string;
+	mi_scale		:string;
+	mi_disp			:string;
+	mi_mode			:string;
+	mi_mResult		:string;
+	mi_varPosition	:string;
+	mi_plusMode		:string;
+	mi_minusMode	:string; 
+
+#macro memIndex_all( m );
+
+	?mi_mResult := "";
+	?mi_varPosition := @string(m) + "[";  
+	#for( mi_index in indexRegs_all )
+		#for( mi_disp in disps_all )
+
+			?mi_plusMode := mi_varPosition + mi_index + "+" + mi_disp + "],";
+			?mi_minusMode := mi_varPosition + mi_index + "-" + mi_disp + "],";
+			?mi_mode := mi_plusMode + mi_minusMode;
+			?mi_mResult := mi_mResult +	mi_mode;
+
+		#endfor
+	#endfor
+
+	// Handle addressing mode items of the form [base] and [index]:
+	
+	#for( mi_index in indexRegs_all )
+		?mi_mode := mi_varPosition + mi_index + "],";
+		?mi_mResult := mi_mResult + mi_mode;
+	#endfor
+	
+	// Must do [ESP] manually as that's not part of the indexRegs list:
+	
+	?mi_mResult := mi_mResult +
+		mi_varPosition + "esp],";
+	
+
+	// Handle addressing mode items of the form [{-}disp]:
+	
+	#for( mi_disp in disps_all )
+
+		?mi_plusMode := mi_varPosition + mi_disp + "],";
+		?mi_minusMode := mi_varPosition + "-" + mi_disp + "],";
+		?mi_mode := mi_plusMode + mi_minusMode;
+		?mi_mResult := mi_mResult +	mi_mode;
+
+	#endfor
+	
+	// Handle the identifier by itself:
+	
+	mi_mResult + @string(m)
+		
+	
+#endmacro
+
+////////////////////////////////////////////////////////////////////////////
+//
+// memList and memIndex are used to create generic lists. 
+// The following declarations are where this code generates the specific
+// lists the program uses.
+// 
+// Create the cross products of all the variables we use with
+// all of the possible addressing modes. Each of the constants
+// below is a *large* list that gets fed into the makeList macro.
+//
+// Variable names have the following meaning:
+//
+// SCZ:
+//	S=Storage class (s=static, v=var [automatic], p=parameter [automatic])
+//	C=sCope (g=global, l = local)
+//	Z=siZe  (b=byte, w=word, d=dword, f=fword, q=quadword, l=lword/oword,
+//				r32=real32/real4, r64=real64/real8, r80=real80/real10)
+//
+//	e.g., sgb is a static global byte object.
+//
+// Each of the following const declaration creates an array of strings
+// with all of the addressing mode variants attached to a given variable
+// name.
+//
+// Note on compile-time versus run-time naming conventions:
+//	Names passed to memList or MemIndex are names that are used at run time
+// (that is, when this program is compiled and executed). The constant names
+// (the stuff appearing before the ":string" below) are used by the HLA
+// compile-time language during compilation. To avoid confusion over the
+// compile-time object and run-time object I've used the same name for both.
+// If you understand the difference between compile-time and run-time objects,
+// just note that this does the right thing. I did this to help avoid
+// confusing those who may not know the difference between the scope of these
+// objects.  In any case, const names like sgb and sgw refer to string
+// array constants that will be used to emit string arrays for use by this
+// program when it actually executes.
+
+		
+const
+
+	#print( "Building memory access lists for byte variables" )
+		
+	sgb 	:string := memList(sgb);
+	sgb_all :string := memList_all(sgb);
+	
+	#print( "Building memory access lists for word variables" )
+		
+	sgw 	:string := memList(sgw);
+	sgw_all :string := memList_all(sgw);
+	
+	#print( "Building memory access lists for dword variables" )
+		
+	sgd 	:string := memList(sgd);
+	sgd_all :string := memList_all(sgd);
+
+	#print( "Building memory access lists for fword variables" )
+
+	sgf 	:string := memList(sgf);
+	sgf_all :string := memList_all(sgf);
+	
+	#print( "Building memory access lists for qword variables" )
+		
+	sgq 	:string := memList(sgq);
+	sgq_all :string := memList_all(sgq);
+	
+	#print( "Building memory access lists for tbyte variables" )
+		
+	sgu 	:string := memList(sgu);
+	sgu_all :string := memList_all(sgu);
+	
+	sgt 	:string := memList(sgt);
+	sgt_all :string := memList_all(sgt);
+	
+	#print( "Building memory access lists for lword variables" )
+		
+	sgl 	:string := memList(sgl);
+	sgl_all :string := memList_all(sgl);
+	
+	#print( "Building memory access lists for real32 variables" )
+		
+	sgr32 		:string := memList(sgr32);
+	sgr32_all	:string := memList_all(sgr32);
+	
+	#print( "Building memory access lists for real64 variables" )
+		
+	sgr64 		:string := memList(sgr64);
+	sgr64_all	:string := memList_all(sgr64);
+	
+	#print( "Building memory access lists for real80 variables" )
+		
+	sgr80 		:string := memList(sgr80);
+	sgr80_all	:string := memList_all(sgr80);
+	
+
+
+	#print( "Building memory access lists for auto byte variables" )
+		
+	vlb_all :string := memIndex_all(vlb);
+	
+	#print( "Building memory access lists for auto word variables" )
+		
+	vlw_all :string := memIndex_all(vlw);
+	
+	#print( "Building memory access lists for auto dword variables" )
+		
+	vld_all :string := memIndex_all(vld);
+
+	#print( "Building memory access lists for auto fword variables" )
+
+	vlf_all :string := memIndex_all(vlf);
+	
+	#print( "Building memory access lists for auto qword variables" )
+		
+	vlq_all :string := memIndex_all(vlq);
+	
+	#print( "Building memory access lists for auto tbyte variables" )
+		
+	vlu_all :string := memIndex_all(vlu);
+	
+	vlt_all :string := memIndex_all(vlt);
+	
+	#print( "Building memory access lists for auto lword variables" )
+		
+	vll_all :string := memIndex_all(vll);
+	
+	#print( "Building memory access lists for auto real32 variables" )
+		
+	vlr32_all	:string := memIndex_all(vlr32);
+	
+	#print( "Building memory access lists for auto real64 variables" )
+		
+	vlr64_all	:string := memIndex_all(vlr64);
+	
+	#print( "Building memory access lists for auto real80 variables" )
+		
+	vlr80_all	:string := memIndex_all(vlr80);
+	
+
+	
+
+
+	#print( "Building memory access lists for parameter byte variables" )
+		
+	plb_all :string := memIndex_all(plb);
+	
+	#print( "Building memory access lists for parameter word variables" )
+		
+	plw_all :string := memIndex_all(plw);
+	
+	#print( "Building memory access lists for parameter dword variables" )
+		
+	pld_all :string := memIndex_all(pld);
+
+	#print( "Building memory access lists for parameter fword variables" )
+
+	plf_all :string := memIndex_all(plf);
+	
+	#print( "Building memory access lists for parameter qword variables" )
+		
+	plq_all :string := memIndex_all(plq);
+	
+	#print( "Building memory access lists for parameter tbyte variables" )
+		
+	plu_all :string := memIndex_all(plu);
+	
+	plt_all :string := memIndex_all(plt);
+	
+	#print( "Building memory access lists for parameter lword variables" )
+		
+	pll_all :string := memIndex_all(pll);
+	
+	#print( "Building memory access lists for parameter real32 variables" )
+		
+	plr32_all	:string := memIndex_all(plr32);
+	
+	#print( "Building memory access lists for parameter real64 variables" )
+		
+	plr64_all	:string := memIndex_all(plr64);
+	
+	#print( "Building memory access lists for parameter real80 variables" )
+		
+	plr80_all	:string := memIndex_all(plr80);
+	
+
+///////////////////////////////////////////////////////////////////////////
+//
+// makelist-
+//	Generates a run-time array of strings that this program uses when
+// writing out the various combinations of addressing modes (and other
+// instruction operands).
+//
+// The two arguments are a run-time name and one of the array constants
+// created via makeList or makeIndex (or just a single item if the list
+// is a singleton/single item list).  The list is terminated by a NULL
+// pointer to ease the processing of this list.
+
+#macro makeList( sname, list[] );
+
+	static
+		sname :string[ @elements( list ) + 1] := 
+			[ list, NULL ];
+			
+#endmacro
+
+#print
+( 
+	"Building register/misc lists to pass "
+	"to instruction generation macros" 
+)
+
+// Generate some singleton lists that this program uses.
+//
+//
+// calledProc is the singleton ["calledProc"] that the CALL
+// instruction uses:
+
+makeList( calledProc, calledProc );
+
+// endBranches are some singletons that the branch instructions use:
+
+makeList( endBranches, endBranches );
+makeList( endBranches3, endBranches3 );
+
+
+// _1 is a special operand for shift/rotate instructions that is
+// the singleton list ["1"].  (technically,
+// this is not needed because constuX generally includes "1" in
+// the list; this explicit declaration is for documentation
+// purpose.
+
+makeList( _1, 1 );
+
+// _al, _ax, and _eax are singletons that instructions that
+// require al, ax, and eax can use (e.g., IN and OUT instructions)
+
+makeList( _al, al );
+makeList( _ax, ax );
+makeList( _eax, eax );
+
+// _cl is a singleton used by the shift and rotate instructions
+// to specify the CL register.
+
+makeList( _cl, cl );
+makeList( _ecx, ecx );
+
+// _dx is a singleton that the IN and OUT instructions use
+// to specify the DX register.
+
+makeList( _dx, dx );
+makeList( _edx, edx );
+
+
+// Here are the lists for the general purpose registers:
+
+makeList( reg8, al, bl );
+makeList( reg16, ax, bx );
+makeList( reg32, eax, ebx );
+
+makeList( reg8_all, al, bl, cl, dl, ah, bh, ch, dh );
+makeList( reg16_all, ax, bx, cx, dx, sp, bp, si, di );
+makeList( reg32_all, eax, ebx, ecx, edx, esp, ebp, esi, edi );
+
+
+
+// Here are the lists for the special-purpose registers
+// (control, debug, and segment). destRegSeg is needed
+// because CS cannot be a destination register for
+// any instruction.
+
+makeList( regCtl, cr0, cr2, cr3, cr4 );
+makeList( regDbg, dr0, dr1, dr2, dr3, dr6, dr7 );
+makeList( regSeg, cseg, dseg, eseg, fseg, sseg );
+makeList( destRegSeg, dseg, eseg, fseg, sseg );
+
+makeList( regFPU, st0, st1 );
+makeList( regFPUnot0, st1, st2 );
+makeList( _st0, st0 );
+
+makeList( regFPU_all, st0, st1, st2, st3, st4, st5, st6, st7 );
+makeList( regFPUnot0_all, st1, st2, st3, st4, st5, st6, st7 );
+
+// Here are the lists for the MMX and SSE registers:
+
+makeList( regMmx, MM0, MM1, MM2, MM3, MM4, MM5, MM6, MM7 );
+makeList( regXmm, XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7 );
+
+makeList( regMmx_all, MM0, MM1 );
+makeList( regXmm_all, XMM0, XMM1 );
+
+// Here are some lists of constants to use for the immediate addressing mode:
+
+#print( "Building constant lists to pass to instruction generation macros" )
+
+makeList( const8, 0, 1, 255 );
+makeList( consti16, -32768, 0, 1, 32767 );
+makeList( const16, 0, 1, 32767, 32768, 65535 );
+makeList( consti32, -2147483648, 0, 1, 2147483647 );
+makeList( const32, 0, 1, 2147483647, 2147483648, 4294967295 );
+
+makeList( const8_all, -128, -1, 0, 1, 127, 128, 255 );
+makeList( const16_all, -32768, -1, 0, 1, 32767, 32768, 65535 );
+makeList( const32_all, -2147483648, -1, 0, 1, 2147483647, 2147483648, 4294967295 );
+
+
+// const2 is the list of two-bit constants:
+
+makeList( const2, 0,3 );
+makeList( const2_all, 0,1,2,3 );
+
+// const3 is the list of three-bit constants (for shifts, rotates, and
+// other instructions that limit themselves to 3-bit constants):
+
+makeList( const3, 0,1,7 );
+makeList( const3_all, 0,1,2,3,4,5,6,7 );
+
+// constr is the list of four-bit constants (for shifts, rotates, and
+// other instructions that limit themselves to r-bit constants):
+
+makeList( const4, 0,1,15);
+makeList( const4_all, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
+
+// const5 is the list of five-bit constants (for shifts, rotates, and
+// other instructions that limit themselves to 5-bit constants):
+
+makeList( const5,0,1,31 );
+makeList
+( 
+	const5_all,
+	0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
+	16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31 
+);
+
+// Some instructions allow only unsigned immediate constants.
+// The following lists handle that requirement:
+
+makeList( constu8, 0, 255 );
+makeList( constu8_all, 0, 127, 128, 255 );
+
+makeList( constu16, 0, 65535 );
+makeList( constu16_all, 0, 1, 32767, 32768, 65535 );
+
+makeList( constu16_2, 0, 65535 );
+makeList( constu16_2_all, 0, 1, 32767, 32768, 65535 );
+
+makeList( constu32, 0, 4294967295 );
+makeList( constu32_all, 0, 1, 2147483647, 2147483648, 4294967295 );
+
+// The following is used by extended syntax HLA FPU instructions:
+
+makeList( constReal, -1.0, 0.0, 1.0 );
+
+
+#print( "Generating memory address lists to pass to igen macros" )
+
+// In reality, we should have *far* more of these anonymous memory
+// addresses than I've specified here. This is just a bow to the
+// realization that combinatorial explosion would go wild if I listed
+// all the possible combinations.
+
+makeList
+( 
+	anonmem, 
+	[eax], [ebx],
+	[eax+1], [ebx+127], [ecx-128], [edx+128],
+	[eax+ebx], [ebx+ecx],
+	[eax+ebx*1], [ebx+ecx*2],
+	[eax+ebx+1], [edx+ebp+128],
+	[eax+ebx*1+1], [edx+ebp*8+128]
+	 
+);
+
+
+
+makeList
+( 
+	anonmem_all, 
+	[eax], [ebx], [ecx], [edx], [ebp], [esp], [esi], [edi],
+
+	[eax+1], [ebx+127], [ecx-128], [edx+128], 
+		[ebp+256], [esp-256], [esi+65536], [edi-65536],
+
+	[eax+ebx], [ebx+ecx], [ecx+edx], [edx+ebp], 
+		[ebp+esi], [esp+edi], [esi+esi], [edi+eax],
+
+	[eax+ebx*1], [ebx+ecx*2], [ecx+edx*4], [edx+ebp*8], 
+		[ebp+esi*1], [esp+edi*2], [esi+esi*4], [edi+eax*8],
+
+	[eax+ebx+1], [ebx+ecx+127], [ecx+edx-128], [edx+ebp+128], 
+		[ebp+esi+256], [esp+edi-256], [esi+esi+65536], [edi+eax-65536],
+
+	[eax+ebx*1+1], [ebx+ecx*2+127], [ecx+edx*4-128], [edx+ebp*8+128], 
+		[ebp+esi*1+256], [esp+edi*2-256], [esi+esi*4+65536], [edi+eax*8-65536]
+	 
+);
+
+
+
+makeList
+( 
+	anonmem_all2, 
+	[eax], [ebx], [ecx], [edx], [ebp], [esp], [esi], [edi],
+
+	[eax+1], [ebx+127], [ecx-128], [edx+128], 
+		[ebp+256], [esp-256], [esi+65536], [edi-65536],
+
+	[eax+ebx], [ebx+ecx], [ecx+edx], [edx+ebp], 
+		[ebp+esi], [esp+edi], [esi+esi], [edi+eax],
+
+	[eax+ebx*1], [ebx+ecx*2], [ecx+edx*4], [edx+ebp*8], 
+		[ebp+esi*1], [esp+edi*2], [esi+esi*4], [edi+eax*8],
+
+	[eax+ebx+1], [ebx+ecx+127], [ecx+edx-128], [edx+ebp+128], 
+		[ebp+esi+256], [esp+edi-256], [esi+esi+65536], [edi+eax-65536],
+
+	[eax+ebx*1+1], [ebx+ecx*2+127], [ecx+edx*4-128], [edx+ebp*8+128], 
+		[ebp+esi*1+256], [esp+edi*2-256], [esi+esi*4+65536], [edi+eax*8-65536],
+		
+	[eax*1], [ebx*2], [ecx*4], [edx*8], [eax*1+1], [ebx*2+128], [ecx*4+65536],
+		[edx*8+128*1024] 
+	 
+);
+
+
+
+// Here are the memory operands we use.
+
+makeList
+( 
+	mem8, 
+	typed_anon8, 
+	@eval(sgb) 
+);
+makeList
+( 
+	mem16, 
+	typed_anon16, 
+	@eval(sgw)
+);
+makeList
+( 
+	mem32, 
+	typed_anon32, 
+	@eval(sgd)
+);
+makeList
+( 
+	mem48, 
+	typed_anon48, 
+	@eval(sgf)
+);
+makeList
+( 
+	mem64, 
+	typed_anon64, 
+	@eval(sgq)
+);
+makeList
+( 
+	mem80, 
+	typed_anon80, 
+	@eval(sgt)
+);
+makeList
+( 
+	memBCD80, 
+	anon80, 
+	@eval(sgu)
+);
+makeList
+( 
+	mem128,
+	typed_anon128, 
+	@eval(sgl)
+);
+makeList
+( 
+	memR32, 
+	typed_anonR32, 
+	@eval(sgr32)
+);
+makeList
+( 
+	memR64, 
+	typed_anonR64, 
+	@eval(sgr64)
+);
+makeList
+( 
+	memR80, 
+	typed_anonR80, 
+	@eval(sgr80)
+);
+		
+
+		
+
+
+makeList
+( 
+	mem8_all, 
+	typed_anon8, 
+	@eval(sgb_all) 
+);
+makeList
+( 
+	mem16_all, 
+	typed_anon16, 
+	@eval(sgw_all)
+);
+makeList
+( 
+	mem32_all, 
+	typed_anon32, 
+	@eval(sgd_all)
+);
+makeList
+( 
+	mem48_all, 
+	typed_anon48, 
+	@eval(sgf_all)
+);
+makeList
+( 
+	mem64_all, 
+	typed_anon64, 
+	@eval(sgq_all)
+);
+makeList
+( 
+	mem80_all, 
+	typed_anon80, 
+	@eval(sgt_all)
+);
+makeList
+( 
+	memBCD80_all, 
+	anon80, 
+	@eval(sgu_all)
+);
+makeList
+( 
+	mem128_all,
+	typed_anon128, 
+	@eval(sgl_all)
+);
+makeList
+( 
+	memR32_all, 
+	typed_anonR32, 
+	@eval(sgr32_all)
+);
+makeList
+( 
+	memR64_all, 
+	typed_anonR64, 
+	@eval(sgr64_all)
+);
+makeList
+( 
+	memR80_all, 
+	typed_anonR80, 
+	@eval(sgr80_all)
+);
+		
+
+		
+
+makeList
+( 
+	mem8v_all, 
+	typed_anon8, 
+	@eval(vlb_all) 
+);
+makeList
+( 
+	mem16v_all, 
+	typed_anon16, 
+	@eval(vlw_all)
+);
+makeList
+( 
+	mem32v_all, 
+	typed_anon32, 
+	@eval(vld_all)
+);
+makeList
+( 
+	mem48v_all, 
+	typed_anon48, 
+	@eval(vlf_all)
+);
+makeList
+( 
+	mem64v_all, 
+	typed_anon64, 
+	@eval(vlq_all)
+);
+makeList
+( 
+	mem80v_all, 
+	typed_anon80, 
+	@eval(vlt_all)
+);
+makeList
+( 
+	memBCD80v_all, 
+	anon80, 
+	@eval(vlu_all)
+);
+makeList
+( 
+	mem128v_all,
+	typed_anon128, 
+	@eval(vll_all)
+);
+makeList
+( 
+	memR32v_all, 
+	typed_anonR32, 
+	@eval(vlr32_all)
+);
+makeList
+( 
+	memR64v_all, 
+	typed_anonR64, 
+	@eval(vlr64_all)
+);
+makeList
+( 
+	memR80v_all, 
+	typed_anonR80, 
+	@eval(vlr80_all)
+);
+		
+
+		
+
+		
+
+		
+
+makeList
+( 
+	mem8p_all, 
+	typed_anon8, 
+	@eval(plb_all) 
+);
+makeList
+( 
+	mem16p_all, 
+	typed_anon16, 
+	@eval(plw_all)
+);
+makeList
+( 
+	mem32p_all, 
+	typed_anon32, 
+	@eval(pld_all)
+);
+makeList
+( 
+	mem48p_all, 
+	typed_anon48, 
+	@eval(plf_all)
+);
+makeList
+( 
+	mem64p_all, 
+	typed_anon64, 
+	@eval(plq_all)
+);
+makeList
+( 
+	mem80p_all, 
+	typed_anon80, 
+	@eval(plt_all)
+);
+makeList
+( 
+	memBCD80p_all, 
+	anon80, 
+	@eval(plu_all)
+);
+makeList
+( 
+	mem128p_all,
+	typed_anon128, 
+	@eval(pll_all)
+);
+makeList
+( 
+	memR32p_all, 
+	typed_anonR32, 
+	@eval(plr32_all)
+);
+makeList
+( 
+	memR64p_all, 
+	typed_anonR64, 
+	@eval(plr64_all)
+);
+makeList
+( 
+	memR80p_all, 
+	typed_anonR80, 
+	@eval(plr80_all)
+);
+		
+
+		
+
+// strInList-
+//  Iterates over a NULL-terminated list of strings.
+//  The corresponding foreach loop returns a pointer
+//  to each successive non-NULL string pointer in the
+//  EAX register.
+
+iterator strInList( var strList:var );
+begin strInList;
+
+	forever
+	
+		mov( strList, eax );
+		mov( [eax], eax );
+		breakif( eax = NULL );
+		yield();
+		add( 4, strList );
+		
+	endfor;
+	
+end strInList;
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// t( instr {,operands} );
+//
+// Emit those instructions whose HLA operands are normally the reverse
+// of the Intel-syntax operands:
+
+// Use the following globals rather than locals inside t, tr, and t2 for
+// (compilation) performance reasons:
+
+val
+	elements	:string;
+	thisInstr	:string;
+	dest		:string;
+	src			:string;
+	cnt			:string;
+
+#macro HLAinstr( filename, instrs );
+	
+		startProgram( filename );
+		instrs;
+		endProgram( fileHandle );
+			 
+#endmacro
+
+#macro t( instr, ops[] );
+
+	?elements := @elements( ops );
+	?thisInstr := @string( instr );
+	#if( elements = 0 )
+
+		// Instructions with no operands:
+
+
+		fileio.putc( fileHandle, stdio.tab );
+		fileio.putc( fileHandle, stdio.tab );
+		fileio.puts( fileHandle, thisInstr );
+		fileio.puts( fileHandle, "();" nl );
+
+
+	#elseif( elements = 1 )
+
+		// For instructions with a single operand, emit the code
+		// to generate that instruction with all variations of the operand:
+
+		foreach strInList( @text(ops[0]) ) do
+			
+
+			fileio.putc( fileHandle, stdio.tab );
+			fileio.putc( fileHandle, stdio.tab );
+			fileio.puts( fileHandle, thisInstr );
+			fileio.puts( fileHandle, "( " );
+			fileio.puts( fileHandle, (type string eax) );
+			fileio.puts( fileHandle, " );" nl );
+
+
+		endfor;
+
+	#elseif( elements = 2 )
+
+		// For instructions with two operands, emit the code to generate
+		// the list of instructions with all possible combinations of
+		// the two operands:
+
+		foreach strInList( @text(ops[0]) ) do
+
+			mov( eax, destOp );
+			foreach strInList( @text(ops[1]) ) do
+				
+				mov( eax, srcOp );
+
+				fileio.putc( fileHandle, stdio.tab );
+				fileio.putc( fileHandle, stdio.tab );
+				fileio.puts( fileHandle, thisInstr );
+				fileio.puts( fileHandle, "( " );
+				fileio.puts( fileHandle, srcOp );
+				fileio.puts( fileHandle, ", " );
+				fileio.puts( fileHandle, destOp );
+				fileio.puts( fileHandle, " );" nl );
+
+
+			endfor;
+
+		endfor;
+
+	#elseif( elements = 3 )
+
+		// For instructions with three operands, write the code to
+		// generate a sequence of instructions with all variations
+		// of all three operands:
+
+		foreach strInList( @text(ops[0]) ) do
+
+			mov( eax, destOp );
+			foreach strInList( @text(ops[1]) ) do
+				
+				mov( eax, srcOp );
+				foreach strInList( @text(ops[2]) ) do
+				
+					mov( eax, cntOp );
+
+					fileio.putc( fileHandle, stdio.tab );
+					fileio.putc( fileHandle, stdio.tab );
+					fileio.puts( fileHandle, thisInstr );
+					fileio.puts( fileHandle, "( " );
+					fileio.puts( fileHandle, cntOp );
+					fileio.puts( fileHandle, ", " );
+					fileio.puts( fileHandle, srcOp );
+					fileio.puts( fileHandle, ", " );
+					fileio.puts( fileHandle, destOp );
+					fileio.puts( fileHandle, " );" nl );
+
+
+				endfor;
+
+			endfor;
+
+		endfor;
+
+	#else
+
+		#error( "Too many arguments to t macro" )
+
+	#endif
+	
+#endmacro
+			 
+		
+
+
+// Emit those operands whose order in HLA is the same as Intel syntax.
+// See the comments for the t macro, as they apply equally here.
+// The only difference between tr and t is the order that the generated
+// code emits the operands.
+
+#macro tr( instr, ops[] );
+
+	?elements := @elements( ops );
+	?thisInstr := @string( instr );
+	#if( elements = 0 )
+
+
+		fileio.putc( fileHandle, stdio.tab );
+		fileio.putc( fileHandle, stdio.tab );
+		fileio.puts( fileHandle, thisInstr );
+		fileio.puts( fileHandle, "();" nl );
+
+
+	#elseif( elements = 1 )
+
+		foreach strInList( @text(ops[0]) ) do
+			
+
+			fileio.putc( fileHandle, stdio.tab );
+			fileio.putc( fileHandle, stdio.tab );
+			fileio.puts( fileHandle, thisInstr );
+			fileio.puts( fileHandle, "( " );
+			fileio.puts( fileHandle, (type string eax) );
+			fileio.puts( fileHandle, " );" nl );
+
+
+		endfor;
+
+	#elseif( elements = 2 )
+
+		foreach strInList( @text(ops[0]) ) do
+
+			mov( eax, destOp );
+			foreach strInList( @text(ops[1]) ) do
+				
+				mov( eax, srcOp );
+
+				fileio.putc( fileHandle, stdio.tab );
+				fileio.putc( fileHandle, stdio.tab );
+				fileio.puts( fileHandle, thisInstr );
+				fileio.puts( fileHandle, "( " );
+				fileio.puts( fileHandle, destOp );
+				fileio.puts( fileHandle, ", " );
+				fileio.puts( fileHandle, srcOp );
+				fileio.puts( fileHandle, " );" nl );
+
+			endfor;
+
+		endfor;
+
+	#elseif( elements = 3 )
+
+
+		foreach strInList( @text(ops[0]) ) do
+
+			mov( eax, destOp );
+			foreach strInList( @text(ops[1]) ) do
+				
+				mov( eax, srcOp );
+				foreach strInList( @text(ops[2]) ) do
+				
+					mov( eax, cntOp );
+
+					fileio.putc( fileHandle, stdio.tab );
+					fileio.putc( fileHandle, stdio.tab );
+					fileio.puts( fileHandle, thisInstr );
+					fileio.puts( fileHandle, "( " );
+					fileio.puts( fileHandle, destOp );
+					fileio.puts( fileHandle, ", "  );
+					fileio.puts( fileHandle, srcOp );
+					fileio.puts( fileHandle, ", " );
+					fileio.puts( fileHandle, cntOp );
+					fileio.puts( fileHandle, " );" nl );
+
+
+				endfor;
+
+			endfor;
+
+		endfor;
+
+	#else
+
+		#error( "Too many arguments to tr macro" )
+
+	#endif
+	
+#endmacro
+			 
+		
+
+// Special syntax instructions (like the conditional jumps) that
+// don't surround operands with parenthesis (HLA syntax).
+
+#macro t2( instr, op );
+
+	?operand := @string( op );
+	?thisInstr := @string( instr );
+					
+	fileio.put
+	(
+		fileHandle, 
+		stdio.tab, 
+		stdio.tab, 
+		thisInstr, 
+		" ",
+		operand
+	);
+	
+	fileio.putc( fileHandle, ';' );
+	fileio.newln( fileHandle );
+	
+#endmacro
+
+
+
+// _rep-
+//	Handles instructions with an repXX prefix:
+
+#macro _rep( instr[] );
+
+					
+	fileio.put
+	(
+		fileHandle, 
+		stdio.tab, 
+		stdio.tab, 
+		instr[0], ".", instr[1], 
+		";" nl 
+	);
+							
+	
+#endmacro
+
+
+/////////////////////////////////////////////////////////////////////////////
+//			 
+// startProgram-
+//
+//	Opens a test file and generates the header statements for 
+// that particular test file. This includes all the run-time
+// variables that the generated code expects to use.
+//
+// Inputs:
+//		fileName-	Name of output file to produce.
+//
+// Returns:
+//		EAX-		Handle to open file.
+//					(also stores this in the global "fileHandle" variable)
+
+procedure startProgram( file_name:string ); @returns( "eax" );
+var
+	fullFileName	:string;
+begin startProgram;
+
+	mov( file_name, eax );
+	mov( fileCnt, ebx );
+	mov( eax, files[ebx*4] );
+	
+	str.a_cat( eax, ".hla" );
+	mov( eax, fullFileName );
+	inc( fileCnt );
+	stdout.put( "Creating file ", (type string eax), nl );
+	fileio.openNew( fullFileName );
+	mov( eax, fileHandle );
+	fileio.put
+	(
+		eax,
+		"unit HLAtest;" nl
+		"?@noframe := true;" nl
+		nl
+		"label endBranches; @external;" nl
+		"label endBranches2; @external;" nl
+		"label endCode; @external;" nl
+		nl
+		"procedure HLAMain; @external( ""_HLAMain"" );" nl
+		"procedure HLAMain; begin HLAMain; nop; end HLAMain;" nl
+		"procedure start; @external( ""_start"" );" nl
+		"procedure start; begin start; nop; endBranches:: nop; end start;" nl
+		"procedure testEnvironment" nl
+		"(" nl
+		"   plb     :byte;" nl
+		"   plw     :word;" nl
+		"   pld     :dword;" nl
+		"   plq     :qword;" nl
+		"   plt     :tbyte;" nl
+		"   pll     :lword;" nl
+		"   plr32   :real32;" nl
+		"   plr64   :real64;" nl
+		"   plr80   :real80" nl
+		"); @external;" nl
+		nl
+		"label" nl
+		"    calledProc; @external;" nl
+		nl 
+		"static" nl
+		"   sgb     :byte; @external;" nl
+		"   sgw     :word; @external;" nl
+		"   sgd     :dword; @external;" nl
+		"storage" nl
+		"   sgq     :qword; @external;" nl
+		"   sgt     :tbyte; @external;" nl
+		"   sgu     :tbyte; @external;" nl
+		"   sgl     :lword; @external;" nl
+		"   sgr32   :real32; @external;" nl
+		"   sgr64   :real64; @external;" nl
+		"   sgr80   :real80; @external;" nl
+		
+		"static" nl
+		"   sgd     :dword; " nl
+		"	?sgf :text := ""sgd"";" nl
+		"storage" nl
+		"   sgq     :qword; " nl
+		"   sgt     :tbyte; " nl
+		"   sgu     :tbyte; " nl
+		"   sgl     :lword; " nl
+		"   sgr32   :real32; " nl
+		"   sgr64   :real64; " nl
+		"   sgr80   :real80;" nl
+		nl
+		nl
+		nl
+		"procedure testEnvironment" nl
+		"(" nl
+		"   plb     :byte;" nl
+		"   plw     :word;" nl
+		"   pld     :dword;" nl
+		"   plq     :qword;" nl
+		"   plt     :tbyte;" nl
+		"   pll     :lword;" nl
+		"   plr32   :real32;" nl
+		"   plr64   :real64;" nl
+		"   plr80   :real80" nl
+		");" nl
+		"const" nl
+		"   vlu     :text := ""vlt"";"  nl
+		"   vlf     :text := ""vld"";"  nl
+		"   plf     :text := ""pld"";"  nl
+		"   plu     :text := ""plt"";"  nl
+		"var" nl
+		"   vlb     :byte;" nl
+		"   vlw     :word;" nl
+		"   vld     :dword;" nl
+		"   vlq     :qword;" nl
+		"   vlt     :tbyte;" nl
+		"   vll     :lword;" nl
+		"   vlr32   :real32;" nl
+		"   vlr64   :real64;" nl
+		"   vlr80   :real80;" nl
+		"begin testEnvironment;" nl
+		nl
+	);
+
+	str.free( fullFileName );
+	mov( fileHandle, eax ); // Returns file handle in EAX!  
+
+end startProgram;
+
+
+
+///////////////////////////////////////////
+//
+// endProgram-
+//	Outputs the last bit of text need at the end
+// of a particular test file and closes the output file.
+
+procedure endProgram( fileHandle:string );
+begin endProgram;
+
+
+	fileio.put
+	(
+		fileHandle, 
+		nl 
+		nl
+		"  nop();" nl 
+		"endCode::" nl
+		"  nop();" nl
+		"  align(16);" nl
+		"end testEnvironment;" nl
+		nl
+		"end HLAtest;" nl
+		nl
+	);
+
+	fileio.close( fileHandle );
+
+end endProgram;		
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// createMakeFile-
+//
+// Create a makefile for HLA that will process all the source 
+// files the compilation of this program program creates.  
+
+
+procedure createMakeFile( assembler:string; theOS:string );
+type
+	os_t:enum
+	{
+		win32_c,
+		macOS_c,
+		linux_c,
+		freeBSD_c
+	};
+	
+var
+	whichOS		:os_t;
+	fileHandle	:dword;
+	
+begin createMakeFile;
+	
+	str.lower( theOS );
+	if( str.eq( theOS, "macos" )) then
+	
+		mov( macOS_c, whichOS );
+		
+	elseif( str.eq( theOS, "linux" )) then
+	
+		mov( linux_c, whichOS );
+		 
+	elseif( str.eq( theOS, "freebsd" )) then
+	
+		mov( freeBSD_c, whichOS );
+		
+	elseif( str.eq( theOS, "win32" )) then
+	
+		mov( win32_c, whichOS );
+		
+	else
+	
+		stdout.put( "Unknown OS:", theOS, " defaulting to win32" nl );
+		str.a_cpy( "win32" );
+		mov( eax, theOS );
+		mov( win32_c, whichOS );
+		
+	endif;
+		 
+		
+	stdout.put( "Creating HLA make file output for ", theOS, nl );
+	if( fileCnt > 0 ) then
+	
+		fileio.openNew( "makefile" );
+		mov( eax, fileHandle );
+		
+		// Emit the main dependencies line for this makefile, e.g.,
+		//
+		//	all: a.txt b.txt c.txt   [etc]
+		
+		fileio.puts( fileHandle, "all: " );
+		mov( fileCnt, edx );
+		dec( edx );
+		for( mov( 0, ebx ); ebx<edx; inc( ebx )) do
+		
+			fileio.put
+			( 
+				fileHandle,
+				'_',
+				files[ebx*4], 
+				" " 
+			);
+			
+			mov( ebx, eax );
+			and( %111, eax );
+			if( eax = %111 ) then
+			
+				fileio.put( fileHandle, "\" nl, stdio.tab );
+				
+			endif;
+			
+		endfor;
+		fileio.put
+		( 
+			fileHandle,
+			'_',
+			files[edx*4], 
+			" " 
+			nl nl nl 
+		);
+		
+		
+		movzx( whichOS, eax );
+		switch( eax )
+		
+			case( win32_c )
+			
+				for( mov( 0, ebx ); ebx<fileCnt; inc( ebx )) do
+
+					mov( files[ebx*4], ecx );
+					
+					// Emit the rule to convert an object file to a TXT file:
+					//
+					// _a:
+					// 	hla -c a.hla
+					//	dumpbin /disasm a.obj >a.txt
+					// 	hla -c -source -masm -b:am a.hla
+					//	dumpbin /disasm am.obj >am.txt
+					// 	hla -c -masm -b:am a.hla
+					//	dumpbin /disasm ah.obj >ah.txt
+					//	disasmCmp a.txt am.txt
+					//	disasmCmp a.txt ah.txt
+					//	disasmCmp ah.txt am.txt
+
+					
+					fileio.put
+					(
+						fileHandle,
+						'_',
+						(type string ecx),
+						":" 
+						nl, 
+						
+						stdio.tab,
+						"echo __________________________________________" nl,
+						
+						stdio.tab,
+						"hla -c ",
+						(type string ecx),
+						nl,
+						 
+						stdio.tab,
+						"dumpbin /disasm ",
+						(type string ecx), 
+						".obj >",
+						(type string ecx), 
+						".txt" nl,
+						
+						stdio.tab,
+						"hla -c -source -masm ",
+						(type string ecx),
+						nl, 
+						
+						stdio.tab,
+						"dumpbin /disasm ",
+						(type string ecx), 
+						".obj >",
+						(type string ecx), 
+						"m.txt" nl,
+						
+						stdio.tab,
+						"hla -c -masm ",
+						(type string ecx),
+						nl, 
+						
+						stdio.tab,
+						"dumpbin /disasm ",
+						(type string ecx), 
+						".obj >",
+						(type string ecx), 
+						"h.txt" nl,
+						
+						stdio.tab,
+						"del ",
+						(type string ecx), 
+						".obj"
+						nl,
+						
+						stdio.tab,
+						"..\disasmCmp ",
+						(type string ecx), 
+						".txt ",
+						(type string ecx), 
+						"m.txt" nl,
+						
+						stdio.tab,
+						"..\disasmCmp ",
+						(type string ecx), 
+						".txt ",
+						(type string ecx), 
+						"h.txt" nl,
+						
+						stdio.tab,
+						"..\disasmCmp ",
+						(type string ecx), 
+						"m.txt ",
+						(type string ecx), 
+						"h.txt" nl,
+						
+						stdio.tab,
+						"hla -c -source -fasm ",
+						(type string ecx),
+						nl,
+						
+						stdio.tab,
+						"del ",
+						(type string ecx), 
+						".obj"
+						nl,
+						
+						stdio.tab,
+						"hla -c -source -nasm ",
+						(type string ecx),
+						nl,
+						
+						stdio.tab,
+						"del ",
+						(type string ecx), 
+						".txt "
+						nl,
+						
+						stdio.tab,
+						"del ",
+						(type string ecx), 
+						"m.txt" nl,
+						
+						stdio.tab,
+						"del ",
+						(type string ecx), 
+						"h.txt" nl,
+						
+						stdio.tab,
+						"del ",
+						(type string ecx), 
+						".asm"
+						nl,
+						
+						stdio.tab,
+						"del ",
+						(type string ecx), 
+						".obj"
+						nl
+					);
+					
+
+
+				endfor;
+				
+			case( macOS_c )
+
+				for( mov( 0, ebx ); ebx<fileCnt; inc( ebx )) do
+
+					mov( files[ebx*4], ecx );
+					
+					
+					// Emit the rule to convert an object file to a TXT file:
+					//
+					// _a:
+					// 	hla -c a.hla
+					//	otool -V -t a.o >a.txt
+					// 	hla -c -source -gasx a.hla
+					//	otool -V -t a.o >ag.txt
+					// 	hla -c -gasx a.hla
+					//	otool -V -t a.o >ah.txt
+					//	disasmCmp a.txt ag.txt
+					//	disasmCmp a.txt ah.txt
+					//	disasmCmp ah.txt ag.txt
+
+					
+					fileio.put
+					(
+						fileHandle,
+						'_',
+						(type string ecx),
+						":" 
+						nl, 
+						
+						stdio.tab,
+						"echo __________________________________________" nl,
+						
+						stdio.tab,
+						"hla -c ",
+						(type string ecx),
+						nl,
+						 
+						stdio.tab,
+						"otool -V -t ",
+						(type string ecx), 
+						".o >",
+						(type string ecx), 
+						".txt" nl,
+						
+						stdio.tab,
+						"hla -c -source -gasx ",
+						(type string ecx),
+						nl, 
+						
+						stdio.tab,
+						"otool -V -t ",
+						(type string ecx), 
+						".o >",
+						(type string ecx), 
+						"g.txt" nl,
+						
+						stdio.tab,
+						"hla -c -gasx ",
+						(type string ecx),
+						nl, 
+						
+						stdio.tab,
+						"otool -V -t ",
+						(type string ecx), 
+						".o >",
+						(type string ecx), 
+						"h.txt" nl,
+						
+						stdio.tab,
+						"rm ",
+						(type string ecx), 
+						".o"
+						nl,
+						
+						stdio.tab,
+						"otoolCmp ",
+						(type string ecx), 
+						".txt ",
+						(type string ecx), 
+						"g.txt" nl,
+												
+						stdio.tab,
+						"otoolCmp ",
+						(type string ecx), 
+						".txt ",
+						(type string ecx), 
+						"h.txt" nl,
+												
+						stdio.tab,
+						"otoolCmp ",
+						(type string ecx), 
+						"h.txt ",
+						(type string ecx), 
+						"g.txt" nl,
+												
+						stdio.tab,
+						"rm ",
+						(type string ecx), 
+						".txt" nl,
+						
+						stdio.tab,
+						"rm ",
+						(type string ecx), 
+						"g.txt" nl,
+						
+						stdio.tab,
+						"rm ",
+						(type string ecx), 
+						"h.txt" nl,
+						
+						stdio.tab,
+						"rm ",
+						(type string ecx), 
+						".asm" nl,
+						
+						stdio.tab,
+						"rm ",
+						(type string ecx), 
+						".asm.s" nl,
+						nl
+					);
+
+				endfor;
+				
+			case( linux_c, freeBSD_c )
+
+				for( mov( 0, ebx ); ebx<fileCnt; inc( ebx )) do
+
+					mov( files[ebx*4], ecx );
+					
+					
+					// Emit the rule to convert an object file to a TXT file:
+					//
+					// _a:
+					// 	hla -c a.hla
+					//	objdump -d a.o >a.txt
+					// 	hla -c -source -gas a.hla
+					//	objdump -d a.o >ag.txt
+					// 	hla -c -gas a.hla
+					//	objdump -d a.o >ah.txt
+					//	odCmp a.txt ag.txt
+					//	odCmp a.txt ah.txt
+					//	odCmp ah.txt ag.txt
+
+					
+					fileio.put
+					(
+						fileHandle,
+						'_',
+						(type string ecx),
+						":" 
+						nl, 
+						
+						stdio.tab,
+						"echo __________________________________________" nl,
+						
+						stdio.tab,
+						"hla -c ",
+						(type string ecx),
+						nl,
+						 
+						stdio.tab,
+						"objdump -d ",
+						(type string ecx), 
+						".o >",
+						(type string ecx), 
+						".txt" nl,
+						
+						stdio.tab,
+						"hla -c -source -gas ",
+						(type string ecx),
+						nl, 
+						
+						stdio.tab,
+						"objdump -d ",
+						(type string ecx), 
+						".o >",
+						(type string ecx), 
+						"g.txt" nl,
+						
+						stdio.tab,
+						"hla -c -gas ",
+						(type string ecx),
+						nl, 
+						
+						stdio.tab,
+						"objdump -d ",
+						(type string ecx), 
+						".o >",
+						(type string ecx), 
+						"h.txt" nl,
+						
+						stdio.tab,
+						"rm ",
+						(type string ecx), 
+						".o"
+						nl,
+						
+						stdio.tab,
+						"odCmp ",
+						(type string ecx), 
+						".txt ",
+						(type string ecx), 
+						"g.txt" nl,
+												
+						stdio.tab,
+						"odCmp ",
+						(type string ecx), 
+						".txt ",
+						(type string ecx), 
+						"h.txt" nl,
+												
+						stdio.tab,
+						"odCmp ",
+						(type string ecx), 
+						"h.txt ",
+						(type string ecx), 
+						"g.txt" nl,
+												
+						stdio.tab,
+						"rm ",
+						(type string ecx), 
+						".txt" nl,
+						
+						stdio.tab,
+						"rm ",
+						(type string ecx), 
+						"g.txt" nl,
+						
+						stdio.tab,
+						"rm ",
+						(type string ecx), 
+						"h.txt" nl,
+						
+						stdio.tab,
+						"rm ",
+						(type string ecx), 
+						".asm" nl,
+						nl
+					);
+
+				endfor;
+			
+			default
+				stdout.put( "Unknown OS (internal maketest error)" nl );
+				
+		endswitch;
+		fileio.close( fileHandle );
+		
+	endif;
+
+end createMakeFile;
+
+
+
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+//
+// A C T U A L   T E S T   C O D E   B E G I N S   H E R E
+//
+/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+//
+//
+// Typical test invocation:
+//
+// t( <instr> {, <<operands>>} );
+//
+// t is the test generation macro. The first (required) operand is the
+// instruction to test. The remaining operands are optional and correspond
+// to the operands the instruction supports. The "t" macro generates code
+// that will produce n1*n2*n3 variants of the instruction, where n1 is
+// the number of combinations of the first operand (or 1 if there are
+// no operands), n2 is the number of combinations of the second operand
+// (or 1 if there is no second operand), and n3 is the number of combinations
+// of the third operand (or 1 if there is no third operand).
+//
+// Possible operands are:
+//
+//	reg8		- All combinations of 8-bit general purpose registers
+//	reg16		- All combinations of 16-bit general purpose registers
+//	reg32		- All combinations of 32-bit general purpose registers
+//	regFPU		- All combinations of the FPU registers
+//	regFPUnot0	- All combinations of the FPU registers except st0
+//	regMmx		- All combinations of the MMX registers
+//	regXmm		- All combinations of the SSE registers
+//	regCtl		- All combinations of the control registers
+//	regDbg		- All combinations of the debug registers
+//	regSeg		- All combinations of the segment registers
+//	destRegSet	- All combinations of the segment registers except CS
+//	_al			- The AL register
+//	_ax			- The AX register
+//	_eax		- The EAX register
+//	_cl			- The CL register
+//	_dx			- The DX register
+//
+//	const8		- A selected set of 8-bit signed and unsigned constants (-128..255)
+//	const16		- A selected set of 16-bit signed and unsigned constants (-32768..65535)
+//	const32		- A selected set of 32-bit signed and unsigned constants
+//	constu8		- A selected set of 8-bit unsigned constants (0..255)
+//	constu16	- A selected set of 16-bit unsigned constants (0..65535)
+//	constu32	- A selected set of 32-bit unsigned constants
+//	const3		- All unsigned values representable with three bits (0..7)
+//	const4		- All unsigned values representable with four bits (0..15)
+//	const5		- All unsigned values representable with five bits (0..31)
+//	constReal	- A selected set of floating-point constants
+//
+//	anonmem		- A selected set of unsized memory references (no type info)
+//	mem8		- A selected set of 8-bit memory references (all addressing modes)
+//	mem16		- A selected set of 16-bit memory references (all addressing modes)
+//	mem32		- A selected set of 32-bit memory references (all addressing modes)
+//	mem48		- A selected set of 48-bit memory references (all addressing modes)
+//	mem64		- A selected set of 64-bit memory references (all addressing modes)
+//	mem128		- A selected set of 128-bit memory references (all addressing modes)
+//	memR32		- A selected set of real32 memory references (all addressing modes)
+//	memR64		- A selected set of real64 memory references (all addressing modes)
+//	memR80		- A selected set of real80 memory references (all addressing modes)
+//
+// Note that the operands supplied to the "t" macro appear in the same order as
+// specified by Intel's documentation. Note that these operands get reversed for
+// *most* HLA instruction. The "tr" macro works the same way as "t", but for
+// HLA instruction generation it does not reverse the operands (e.g., for CMP
+// and similar instructions).
+//
+// Be aware that you get rapid combinatorial explosion by combining these
+// different operands. For example, a typical instruction like ADD will generate
+// more than 150,000 statements when you specify all the legal addressing mode
+// forms using the operands above.  Because some assemblers don't do so well with
+// *really* large source files, it's best to break up the output source file into
+// many smaller files.  The "startProgram" and "endProgram" functions let you do
+// this.
+//
+//	startProgram( <filename> );
+//		Opens a file with the specified filename and returns a handle to that
+//		file in EAX, which must be stored into the global variable "fileHandle".
+//
+//	endProgram( <fileHandle> );
+//		Closes the file whose file handle was saved above.
+//
+// Here is a typical usage of these two statements:
+//
+//  startProgram( "a" );
+//	mov( eax, fileHandle );
+//	
+//	t( aaa );
+//	t( aad );
+//	t( aam );
+//	t( aas );
+//	t( arpl, reg16, reg16 );
+//	t( arpl, mem16, reg16 );
+//
+//	endProgram( fileHandle );
+//
+// This sequence creates and assembly language test file with all the test instructions
+// for aaa, aad, aam, aas, and the variants of the arpl instruction. The file will be
+// called "a.hla", "a.masm", or "a.fasm" depending on the output syntax.
+//
+// The "t" and "tr" macros were chosen to allow one to type these statements directly
+// from the Intel documentation for the x86 processor. Do note that many Intel
+// instruction operands are specified as "r/m" (register or memory, using the
+// mod-reg-r/m byte). Though it would be possible to create a set of regmemXX operands,
+// I chose not to do this because I wanted to be able to break up the output files
+// at a finer grain. Therefore, you'll have to convert an entry in the Intel
+// documentation of the form "r/m" into two separate "t" invocations, e.g.,
+//
+// Intel's
+//		mov r/m8, r8
+//
+// becomes
+//		t( mov, reg8, reg8 );
+//		t( mov, mem8, reg8 );
+//		t( mov, anonmem, reg8 );
+//
+// (the last entry is only valid if anonymous memory operands are legal for the
+// instruction given the other operand(s); it is in this case.)
+
+
+begin makeTest;
+
+	if( arg.c() > 1 ) then
+	
+		arg.a_v(1);
+		mov( eax, theOS );
+		str.lower( theOS );
+		
+	else
+	
+		str.a_cpy( "win32" );
+		mov( eax, theOS );
+		
+	endif;
+
+
+	#print( "Emitting full-operand tests" )
+	
+	startProgram( "all_0" );	
+		t( mov, reg8_all, reg8_all );
+		t( mov, reg16_all, reg16_all );
+		t( mov, reg32_all, reg32_all );
+	endProgram( fileHandle );
+		
+	startProgram( "all_1" );	
+		t( mov, reg8_all, mem8_all );
+		t( mov, reg16_all, mem16_all );
+		t( mov, reg32_all, mem32_all );
+	endProgram( fileHandle );
+		
+	startProgram( "all_2" );	
+		t( mov, mem8_all, reg8_all );
+		t( mov, mem16_all, reg16_all );
+		t( mov, mem32_all, reg32_all );
+	endProgram( fileHandle );
+		
+	startProgram( "all_3" );	
+		t( mov, reg8_all, mem8v_all );
+		t( mov, reg16_all, mem16v_all );
+		t( mov, reg32_all, mem32v_all );
+
+		t( mov, mem8v_all, reg8_all );
+		t( mov, mem16v_all, reg16_all );
+		t( mov, mem32v_all, reg32_all );
+
+		t( mov, reg8_all, mem8p_all );
+		t( mov, reg16_all, mem16p_all );
+		t( mov, reg32_all, mem32p_all );
+		
+		t( mov, mem8p_all, reg8_all );
+		t( mov, mem16p_all, reg16_all );
+		t( mov, mem32p_all, reg32_all );
+
+		t( mov, reg8_all, anonmem_all );
+		t( mov, reg16_all, anonmem_all );
+		t( mov, reg32_all, anonmem_all );
+
+		t( mov, anonmem_all, reg8_all );
+		t( mov, anonmem_all, reg16_all );
+		t( mov, anonmem_all, reg32_all );
+
+		t( mov, reg8_all, const8_all );
+		t( mov, reg16_all, const16_all );
+		t( mov, reg32_all, const32_all );
+
+		t( mov, mem8_all, const8_all );
+		t( mov, mem16_all, const16_all );
+		t( mov, mem32_all, const32_all );
+	endProgram( fileHandle );
+		
+	startProgram( "all_4" );	
+		t( mov, reg16_all, regSeg );
+		t( mov, destRegSeg, reg16_all );
+		t( mov, mem16_all, regSeg );
+		t( mov, destRegSeg, mem16_all );
+
+		t( mov, reg32_all, regCtl );
+		t( mov, regCtl, reg32_all );
+		t( mov, reg32_all, regDbg );
+		t( mov, regDbg, reg32_all );
+		
+		t( lea, reg32_all, anonmem_all );
+		t( lea, reg32_all, anonmem_all2 );
+		
+	endProgram( fileHandle );
+		
+	startProgram( "all_5" );
+		tr( lds, reg32_all, mem48_all );	
+		tr( lds, reg32_all, mem48v_all );	
+		tr( lds, reg32_all, mem48p_all );
+		t( movq, regMmx, mem64_all  );
+		t( movq, regMmx, mem64v_all );
+		t( movq, regMmx, mem64p_all );
+		t( movq, mem64_all,  regMmx );
+		t( movq, mem64v_all, regMmx );
+		t( movq, mem64p_all, regMmx );
+		t( fld, regFPU_all );
+		t( fld, memR32_all );
+		t( fld, memR64_all );
+		t( fld, memR80_all );
+		t( fld, memR32v_all );
+		t( fld, memR64v_all );
+		t( fld, memR80v_all );
+		t( fld, memR32p_all );
+		t( fld, memR64p_all );
+		t( fld, memR80p_all );
+		t( fbld, memBCD80_all );
+		t( fbld, memBCD80v_all );
+		t( fbld, memBCD80p_all );
+		t( fsub, regFPUnot0_all, _st0 );
+		t( haddpd, regXmm_all, mem128_all );
+		t( haddpd, regXmm_all, mem128v_all );
+		t( haddpd, regXmm_all, mem128p_all );
+		t( bt, mem16_all, constu8 );
+		t( bt, mem16v_all, constu8 );
+		t( bt, mem16p_all, constu8 );
+		
+		
+	endProgram( fileHandle );
+
+	#print( "Emitting code to write a-mnemonics" )
+
+
+   	startProgram( "a" );
+		t( aaa );
+		t( aad );
+		t( aam );
+		t( aas );
+		t( adc, reg8, reg8 );
+		t( adc, reg16, reg16 );
+		t( adc, reg32, reg32 );
+		t( adc, mem8, reg8 );
+		t( adc, mem16, reg16 );
+		t( adc, mem32, reg32 );
+		t( adc, reg8, mem8 );
+		t( adc, reg16, mem16 );
+		t( adc, reg32, mem32 );
+		t( adc, reg8, const8 );
+		t( adc, reg16, const16 );
+		t( adc, reg32, const32 );
+		t( adc, mem8, const8 );
+		t( adc, mem16, const16 );
+		t( adc, mem32, const32 );
+		t( adc, anonmem, reg8 );
+		t( adc, anonmem, reg16 );
+		t( adc, anonmem, reg32 );
+		t( adc, reg8, anonmem );
+		t( adc, reg16, anonmem );
+		t( adc, reg32, anonmem );
+		t( add, reg8, reg8 );
+		t( add, reg16, reg16 );
+		t( add, reg32, reg32 );
+		t( add, mem8, reg8 );
+		t( add, mem16, reg16 );
+		t( add, mem32, reg32 );
+		t( add, reg8, mem8 );
+		t( add, reg16, mem16 );
+		t( add, reg32, mem32 );
+		t( add, reg8, const8 );
+		t( add, reg16, const16 );
+		t( add, reg32, const32 );
+		t( add, mem8, const8 );
+		t( add, mem16, const16 );
+		t( add, mem32, const32 );
+		t( add, anonmem, reg8 );
+		t( add, anonmem, reg16 );
+		t( add, anonmem, reg32 );
+		t( add, reg8, anonmem );
+		t( add, reg16, anonmem );
+		t( add, reg32, anonmem );
+		t( addpd, regXmm, regXmm );
+		t( addpd, regXmm, mem128 );
+		t( addps, regXmm, regXmm );
+		t( addps, regXmm, mem128 );
+		t( addsd, regXmm, regXmm );
+		t( addsd, regXmm, mem64 );
+		t( addss, regXmm, regXmm );
+		t( addss, regXmm, mem32 );
+		t( addsubpd, regXmm, regXmm );
+		t( addsubpd, regXmm, mem128 );
+		t( addsubps, regXmm, regXmm );
+		t( addsubps, regXmm, mem128 );
+		t( and, reg8, reg8 );
+		t( and, reg16, reg16 );
+		t( and, reg32, reg32 );
+		t( and, mem8, reg8 );
+		t( and, mem16, reg16 );
+		t( and, mem32, reg32 );
+		t( and, reg8, mem8 );
+		t( and, reg16, mem16 );
+		t( and, reg32, mem32 );
+		t( and, reg8, const8 );
+		t( and, reg16, const16 );
+		t( and, reg32, const32 );
+		t( and, mem8, const8 );
+		t( and, mem16, const16 );
+		t( and, mem32, const32 );
+		t( and, anonmem, reg8 );
+		t( and, anonmem, reg16 );
+		t( and, anonmem, reg32 );
+		t( and, reg8, anonmem );
+		t( and, reg16, anonmem );
+		t( and, reg32, anonmem );
+		t( addpd, regXmm, regXmm );
+		t( addpd, regXmm, mem128 );
+		t( addps, regXmm, regXmm );
+		t( addps, regXmm, mem128 );
+		t( addpd, regXmm, regXmm );
+		t( addpd, regXmm, mem128 );
+		t( addps, regXmm, regXmm );
+		t( addps, regXmm, mem128 );
+		t( arpl, reg16, reg16 );
+		t( arpl, mem16, reg16 );
+	endProgram( fileHandle );
+
+	
+	/////////////////////////////////////////////////////////////////////////
+
+	#print( "Emitting code to write b-mnemonics" )
+	
+	startProgram( "b" );
+		tr( bound, reg16, mem16 );
+		tr( bound, reg32, mem32 );
+		t( bsf, reg16, reg16 );
+		t( bsf, reg16, mem16 );
+		t( bsf, reg32, reg32 );
+		t( bsf, reg32, mem32 );
+		t( bsr, reg16, reg16 );
+		t( bsr, reg16, mem16 );
+		t( bsr, reg32, reg32 );
+		t( bsr, reg32, mem32 );
+		t( bswap, reg32 );
+		t( bt, reg16, reg16 );
+		t( bt, mem16, reg16 );
+		t( bt, reg16, const4 );
+		t( bt, mem16, constu8 );
+		t( bt, reg32, reg32 );
+		t( bt, mem32, reg32 );
+		t( bt, reg32, const5 );
+		t( bt, mem32, constu8 );
+		t( btc, reg16, reg16 );
+		t( btc, mem16, reg16 );
+		t( btc, reg16, const4 );
+		t( btc, mem16, constu8 );
+		t( btc, reg32, reg32 );
+		t( btc, mem32, reg32 );
+		t( btc, reg32, const5 );
+		t( btc, mem32, constu8 );
+		t( btr, reg16, reg16 );
+		t( btr, mem16, reg16 );
+		t( btr, reg16, const4 );
+		t( btr, mem16, constu8 );
+		t( btr, reg32, reg32 );
+		t( btr, mem32, reg32 );
+		t( btr, reg32, const5 );
+		t( btr, mem32, constu8 );
+		t( bts, reg16, reg16 );
+		t( bts, mem16, reg16 );
+		t( bts, reg16, const4 );
+		t( bts, mem16, constu8 );
+		t( bts, reg32, reg32 );
+		t( bts, mem32, reg32 );
+		t( bts, reg32, const5 );
+		t( bts, mem32, constu8 );
+	endProgram( fileHandle );
+	
+	///////////////////////////////////////////////
+	
+
+	#print( "Emitting code to write c-mnemonics" )
+	
+	startProgram( "c1" );
+		fileio.puts( fileHandle, "  nop();" nl );
+		fileio.puts( fileHandle, "calledProc::" nl );
+		t2( call, calledProc );
+		t( call, mem32 );
+		t( call, reg32 );
+		t( cbw );
+		t( cwde );
+		t( clc );
+		t( cld );
+		t( clflush, mem8 );
+		t( cli );
+		t( clts );
+		t( cmc );
+		t( cmova, reg16, reg16 );
+		t( cmova, reg16, mem16 );
+		t( cmova, reg32, reg32 );
+		t( cmova, reg32, mem32 );
+		t( cmovae, reg16, reg16 );
+		t( cmovae, reg16, mem16 );
+		t( cmovae, reg32, reg32 );
+		t( cmovae, reg32, mem32 );
+		t( cmovb, reg16, reg16 );
+		t( cmovb, reg16, mem16 );
+		t( cmovb, reg32, reg32 );
+		t( cmovb, reg32, mem32 );
+		t( cmovbe, reg16, reg16 );
+		t( cmovbe, reg16, mem16 );
+		t( cmovbe, reg32, reg32 );
+		t( cmovbe, reg32, mem32 );
+		t( cmovc, reg16, reg16 );
+		t( cmovc, reg16, mem16 );
+		t( cmovc, reg32, reg32 );
+		t( cmovc, reg32, mem32 );
+		t( cmove, reg16, reg16 );
+		t( cmove, reg16, mem16 );
+		t( cmove, reg32, reg32 );
+		t( cmove, reg32, mem32 );
+		t( cmovg, reg16, reg16 );
+		t( cmovg, reg16, mem16 );
+		t( cmovg, reg32, reg32 );
+		t( cmovg, reg32, mem32 );
+		t( cmovge, reg16, reg16 );
+		t( cmovge, reg16, mem16 );
+		t( cmovge, reg32, reg32 );
+		t( cmovge, reg32, mem32 );
+		t( cmovl, reg16, reg16 );
+		t( cmovl, reg16, mem16 );
+		t( cmovl, reg32, reg32 );
+		t( cmovl, reg32, mem32 );
+		t( cmovle, reg16, reg16 );
+		t( cmovle, reg16, mem16 );
+		t( cmovle, reg32, reg32 );
+		t( cmovle, reg32, mem32 );
+		t( cmovna, reg16, reg16 );
+		t( cmovna, reg16, mem16 );
+		t( cmovna, reg32, reg32 );
+		t( cmovna, reg32, mem32 );
+		t( cmovnae, reg16, reg16 );
+		t( cmovnae, reg16, mem16 );
+		t( cmovnae, reg32, reg32 );
+		t( cmovnae, reg32, mem32 );
+		t( cmovnb, reg16, reg16 );
+		t( cmovnb, reg16, mem16 );
+		t( cmovnb, reg32, reg32 );
+		t( cmovnb, reg32, mem32 );
+		t( cmovnbe, reg16, reg16 );
+		t( cmovnbe, reg16, mem16 );
+		t( cmovnbe, reg32, reg32 );
+		t( cmovnbe, reg32, mem32 );
+		t( cmovnc, reg16, reg16 );
+		t( cmovnc, reg16, mem16 );
+		t( cmovnc, reg32, reg32 );
+		t( cmovnc, reg32, mem32 );
+		t( cmovne, reg16, reg16 );
+		t( cmovne, reg16, mem16 );
+		t( cmovne, reg32, reg32 );
+		t( cmovne, reg32, mem32 );
+		t( cmovng, reg16, reg16 );
+		t( cmovng, reg16, mem16 );
+		t( cmovng, reg32, reg32 );
+		t( cmovng, reg32, mem32 );
+		t( cmovnge, reg16, reg16 );
+		t( cmovnge, reg16, mem16 );
+		t( cmovnge, reg32, reg32 );
+		t( cmovnge, reg32, mem32 );
+		t( cmovnl, reg16, reg16 );
+		t( cmovnl, reg16, mem16 );
+		t( cmovnl, reg32, reg32 );
+		t( cmovnl, reg32, mem32 );
+		t( cmovnle, reg16, reg16 );
+		t( cmovnle, reg16, mem16 );
+		t( cmovnle, reg32, reg32 );
+		t( cmovnle, reg32, mem32 );
+		t( cmovno, reg16, reg16 );
+		t( cmovno, reg16, mem16 );
+		t( cmovno, reg32, reg32 );
+		t( cmovno, reg32, mem32 );
+		t( cmovnp, reg16, reg16 );
+		t( cmovnp, reg16, mem16 );
+		t( cmovnp, reg32, reg32 );
+		t( cmovnp, reg32, mem32 );
+		t( cmovns, reg16, reg16 );
+		t( cmovns, reg16, mem16 );
+		t( cmovns, reg32, reg32 );
+		t( cmovns, reg32, mem32 );
+		t( cmovnz, reg16, reg16 );
+		t( cmovnz, reg16, mem16 );
+		t( cmovnz, reg32, reg32 );
+		t( cmovnz, reg32, mem32 );
+		t( cmovo, reg16, reg16 );
+		t( cmovo, reg16, mem16 );
+		t( cmovo, reg32, reg32 );
+		t( cmovo, reg32, mem32 );
+		t( cmovp, reg16, reg16 );
+		t( cmovp, reg16, mem16 );
+		t( cmovp, reg32, reg32 );
+		t( cmovp, reg32, mem32 );
+		t( cmovpe, reg16, reg16 );
+		t( cmovpe, reg16, mem16 );
+		t( cmovpe, reg32, reg32 );
+		t( cmovpe, reg32, mem32 );
+		t( cmovpo, reg16, reg16 );
+		t( cmovpo, reg16, mem16 );
+		t( cmovpo, reg32, reg32 );
+		t( cmovpo, reg32, mem32 );
+		t( cmovs, reg16, reg16 );
+		t( cmovs, reg16, mem16 );
+		t( cmovs, reg32, reg32 );
+		t( cmovs, reg32, mem32 );
+		t( cmovz, reg16, reg16 );
+		t( cmovz, reg16, mem16 );
+		t( cmovz, reg32, reg32 );
+		t( cmovz, reg32, mem32 );
+	endProgram( fileHandle );
+		
+	startProgram( "c2" );
+		tr( cmp, reg8    ,reg8    );
+		tr( cmp, reg16   ,reg16   );
+		tr( cmp, reg32   ,reg32   );
+		tr( cmp, mem8    ,reg8    );
+		tr( cmp, mem16   ,reg16   );
+		tr( cmp, mem32   ,reg32   );
+		tr( cmp, reg8    ,mem8    );
+		tr( cmp, reg16   ,mem16   );
+		tr( cmp, reg32   ,mem32   );
+		tr( cmp, reg8    ,anonmem );
+		tr( cmp, reg16   ,anonmem );
+		tr( cmp, reg32   ,anonmem );
+		tr( cmp, anonmem ,reg8    );
+		tr( cmp, anonmem ,reg16   );
+		tr( cmp, anonmem ,reg32   );
+		tr( cmp, reg8    ,const8  );
+		tr( cmp, reg16   ,const16 );
+		tr( cmp, reg32   ,const32 );
+		tr( cmp, mem8    ,const8  );
+		tr( cmp, mem16   ,const16 );
+		tr( cmp, mem32   ,const32 );
+		t( cmppd, regXmm, regXmm, const3 );
+		t( cmppd, regXmm, mem128, const3 );
+		t( cmpeqpd, regXmm, regXmm );
+		t( cmpeqpd, regXmm, mem128 );
+		t( cmpltpd, regXmm, regXmm );
+		t( cmpltpd, regXmm, mem128 );
+		t( cmplepd, regXmm, regXmm );
+		t( cmplepd, regXmm, mem128 );
+		t( cmpunordpd, regXmm, regXmm );
+		t( cmpunordpd, regXmm, mem128 );
+		t( cmpneqpd, regXmm, regXmm );
+		t( cmpneqpd, regXmm, mem128 );
+		t( cmpnltpd, regXmm, regXmm );
+		t( cmpnltpd, regXmm, mem128 );
+		t( cmpnlepd, regXmm, regXmm );
+		t( cmpnlepd, regXmm, mem128 );
+		t( cmpordpd, regXmm, regXmm );
+		t( cmpordpd, regXmm, mem128 );
+		t( cmpps, regXmm, regXmm, const3 );
+		t( cmpps, regXmm, mem128, const3 );
+		t( cmpeqps, regXmm, regXmm );
+		t( cmpeqps, regXmm, mem128 );
+		t( cmpltps, regXmm, regXmm );
+		t( cmpltps, regXmm, mem128 );
+		t( cmpleps, regXmm, regXmm );
+		t( cmpleps, regXmm, mem128 );
+		t( cmpunordps, regXmm, regXmm );
+		t( cmpunordps, regXmm, mem128 );
+		t( cmpneqps, regXmm, regXmm );
+		t( cmpneqps, regXmm, mem128 );
+		t( cmpnltps, regXmm, regXmm );
+		t( cmpnltps, regXmm, mem128 );
+		t( cmpnleps, regXmm, regXmm );
+		t( cmpnleps, regXmm, mem128 );
+		t( cmpordps, regXmm, regXmm );
+		t( cmpordps, regXmm, mem128 );
+		t( cmpsb );
+		t( cmpsd );
+		t( cmpsw );
+	endProgram( fileHandle );
+		
+	startProgram( "c3" );
+		t( cmpsd, regXmm, regXmm, const3 );
+		t( cmpsd, regXmm, mem64, const3 );
+		t( cmpeqsd, regXmm, regXmm );
+		t( cmpeqsd, regXmm, mem64 );
+		t( cmpltsd, regXmm, regXmm );
+		t( cmpltsd, regXmm, mem64 );
+		t( cmplesd, regXmm, regXmm );
+		t( cmplesd, regXmm, mem64 );
+		t( cmpunordsd, regXmm, regXmm );
+		t( cmpunordsd, regXmm, mem64 );
+		t( cmpneqsd, regXmm, regXmm );
+		t( cmpneqsd, regXmm, mem64 );
+		t( cmpnltsd, regXmm, regXmm );
+		t( cmpnltsd, regXmm, mem64 );
+		t( cmpnlesd, regXmm, regXmm );
+		t( cmpnlesd, regXmm, mem64 );
+		t( cmpordsd, regXmm, regXmm );
+		t( cmpordsd, regXmm, mem64 );
+		t( cmpss, regXmm, regXmm, const3 );
+		t( cmpss, regXmm, mem32, const3 );
+		t( cmpeqss, regXmm, regXmm );
+		t( cmpeqss, regXmm, mem32 );
+		t( cmpltss, regXmm, regXmm );
+		t( cmpltss, regXmm, mem32 );
+		t( cmpless, regXmm, regXmm );
+		t( cmpless, regXmm, mem32 );
+		t( cmpunordss, regXmm, regXmm );
+		t( cmpunordss, regXmm, mem32 );
+		t( cmpneqss, regXmm, regXmm );
+		t( cmpneqss, regXmm, mem32 );
+		t( cmpnltss, regXmm, regXmm );
+		t( cmpnltss, regXmm, mem32 );
+		t( cmpnless, regXmm, regXmm );
+		t( cmpnless, regXmm, mem32 );
+		t( cmpordss, regXmm, regXmm );
+		t( cmpordss, regXmm, mem32 );
+		tr( cmpxchg, reg8 , reg8 );
+		tr( cmpxchg, mem8 , reg8 );
+		tr( cmpxchg, reg16, reg16 );
+		tr( cmpxchg, mem16, reg16 );
+		tr( cmpxchg, reg32, reg32 );
+		tr( cmpxchg, mem32, reg32 );
+		t( cmpxchg8b, mem64 );
+	endProgram( fileHandle );
+		
+	startProgram( "c4" );
+		t( comisd, regXmm, regXmm );
+		t( comisd, regXmm, mem64 );
+		t( comiss, regXmm, regXmm );
+		t( comiss, regXmm, mem32 );
+		t( cpuid );
+		t( cvtdq2pd, regXmm, regXmm );
+		t( cvtdq2pd, regXmm, mem64 );
+		t( cvtdq2ps, regXmm, regXmm );
+		t( cvtdq2ps, regXmm, mem128 );
+		t( cvtpd2dq, regXmm, regXmm );
+		t( cvtpd2dq, regXmm, mem128 );
+		t( cvtpd2dq, regXmm, regXmm );
+		t( cvtpd2dq, regXmm, mem128 );
+		t( cvtpd2ps, regXmm, regXmm );
+		t( cvtpd2ps, regXmm, mem128 );
+		t( cvtpi2pd, regXmm, regMmx );
+		t( cvtpi2pd, regXmm, mem64 );
+		t( cvtpi2ps, regXmm, regMmx );
+		t( cvtpi2ps, regXmm, mem64 );
+		t( cvtps2dq, regXmm, regXmm );
+		t( cvtps2dq, regXmm, mem128 );
+		t( cvtps2pd, regXmm, regXmm );
+		t( cvtps2pd, regXmm, mem64 );
+		t( cvtps2pi, regMmx, regXmm );
+		t( cvtps2pi, regMmx, mem64 );
+		t( cvtsd2si, reg32, regXmm );
+		t( cvtsd2si, reg32, mem64 );
+		t( cvtsd2ss, regXmm, regXmm );
+		t( cvtsd2ss, regXmm, mem64 );
+		t( cvtsi2sd, regXmm, reg32 );
+		t( cvtsi2sd, regXmm, mem32 );
+		t( cvtsi2ss, regXmm, reg32 );
+		t( cvtsi2ss, regXmm, mem32 );
+		t( cvtss2sd, regXmm, regXmm );
+		t( cvtss2sd, regXmm, mem32 );
+		t( cvtss2si, reg32, regXmm );
+		t( cvtss2si, reg32, mem32 );
+		t( cvttpd2pi, regMmx, regXmm );
+		t( cvttpd2pi, regMmx, mem128 );
+		t( cvttpd2dq, regXmm, regXmm );
+		t( cvttpd2dq, regXmm, mem128 );
+		t( cvttps2dq, regXmm, regXmm );
+		t( cvttps2dq, regXmm, mem128 );
+		t( cvttps2pi, regMmx, regXmm );
+		t( cvttps2pi, regMmx, mem64 );
+		t( cvttsd2si, reg32, regXmm );
+		t( cvttsd2si, reg32, mem64 );
+		t( cvttss2si, reg32, regXmm );
+		t( cvttss2si, reg32, mem32 );
+		t( cwd );
+		t( cdq );
+	endProgram( fileHandle );
+
+	///////////////////////////////////////////////
+
+	#print( "Emitting code to write d-mnemonics" )
+	
+	startProgram( "d" );
+		t( daa );
+		t( das );
+		t( dec, reg8 );
+		t( dec, reg16 );
+		t( dec, reg32 );
+		t( dec, mem8 );
+		t( dec, mem16 );
+		t( dec, mem32 );
+		t( div, reg8 );
+		t( div, reg16 );
+		t( div, reg32 );
+		t( div, mem8 );
+		t( div, mem16 );
+		t( div, mem32 );
+		t( divpd, regXmm, regXmm );
+		t( divpd, regXmm, mem128 );
+		t( divps, regXmm, regXmm );
+		t( divps, regXmm, mem128 );
+		t( divsd, regXmm, regXmm );
+		t( divsd, regXmm, mem64 );
+		t( divss, regXmm, regXmm );
+		t( divss, regXmm, mem32 );
+	endProgram( fileHandle );
+
+	
+	///////////////////////////////////////////////
+
+	#print( "Emitting code to write e-mnemonics" )
+	
+	startProgram( "e" );
+		t( emms );
+		tr( enter, constu16, const5 );
+	endProgram( fileHandle );
+	
+	//////////////////////////////////////////////////////////////////////////
+
+	#print( "Emitting code to write f-mnemonics" )
+	
+	
+	startProgram( "f" );
+		t( f2xm1 );
+		t( fabs );
+		t( fadd, mem32 );
+		t( fadd, mem64 );
+		t( fadd, _st0, regFPU );
+		t( fadd, regFPU, _st0 );
+		t( faddp, regFPU, _st0 );
+		t( fiadd, mem32 );
+		t( fiadd, mem16 );
+		t( fbld, memBCD80 );
+		t( fbstp, memBCD80 );
+		t( fchs );
+		t( fclex );
+		t( fnclex );
+		t( fcmovb, _st0, regFPU );
+		t( fcmove, _st0, regFPU );
+		t( fcmovbe, _st0, regFPU );
+		t( fcmovu, _st0, regFPU );
+		t( fcmovnb, _st0, regFPU );
+		t( fcmovne, _st0, regFPU );
+		t( fcmovnbe, _st0, regFPU );
+		t( fcmovnu, _st0, regFPU );
+		tr( fcomi, _st0, regFPU );
+		tr( fcomip, _st0, regFPU );
+		tr( fucomi, _st0, regFPU );
+		tr( fucomip, _st0, regFPU );
+		t( fcos );
+		t( fdecstp );
+		t( fdiv, mem32 );
+		t( fdiv, mem64 );
+		t( fdiv, _st0, regFPU );
+		t( fdiv, regFPUnot0, _st0 );
+		t( fdivp, regFPU, _st0 );
+		t( fidiv, mem16 );
+		t( fidiv, mem32 );
+		t( fdivr, mem32 );
+		t( fdivr, mem64 );
+		t( fdivr, _st0, regFPU );
+		t( fdivr, _st0, regFPUnot0 );
+		t( fdivrp, regFPU, _st0 );
+		t( fidivr, mem16 );
+		t( fidivr, mem32 );
+		t( ffree, regFPU );
+		tr( ficom, mem16 );
+		tr( ficom, mem32 );
+		tr( ficomp, mem16 );
+		tr( ficomp, mem32 );
+		t( fild, mem16 );
+		t( fild, mem32 );
+		t( fild, mem64 );
+		t( fincstp );
+		t( finit );
+		t( fninit );
+		t( fist, mem16 );
+		t( fist, mem32 );
+		t( fistp, mem16 );
+		t( fistp, mem32 );
+		t( fistp, mem64 );
+		t( fisttp, mem16 );
+		t( fisttp, mem32 );
+		t( fisttp, mem64 );
+		t( fld, regFPU );
+		t( fld1 );
+		t( fldcw, mem16 );
+		t( fldl2t );
+		t( fldl2e );
+		t( fldpi );
+		t( fldlg2 );
+		t( fldln2 );
+		t( fldz );
+		t( faddp );
+		t( fdivp );
+		t( fdivrp );
+		t( fmulp );
+		t( fsubp );
+		t( fsubrp );
+		t( fld, memR32 );
+		t( fld, memR64 );
+		t( fld, memR80 );
+		t( fmul, memR32 );
+		t( fmul, memR64 );
+		t( fst, memR32 );
+		t( fst, memR64 );
+		t( fstp, memR32 );
+		t( fstp, memR64 );
+		t( fstp, memR80 );
+		t( fsave, mem8 );
+		t( fnsave, mem8 );
+		t( frstor, mem8 );
+		t( fstenv, mem8 );
+		t( fstsw, mem16 );
+		t( fnstsw, mem16 );
+		t( fldenv, mem8 );
+		t( fxrstor, mem8 );
+		t( fxsave, mem8 );
+		t( fmul, _st0, regFPU );
+		t( fmul, regFPU, _st0 );
+		t( fmulp, regFPU, _st0 );
+		t( fimul, mem32 );
+		t( fimul, mem16 );
+		t( fnop );
+		t( fpatan );
+		t( fprem );
+		t( fprem1 );
+		t( fptan );
+		t( frndint );
+		t( fscale );
+		t( fsin );
+		t( fsincos );
+		t( fsqrt );
+		t( fst, regFPU );
+		t( fstp, regFPU );
+		t( fstcw, mem16 );
+		t( fnstcw, mem16 );
+		t( fsub, mem32 );
+		t( fsub, mem64 );
+		t( fsub, _st0, regFPU );
+		t( fsub, regFPUnot0, _st0 );
+		t( fsubp, regFPU, _st0 );
+		t( fidiv, mem16 );
+		t( fidiv, mem32 );
+		t( fsubr, mem32 );
+		t( fsubr, mem64 );
+		t( fsubr, _st0, regFPU );
+		t( fsubr, _st0, regFPUnot0 );
+		t( fsubrp, regFPU, _st0 );
+		t( fidivr, mem16 );
+		t( fidivr, mem32 );
+		t( ftst );
+		t( fucom, regFPU );
+		t( fucom );
+		t( fucomp, regFPU );
+		t( fucomp );
+		t( fucompp );
+		t( fxam );
+		t( fxch, regFPU );
+		t( fxch );
+		t( fxtract );
+		t( fyl2x );
+		t( fyl2xp1 );
+	endProgram( fileHandle );
+
+		
+	//////////////////////////////////////////////////////////////////////////
+	
+	#print( "Emitting code to write h-mnemonics" )
+	
+	startProgram( "h" );
+		t( hlt );
+		t( haddpd, regXmm, regXmm );
+		t( haddpd, regXmm, mem128 );
+		t( haddps, regXmm, regXmm );
+		t( haddps, regXmm, mem128 );
+		
+		t( hsubpd, regXmm, regXmm );
+		t( hsubpd, regXmm, mem128 );
+		t( hsubps, regXmm, regXmm );
+		t( hsubps, regXmm, mem128 );
+	endProgram( fileHandle );
+
+	
+	//////////////////////////////////////////////////////////////////////////
+	
+	#print( "Emitting code to write i-mnemonics" )
+	
+	startProgram( "i" );
+		t( idiv, reg8 );
+		t( idiv, reg16 );
+		t( idiv, reg32 );
+		t( idiv, mem8 );
+		t( idiv, mem16 );
+		t( idiv, mem32 );
+		t( imod, reg8 );
+		t( imod, reg16 );
+		t( imod, reg32 );
+		t( imod, mem8 );
+		t( imod, mem16 );
+		t( imod, mem32 );
+		t( imul, reg8 );
+		t( imul, reg16 );
+		t( imul, reg32 );
+		t( imul, mem8 );
+		t( imul, mem16 );
+		t( imul, mem32 );
+		t( intmul, reg16, reg16 );
+		t( intmul, reg16, mem16 );
+		t( intmul, reg32, reg32 );
+		t( intmul, reg32, mem32 );
+		t( intmul, reg16, reg16, consti16 );
+		t( intmul, reg16, mem16, consti16 );
+		t( intmul, reg32, reg32, consti32 );
+		t( intmul, reg32, mem32, consti32 );
+		t( intmul, reg16, consti16 );
+		t( intmul, reg32, consti32 );
+		t( in, _al, _dx );
+		t( in, _ax, _dx );
+		t( in, _eax, _dx );
+		t( in, _al, constu8 );
+		t( in, _ax, constu8 );
+		t( in, _eax, constu8 );
+		t( inc, reg8 );
+		t( inc, reg16 );
+		t( inc, reg32 );
+		t( inc, mem8 );
+		t( inc, mem16 );
+		t( inc, mem32 );
+		t( insb );
+		t( insd );
+		t( insw );
+		t( int, constu8 );
+		t( into );
+		t( invd );
+		t( invlpg, mem8 );
+	endProgram( fileHandle );
+
+
+	//////////////////////////////////////////////////////////////////////////
+	
+	#print( "Emitting code to write j-mnemonics" )
+	
+	startProgram( "j" );
+		t( nop ); // Nonsense for Gas/objdump, so that endBranches has a unique address	
+//		fileio.puts
+//		( 
+//			fileHandle, 
+//			"endBranches::" nl
+//		);
+		t2( jcxz, endBranches );
+		t2( jecxz, endBranches );
+		t2( loop, endBranches );
+		t2( loopnz, endBranches );
+		t2( loopz, endBranches );
+		t2( loopne, endBranches );
+		t2( loope, endBranches );
+		fileio.puts
+		(
+			fileHandle,
+			"  #for( _i_ := 0 to 128 ) nop(); #endfor" nl 
+		);
+
+		t2( jo, endBranches );
+		t2( jno, endBranches );
+		t2( jc, endBranches );
+		t2( jnc, endBranches );
+		t2( jz, endBranches );
+		t2( jnz, endBranches );
+		t2( jbe, endBranches );
+		t2( ja, endBranches );
+		t2( js, endBranches );
+		t2( jns, endBranches );
+		t2( jp, endBranches );
+		t2( jnp, endBranches );
+		t2( jl, endBranches );
+		t2( jge, endBranches );
+		t2( jle, endBranches );
+		t2( jg, endBranches );
+
+		// Grand kludge because GAS generates a near jmp rather than
+		// a short jump if the label is global (even if it is already
+		// defined).
+
+		
+		
+		t( jmp, mem32 );
+		t( jmp, reg32 );
+		t( jmp, anonmem );
+
+		// The following will be more than 128 bytes away from endBranches:
+		
+		t2( jo, endBranches );	
+		t2( jno, endBranches );
+		t2( jc, endBranches );	
+		t2( jnc, endBranches );
+		t2( jz, endBranches );	
+		t2( jnz, endBranches );
+		t2( jbe, endBranches );
+		t2( ja, endBranches );
+		t2( js, endBranches );
+		t2( jns, endBranches );
+		t2( jp, endBranches );
+		t2( jnp, endBranches );
+		t2( jl, endBranches );
+		t2( jge, endBranches );
+		t2( jle, endBranches );
+		t2( jg, endBranches );
+		t2( jmp, endBranches2 );
+	endProgram( fileHandle );
+	
+
+	//////////////////////////////////////////////////////////////////////////
+	
+	#print( "Emitting code to write l-mnemonics" )
+	
+	startProgram( "l" );
+		t( lahf );
+		tr( lar, reg16, reg16 );
+		tr( lar, reg16, mem16 );
+		tr( lddqu, regXmm, mem128 );
+		t( ldmxcsr, mem32 );
+		tr( lds, reg32, mem48 );	
+		tr( lds, reg32, anonmem );	
+		tr( les, reg32, mem48 );	
+		tr( les, reg32, anonmem );	
+		tr( lfs, reg32, mem48 );	
+		tr( lfs, reg32, anonmem );	
+		tr( lgs, reg32, mem48 );	
+		tr( lgs, reg32, anonmem );	
+		tr( lss, reg32, mem48 );	
+		tr( lss, reg32, anonmem );
+		tr( lea, reg32, mem8    );	
+		tr( lea, reg32, mem16   );	
+		tr( lea, reg32, mem32   );	
+		tr( lea, reg32, anonmem );
+		t( leave );
+		t( lfence );
+		t( lgdt, mem32 );
+		t( lidt, mem32 );
+		t( lldt, reg16 );
+		t( lldt, mem16 );
+		t( lgdt, anonmem );
+		t( lidt, anonmem );
+		t( lmsw, reg16 );
+		t( lmsw, mem16 );
+		t( lock_xadd, mem8, reg8 );
+		t( lock_xadd, mem16, reg16 );
+		t( lock_xadd, mem32,  reg32 );
+		tr( lock_cmpxchg, mem8, reg8 );
+		tr( lock_cmpxchg, mem16, reg16 );
+		tr( lock_cmpxchg, mem32, reg32 );
+		t( lock_dec, mem8 );
+		t( lock_dec, mem16 );
+		t( lock_dec, mem32 );
+		t( lock_inc, mem8 );
+		t( lock_inc, mem16 );
+		t( lock_inc, mem32 );
+		t( lock_neg, mem8 );
+		t( lock_neg, mem16 );
+		t( lock_neg, mem32 );
+		t( lock_not, mem8 );
+		t( lock_not, mem16 );
+		t( lock_not, mem32 );
+		t( lock_btc, mem16, reg16 );
+		t( lock_btc, mem16, constu8 );
+		t( lock_btc, mem32, reg32 );
+		t( lock_btc, mem32, constu8 );
+		t( lock_btr, mem16, reg16 );
+		t( lock_btr, mem16, constu8 );
+		t( lock_btr, mem32, reg32 );
+		t( lock_btr, mem32, constu8 );
+		t( lock_bts, mem16, reg16 );
+		t( lock_bts, mem16, constu8 );
+		t( lock_bts, mem32, reg32 );
+		t( lock_bts, mem32, constu8 );
+		t( lock_xchg, mem8,  reg8 );
+		t( lock_xchg, mem16, reg16 );
+		t( lock_xchg, mem32, reg32 );
+		t( lock_xchg,  reg8, mem8  );
+		t( lock_xchg, reg16, mem16 );
+		t( lock_xchg, reg32, mem32 );
+		t( lock_adc, mem8, reg8 );
+		t( lock_adc, mem16, reg16 );
+		t( lock_adc, mem32, reg32 );
+		t( lock_adc, mem8, const8 );
+		t( lock_adc, mem16, const16 );
+		t( lock_adc, mem32, const32 );
+		t( lock_adc, anonmem, reg8 );
+		t( lock_adc, anonmem, reg16 );
+		t( lock_adc, anonmem, reg32 );
+		t( lock_add, mem8, reg8 );
+		t( lock_add, mem16, reg16 );
+		t( lock_add, mem32, reg32 );
+		t( lock_add, mem8, const8 );
+		t( lock_add, mem16, const16 );
+		t( lock_add, mem32, const32 );
+		t( lock_add, anonmem, reg8 );
+		t( lock_add, anonmem, reg16 );
+		t( lock_add, anonmem, reg32 );
+		t( lock_sub, mem8, reg8 );
+		t( lock_sub, mem16, reg16 );
+		t( lock_sub, mem32, reg32 );
+		t( lock_sub, mem8, const8 );
+		t( lock_sub, mem16, const16 );
+		t( lock_sub, mem32, const32 );
+		t( lock_sub, anonmem, reg8 );
+		t( lock_sub, anonmem, reg16 );
+		t( lock_sub, anonmem, reg32 );
+		t( lock_sbb, mem8, reg8 );
+		t( lock_sbb, mem16, reg16 );
+		t( lock_sbb, mem32, reg32 );
+		t( lock_sbb, mem8, const8 );
+		t( lock_sbb, mem16, const16 );
+		t( lock_sbb, mem32, const32 );
+		t( lock_sbb, anonmem, reg8 );
+		t( lock_sbb, anonmem, reg16 );
+		t( lock_sbb, anonmem, reg32 );
+		t( lock_and, mem8, reg8 );
+		t( lock_and, mem16, reg16 );
+		t( lock_and, mem32, reg32 );
+		t( lock_and, mem8, const8 );
+		t( lock_and, mem16, const16 );
+		t( lock_and, mem32, const32 );
+		t( lock_and, anonmem, reg8 );
+		t( lock_and, anonmem, reg16 );
+		t( lock_and, anonmem, reg32 );
+		t( lock_or, mem8, reg8 );
+		t( lock_or, mem16, reg16 );
+		t( lock_or, mem32, reg32 );
+		t( lock_or, mem8, const8 );
+		t( lock_or, mem16, const16 );
+		t( lock_or, mem32, const32 );
+		t( lock_or, anonmem, reg8 );
+		t( lock_or, anonmem, reg16 );
+		t( lock_or, anonmem, reg32 );
+		t( lock_xor, mem8, reg8 );
+		t( lock_xor, mem16, reg16 );
+		t( lock_xor, mem32, reg32 );
+		t( lock_xor, mem8, const8 );
+		t( lock_xor, mem16, const16 );
+		t( lock_xor, mem32, const32 );
+		t( lock_xor, anonmem, reg8 );
+		t( lock_xor, anonmem, reg16 );
+		t( lock_xor, anonmem, reg32 );
+		t( lodsb );
+		t( lodsw );
+		t( lodsd );
+		t( lsl, reg16, reg16 );
+		t( lsl, mem16, reg16 );
+		t( ltreg, reg16 );
+		t( ltreg, mem16 );
+
+	endProgram( fileHandle );
+
+	
+	
+	
+	//////////////////////////////////////////////////////////////////////////
+	
+	#print( "Emitting code to write m-mnemonics" )
+
+	startProgram( "m1" );	
+		t( maskmovdqu, regXmm, regXmm );
+		t( maskmovq, regMmx, regMmx );
+		t( maxpd, regXmm, regXmm );
+		t( maxpd, regXmm, mem128 );
+		t( maxps, regXmm, regXmm );
+		t( maxps, regXmm, mem128 );
+		t( maxsd, regXmm, regXmm );
+		t( maxsd, regXmm, mem64 );
+		t( maxss, regXmm, regXmm );
+		t( maxss, regXmm, mem32 );
+		t( minpd, regXmm, regXmm );
+		t( minpd, regXmm, mem128 );
+		t( minps, regXmm, regXmm );
+		t( minps, regXmm, mem128 );
+		t( minsd, regXmm, regXmm );
+		t( minsd, regXmm, mem64 );
+		t( minss, regXmm, regXmm );
+		t( minss, regXmm, mem32 );
+		t( mov, reg8, reg8 );
+		t( mov, reg16, reg16 );
+		t( mov, reg32, reg32 );
+		t( mov, reg8, mem8 );
+		t( mov, reg16, mem16 );
+		t( mov, reg32, mem32 );
+		t( mov, mem8, reg8 );
+		t( mov, mem16, reg16 );
+		t( mov, mem32, reg32 );
+		t( mov, reg8, anonmem );
+		t( mov, reg16, anonmem );
+		t( mov, reg32, anonmem );
+		t( mov, anonmem, reg8 );
+		t( mov, anonmem, reg16 );
+		t( mov, anonmem, reg32 );
+		t( mov, reg8, const8 );
+		t( mov, reg16, const16 );
+		t( mov, reg32, const32 );
+		t( mov, mem8, const8 );
+		t( mov, mem16, const16 );
+		t( mov, mem32, const32 );
+		t( mov, reg16, regSeg );
+		t( mov, destRegSeg, reg16 );
+		t( mov, mem16, regSeg );
+		t( mov, destRegSeg, mem16 );
+		t( mov, reg32, regCtl );
+		t( mov, regCtl, reg32 );
+		t( mov, reg32, regDbg );
+		t( mov, regDbg, reg32 );
+	endProgram( fileHandle );
+		
+	startProgram( "m2" );	
+		t( movapd, regXmm, regXmm );
+		t( movapd, regXmm, mem128 );
+		t( movapd, mem128, regXmm );
+		t( movaps, regXmm, regXmm );
+		t( movaps, regXmm, mem128 );
+		t( movaps, mem128, regXmm );
+		t( movd, regMmx, reg32 );
+		t( movd, regMmx, mem32 );
+		t( movd, reg32, regMmx );
+		t( movd, mem32, regMmx );
+		t( movd, regXmm, reg32 );
+		t( movd, regXmm, mem32 );
+		t( movd, reg32, regXmm );
+		t( movd, mem32, regXmm );
+		t( movddup, regXmm, regXmm );
+		t( movddup, regXmm, mem64 );
+		t( movdqa, regXmm, regXmm );
+		t( movdqa, regXmm, mem128 );
+		t( movdqa, mem128, regXmm );
+		t( movdqu, regXmm, regXmm );
+		t( movdqu, regXmm, mem128 );
+		t( movdqu, mem128, regXmm );
+		t( movdq2q, regMmx, regXmm );
+		t( movhlps, regXmm, regXmm );
+		t( movhpd, regXmm, mem64 );
+		t( movhpd, mem64, regXmm );
+		t( movhps, regXmm, mem64 );
+		t( movhps, mem64, regXmm );
+		t( movlhps, regXmm, regXmm );
+		t( movlpd, regXmm, mem64 );
+		t( movlpd, mem64, regXmm );
+		t( movlps, regXmm, mem64 );
+		t( movlps, mem64, regXmm );
+		t( movmskpd, reg32, regXmm );
+		t( movmskps, reg32, regXmm );
+		t( movntdq, mem128, regXmm );
+		t( movnti, mem32, reg32 );
+		t( movntpd, mem128, regXmm );
+		t( movntps, mem128, regXmm );
+		t( movntq, mem64, regMmx );
+		t( movshdup, regXmm, regXmm );
+		t( movshdup, regXmm, mem128 );
+		t( movsldup, regXmm, regXmm );
+		t( movsldup, regXmm, mem128 );
+		t( movq, regMmx, regMmx );
+		t( movq, regMmx, mem64 );
+		t( movq, mem64, regMmx );
+		t( movq, regXmm, regXmm );
+		t( movq, regXmm, mem64 );
+		t( movq, mem64, regXmm );
+		t( movq2dq, regXmm, regMmx );
+	endProgram( fileHandle );
+		
+	startProgram( "m3" );	
+		t( movsb );
+		t( movsd );
+		t( movsw );
+		t( movsd, regXmm, regXmm );
+		t( movsd, regXmm, mem64 );
+		t( movsd, mem64, regXmm );
+		t( movss, regXmm, regXmm );
+		t( movss, regXmm, mem32 );
+		t( movss, mem32, regXmm );
+		t( movsx, reg16, reg8 );
+		t( movsx, reg16, mem8 );
+		t( movsx, reg32, reg8 );
+		t( movsx, reg32, mem8 );
+		t( movsx, reg32, reg16 );
+		t( movsx, reg32, mem16 );
+		t( movupd, regXmm, regXmm );
+		t( movupd, regXmm, mem128 );
+		t( movupd, mem128, regXmm );
+		t( movups, regXmm, regXmm );
+		t( movups, regXmm, mem128 );
+		t( movups, mem128, regXmm );
+		t( movzx, reg16, reg8 );
+		t( movzx, reg16, mem8 );
+		t( movzx, reg32, reg8 );
+		t( movzx, reg32, mem8 );
+		t( movzx, reg32, reg16 );
+		t( movzx, reg32, mem16 );
+		t( mul, reg8 );
+		t( mul, reg16 );
+		t( mul, reg32 );
+		t( mul, mem8 );
+		t( mul, mem16 );
+		t( mul, mem32 );
+		t( mulpd, regXmm, regXmm );
+		t( mulpd, regXmm, mem128 );
+		t( mulps, regXmm, regXmm );
+		t( mulps, regXmm, mem128 );
+		t( mulsd, regXmm, regXmm );
+		t( mulsd, regXmm, mem64 );
+		t( mulss, regXmm, regXmm );
+		t( mulss, regXmm, mem32 );
+		t( mwait );
+	endProgram( fileHandle );
+
+
+	
+	//////////////////////////////////////////////////////////////////////////
+	
+	#print( "Emitting code to write n-mnemonics" )
+	
+	startProgram( "n" );
+
+
+		t( neg, reg8 );
+		t( neg, reg16 );
+		t( neg, reg32 );
+		t( neg, mem8 );
+		t( neg, mem16 );
+		t( neg, mem32 );
+		
+		t( nop );
+		
+		t( not, reg8 );
+		t( not, reg16 );
+		t( not, reg32 );
+		t( not, mem8 );
+		t( not, mem16 );
+		t( not, mem32 );
+
+	endProgram( fileHandle );
+	
+	//////////////////////////////////////////////////////////////////////////
+	
+	#print( "Emitting code to write o-mnemonics" )
+	
+	startProgram( "o" );
+		t( or, reg8, reg8 );
+		t( or, reg16, reg16 );
+		t( or, reg32, reg32 );
+		t( or, mem8, reg8 );
+		t( or, mem16, reg16 );
+		t( or, mem32, reg32 );
+		t( or, reg8, mem8 );
+		t( or, reg16, mem16 );
+		t( or, reg32, mem32 );
+		t( or, reg8, const8 );
+		t( or, reg16, const16 );
+		t( or, reg32, const32 );
+		t( or, mem8, const8 );
+		t( or, mem16, const16 );
+		t( or, mem32, const32 );
+		t( or, anonmem, reg8 );
+		t( or, anonmem, reg16 );
+		t( or, anonmem, reg32 );
+		t( or, reg8, anonmem );
+		t( or, reg16, anonmem );
+		t( or, reg32, anonmem );
+		t( orpd, regXmm, regXmm );
+		t( orpd, regXmm, mem128 );
+		t( orps, regXmm, regXmm );
+		t( orps, regXmm, mem128 );
+		t( out, _dx    , _al  );
+		t( out, _dx    , _ax  );
+		t( out, _dx    , _eax );
+		t( out, constu8, _al  );
+		t( out, constu8, _ax  );
+		t( out, constu8, _eax );
+		t( outsb );
+		t( outsd );
+		t( outsw );
+	endProgram( fileHandle );
+	
+	
+	//////////////////////////////////////////////////////////////////////////
+	
+	#print( "Emitting code to write p-mnemonics" )
+		
+	startProgram( "p1" );
+		t( packsswb, regMmx, regMmx );
+		t( packsswb, regMmx, mem64 ); 	
+		t( packssdw, regMmx, regMmx );
+		t( packssdw, regMmx, mem64 );
+		t( packuswb, regMmx, regMmx ); 	
+		t( packuswb, regMmx, mem64 ); 	
+		t( packsswb, regXmm, regXmm );
+		t( packsswb, regXmm, mem128 ); 	
+		t( packssdw, regXmm, regXmm );
+		t( packssdw, regXmm, mem128 );
+		t( packuswb, regXmm, regXmm );
+		t( packuswb, regXmm, mem128 ); 	
+		t( paddb, regMmx, regMmx );
+		t( paddb, regMmx, mem64 ); 	
+		t( paddw, regMmx, regMmx );
+		t( paddw, regMmx, mem64 );
+		t( paddd, regMmx, regMmx ); 	
+		t( paddd, regMmx, mem64 ); 	
+		t( paddb, regXmm, regXmm );
+		t( paddb, regXmm, mem128 ); 	
+		t( paddw, regXmm, regXmm );
+		t( paddw, regXmm, mem128 );
+		t( paddd, regXmm, regXmm ); 	
+		t( paddd, regXmm, mem128 ); 	
+		t( paddq, regMmx, regMmx );
+		t( paddq, regMmx, mem64 ); 	
+		t( paddq, regXmm, regXmm );
+		t( paddq, regXmm, mem128 ); 	
+		t( paddsb, regMmx, regMmx );
+		t( paddsb, regMmx, mem64 );
+		t( paddsw, regMmx, regMmx ); 	
+		t( paddsw, regMmx, mem64 ); 	
+		t( paddusb, regMmx, regMmx );
+		t( paddusb, regMmx, mem64 );
+		t( paddusw, regMmx, regMmx ); 	
+		t( paddusw, regMmx, mem64 ); 	
+		t( paddsb, regXmm, regXmm );
+		t( paddsb, regXmm, mem128 );
+		t( paddsw, regXmm, regXmm ); 	
+		t( paddsw, regXmm, mem128 ); 	
+		t( paddusb, regXmm, regXmm );
+		t( paddusb, regXmm, mem128 );
+		t( paddusw, regXmm, regXmm ); 	
+		t( paddusw, regXmm, mem128 ); 	
+		t( pand, regMmx, regMmx );
+		t( pand, regMmx, mem64 ); 	
+		t( pandn, regMmx, regMmx );
+		t( pandn, regMmx, mem64 );
+		t( pand, regXmm, regXmm );
+		t( pand, regXmm, mem128 ); 	
+		t( pandn, regXmm, regXmm );
+		t( pandn, regXmm, mem128 );
+		t( pause );
+		t( pavgb, regMmx, regMmx );
+		t( pavgb, regMmx, mem64 );
+		t( pavgw, regMmx, regMmx );
+		t( pavgw, regMmx, mem64 );
+		t( pavgb, regXmm, regXmm );
+		t( pavgb, regXmm, mem128 );
+		t( pavgw, regXmm, regXmm );
+		t( pavgw, regXmm, mem128 );
+	endProgram( fileHandle );
+		
+	startProgram( "p2" );
+		t( pcmpeqb, regMmx, regMmx );
+		t( pcmpeqb, regMmx, mem64 );
+		t( pcmpeqw, regMmx, regMmx );
+		t( pcmpeqw, regMmx, mem64 );
+		t( pcmpeqd, regMmx, regMmx );
+		t( pcmpeqd, regMmx, mem64 );
+		t( pcmpeqb, regXmm, regXmm );
+		t( pcmpeqb, regXmm, mem128 );
+		t( pcmpeqw, regXmm, regXmm );
+		t( pcmpeqw, regXmm, mem128 );
+		t( pcmpeqd, regXmm, regXmm );
+		t( pcmpeqd, regXmm, mem128 );
+		t( pcmpgtb, regMmx, regMmx );
+		t( pcmpgtb, regMmx, mem64 );
+		t( pcmpgtw, regMmx, regMmx );
+		t( pcmpgtw, regMmx, mem64 );
+		t( pcmpgtd, regMmx, regMmx );
+		t( pcmpgtd, regMmx, mem64 );
+		t( pcmpgtb, regXmm, regXmm );
+		t( pcmpgtb, regXmm, mem128 );
+		t( pcmpgtw, regXmm, regXmm );
+		t( pcmpgtw, regXmm, mem128 );
+		t( pcmpgtd, regXmm, regXmm );
+		t( pcmpgtd, regXmm, mem128 );
+		t( pextrw, reg32, regMmx, const2 );
+		t( pinsrw, regMmx, reg32, const2 );
+		t( pinsrw, regMmx, mem16, const2 );
+		t( pextrw, reg32, regXmm, const2 );
+		t( pinsrw, regXmm, reg32, const2 );
+		t( pinsrw, regXmm, mem16, const2 );
+	endProgram( fileHandle );
+		
+	startProgram( "p3" );
+		t( pmaddwd, regMmx, regMmx );
+		t( pmaddwd, regMmx, mem64 );
+		t( pmaddwd, regXmm, regXmm );
+		t( pmaddwd, regXmm, mem128 );
+		t( pmaxsw, regMmx, regMmx );
+		t( pmaxsw, regMmx, mem64 );
+		t( pmaxub, regMmx, regMmx );
+		t( pmaxub, regMmx, mem64 );
+		t( pminsw, regMmx, regMmx );
+		t( pminsw, regMmx, mem64 );
+		t( pminub, regMmx, regMmx );
+		t( pminub, regMmx, mem64 );
+		t( pmaxsw, regXmm, regXmm );
+		t( pmaxsw, regXmm, mem128 );
+		t( pmaxub, regXmm, regXmm );
+		t( pmaxub, regXmm, mem128 );
+		t( pminsw, regXmm, regXmm );
+		t( pminsw, regXmm, mem128 );
+		t( pminub, regXmm, regXmm );
+		t( pminub, regXmm, mem128 );
+		t( pmovmskb, reg32, regMmx );
+		t( pmovmskb, reg32, regXmm );
+		t( pmulhuw, regMmx, regMmx );
+		t( pmulhuw, regMmx, mem64 );		
+		t( pmulhuw, regXmm, regXmm );
+		t( pmulhuw, regXmm, mem128 );		
+		t( pmulhw, regMmx, regMmx );
+		t( pmulhw, regMmx, mem64 );		
+		t( pmulhw, regXmm, regXmm );
+		t( pmulhw, regXmm, mem128 );		
+		t( pmullw, regMmx, regMmx );
+		t( pmullw, regMmx, mem64 );		
+		t( pmullw, regXmm, regXmm );
+		t( pmullw, regXmm, mem128 );		
+		t( pmuludq, regMmx, regMmx );
+		t( pmuludq, regMmx, mem64 );		
+		t( pmuludq, regXmm, regXmm );
+		t( pmuludq, regXmm, mem128 );		
+		t( pop, reg16 );
+		t( pop, reg32 );
+		t( pop, mem16 );
+		t( pop, mem32 );	
+		t( pop, destRegSeg );
+		t( popad );
+		t( popa );	
+		t( popf );
+		t( popfd );
+		t( por, regMmx, regMmx );
+		t( por, regMmx, mem64 );
+		t( por, regXmm, regXmm );
+		t( por, regXmm, mem128 );
+		t( prefetcht0, mem8 );
+		t( prefetcht1, mem8 );
+		t( prefetcht2, mem8 );
+		t( prefetchnta, mem8 );
+	endProgram( fileHandle );
+		
+	startProgram( "p4" );
+		t( psadbw, regMmx, regMmx );
+		t( psadbw, regMmx, mem64 );
+		t( psadbw, regXmm, regXmm );
+		t( psadbw, regXmm, mem128 );
+		t( pshufd, regXmm, regXmm, constu8 );
+		t( pshufd, regXmm, mem128, constu8 );
+		t( pshufhw, regXmm, regXmm, constu8 );
+		t( pshufhw, regXmm, mem128, constu8 );
+		t( pshuflw, regXmm, regXmm, constu8 );
+		t( pshuflw, regXmm, mem128, constu8 );
+		t( pshufw, regMmx, regMmx, constu8 );
+		t( pshufw, regMmx, mem64, constu8 );
+		t( pslldq, regXmm, constu8 );
+		t( psllw, regMmx, regMmx );
+		t( psllw, regMmx, mem64 );
+		t( pslld, regMmx, regMmx );
+		t( pslld, regMmx, mem64 );
+		t( psllq, regMmx, regMmx );
+		t( psllq, regMmx, mem64 );
+		t( psllw, regXmm, regXmm );
+		t( psllw, regXmm, mem128 );
+		t( pslld, regXmm, regXmm );
+		t( pslld, regXmm, mem128 );
+		t( psllq, regXmm, regXmm );
+		t( psllq, regXmm, mem128 );
+		t( psraw, regMmx, regMmx );
+		t( psraw, regMmx, mem64 );
+		t( psrad, regMmx, regMmx );
+		t( psrad, regMmx, mem64 );
+		t( psraw, regXmm, regXmm );
+		t( psraw, regXmm, mem128 );
+		t( psrad, regXmm, regXmm );
+		t( psrad, regXmm, mem128 );
+		t( psrldq, regXmm, constu8 );
+	endProgram( fileHandle );
+		
+	startProgram( "p5" );
+		t( psubb, regMmx, regMmx );
+		t( psubb, regMmx, mem64 );
+		t( psubw, regMmx, regMmx );
+		t( psubw, regMmx, mem64 );
+		t( psubd, regMmx, regMmx );
+		t( psubd, regMmx, mem64 );
+		t( psubq, regMmx, regMmx );
+		t( psubq, regMmx, mem64 );
+		t( psubb, regXmm, regXmm );
+		t( psubb, regXmm, mem128 );
+		t( psubw, regXmm, regXmm );
+		t( psubw, regXmm, mem128 );
+		t( psubd, regXmm, regXmm );
+		t( psubd, regXmm, mem128 );
+		t( psubq, regXmm, regXmm );
+		t( psubq, regXmm, mem128 );
+		t( psubsb, regMmx, regMmx );
+		t( psubsb, regMmx, mem64 );
+		t( psubsw, regMmx, regMmx );
+		t( psubsw, regMmx, mem64 );
+		t( psubsb, regXmm, regXmm );
+		t( psubsb, regXmm, mem128 );
+		t( psubsw, regXmm, regXmm );
+		t( psubsw, regXmm, mem128 );
+		t( psubusb, regMmx, regMmx );
+		t( psubusb, regMmx, mem64 );
+		t( psubusw, regMmx, regMmx );
+		t( psubusw, regMmx, mem64 );
+		t( psubusb, regXmm, regXmm );
+		t( psubusb, regXmm, mem128 );
+		t( psubusw, regXmm, regXmm );
+		t( psubusw, regXmm, mem128 );
+		
+		t( punpckhbw, regMmx, regMmx );
+		t( punpckhbw, regMmx, mem64 );
+		t( punpckhwd, regMmx, regMmx );
+		t( punpckhwd, regMmx, mem64 );
+		t( punpckhdq, regMmx, regMmx );
+		t( punpckhdq, regMmx, mem64 );
+		t( punpckhbw, regXmm, regXmm );
+		t( punpckhbw, regXmm, mem128 );
+		t( punpckhwd, regXmm, regXmm );
+		t( punpckhwd, regXmm, mem128 );
+		t( punpckhdq, regXmm, regXmm );
+		t( punpckhdq, regXmm, mem128 );
+		t( punpckhqdq, regXmm, regXmm );
+		t( punpckhqdq, regXmm, mem128 );
+		t( punpcklbw, regMmx, regMmx );
+		t( punpcklbw, regMmx, mem32 );
+		t( punpcklwd, regMmx, regMmx );
+		t( punpcklwd, regMmx, mem32 );
+		t( punpckldq, regMmx, regMmx );
+		t( punpckldq, regMmx, mem32 );
+		t( punpcklbw, regXmm, regXmm );
+		t( punpcklbw, regXmm, mem128 );
+		t( punpcklwd, regXmm, regXmm );
+		t( punpcklwd, regXmm, mem128 );
+		t( punpckldq, regXmm, regXmm );
+		t( punpckldq, regXmm, mem128 );
+		t( punpcklqdq, regXmm, regXmm );
+		t( punpcklqdq, regXmm, mem128 );
+
+		t( push, reg16 );
+		t( push, reg32 );
+		t( push, mem16 );
+		t( push, mem32 );
+		t( pushw, reg16 );
+		t( pushw, mem16 );
+		t( pushw, anonmem );
+		t( pushw, const16 );
+		t( pushd, const32 );
+		t( pushd, reg32 );
+		t( pushd, mem32 );
+		t( pushd, anonmem );
+		t( push, regSeg );
+		t( pusha );
+		t( pushad );
+		t( pushf );
+		t( pushfd );
+		t( pxor, regMmx, regMmx );
+		t( pxor, regMmx, mem64 );
+		t( pxor, regXmm, regXmm );
+		t( pxor, regXmm, mem128 );
+	endProgram( fileHandle );
+
+
+	//////////////////////////////////////////////////////////////////////////
+	
+	#print( "Emitting code to write r-mnemonics" )
+	
+	startProgram( "r" );
+		t( rcl, reg8, _1 );
+		t( rcl, reg8, _cl );
+		t( rcl, reg8, const3 );
+		t( rcl, reg16, _1 );
+		t( rcl, reg16, _cl );
+		t( rcl, reg16, const4 );
+		t( rcl, reg32, _1 );
+		t( rcl, reg32, _cl );
+		t( rcl, reg32, const5 );
+		t( rcl, mem8, _1 );
+		t( rcl, mem8, _cl );
+		t( rcl, mem8, const3 );
+		t( rcl, mem16, _1 );
+		t( rcl, mem16, _cl );
+		t( rcl, mem16, const4 );
+		t( rcl, mem32, _1 );
+		t( rcl, mem32, _cl );
+		t( rcl, mem32, const5 );
+		t( rcr, reg8, _1 );
+		t( rcr, reg8, _cl );
+		t( rcr, reg8, const3 );
+		t( rcr, reg16, _1 );
+		t( rcr, reg16, _cl );
+		t( rcr, reg16, const4 );
+		t( rcr, reg32, _1 );
+		t( rcr, reg32, _cl );
+		t( rcr, reg32, const5 );
+		t( rcr, mem8, _1 );
+		t( rcr, mem8, _cl );
+		t( rcr, mem8, const3 );
+		t( rcr, mem16, _1 );
+		t( rcr, mem16, _cl );
+		t( rcr, mem16, const4 );
+		t( rcr, mem32, _1 );
+		t( rcr, mem32, _cl );
+		t( rcr, mem32, const5 );
+		t( rol, reg8, _1 );
+		t( rol, reg8, _cl );
+		t( rol, reg8, const3 );
+		t( rol, reg16, _1 );
+		t( rol, reg16, _cl );
+		t( rol, reg16, const4 );
+		t( rol, reg32, _1 );
+		t( rol, reg32, _cl );
+		t( rol, reg32, const5 );
+		t( rol, mem8, _1 );
+		t( rol, mem8, _cl );
+		t( rol, mem8, const3 );
+		t( rol, mem16, _1 );
+		t( rol, mem16, _cl );
+		t( rol, mem16, const4 );
+		t( rol, mem32, _1 );
+		t( rol, mem32, _cl );
+		t( rol, mem32, const5 );
+		t( ror, reg8, _1 );
+		t( ror, reg8, _cl );
+		t( ror, reg8, const3 );
+		t( ror, reg16, _1 );
+		t( ror, reg16, _cl );
+		t( ror, reg16, const4 );
+		t( ror, reg32, _1 );
+		t( ror, reg32, _cl );
+		t( ror, reg32, const5 );
+		t( ror, mem8, _1 );
+		t( ror, mem8, _cl );
+		t( ror, mem8, const3 );
+		t( ror, mem16, _1 );
+		t( ror, mem16, _cl );
+		t( ror, mem16, const4 );
+		t( ror, mem32, _1 );
+		t( ror, mem32, _cl );
+		t( ror, mem32, const5 );
+		t( rcpps, regXmm, regXmm );
+		t( rcpps, regXmm, mem128 );
+		t( rcpss, regXmm, regXmm );
+		t( rcpss, regXmm, mem32 );
+		t( rdmsr );
+		t( rdpmc );
+		t( rdtsc );
+		_rep( rep, insb );
+		_rep( rep, insd );
+		_rep( rep, insw );
+		_rep( rep, movsb );
+		_rep( rep, movsd );
+		_rep( rep, movsw );
+		_rep( rep, outsb );
+		_rep( rep, outsd );
+		_rep( rep, outsw );
+		_rep( rep, stosb );
+		_rep( rep, stosd );
+		_rep( rep, stosw );
+		_rep( repe, cmpsb );
+		_rep( repe, cmpsd );
+		_rep( repe, cmpsw );
+		_rep( repne, cmpsb );
+		_rep( repne, cmpsd );
+		_rep( repne, cmpsw );
+		_rep( repe, scasb );
+		_rep( repe, scasd );
+		_rep( repe, scasw );
+		_rep( repne, scasb );
+		_rep( repne, scasd );
+		_rep( repne, scasw );
+		t( ret );
+		t( ret, constu16_2 );	
+		t( rsm );
+		t( rsqrtps, regXmm, regXmm );
+		t( rsqrtps, regXmm, mem128 );
+		t( rsqrtss, regXmm, regXmm );
+		t( rsqrtss, regXmm, mem32 );
+	endProgram( fileHandle );
+
+	
+	
+	//////////////////////////////////////////////////////////////////////////
+	
+	#print( "Emitting code to write s-mnemonics" )
+	
+	startProgram( "s" );
+		t( sahf );
+		t( sal, reg8, _1 );
+		t( sal, reg8, _cl );
+		t( sal, reg8, const3 );
+		t( sal, reg16, _1 );
+		t( sal, reg16, _cl );
+		t( sal, reg16, const4 );
+		t( sal, reg32, _1 );
+		t( sal, reg32, _cl );
+		t( sal, reg32, const5 );
+		t( sal, mem8, _1 );
+		t( sal, mem8, _cl );
+		t( sal, mem8, const3 );
+		t( sal, mem16, _1 );
+		t( sal, mem16, _cl );
+		t( sal, mem16, const4 );
+		t( sal, mem32, _1 );
+		t( sal, mem32, _cl );
+		t( sal, mem32, const5 );
+		t( sar, reg8, _1 );
+		t( sar, reg8, _cl );
+		t( sar, reg8, const3 );
+		t( sar, reg16, _1 );
+		t( sar, reg16, _cl );
+		t( sar, reg16, const4 );
+		t( sar, reg32, _1 );
+		t( sar, reg32, _cl );
+		t( sar, reg32, const5 );
+		t( sar, mem8, _1 );
+		t( sar, mem8, _cl );
+		t( sar, mem8, const3 );
+		t( sar, mem16, _1 );
+		t( sar, mem16, _cl );
+		t( sar, mem16, const4 );
+		t( sar, mem32, _1 );
+		t( sar, mem32, _cl );
+		t( sar, mem32, const5 );
+		t( shl, reg8, _1 );
+		t( shl, reg8, _cl );
+		t( shl, reg8, const3 );
+		t( shl, reg16, _1 );
+		t( shl, reg16, _cl );
+		t( shl, reg16, const4 );
+		t( shl, reg32, _1 );
+		t( shl, reg32, _cl );
+		t( shl, reg32, const5 );
+		t( shl, mem8, _1 );
+		t( shl, mem8, _cl );
+		t( shl, mem8, const3 );
+		t( shl, mem16, _1 );
+		t( shl, mem16, _cl );
+		t( shl, mem16, const4 );
+		t( shl, mem32, _1 );
+		t( shl, mem32, _cl );
+		t( shl, mem32, const5 );
+		t( shr, reg8, _1 );
+		t( shr, reg8, _cl );
+		t( shr, reg8, const3 );
+		t( shr, reg16, _1 );
+		t( shr, reg16, _cl );
+		t( shr, reg16, const4 );
+		t( shr, reg32, _1 );
+		t( shr, reg32, _cl );
+		t( shr, reg32, const5 );
+		t( shr, mem8, _1 );
+		t( shr, mem8, _cl );
+		t( shr, mem8, const3 );
+		t( shr, mem16, _1 );
+		t( shr, mem16, _cl );
+		t( shr, mem16, const4 );
+		t( shr, mem32, _1 );
+		t( shr, mem32, _cl );
+		t( shr, mem32, const5 );
+		t( sbb, reg8, reg8 );
+		t( sbb, reg16, reg16 );
+		t( sbb, reg32, reg32 );
+		t( sbb, mem8, reg8 );
+		t( sbb, mem16, reg16 );
+		t( sbb, mem32, reg32 );
+		t( sbb, reg8, mem8 );
+		t( sbb, reg16, mem16 );
+		t( sbb, reg32, mem32 );
+		t( sbb, reg8, const8 );
+		t( sbb, reg16, const16 );
+		t( sbb, reg32, const32 );
+		t( sbb, mem8, const8 );
+		t( sbb, mem16, const16 );
+		t( sbb, mem32, const32 );
+		t( sbb, anonmem, reg8 );
+		t( sbb, anonmem, reg16 );
+		t( sbb, anonmem, reg32 );
+		t( sbb, reg8, anonmem );
+		t( sbb, reg16, anonmem );
+		t( sbb, reg32, anonmem );
+		t( scasb );
+		t( scasd );
+		t( scasw );
+		t( seto, reg8 );
+		t( setno, reg8 );
+		t( setc, reg8 );
+		t( setnc, reg8 );
+		t( setz, reg8 );
+		t( setnz, reg8 );
+		t( setbe, reg8 );
+		t( seta, reg8 );
+		t( sets, reg8 );
+		t( setns, reg8 );
+		t( setp, reg8 );
+		t( setnp, reg8 );
+		t( setl, reg8 );
+		t( setge, reg8 );
+		t( setle, reg8 );
+		t( setg, reg8 );
+		t( seto, mem8 );
+		t( setno, mem8 );
+		t( setc, mem8 );
+		t( setnc, mem8 );
+		t( setz, mem8 );
+		t( setnz, mem8 );
+		t( setbe, mem8 );
+		t( seta, mem8 );
+		t( sets, mem8 );
+		t( setns, mem8 );
+		t( setp, mem8 );
+		t( setnp, mem8 );
+		t( setl, mem8 );
+		t( setge, mem8 );
+		t( setle, mem8 );
+		t( setg, mem8 );
+		t( sfence );
+		t( sgdt, mem48 );
+		t( shld, reg16, reg16, _cl );
+		t( shld, reg16, reg16, const4 );
+		t( shld, reg32, reg32, _cl );
+		t( shld, reg32, reg32, const5 );
+		t( shld, mem16, reg16, _cl );
+		t( shld, mem16, reg16, const4 );
+		t( shld, mem32, reg32, _cl );
+		t( shld, mem32, reg32, const5 );
+		t( shrd, reg16, reg16, _cl );
+		t( shrd, reg16, reg16, const4 );
+		t( shrd, reg32, reg32, _cl );
+		t( shrd, reg32, reg32, const5 );
+		t( shrd, mem16, reg16, _cl );
+		t( shrd, mem16, reg16, const4 );
+		t( shrd, mem32, reg32, _cl );
+		t( shrd, mem32, reg32, const5 );
+		t( shufpd, regXmm, regXmm, const2 );
+		t( shufpd, regXmm, mem128, const2 );
+		t( shufps, regXmm, regXmm, const2 );
+		t( shufps, regXmm, mem128, const2 );
+		t( sidt, mem48 );
+		t( sldt, reg16 );
+		t( sldt, mem16 );
+		t( smsw, reg16 );
+		t( smsw, mem16 );
+		t( sqrtps, regXmm, regXmm );
+		t( sqrtps, regXmm, mem128 );
+		t( sqrtsd, regXmm, regXmm );
+		t( sqrtsd, regXmm, mem64 );
+		t( sqrtss, regXmm, regXmm );
+		t( sqrtss, regXmm, mem32 );
+		t( stc );
+		t( std );
+		t( sti );
+		t( stmxcsr, mem32 );
+		t( stosb );
+		t( stosw );
+		t( stosd );
+		t( streg, reg16 );
+		t( streg, mem16 );
+		t( sub, reg8, reg8 );
+		t( sub, reg16, reg16 );
+		t( sub, reg32, reg32 );
+		t( sub, mem8, reg8 );
+		t( sub, mem16, reg16 );
+		t( sub, mem32, reg32 );
+		t( sub, reg8, mem8 );
+		t( sub, reg16, mem16 );
+		t( sub, reg32, mem32 );
+		t( sub, reg8, const8 );
+		t( sub, reg16, const16 );
+		t( sub, reg32, const32 );
+		t( sub, mem8, const8 );
+		t( sub, mem16, const16 );
+		t( sub, mem32, const32 );
+		t( sub, anonmem, reg8 );
+		t( sub, anonmem, reg16 );
+		t( sub, anonmem, reg32 );
+		t( sub, reg8, anonmem );
+		t( sub, reg16, anonmem );
+		t( sub, reg32, anonmem );
+		t( subpd, regXmm, regXmm );
+		t( subpd, regXmm, mem128 );
+		t( subps, regXmm, regXmm );
+		t( subps, regXmm, mem128 );
+		t( subsd, regXmm, regXmm );
+		t( subsd, regXmm, mem64 );
+		t( subss, regXmm, regXmm );
+		t( subss, regXmm, mem32 );
+		t( sysenter );
+		t( sysexit );
+	endProgram( fileHandle );
+
+	//////////////////////////////////////////////////////////////////////////
+	
+	#print( "Emitting code to write t-mnemonics" )
+	
+	startProgram( "t" );
+		t( test, reg8, reg8 );
+		t( test, reg16, reg16 );
+		t( test, reg32, reg32 );
+		t( test, mem8, reg8 );
+		t( test, mem16, reg16 );
+		t( test, mem32, reg32 );
+		t( test, reg8, mem8 );
+		t( test, reg16, mem16 );
+		t( test, reg32, mem32 );
+		t( test, reg8, const8 );
+		t( test, reg16, const16 );
+		t( test, reg32, const32 );
+		t( test, mem8, const8 );
+		t( test, mem16, const16 );
+		t( test, mem32, const32 );
+		t( test, anonmem, reg8 );
+		t( test, anonmem, reg16 );
+		t( test, anonmem, reg32 );
+		t( test, reg8, anonmem );
+		t( test, reg16, anonmem );
+		t( test, reg32, anonmem );
+	endProgram( fileHandle );
+	
+	//////////////////////////////////////////////////////////////////////////
+	
+	#print( "Emitting code to write u-mnemonics" )
+
+	startProgram( "u" );
+		t( ucomisd, regXmm, regXmm );
+		t( ucomisd, regXmm, mem64 );
+		t( ucomiss, regXmm, regXmm );
+		t( ucomiss, regXmm, mem32 );
+		t( ud2 );
+		t( unpckhpd, regXmm, regXmm );
+		t( unpckhpd, regXmm, mem128 );
+		t( unpckhps, regXmm, regXmm );
+		t( unpckhps, regXmm, mem128 );
+		t( unpcklpd, regXmm, regXmm );
+		t( unpcklpd, regXmm, mem128 );
+		t( unpcklps, regXmm, regXmm );
+		t( unpcklps, regXmm, mem128 );
+	endProgram( fileHandle );
+
+	
+	
+	//////////////////////////////////////////////////////////////////////////
+	
+	#print( "Emitting code to write v-mnemonics" )
+	
+	startProgram( "v" );
+	
+		t( verr, reg16 );
+		t( verr, mem16 );
+		t( verw, reg16 );
+		t( verw, mem16 );
+
+	endProgram( fileHandle );
+	
+	//////////////////////////////////////////////////////////////////////////
+	
+	#print( "Emitting code to write w-mnemonics" )
+	
+	startProgram( "w" );
+		
+		t( wait );
+		t( wbinvd );
+		t( wrmsr );
+
+	endProgram( fileHandle );
+
+	//////////////////////////////////////////////////////////////////////////
+	
+	#print( "Emitting code to write x-mnemonics" )
+	
+	startProgram( "x" );
+		t( xlat );
+		t( xadd, reg8,  reg8 );
+		t( xadd, reg16, reg16 );
+		t( xadd, reg32, reg32 );
+		t( xadd, mem8, reg8  );
+		t( xadd, mem16, reg16 );
+		t( xadd, mem32, reg32 );
+		t( xchg, reg8, reg8 );
+		t( xchg, reg16, reg16 );
+		t( xchg, reg32, reg32 );
+		t( xchg, mem8,  reg8 );
+		t( xchg, mem16, reg16 );
+		t( xchg, mem32, reg32 );
+		t( xchg, reg8,  mem8 );
+		t( xchg, reg16, mem16 );
+		t( xchg, reg32, mem32 );
+		t( xor, reg8, reg8 );
+		t( xor, reg16, reg16 );
+		t( xor, reg32, reg32 );
+		t( xor, mem8, reg8 );
+		t( xor, mem16, reg16 );
+		t( xor, mem32, reg32 );
+		t( xor, reg8, mem8 );
+		t( xor, reg16, mem16 );
+		t( xor, reg32, mem32 );
+		t( xor, reg8, const8 );
+		t( xor, reg16, const16 );
+		t( xor, reg32, const32 );
+		t( xor, mem8, const8 );
+		t( xor, mem16, const16 );
+		t( xor, mem32, const32 );
+		t( xor, anonmem, reg8 );
+		t( xor, anonmem, reg16 );
+		t( xor, anonmem, reg32 );
+		t( xor, reg8, anonmem );
+		t( xor, reg16, anonmem );
+		t( xor, reg32, anonmem );
+	endProgram( fileHandle );
+
+	createMakeFile( "hla", theOS );
+
+end makeTest;

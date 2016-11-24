@@ -1,0 +1,114 @@
+program makeTkns;
+#include( "stdlib.hhf" )
+
+const
+	inFile_c	:= "g:\hla\hlasrc\trunk\hlaparse.h";
+	outFile_c	:= "g:\hla\hlalibsrc\trunk\hlainc\hlatkns.hhf";
+	
+static
+	f		:dword;
+	g		:dword;
+	index	:dword;
+	input	:str.strvar( 1024 );
+	
+	
+begin makeTkns;
+
+	try
+	
+		fileio.open( inFile_c, fileio.r );
+		mov( eax, f );
+		
+	  anyexception
+	  
+	  	stdout.put( "Could not open: " + inFile_c, nl );
+		os.exitProcess( 1 );
+		
+	endtry;
+	try
+	 
+		fileio.openNew( outFile_c );
+		mov( eax, g );
+		
+	  anyexception
+	  
+	  	stdout.put( "Could not create: " + outFile_c, nl );
+		os.exitProcess( 1 );
+		
+	endtry;
+	try
+		
+		fileio.put
+		(
+			g,
+			"#if( !@defined( hlatkns_hhf)); " nl
+			"?hlatkns_hhf := true; " nl nl
+			"namespace tkn;" nl nl
+			"const" nl nl
+		);
+		repeat
+		
+			fileio.gets( f, input );
+			str.trim( input );
+		
+		until( str.prefix( input, "enum" ));
+		
+		forever
+		
+			fileio.gets( f, input );
+			str.trim( input );
+			breakif( str.eq( input, "};" ));
+			str.index( input, "=" );
+			if( eax = -1 ) then
+			
+				// should never happen, but...
+				
+				stdout.put( "Unexpected input line:", input, nl );
+				fileio.close( g );
+				fileio.close( f );
+				os.exitProcess( 1 );
+				
+			endif;
+			mov( eax, index );
+			str.a_substr( input, 0, eax );
+			fileio.put( g, stdio.tab, (type string eax), " := " );
+			str.free( eax );
+			mov( index, eax );
+			add( 2, eax );
+			str.a_substr( input, eax, 1024 );
+			mov( eax, ebx  );
+			str.length( eax );
+			if( (type char [ebx+eax-1] ) = ',' ) then
+			
+				sub( 1, eax );
+				
+			endif;
+			mov( eax, (type str.strRec [ebx]).length );
+			mov( 0, (type byte [ebx+eax]));
+			fileio.put( g, (type string ebx), ";" nl );
+			str.free( ebx );
+			
+		endfor;
+		fileio.put
+		(
+			g,
+			nl
+			"end tkn;" nl nl
+			
+			"#endif // hlatkns_hhf" nl nl
+		);
+		fileio.close( f );
+		fileio.close( g );
+		
+	anyexception
+	
+		fileio.close( f );
+		fileio.close( g );
+		stdout.put( "I/O error processing hlaTkns.hhf file" nl );
+		os.exitProcess( 1 );
+		
+	endtry;
+			
+			
+	
+end makeTkns;

@@ -1,0 +1,29 @@
+all: clearScrn clean disasmCmp hla\maketest
+	cd hla
+	maketest macos
+	make
+
+
+hla\maketest: maketest.hla
+	hla -p:tmp maketest.hla
+	cp maketest hla
+
+
+disasmCmp: disasmCmp.hla
+	hla -p:tmp disasmCmp
+
+clearScrn:
+	clear
+	
+clean: 
+	rm -f -r tmp/*
+	rm -f -r gas/*
+	rm -f -r hla/*
+	rm -f -r hla/gas/*
+	mkdir hla/gas
+	rm -f -r maketest
+	rm -f -r makefile.cmp*
+
+	
+
+
