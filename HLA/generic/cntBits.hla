@@ -1,0 +1,136 @@
+program CountingBits;
+#include( "stdlib.hhf" );
+
+	// bitCount-
+	//
+	//	Counts the number of "1" bits in a dword value.
+	//	This function expects the dword value in EAX.
+	
+	procedure bitCount; 
+		@returns( "eax" ); 
+		@noframe; 
+		@nodisplay;
+		
+	const
+		EveryOtherBit		:= $5555_5555;
+		EveryAlternatePair	:= $3333_3333;
+		EvenNibbles			:= $0f0f_0f0f;
+		
+	begin bitCount;
+	
+		push( edx );
+		mov( eax, edx );
+		
+		// Compute sum of each pair of bits
+		// in EAX.  The algorithm treats 
+		// each pair of bits in EAX as a two
+		// bit number and calculates the
+		// number of bits as follows (description
+		// is for bits zero and one, it generalizes
+		// to each pair):
+		//
+		//	EDX = 	BIT1  BIT0
+		//  EAX =      0  BIT1
+		//
+		//  EDX-EAX =	00 if both bits were zero.
+		//				01 if Bit0=1 and Bit1=0.
+		//				01 if Bit0=0 and Bit1=1.
+		//				10 if Bit0=1 and Bit1=1.
+		//
+		// Note that the result is left in EDX.
+		
+		shr( 1, eax );
+		and( EveryOtherBit, eax );
+		sub( eax, edx );
+		
+		// Now sum up the groups of two bits to
+		// produces sums of four bits.  This works
+		// as follows:
+		//
+		//	EDX = bits 2,3, 6,7, 10,11, 14,15, ..., 30,31
+		//		  in bit positions 0,1, 4,5, ..., 28,29 with
+		//		  zeros in the other positions.
+		//
+		//	EAX = bits 0,1, 4,5, 8,9, ... 28,29 with zeros
+		//		  in the other positions.
+		//
+		//	EDX+EAX produces the sums of these pairs of bits.
+		//	The sums consume bits 0,1,2, 4,5,6, 8,9,10, ... 28,29,30
+		//  in EAX with the remaining bits all containing zero.
+		
+		mov( edx, eax );
+		shr( 2, edx );
+		and( EveryAlternatePair, eax );
+		and( EveryAlternatePair, edx );
+		add( edx, eax );
+		
+		// Now compute the sums of the even and odd nibbles in the
+		// number.  Since bits 3, 7, 11, etc. in EAX all contain
+		// zero from the above calcuation, we don't need to AND
+		// anything first, just shift and add the two values.
+		// This computes the sum of the bits in the four bytes
+		// as four separate value in EAX (AL contains number of
+		// bits in original AL, AH contains number of bits in
+		// original AH, etc.)
+		
+		mov( eax, edx );
+		shr( 4, eax );
+		add( edx, eax );
+		and( EvenNibbles, eax );
+		
+		// Now for the tricky part.
+		// We want to compute the sum of the four bytes
+		// and return the result in EAX.  The following
+		// multiplication achieves this.  It works
+		// as follows:
+		//	(1) the $01 component leaves bits 24..31
+		//		in bits 24..31.
+		//
+		//	(2) the $100 component adds bits 17..23
+		//		into bits 24..31.
+		//
+		//	(3) the $1_0000 component adds bits 8..15
+		//		into bits 24..31.
+		//
+		//	(4)	the $1000_0000 component adds bits 0..7
+		//		into bits 24..31.
+		//
+		//	Bits 0..23 are filled with garbage, but bits
+		//	24..31 contain the actual sum of the bits
+		//	in EAX's original value.  The SHR instruction
+		//	moves this value into bits 0..7 and zeroes
+		//	out the H.O. bits of EAX.
+		 
+		intmul( $0101_0101, eax );
+		shr( 24, eax );
+		
+		pop( edx );
+		ret();
+		
+	end bitCount;
+		
+	
+	
+begin CountingBits;
+
+	mov( 32, ecx );
+	mov( 0, ebx );
+	repeat
+	
+		mov( ebx, eax );
+		bitCount();
+		stdout.put
+		( 
+			"# of bits in $", 
+			ebx, 
+			" is ", 
+			(type uns32 eax), 
+			nl 
+		);
+		stc();
+		rcl( 1, ebx );
+		dec( ecx );
+		
+	until( @z );
+	
+end CountingBits;	

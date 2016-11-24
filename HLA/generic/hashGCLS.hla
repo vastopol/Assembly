@@ -1,0 +1,118 @@
+// hashGCLS-
+//
+// This program demonstrates the use of associative arrays in
+// assembly language (HLA). It is a fairly straight-forward
+// conversion of the "hash.gcc" program provided with the
+// examples in "The Great Computer Language Shoot-out" (though
+// the use of the "simple_hash.h" module seems like cheating
+// to me, I'll pass on judging this).
+// "The Great Computer Language Shoot-out" is found at
+//
+//		http://www.bagley.org/~doug/shootout/
+//
+// The purpose of that web page is to demonstrate several
+// applications written in various languages. Although one
+// of the primary purposes of that web site is to demonstrate
+// the different run-time efficiencies of various languages,
+// this HLA implementation was not created to demonstrate
+// that assembly code is faster or smaller (everyone pretty
+// much accepts the fact that the fastest and/or smallest
+// example of a program will be written in assembly language).
+// Instead, this example demonstrates that with the use of
+// a high level assembler (e.g., HLA), it's also possible to
+// write code almost as easily as in a high level language
+// like C. As such, this example freely sacrifices efficiency
+// for readability.
+
+
+#if( false )
+	/* -*- mode: c -*-
+	 * $Id: hash.gcc,v 1.2 2001/01/07 08:33:09 doug Exp $
+	 * http://www.bagley.org/~doug/shootout/
+	 */
+
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <unistd.h>
+	#include "../../Include/simple_hash.h"
+
+	int main(int argc, char *argv[]) {
+	    int i, c=0, n = ((argc == 2) ? atoi(argv[1]) : 1);
+	    char buf[32];
+		
+	    struct ht_ht *ht = ht_create(n);
+	    
+	    for (i=1; i<=n; i++) {
+		sprintf(buf, "%x", i);
+		(ht_find_new(ht, buf))->val = i;
+	    }
+
+	    for (i=n; i>0; i--) {
+		sprintf(buf, "%d", i);
+		if (ht_find(ht, buf)) c++;
+	    }
+
+	    ht_destroy(ht);
+
+	    printf("%d\n", c);
+	    return(0);
+	}
+#endif
+
+// This simple version of the associate array benchmark
+// uses the HLA Standard Library "tables" module to do
+// a fairly straight-forward conversion of the above code.
+
+program hash;
+#include( "stdlib.hhf" )
+
+static
+	c		:uns32 := 0;
+	n		:uns32;
+	entry	:str.strvar(256);
+	ht		:table;
+
+	// Dummy routine to clean up table when we're done:
+
+	procedure cleanup; @noframe;
+	begin cleanup;
+
+		ret();
+
+	end cleanup;
+
+begin hash;
+
+	if( arg.c() != 2 ) then
+
+		stdout.put( "Usage: hashGCLS <n>" nl );
+		exit hash;
+
+	endif;
+	mov( conv.strTou32( arg.v( 1 ), 0 ), n );
+
+	ht.create( 1024 );	// Allocate and initialize the table.
+	for( mov(0, ecx); ecx <= n; inc( ecx )) do
+
+		str.put( entry, ecx:1 );
+		ht.getNode( entry );
+		mov( ecx, (type tableNode [eax]).Value );
+
+	endfor;
+
+	for( mov( n, ecx ); ecx > 0; dec( ecx )) do
+
+		str.put( entry, (type int32 ecx) );
+		ht.lookup( entry );
+		if( eax <> NULL ) then
+
+			inc( c );
+			
+		endif;
+		 
+	endfor;
+	stdout.put( "Items found = ", c, nl );
+	ht.destroy(	&cleanup );
+
+
+end hash;

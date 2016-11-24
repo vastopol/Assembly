@@ -1,0 +1,70 @@
+/*
+I'm trying to figure out how to use the a_gets procedure to grab a string
+from the user. I've spent some time trying different things to get it to
+work but have not yet succeded. So I'll post the question here.
+
+When this line is executed (string_1 being a static type string),
+
+    stdin.a_gets(string_1);
+
+the program does not allow the user to type in the string and passes to the
+next line of code with no hesitation. And when string_1 is outputted to the
+screen it has the old string in it before the forementioned code is
+executed.
+
+The question is... how can I get the user to input the string?
+
+
+*/
+
+
+
+program ReadLnDemo;
+
+#include( "stdlib.hhf" );
+
+static
+    s:  string;
+    i:  int32;
+            
+begin ReadLnDemo;
+    
+    stdout.put( "Enter an integer number: " );
+    stdin.get( i );
+    stdout.put( "You entered: ", i, nl );
+    
+    // This doesn't work as planned.  It doesn't
+    // stop for input and simply reads whatever was
+    // typed immediately after the integer above
+    // (usually the empty string).
+    
+    stdout.put( "Enter a string: " );
+    stdin.a_gets(  );
+    stdout.put( "You entered '", (type string eax), "'" nl );
+    strfree( eax );
+    
+    // Note that the call to a_gets above read everything
+    // from the input line, so if we attempt to read a
+    // string from the user at this point, it will stop
+    // and read a line from the user. 
+    //
+    // To demonstrate how to correct the problem above, let's
+    // read another integer to put us back into the same
+    // state as we were at the stdin.a_gets call above:
+    
+    stdout.put( "Enter another integer: " );
+    stdin.get( i ); 
+    stdout.put( "You entered: ", i, nl );
+    
+    // Now read a string from the user, but this time
+    // call ReadLn first, to clear away the end of the
+    // previous line and force an input line.
+    
+    stdout.put( "Enter a string: " );
+    stdin.readLn();
+    stdin.a_gets( );
+    mov( eax, s );
+    stdout.put( "You entered '", s, "'" nl );
+    strfree( s );
+        
+end ReadLnDemo;

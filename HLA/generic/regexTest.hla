@@ -1,0 +1,2097 @@
+program testRegexes;
+
+val
+	nl	:text := "#$d #$a";
+	_0	:string;
+	_1	:string;
+	_2	:string;
+	_3	:string;
+	_4	:string;
+	_5	:string;
+	_6	:string;
+	_7	:string;
+	_8	:string;
+	_9	:string;
+	rtnVal :string;
+
+#if( false )
+
+	
+#regex _altTest;
+
+	<"alt0" | "alt1">:_0
+	
+#return _0	
+#endregex
+
+val
+	altTest 			:regex := _altTest;
+	altTestReturns0		:string; 
+	altTestMatched0		:string;
+	altTestRemainder0	:string;
+	altTestReturns1		:string; 
+	altTestMatched1		:string;
+	altTestRemainder1	:string;
+	altTest0			:=	@match
+							( 
+								"alt0alt1", 
+								_altTest, 
+								altTestReturns0,
+								altTestRemainder0,
+								altTestMatched0
+							);
+	
+	altTest1			:=	@match
+							( 
+								"alt1alt0", 
+								altTest, 
+								altTestReturns1,
+								altTestRemainder1,
+								altTestMatched1
+							);
+	
+	altTest2			:=	@match( "alt2", altTest );
+	altTest3			:=	@match( "alt0", altTest );
+	altTest4			:=	@match( "alt1", altTest );
+	
+	#print
+	(
+		"altTest0    = ", altTest0, nl,
+		"altTest1    = ", altTest1, nl,
+		"altTest2    = ", altTest2, nl,
+		"altTest3    = ", altTest3, nl,
+		"altTest4    = ", altTest4, nl,
+		"Returns0    = '", altTestReturns0, "'" nl,
+		"Matched0    = '", altTestMatched0, "'" nl,
+		"Remainder0  = '", altTestRemainder0, "'" nl,
+		"Returns1    = '", altTestReturns1, "'" nl,
+		"Matched1    = '", altTestMatched1, "'" nl,
+		"Remainder1  = '", altTestRemainder1, "'" nl,
+		nl
+	)
+	
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _compileTest:rtns0, rtns1;
+
+	altTest:rtns0, altTest, _altTest:rtns1, _altTest
+	
+#return "b:"+rtns0+rtns1
+#endregex
+
+val
+	compileTest 		:regex := _compileTest;
+	ctReturns0			:string;
+	ctRemainder0		:string;
+	ctMatched0			:string;
+	ctReturns2			:string;
+	ctRemainder2		:string;
+	ctMatched2			:string;
+	
+	ct0		:=	@match
+				( 
+					"alt1alt0alt0alt1c", 
+					_compileTest, 
+					ctReturns0, 
+					ctRemainder0, 
+					ctMatched0
+				);
+	
+	ct1		:=	@match
+				( 
+					"alt1alt0alt0alt1", 
+					_compileTest
+				);
+	
+	ct2		:=	@match
+				( 
+					"alt1alt0alt0alt1c", 
+					compileTest, 
+					ctReturns2, 
+					ctRemainder2, 
+					ctMatched2
+				);
+	
+	ct3		:=	@match
+				( 
+					"alt1alt0alt0alt1", 
+					compileTest
+				);
+	
+	ct4		:=	@match
+				( 
+					"alt1", 
+					compileTest
+				);
+	
+	ct5		:=	@match
+				( 
+					"alt1", 
+					_compileTest
+				);
+	
+
+	
+#print
+(
+	"ct0          = ", ct0, nl,
+	"ct1          = ", ct1, nl,
+	"ct2          = ", ct2, nl,
+	"ct3          = ", ct3, nl,
+	"ct4          = ", ct4, nl,
+	"ct5          = ", ct5, nl,
+	"ctReturns0   = '", ctReturns0, "'" nl,
+	"ctMatched0   = '", ctMatched0, "'" nl,
+	"ctRemainder0 = '", ctRemainder0, "'" nl,
+	"ctReturns2   = '", ctReturns2, "'" nl,
+	"ctMatched2   = '", ctMatched2, "'" nl,
+	"ctRemainder2 = '", ctRemainder2, "'" nl,
+	nl
+)
+	
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _subexprTest:rtns0;
+
+	(altTest:rtns0), ((altTest)::[2,3], (altTest)):[0,3]
+	
+#return "b:"+rtns0
+#endregex
+
+val
+	subexprTest 		:regex := _subexprTest;
+	subxReturns0		:string;
+	subxRemainder0		:string;
+	subxMatched0		:string;
+	subxReturns2		:string;
+	subxRemainder2		:string;
+	subxMatched2		:string;
+	
+	subx0		:=	@match
+				( 
+					"alt1alt0alt0alt1c", 
+					_subexprTest, 
+					subxReturns0, 
+					subxRemainder0, 
+					subxMatched0
+				);
+	
+	subx1		:=	@match
+				( 
+					"alt1alt0alt0alt1", 
+					_subexprTest
+				);
+	
+	subx2		:=	@match
+				( 
+					"alt1alt0alt0alt1c", 
+					subexprTest, 
+					subxReturns2, 
+					subxRemainder2, 
+					subxMatched2
+				);
+	
+	subx3		:=	@match
+				( 
+					"alt1alt0alt0alt1", 
+					subexprTest
+				);
+	
+	subx4		:=	@match
+				( 
+					"alt1", 
+					subexprTest
+				);
+	
+	subx5		:=	@match
+				( 
+					"alt1", 
+					_subexprTest
+				);
+	
+	
+
+	
+#print
+(
+	"subx0          = ", subx0, nl,
+	"subx1          = ", subx1, nl,
+	"subx2          = ", subx2, nl,
+	"subx3          = ", subx3, nl,
+	"subx4          = ", subx4, nl,
+	"subx5          = ", subx5, nl,
+	"subxReturns0   = '", subxReturns0, "'" nl,
+	"subxMatched0   = '", subxMatched0, "'" nl,
+	"subxRemainder0 = '", subxRemainder0, "'" nl,
+	"subxReturns2   = '", subxReturns2, "'" nl,
+	"subxMatched2   = '", subxMatched2, "'" nl,
+	"subxRemainder2 = '", subxRemainder2, "'" nl,
+	nl
+)
+
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _realTest:rtn0;
+
+	<@matchRealConst>:rtn0
+	
+#return "Real Value: " + rtn0
+#endregex
+
+val
+	realTest 		:regex := _realTest;
+	realReturns0	:string;
+	realRemainder0	:string;
+	realMatched0	:string;
+	realReturns2	:string;
+	realRemainder2	:string;
+	realMatched2	:string;
+
+	real0		:=	@match
+				( 
+					"1234.567e-89 + 0", 
+					_realTest, 
+					realReturns0, 
+					realRemainder0, 
+					realMatched0
+				);
+	
+	real2		:=	@match
+				( 
+					"1234.567e-89 + 0", 
+					realTest, 
+					realReturns2, 
+					realRemainder2, 
+					realMatched2
+				);
+#print
+(
+	"real0          = ",  real0, nl,
+	"real2          = ",  real2, nl,
+	"realReturns0   = '", realReturns0, "'" nl,
+	"realMatched0   = '", realMatched0, "'" nl,
+	"realRemainder0 = '", realRemainder0, "'" nl,
+	"realReturns2   = '", realReturns2, "'" nl,
+	"realMatched2   = '", realMatched2, "'" nl,
+	"realRemainder2 = '", realRemainder2, "'" nl,
+	nl
+)
+
+	
+
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _intTest:rtn0;
+
+	<@matchIntConst>:rtn0
+	
+#return "Integer Value: " + rtn0
+#endregex
+
+val
+	intTest 		:regex := _intTest;
+	intReturns0		:string;
+	intRemainder0	:string;
+	intMatched0		:string;
+	intReturns2		:string;
+	intRemainder2	:string;
+	intMatched2		:string;
+
+	int0		:=	@match
+				( 
+					"1234 + 0", 
+					_intTest, 
+					intReturns0, 
+					intRemainder0, 
+					intMatched0
+				);
+	
+	int2		:=	@match
+				( 
+					"1234 + 0", 
+					intTest, 
+					intReturns2, 
+					intRemainder2, 
+					intMatched2
+				);
+#print
+(
+	"int0          = ",  int0, nl,
+	"int2          = ",  int2, nl,
+	"intReturns0   = '", intReturns0, "'" nl,
+	"intMatched0   = '", intMatched0, "'" nl,
+	"intRemainder0 = '", intRemainder0, "'" nl,
+	"intReturns2   = '", intReturns2, "'" nl,
+	"intMatched2   = '", intMatched2, "'" nl,
+	"intRemainder2 = '", intRemainder2, "'" nl,
+	nl
+)
+
+	
+
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _strTest:rtn0;
+
+	<@matchStrConst>:rtn0
+	
+#return "String Value: " + rtn0
+#endregex
+
+val
+	strTest 		:regex := _strTest;
+	strReturns0		:string;
+	strRemainder0	:string;
+	strMatched0		:string;
+	strReturns2		:string;
+	strRemainder2	:string;
+	strMatched2		:string;
+
+	str0		:=	@match
+				( 
+					"""1234"" #$a 'a' ""bcd"" + 0", 
+					_strTest, 
+					strReturns0, 
+					strRemainder0, 
+					strMatched0
+				);
+	
+	str2		:=	@match
+				( 
+					"""1234"" + 0", 
+					strTest, 
+					strReturns2, 
+					strRemainder2, 
+					strMatched2
+				);
+#print
+(
+	"str0          = ",  str0, nl,
+	"str2          = ",  str2, nl,
+	"strReturns0   = '", strReturns0, "'" nl,
+	"strMatched0   = '", strMatched0, "'" nl,
+	"strRemainder0 = '", strRemainder0, "'" nl,
+	"strReturns2   = '", strReturns2, "'" nl,
+	"strMatched2   = '", strMatched2, "'" nl,
+	"strRemainder2 = '", strRemainder2, "'" nl,
+	nl
+)
+
+	
+
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _regTest:rtn0;
+
+	<@reg>:rtn0
+	
+#return "Register Value: " + rtn0
+#endregex
+
+val
+	regTest 		:regex := _regTest;
+	regReturns0		:string;
+	regRemainder0	:string;
+	regMatched0		:string;
+	regReturns2		:string;
+	regRemainder2	:string;
+	regMatched2		:string;
+
+	regal		:=	@match
+				( 
+					"al", 
+					_regTest, 
+					regReturns0, 
+					regRemainder0, 
+					regMatched0
+				);
+	
+	regbx		:=	@match
+				( 
+					"bx", 
+					_regTest
+				);
+	
+	regecx		:=	@match
+				( 
+					"ecx", 
+					_regTest
+				);
+	
+	
+	regal2		:=	@match
+				( 
+					"al bl", 
+					regTest, 
+					regReturns2, 
+					regRemainder2, 
+					regMatched2
+				);
+	
+	regal3		:=	@match
+				( 
+					"allow", 
+					regTest
+				);
+#print
+(
+	"regal         = ",  regal, nl,
+	"regbx         = ",  regbx, nl,
+	"regecx        = ",  regecx, nl,
+	"regal2        = ",  regal2, nl,
+	"regal3        = ",  regal3, nl,
+	"regReturns0   = '", regReturns0, "'" nl,
+	"regMatched0   = '", regMatched0, "'" nl,
+	"regRemainder0 = '", regRemainder0, "'" nl,
+	"regReturns2   = '", regReturns2, "'" nl,
+	"regMatched2   = '", regMatched2, "'" nl,
+	"regRemainder2 = '", regRemainder2, "'" nl,
+	nl
+)
+
+	
+	
+
+	
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _reg8Test:rtn0;
+
+	<@reg8>:rtn0
+	
+#return "Register8 Value: " + rtn0
+#endregex
+
+val
+	reg8Test 		:regex := _reg8Test;
+	reg8Returns0	:string;
+	reg8Remainder0	:string;
+	reg8Matched0	:string;
+	reg8Returns2	:string;
+	reg8Remainder2	:string;
+	reg8Matched2	:string;
+
+	regal		:=	@match
+				( 
+					"al", 
+					_regTest, 
+					reg8Returns0, 
+					reg8Remainder0, 
+					reg8Matched0
+				);
+	
+	regbl		:=	@match
+				( 
+					"bl", 
+					reg8Test
+				);
+	
+	regcl		:=	@match
+				( 
+					"cl", 
+					_reg8Test
+				);
+	
+	regdl		:=	@match
+				( 
+					"dl", 
+					reg8Test
+				);
+
+	regah		:=	@match
+				( 
+					"ah bh", 
+					_reg8Test, 
+					reg8Returns2, 
+					reg8Remainder2, 
+					reg8Matched2
+				);
+	
+	regbh		:=	@match
+				( 
+					"bh", 
+					reg8Test
+				);
+	
+	regch		:=	@match
+				( 
+					"ch", 
+					_reg8Test
+				);
+	
+	regdh		:=	@match
+				( 
+					"dh", 
+					reg8Test
+				);
+	
+	
+#print
+(
+	"regal          = ",  regal, nl,
+	"regbl          = ",  regbl, nl,
+	"regcl          = ",  regcl, nl,
+	"regdl          = ",  regdl, nl,
+	"regah          = ",  regah, nl,
+	"regbh          = ",  regbh, nl,
+	"regch          = ",  regch, nl,
+	"regdh          = ",  regdh, nl,
+	"reg8Returns0   = '", reg8Returns0, "'" nl,
+	"reg8Matched0   = '", reg8Matched0, "'" nl,
+	"reg8Remainder0 = '", reg8Remainder0, "'" nl,
+	"reg8Returns2   = '", reg8Returns2, "'" nl,
+	"reg8Matched2   = '", reg8Matched2, "'" nl,
+	"reg8Remainder2 = '", reg8Remainder2, "'" nl,
+	nl
+)
+
+	
+
+	
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _reg16Test:rtn0;
+
+	<@reg16>:rtn0
+	
+#return "Register16 Value: " + rtn0
+#endregex
+
+val
+	reg16Test 		:regex := _reg16Test;
+	reg16Returns0	:string;
+	reg16Remainder0	:string;
+	reg16Matched0	:string;
+	reg16Returns2	:string;
+	reg16Remainder2	:string;
+	reg16Matched2	:string;
+
+	regax		:=	@match
+				( 
+					"ax", 
+					_regTest, 
+					reg16Returns0, 
+					reg16Remainder0, 
+					reg16Matched0
+				);
+	
+	regbx		:=	@match
+				( 
+					"bx", 
+					_reg16Test
+				);
+	
+	regcx		:=	@match
+				( 
+					"cx", 
+					reg16Test
+				);
+	
+	regdx		:=	@match
+				( 
+					"dx", 
+					reg16Test
+				);
+
+	regdi		:=	@match
+				( 
+					"di bh", 
+					_reg16Test, 
+					reg16Returns2, 
+					reg16Remainder2, 
+					reg16Matched2
+				);
+	
+	regsi		:=	@match
+				( 
+					"si", 
+					reg16Test
+				);
+	
+	regsp		:=	@match
+				( 
+					"sp", 
+					reg16Test
+				);
+	
+	regbp		:=	@match
+				( 
+					"bp", 
+					_reg16Test
+				);
+	
+	
+#print
+(
+	"regax           = ",  regax, nl,
+	"regbx           = ",  regbx, nl,
+	"regcx           = ",  regcx, nl,
+	"regdx           = ",  regdx, nl,
+	"regdi           = ",  regdi, nl,
+	"regsi           = ",  regsi, nl,
+	"regsp           = ",  regsp, nl,
+	"regbp           = ",  regbp, nl,
+	"reg16Returns0   = '", reg16Returns0, "'" nl,
+	"reg16Matched0   = '", reg16Matched0, "'" nl,
+	"reg16Remainder0 = '", reg16Remainder0, "'" nl,
+	"reg16Returns2   = '", reg16Returns2, "'" nl,
+	"reg16Matched2   = '", reg16Matched2, "'" nl,
+	"reg16Remainder2 = '", reg16Remainder2, "'" nl,
+	nl
+)
+
+	
+
+	
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _reg32Test:rtn0;
+
+	<@reg32>:rtn0
+	
+#return "Register32 Value: " + rtn0
+#endregex
+
+val
+	reg32Test 		:regex := _reg32Test;
+	reg32Returns0	:string;
+	reg32Remainder0	:string;
+	reg32Matched0	:string;
+	reg32Returns2	:string;
+	reg32Remainder2	:string;
+	reg32Matched2	:string;
+
+	regeax		:=	@match
+				( 
+					"eax", 
+					_regTest, 
+					reg32Returns0, 
+					reg32Remainder0, 
+					reg32Matched0
+				);
+	
+	regebx		:=	@match
+				( 
+					"ebx", 
+					reg32Test
+				);
+	
+	regecx		:=	@match
+				( 
+					"ecx", 
+					_reg32Test
+				);
+	
+	regedx		:=	@match
+				( 
+					"edx", 
+					reg32Test
+				);
+
+	regedi		:=	@match
+				( 
+					"edi bh", 
+					reg32Test, 
+					reg32Returns2, 
+					reg32Remainder2, 
+					reg32Matched2
+				);
+	
+	regesi		:=	@match
+				( 
+					"esi", 
+					_reg32Test
+				);
+	
+	regesp		:=	@match
+				( 
+					"esp", 
+					_reg32Test
+				);
+	
+	regebp		:=	@match
+				( 
+					"ebp", 
+					reg32Test
+				);
+	
+	
+#print
+(
+	"regeax          = ",  regeax, nl,
+	"regebx          = ",  regebx, nl,
+	"regecx          = ",  regecx, nl,
+	"regedx          = ",  regedx, nl,
+	"regedi          = ",  regedi, nl,
+	"regesi          = ",  regesi, nl,
+	"regesp          = ",  regesp, nl,
+	"regebp          = ",  regebp, nl,
+	"reg32Returns0   = '", reg32Returns0, "'" nl,
+	"reg32Matched0   = '", reg32Matched0, "'" nl,
+	"reg32Remainder0 = '", reg32Remainder0, "'" nl,
+	"reg32Returns2   = '", reg32Returns2, "'" nl,
+	"reg32Matched2   = '", reg32Matched2, "'" nl,
+	"reg32Remainder2 = '", reg32Remainder2, "'" nl,
+	nl
+)
+
+	
+
+	
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _regmmxTest:rtn0;
+
+	<@mmxreg>:rtn0
+	
+#return "Registermmx Value: " + rtn0
+#endregex
+
+val
+	regmmxTest 			:regex := _regmmxTest;
+	regmmxReturns0		:string;
+	regmmxRemainder0	:string;
+	regmmxMatched0		:string;
+	regmmxReturns2		:string;
+	regmmxRemainder2	:string;
+	regmmxMatched2		:string;
+
+	regmm0		:=	@match
+				( 
+					"mm0", 
+					regmmxTest, 
+					regmmxReturns0, 
+					regmmxRemainder0, 
+					regmmxMatched0
+				);
+	
+	regmm1		:=	@match
+				( 
+					"mm1", 
+					regmmxTest
+				);
+	
+	regmm2		:=	@match
+				( 
+					"mm2", 
+					regmmxTest
+				);
+	
+	regmm3		:=	@match
+				( 
+					"mm3", 
+					_regmmxTest
+				);
+
+	regmm4		:=	@match
+				( 
+					"mm4 bh", 
+					_regmmxTest, 
+					regmmxReturns2, 
+					regmmxRemainder2, 
+					regmmxMatched2
+				);
+	
+	regmm5		:=	@match
+				( 
+					"mm5", 
+					regmmxTest
+				);
+	
+	regmm6		:=	@match
+				( 
+					"mm6", 
+					_regmmxTest
+				);
+	
+	regmm7		:=	@match
+				( 
+					"mm7", 
+					_regmmxTest
+				);
+	
+	
+#print
+(
+	"regmm0           = ",  regmm0, nl,
+	"regmm1           = ",  regmm1, nl,
+	"regmm2           = ",  regmm2, nl,
+	"regmm3           = ",  regmm3, nl,
+	"regmm4           = ",  regmm4, nl,
+	"regmm5           = ",  regmm5, nl,
+	"regmm6           = ",  regmm6, nl,
+	"regmm7           = ",  regmm7, nl,
+	"regmmxReturns0   = '", regmmxReturns0, "'" nl,
+	"regmmxMatched0   = '", regmmxMatched0, "'" nl,
+	"regmmxRemainder0 = '", regmmxRemainder0, "'" nl,
+	"regmmxReturns2   = '", regmmxReturns2, "'" nl,
+	"regmmxMatched2   = '", regmmxMatched2, "'" nl,
+	"regmmxRemainder2 = '", regmmxRemainder2, "'" nl,
+	nl
+)
+
+	
+
+	
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _regxmmTest:rtn0;
+
+	<@xmmreg>:rtn0
+	
+#return "Registerxmm Value: " + rtn0
+#endregex
+
+val
+	regxmmTest 			:regex := _regxmmTest;
+	regxmmReturns0		:string;
+	regxmmRemainder0	:string;
+	regxmmMatched0		:string;
+	regxmmReturns2		:string;
+	regxmmRemainder2	:string;
+	regxmmMatched2		:string;
+
+	regxmm0		:=	@match
+				( 
+					"xmm0", 
+					regxmmTest, 
+					regxmmReturns0, 
+					regxmmRemainder0, 
+					regxmmMatched0
+				);
+	
+	regxmm1		:=	@match
+				( 
+					"xmm1", 
+					regxmmTest
+				);
+	
+	regxmm2		:=	@match
+				( 
+					"xmm2", 
+					regxmmTest
+				);
+	
+	regxmm3		:=	@match
+				( 
+					"xmm3", 
+					_regxmmTest
+				);
+
+	regxmm4		:=	@match
+				( 
+					"xmm4 bh", 
+					_regxmmTest, 
+					regxmmReturns2, 
+					regxmmRemainder2, 
+					regxmmMatched2
+				);
+	
+	regxmm5		:=	@match
+				( 
+					"xmm5", 
+					regxmmTest
+				);
+	
+	regxmm6		:=	@match
+				( 
+					"xmm6", 
+					_regxmmTest
+				);
+	
+	regxmm7		:=	@match
+				( 
+					"xmm7", 
+					_regxmmTest
+				);
+	
+	
+#print
+(
+	"regxmm0          = ",  regxmm0, nl,
+	"regxmm1          = ",  regxmm1, nl,
+	"regxmm2          = ",  regxmm2, nl,
+	"regxmm3          = ",  regxmm3, nl,
+	"regxmm4          = ",  regxmm4, nl,
+	"regxmm5          = ",  regxmm5, nl,
+	"regxmm6          = ",  regxmm6, nl,
+	"regxmm7          = ",  regxmm7, nl,
+	"regxmmReturns0   = '", regxmmReturns0, "'" nl,
+	"regxmmMatched0   = '", regxmmMatched0, "'" nl,
+	"regxmmRemainder0 = '", regxmmRemainder0, "'" nl,
+	"regxmmReturns2   = '", regxmmReturns2, "'" nl,
+	"regxmmMatched2   = '", regxmmMatched2, "'" nl,
+	"regxmmRemainder2 = '", regxmmRemainder2, "'" nl,
+	nl
+)
+
+	
+
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _regfpuTest:rtn0;
+
+	<@fpureg>:rtn0
+	
+#return "Registerfpu Value: " + rtn0
+#endregex
+
+val
+	regfpuTest 			:regex := _regfpuTest;
+	regfpuReturns0		:string;
+	regfpuRemainder0	:string;
+	regfpuMatched0		:string;
+	regfpuReturns2		:string;
+	regfpuRemainder2	:string;
+	regfpuMatched2		:string;
+
+	regst0		:=	@match
+				( 
+					"st0", 
+					regfpuTest, 
+					regfpuReturns0, 
+					regfpuRemainder0, 
+					regfpuMatched0
+				);
+	
+	regst1		:=	@match
+				( 
+					"st1", 
+					regfpuTest
+				);
+	
+	regst2		:=	@match
+				( 
+					"st2", 
+					regfpuTest
+				);
+	
+	regst3		:=	@match
+				( 
+					"st3", 
+					_regfpuTest
+				);
+
+	regst4		:=	@match
+				( 
+					"st4 bh", 
+					_regfpuTest, 
+					regfpuReturns2, 
+					regfpuRemainder2, 
+					regfpuMatched2
+				);
+	
+	regst5		:=	@match
+				( 
+					"st5", 
+					regfpuTest
+				);
+	
+	regst6		:=	@match
+				( 
+					"st6", 
+					_regfpuTest
+				);
+	
+	regst7		:=	@match
+				( 
+					"st7", 
+					_regfpuTest
+				);
+	
+	
+#print
+(
+	"regst0           = ",  regst0, nl,
+	"regst1           = ",  regst1, nl,
+	"regst2           = ",  regst2, nl,
+	"regst3           = ",  regst3, nl,
+	"regst4           = ",  regst4, nl,
+	"regst5           = ",  regst5, nl,
+	"regst6           = ",  regst6, nl,
+	"regst7           = ",  regst7, nl,
+	"regfpuReturns0   = '", regfpuReturns0, "'" nl,
+	"regfpuMatched0   = '", regfpuMatched0, "'" nl,
+	"regfpuRemainder0 = '", regfpuRemainder0, "'" nl,
+	"regfpuReturns2   = '", regfpuReturns2, "'" nl,
+	"regfpuMatched2   = '", regfpuMatched2, "'" nl,
+	"regfpuRemainder2 = '", regfpuRemainder2, "'" nl,
+	nl
+)
+
+	
+
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _wsTest;
+
+	'a', @ws, 'b', @ws*, 'c', @ws+, 'd', @ws:[2], 'e', @ws:[2,3], 'f'
+	
+#return "Whitespace: "
+#endregex
+
+val
+	wsTest 			:regex := _wsTest;
+	wsReturns0		:string;
+	wsRemainder0	:string;
+	wsMatched0		:string;
+
+	ws0		:=	@match
+				( 
+					"a bc  d  e   f g", 
+					wsTest, 
+					wsReturns0, 
+					wsRemainder0, 
+					wsMatched0
+				);
+	
+	ws1		:=	@match
+				( 
+					"a b  c d  e  f g", 
+					wsTest
+				);
+	
+	ws2		:=	@match
+				( 
+					"abcdefg", 
+					wsTest
+				);
+	
+	
+	
+#print
+(
+	"ws0           = ",  ws0, nl,
+	"ws1           = ",  ws1, nl,
+	"ws2           = ",  ws2, nl,
+	"wsReturns0   = '", wsReturns0, "'" nl,
+	"wsMatched0   = '", wsMatched0, "'" nl,
+	"wsRemainder0 = '", wsRemainder0, "'" nl,
+	nl
+)
+
+	
+
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _anyTest;
+
+	<.*, "Hello">:_0, <@arb, "There">:_1
+	
+#return "Arb: "
+#endregex
+
+val
+	anyTest 		:regex := _anyTest;
+	anyReturns0		:string;
+	anyRemainder0	:string;
+	anyMatched0		:string;
+
+	any0		:=	@match
+				( 
+					"Hello There Hello There World", 
+					_anyTest, 
+					anyReturns0, 
+					anyRemainder0, 
+					anyMatched0
+				);
+	
+	any1		:=	@match
+				( 
+					"Hello There World", 
+					anyTest
+				);
+	
+	any2		:=	@match
+				( 
+					"Hello World", 
+					anyTest
+				);
+	
+	
+	
+#print
+(
+	"any0           = ",  any0, nl,
+	"any1           = ",  any1, nl,
+	"any2           = ",  any2, nl,
+	"anyReturns0   = '", anyReturns0, "'" nl,
+	"anyMatched0   = '", anyMatched0, "'" nl,
+	"anyRemainder0 = '", anyRemainder0, "'" nl,
+	nl
+)
+
+	
+
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _charTest;
+
+	'c', 'd'*, 'e'+, 'f':[2], 'g':[3,4], 'h'::[2,3], 'i'::[0,4], 'j'
+	
+#return "char: "
+#endregex
+
+val
+	charTest 		:regex := _charTest;
+	charReturns0	:string;
+	charRemainder0	:string;
+	charMatched0	:string;
+
+	char0		:=	@match
+				( 
+					"cdeffgggghhij", 
+					_charTest, 
+					charReturns0, 
+					charRemainder0, 
+					charMatched0
+				);
+
+	
+	char1		:=	@match
+				( 
+					"ceffggghhhj", 
+					charTest
+				);
+	
+
+	char2		:=	@match
+				( 
+					"Hello World", 
+					charTest
+				);
+	
+	
+	
+#print
+(
+	"char0           = ",  char0, nl,
+	"char1           = ",  char1, nl,
+	"char2           = ",  char2, nl,
+	"charReturns0    = '", charReturns0, "'" nl,
+	"charMatched0    = '", charMatched0, "'" nl,
+	"charRemainder0  = '", charRemainder0, "'" nl,
+	nl
+)
+
+	
+
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _notcharTest;
+
+	-'d', 'd'*, -'f'+, 'f':[2], -'h':[3,4], 'h'::[2,3], -'j'::[0,4], 'j'
+	
+#return "notchar: "
+#endregex
+
+val
+	notcharTest 		:regex := _notcharTest;
+	notcharReturns0	:string;
+	notcharRemainder0	:string;
+	notcharMatched0	:string;
+
+	notchar0		:=	@match
+				( 
+					"cdeffgggghhij", 
+					_notcharTest, 
+					notcharReturns0, 
+					notcharRemainder0, 
+					notcharMatched0
+				);
+
+	notchar1		:=	@match
+				( 
+					"ceffggghhhj", 
+					notcharTest
+				);
+	
+
+	notchar2		:=	@match
+				( 
+					"Hello World", 
+					notcharTest
+				);
+	
+	
+	
+#print
+(
+	"notchar0           = ",  notchar0, nl,
+	"notchar1           = ",  notchar1, nl,
+	"notchar2           = ",  notchar2, nl,
+	"notcharReturns0    = '", notcharReturns0, "'" nl,
+	"notcharMatched0    = '", notcharMatched0, "'" nl,
+	"notcharRemainder0  = '", notcharRemainder0, "'" nl,
+	nl
+)
+
+	
+
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _noticharTest;
+
+	-!'d', !'d'*, !-'f'+, !'f':[2], -!'h':[3,4], !'h'::[2,3], !-'j'::[0,4], !'j'
+	
+#return "notichar: "
+#endregex
+
+val
+	noticharTest 		:regex := _noticharTest;
+	noticharReturns0	:string;
+	noticharRemainder0	:string;
+	noticharMatched0	:string;
+
+	notichar0		:=	@match
+				( 
+					"CDEFFGGGGHHIJ", 
+					_noticharTest, 
+					noticharReturns0, 
+					noticharRemainder0, 
+					noticharMatched0
+				);
+
+	notichar1		:=	@match
+				( 
+					"CEFFGGGHHHJ", 
+					noticharTest
+				);
+	
+
+	notichar2		:=	@match
+				( 
+					"Hello World", 
+					noticharTest
+				);
+	
+	
+	
+#print
+(
+	"notichar0           = ",  notichar0, nl,
+	"notichar1           = ",  notichar1, nl,
+	"notichar2           = ",  notichar2, nl,
+	"noticharReturns0    = '", noticharReturns0, "'" nl,
+	"noticharMatched0    = '", noticharMatched0, "'" nl,
+	"noticharRemainder0  = '", noticharRemainder0, "'" nl,
+	nl
+)
+
+	
+
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _pkCharTest;
+
+	'c', 'd'*, 'e'+, 'f':[2], 'g':[3,4], 'h'::[2,3], 'i'::[0,4], /'j'
+	
+#return "pkChar: "
+#endregex
+
+val
+	pkCharTest 		:regex := _pkCharTest;
+	pkCharReturns0	:string;
+	pkCharRemainder0	:string;
+	pkCharMatched0	:string;
+
+	pkChar0		:=	@match
+				( 
+					"cdeffgggghhij", 
+					_pkCharTest, 
+					pkCharReturns0, 
+					pkCharRemainder0, 
+					pkCharMatched0
+				);
+
+	
+	pkChar1		:=	@match
+				( 
+					"ceffggghhhj", 
+					pkCharTest
+				);
+	
+
+	pkChar2		:=	@match
+				( 
+					"Hello World", 
+					pkCharTest
+				);
+	
+	
+	
+#print
+(
+	"pkChar0           = ",  pkChar0, nl,
+	"pkChar1           = ",  pkChar1, nl,
+	"pkChar2           = ",  pkChar2, nl,
+	"pkCharReturns0    = '", pkCharReturns0, "'" nl,
+	"pkCharMatched0    = '", pkCharMatched0, "'" nl,
+	"pkCharRemainder0  = '", pkCharRemainder0, "'" nl,
+	nl
+)
+
+	
+
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _pkiCharTest;
+
+	'c', 'd'*, 'e'+, 'f':[2], 'g':[3,4], 'h'::[2,3], 'i'::[0,4], /!'j'
+	
+#return "pkiChar: "
+#endregex
+
+val
+	pkiCharTest 		:regex := _pkiCharTest;
+	pkiCharReturns0	:string;
+	pkiCharRemainder0	:string;
+	pkiCharMatched0	:string;
+
+	pkiChar0		:=	@match
+				( 
+					"cdeffgggghhiJ", 
+					_pkiCharTest, 
+					pkiCharReturns0, 
+					pkiCharRemainder0, 
+					pkiCharMatched0
+				);
+
+	
+	pkiChar1		:=	@match
+				( 
+					"ceffggghhhj", 
+					pkiCharTest
+				);
+	
+
+	pkiChar2		:=	@match
+				( 
+					"Hello World", 
+					pkiCharTest
+				);
+	
+	
+	
+#print
+(
+	"pkiChar0           = ",  pkiChar0, nl,
+	"pkiChar1           = ",  pkiChar1, nl,
+	"pkiChar2           = ",  pkiChar2, nl,
+	"pkiCharReturns0    = '", pkiCharReturns0, "'" nl,
+	"pkiCharMatched0    = '", pkiCharMatched0, "'" nl,
+	"pkiCharRemainder0  = '", pkiCharRemainder0, "'" nl,
+	nl
+)
+
+
+
+	
+
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _csetTest;
+
+	{'c'}, {'d','e'}+, {'f'}:[2], {'g'}:[3,4], {'h'}::[2,3], {'i'}::[0,4], {'j'}
+	
+#return "cset: "
+#endregex
+
+val
+	csetTest 		:regex := _csetTest;
+	csetReturns0	:string;
+	csetRemainder0	:string;
+	csetMatched0	:string;
+
+	cset0		:=	@match
+				( 
+					"cdeffgggghhij", 
+					_csetTest, 
+					csetReturns0, 
+					csetRemainder0, 
+					csetMatched0
+				);
+
+	
+	cset1		:=	@match
+				( 
+					"ceffggghhhj", 
+					csetTest
+				);
+	
+
+	cset2		:=	@match
+				( 
+					"Hello World", 
+					csetTest
+				);
+	
+	
+	
+#print
+(
+	"cset0           = ",  cset0, nl,
+	"cset1           = ",  cset1, nl,
+	"cset2           = ",  cset2, nl,
+	"csetReturns0    = '", csetReturns0, "'" nl,
+	"csetMatched0    = '", csetMatched0, "'" nl,
+	"csetRemainder0  = '", csetRemainder0, "'" nl,
+	nl
+)
+
+
+
+	
+
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _pkcsetTest;
+
+	-{'d'}, {'d','e'}+, -{'g'}:[2], {'g'}:[3,4], 
+	-{'i'}::[2,3], {'i'}::[0,4], /{'j'}
+	
+#return "pkcset: "
+#endregex
+
+val
+	pkcsetTest 			:regex := _pkcsetTest;
+	pkcsetReturns0		:string;
+	pkcsetRemainder0	:string;
+	pkcsetMatched0		:string;
+
+	pkcset0		:=	@match
+				( 
+					"cdeffgggghhij", 
+					_pkcsetTest, 
+					pkcsetReturns0, 
+					pkcsetRemainder0, 
+					pkcsetMatched0
+				);
+
+	
+	pkcset1		:=	@match
+				( 
+					"ceffggghhhj", 
+					pkcsetTest
+				);
+	
+
+	pkcset2		:=	@match
+				( 
+					"Hello World", 
+					pkcsetTest
+				);
+	
+	
+	
+#print
+(
+	"pkcset0           = ",  pkcset0, nl,
+	"pkcset1           = ",  pkcset1, nl,
+	"pkcset2           = ",  pkcset2, nl,
+	"pkcsetReturns0    = '", pkcsetReturns0, "'" nl,
+	"pkcsetMatched0    = '", pkcsetMatched0, "'" nl,
+	"pkcsetRemainder0  = '", pkcsetRemainder0, "'" nl,
+	nl
+)
+
+
+
+	
+
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _stringTest;
+
+	"", "c", "d"*, "eff", "g":[3,4], "h"+, "i"*, "", "j", ""
+	
+#return "string: "
+#endregex
+
+val
+	stringTest 			:regex := _stringTest;
+	stringReturns0		:string;
+	stringRemainder0	:string;
+	stringMatched0		:string;
+
+	string0		:=	@match
+				( 
+					"cdeffgggghhij", 
+					_stringTest, 
+					stringReturns0, 
+					stringRemainder0, 
+					stringMatched0
+				);
+
+	
+	string1		:=	@match
+				( 
+					"ceffggghhhj", 
+					stringTest
+				);
+	
+
+	string2		:=	@match
+				( 
+					"Hello World", 
+					stringTest
+				);
+	
+	
+	
+#print
+(
+	"string0           = ",  string0, nl,
+	"string1           = ",  string1, nl,
+	"string2           = ",  string2, nl,
+	"stringReturns0    = '", stringReturns0, "'" nl,
+	"stringMatched0    = '", stringMatched0, "'" nl,
+	"stringRemainder0  = '", stringRemainder0, "'" nl,
+	nl
+)
+
+
+
+	
+
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _notistrTest;
+
+	!"", -!"abc", !"c", !"d"*, !"eff", !-"def", 
+	!"g":[3,4], !"h"+, !"i"*, !"", !"j", !"", -!"hji"
+	
+#return "notistr: "
+#endregex
+
+val
+	notistrTest 			:regex := _notistrTest;
+	notistrReturns0		:string;
+	notistrRemainder0	:string;
+	notistrMatched0		:string;
+
+	notistr0		:=	@match
+				( 
+					"CDEFFGGGGHHIJ", 
+					_notistrTest, 
+					notistrReturns0, 
+					notistrRemainder0, 
+					notistrMatched0
+				);
+
+	
+	notistr1		:=	@match
+				( 
+					"ceffggghhhj", 
+					notistrTest
+				);
+	
+
+	notistr2		:=	@match
+				( 
+					"Hello World", 
+					notistrTest
+				);
+	
+	
+	
+#print
+(
+	"notistr0           = ",  notistr0, nl,
+	"notistr1           = ",  notistr1, nl,
+	"notistr2           = ",  notistr2, nl,
+	"notistrReturns0    = '", notistrReturns0, "'" nl,
+	"notistrMatched0    = '", notistrMatched0, "'" nl,
+	"notistrRemainder0  = '", notistrRemainder0, "'" nl,
+	nl
+)
+
+	
+
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _strlstTest;
+
+	([ "c", "d", "e", "ff", "g", "h", "i", "j"])+
+	
+#return "strlst: "
+#endregex
+
+val
+	strlstTest 			:regex := _strlstTest;
+	strlstReturns0		:string;
+	strlstRemainder0	:string;
+	strlstMatched0		:string;
+
+	strlst0		:=	@match
+				( 
+					"cdeffgggghhij", 
+					_strlstTest, 
+					strlstReturns0, 
+					strlstRemainder0, 
+					strlstMatched0
+				);
+
+	
+	strlst1		:=	@match
+				( 
+					"ceffggghhhj", 
+					strlstTest
+				);
+	
+
+	strlst2		:=	@match
+				( 
+					"Hello World", 
+					strlstTest
+				);
+	
+	
+	
+#print
+(
+	"strlst0           = ",  strlst0, nl,
+	"strlst1           = ",  strlst1, nl,
+	"strlst2           = ",  strlst2, nl,
+	"strlstReturns0    = '", strlstReturns0, "'" nl,
+	"strlstMatched0    = '", strlstMatched0, "'" nl,
+	"strlstRemainder0  = '", strlstRemainder0, "'" nl,
+	nl
+)
+
+
+
+	
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _pkstrTest;
+
+	"", "c", "d"*, "eff", "g":[3,4], "h"+, "i"*, "", /"j"
+	
+#return "pkstr: "
+#endregex
+
+val
+	pkstrTest 			:regex := _pkstrTest;
+	pkstrReturns0		:string;
+	pkstrRemainder0		:string;
+	pkstrMatched0		:string;
+
+	pkstr0		:=	@match
+				( 
+					"cdeffgggghhij", 
+					_pkstrTest, 
+					pkstrReturns0, 
+					pkstrRemainder0, 
+					pkstrMatched0
+				);
+
+	
+	pkstr1		:=	@match
+				( 
+					"ceffggghhhj", 
+					pkstrTest
+				);
+	
+
+	pkstr2		:=	@match
+				( 
+					"Hello World", 
+					pkstrTest
+				);
+	
+	
+	
+#print
+(
+	"pkstr0           = ",  pkstr0, nl,
+	"pkstr1           = ",  pkstr1, nl,
+	"pkstr2           = ",  pkstr2, nl,
+	"pkstrReturns0    = '", pkstrReturns0, "'" nl,
+	"pkstrMatched0    = '", pkstrMatched0, "'" nl,
+	"pkstrRemainder0  = '", pkstrRemainder0, "'" nl,
+	nl
+)
+
+
+
+	
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _pkistrTest;
+
+	"", "c", "d"*, "eff", "g":[3,4], "h"+, "i"*, "", /!"j"
+	
+#return "pkistr: "
+#endregex
+
+val
+	pkistrTest 			:regex := _pkistrTest;
+	pkistrReturns0		:string;
+	pkistrRemainder0	:string;
+	pkistrMatched0		:string;
+
+	pkistr0		:=	@match
+				( 
+					"cdeffgggghhij", 
+					_pkistrTest, 
+					pkistrReturns0, 
+					pkistrRemainder0, 
+					pkistrMatched0
+				);
+
+	
+	pkistr1		:=	@match
+				( 
+					"ceffggghhhJ", 
+					pkistrTest
+				);
+	
+
+	pkistr2		:=	@match
+				( 
+					"Hello World", 
+					pkistrTest
+				);
+	
+	
+	
+#print
+(
+	"pkistr0           = ",  pkistr0, nl,
+	"pkistr1           = ",  pkistr1, nl,
+	"pkistr2           = ",  pkistr2, nl,
+	"pkistrReturns0    = '", pkistrReturns0, "'" nl,
+	"pkistrMatched0    = '", pkistrMatched0, "'" nl,
+	"pkistrRemainder0  = '", pkistrRemainder0, "'" nl,
+	nl
+)
+
+
+
+	
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _idWordTest;
+
+	@matchid, @ws+, @matchword( "Hello" ), @ws+, @matchiword( "THERE" )
+	
+#return "idWord: "
+#endregex
+
+val
+	idWordTest 			:regex := _idWordTest;
+	idWordReturns0		:string;
+	idWordRemainder0	:string;
+	idWordMatched0		:string;
+
+	idWord0		:=	@match
+				( 
+					"identifier Hello THERE world", 
+					_idWordTest, 
+					idWordReturns0, 
+					idWordRemainder0, 
+					idWordMatched0
+				);
+
+	
+	idWord1		:=	@match
+				( 
+					"identifier Hello there", 
+					idWordTest
+				);
+	
+
+	idWord2		:=	@match
+				( 
+					"Hello World", 
+					idWordTest
+				);
+	
+	
+	
+#print
+(
+	"idWord0           = ",  idWord0, nl,
+	"idWord1           = ",  idWord1, nl,
+	"idWord2           = ",  idWord2, nl,
+	"idWordReturns0    = '", idWordReturns0, "'" nl,
+	"idWordMatched0    = '", idWordMatched0, "'" nl,
+	"idWordRemainder0  = '", idWordRemainder0, "'" nl,
+	nl
+)
+
+
+
+	
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _idWord2Test;
+
+	@matchid, @matchword( "Hello" ), @matchiword( "THERE" )
+	
+#return "idWord2: "
+#endregex
+
+val
+	idWord2Test 		:regex := _idWord2Test;
+	idWord2Returns0		:string;
+	idWord2Remainder0	:string;
+	idWord2Matched0		:string;
+
+	idWord20		:=	@match2
+				( 
+					"identifier Hello THERE world", 
+					_idWord2Test, 
+					idWord2Returns0, 
+					idWord2Remainder0, 
+					idWord2Matched0
+				);
+
+	
+	idWord21		:=	@match2
+				( 
+					"identifier Hello there", 
+					idWord2Test
+				);
+	
+
+	idWord22		:=	@match2
+				( 
+					"Hello World", 
+					idWord2Test
+				);
+	
+	
+	
+#print
+(
+	"idWord20           = ",  idWord20, nl,
+	"idWord21           = ",  idWord21, nl,
+	"idWord22           = ",  idWord22, nl,
+	"idWord2Returns0    = '", idWord2Returns0, "'" nl,
+	"idWord2Matched0    = '", idWord2Matched0, "'" nl,
+	"idWord2Remainder0  = '", idWord2Remainder0, "'" nl,
+	nl
+)
+
+
+
+	
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _matchTest;
+
+	@match2( @matchid, @matchword( "Hello" )), 
+	@match( @ws*, @matchiword( "THERE" ) )
+	
+#return "match: "
+#endregex
+
+val
+	matchTest 		:regex := _matchTest;
+	matchReturns0	:string;
+	matchRemainder0	:string;
+	matchMatched0	:string;
+
+	match0		:=	@match
+				( 
+					"identifier Hello THERE world", 
+					_matchTest, 
+					matchReturns0, 
+					matchRemainder0, 
+					matchMatched0
+				);
+
+	
+	match1		:=	@match2
+				( 
+					"identifier Hello there", 
+					matchTest
+				);
+	
+
+	match2		:=	@match2
+				( 
+					"Hello World", 
+					matchTest
+				);
+	
+	
+	
+#print
+(
+	"match0           = ",  match0, nl,
+	"match1           = ",  match1, nl,
+	"match2           = ",  match2, nl,
+	"matchReturns0    = '", matchReturns0, "'" nl,
+	"matchMatched0    = '", matchMatched0, "'" nl,
+	"matchRemainder0  = '", matchRemainder0, "'" nl,
+	nl
+)
+
+
+
+  
+	
+
+//////////////////////////////////////////////////////////////////
+
+	
+#regex _xtrctTest;
+
+  <
+	<@match2( <@matchid>:_0, <@matchword( "Hello" )>:_1)>:_2, 
+	<@match( <@ws*>:_3, <@matchiword( "THERE" )>:_4 )>:_5
+  >:_6
+	
+#return "xtrct: "
+#endregex
+
+val
+	xtrctTest 		:regex := _xtrctTest;
+	xtrctReturns0	:string;
+	xtrctRemainder0	:string;
+	xtrctxtrcted0	:string;
+
+	xtrct0		:=	@match
+				( 
+					"identifier Hello THERE world", 
+					_xtrctTest, 
+					xtrctReturns0, 
+					xtrctRemainder0, 
+					xtrctxtrcted0
+				);
+
+	
+	xtrct1		:=	@match2
+				( 
+					"identifier Hello there", 
+					xtrctTest
+				);
+	
+
+	xtrct2		:=	@match2
+				( 
+					"Hello World", 
+					xtrctTest
+				);
+	
+	
+	
+#print
+(
+	"xtrct0           = ",  xtrct0, nl,
+	"xtrct1           = ",  xtrct1, nl,
+	"xtrct2           = ",  xtrct2, nl,
+	"xtrctReturns0    = '", xtrctReturns0, "'" nl,
+	"xtrctxtrcted0    = '", xtrctxtrcted0, "'" nl,
+	"xtrctRemainder0  = '", xtrctRemainder0, "'" nl,
+	"_0               = '", _0, "'" nl,
+	"_1               = '", _1, "'" nl,
+	"_2               = '", _2, "'" nl,
+	"_3               = '", _3, "'" nl,
+	"_4               = '", _4, "'" nl,
+	"_5               = '", _5, "'" nl,
+	"_6               = '", _6, "'" nl,
+	nl
+)
+
+
+
+
+
+  
+#endif	
+
+//////////////////////////////////////////////////////////////////
+
+
+#regex _matchMultipleAs;
+
+	@ws+, 'a'+
+	
+#return "mov( a, eax );"
+#endregex
+
+matchMultipleAs := _matchMultipleAs;
+
+
+#string( myStr )
+
+This is a test of
+the #string directive.
+
+#endstring
+
+#print( "myStr=", myStr )
+
+	
+
+const
+	a := 0;
+
+begin testRegexes;
+
+	#match( matchMultipleAs )
+	
+		aaa
+		
+	#endmatch
+
+end testRegexes;
+
+													

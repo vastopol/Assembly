@@ -1,0 +1,15 @@
+#if( !@defined( poll_hhf ))
+?poll_hhf := true;
+
+namespace linux; @fast;
+
+type
+	pollfd: record
+		fd		:dword;
+		events	:word;
+		revents	:word;
+	endrecord;
+	
+
+end linux;
+#endif //poll_hhf

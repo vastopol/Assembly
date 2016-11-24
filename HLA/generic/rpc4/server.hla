@@ -1,0 +1,81 @@
+
+program rpcServer; 
+?@nodisplay := true; 
+?@noalignstack := true; 
+
+#include( "stdlib.hhf" )
+#include( "sleep.hhf" )
+
+#include( "sc.hhf" ) 
+#include( "rpc_server_implementation.hhf" )
+
+	
+
+////////////////////////////////////////////////////
+//
+// Here is the server-side code:
+
+procedure rpcputs( s:string );
+begin rpcputs;
+
+	stdout.put( s );
+	str.free( s );
+		
+end rpcputs;
+
+
+
+static
+	ipAdrs		:dword;
+	quitServer	:boolean := false;
+	
+
+procedure serverConnected;
+begin serverConnected;
+
+	stdout.put( "Client connected with server" nl );
+
+	// Start the real server code:
+	
+	debugRPC_server.connected( 0 );
+	
+	stdout.put( "Client disconnected from server" nl );
+	mov( true, quitServer );
+	
+end serverConnected;
+
+
+	
+begin rpcServer;
+
+	mov( false, quitServer );	
+	debugRPC_server.create
+	( 
+		$9998, 
+		&serverConnected,
+		thunk
+		#{			
+			// On entry to thunk, EAX contains the address of the timeout
+			// variable. Set this as desired for the timeout (1 second,
+			// in this case).
+			
+			if( eax <> NULL ) then
+			
+				// Timeout is 0.1 seconds while waiting for
+				// connection:
+				
+					mov( 100_000, (type hla.timeval [eax]).tv_usec ); 
+				
+			endif;
+	        movzx( quitServer, eax );
+				
+		}#
+	);
+	
+	// Short delay to allow all transmissions to complete before we bail:
+	
+	os.sleep( 2 );
+	
+	debugRPC_server.destroy();
+				
+end rpcServer;

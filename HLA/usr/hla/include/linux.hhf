@@ -1,0 +1,7879 @@
+#if( ! @defined( linux_hhf ))
+?linux_hhf := true;
+
+#includeonce( "hla.hhf" )
+
+#if( ! @defined( errno_hhf ))
+?errno_hhf := true;
+
+namespace errno; @fast;
+
+  const
+	eperm 			:= -1;
+	enoent 			:= -2;
+	esrch 			:= -3;
+	eintr 			:= -4;
+	eio 			:= -5;
+	enxio 			:= -6;
+	e2big 			:= -7;
+	enoexec 		:= -8;
+	ebadf 			:= -9;
+	echild 			:= -10;
+	eagain 			:= -11;
+	enomem 			:= -12;
+	eacces 			:= -13;
+	efault 			:= -14;
+	enotblk 		:= -15;
+	ebusy 			:= -16;
+	eexist 			:= -17;
+	exdev 			:= -18;
+	enodev 			:= -19;
+	enotdir 		:= -20;
+	eisdir 			:= -21;
+	einval 			:= -22;
+	enfile 			:= -23;
+	emfile 			:= -24;
+	enotty 			:= -25;
+	etxtbsy 		:= -26;
+	efbig 			:= -27;
+	enospc 			:= -28;
+	espipe 			:= -29;
+	erofs 			:= -30;
+	emlink 			:= -31;
+	epipe 			:= -32;
+	edom 			:= -33;
+	erange 			:= -34;
+	edeadlk 		:= -35;
+	enametoolong 	:= -36;
+	enolck 			:= -37;
+	enosys 			:= -38;
+	enotempty 		:= -39;
+	eloop 			:= -40;
+	ewouldblock 	:= eagain;
+	enomsg 			:= -42;
+	eidrm 			:= -43;
+	echrng 			:= -44;
+	el2nsync 		:= -45;
+	el3hlt 			:= -46;
+	el3rst 			:= -47;
+	elnrng 			:= -48;
+	eunatch 		:= -49;
+	enocsi 			:= -50;
+	el2hlt 			:= -51;
+	ebade 			:= -52;
+	ebadr 			:= -53;
+	exfull 			:= -54;
+	enoano 			:= -55;
+	ebadrqc 		:= -56;
+	ebadslt 		:= -57;
+	edeadlock 		:= edeadlk;
+	ebfont 			:= -59;
+	enostr 			:= -60;
+	enodata 		:= -61;
+	etime 			:= -62;
+	enosr 			:= -63;
+	enonet 			:= -64;
+	enopkg 			:= -65;
+	eremote 		:= -66;
+	enolink 		:= -67;
+	eadv 			:= -68;
+	esrmnt 			:= -69;
+	ecomm 			:= -70;
+	eproto 			:= -71;
+	emultihop 		:= -72;
+	edotdot 		:= -73;
+	ebadmsg 		:= -74;
+	eoverflow 		:= -75;
+	enotuniq 		:= -76;
+	ebadfd 			:= -77;
+	eremchg 		:= -78;
+	elibacc 		:= -79;
+	elibbad 		:= -80;
+	elibscn 		:= -81;
+	elibmax 		:= -82;
+	elibexec 		:= -83;
+	eilseq 			:= -84;
+	erestart 		:= -85;
+	estrpipe 		:= -86;
+	eusers 			:= -87;
+	enotsock 		:= -88;
+	edestaddrreq 	:= -89;
+	emsgsize 		:= -90;
+	eprototype 		:= -91;
+	enoprotoopt 	:= -92;
+	eprotonosupport := -93;
+	esocktnosupport := -94;
+	eopnotsupp 		:= -95;
+	epfnosupport 	:= -96;
+	eafnosupport 	:= -97;
+	eaddrinuse 		:= -98;
+	eaddrnotavail 	:= -99;
+	enetdown 		:= -100;
+	enetunreach 	:= -101;
+	enetreset 		:= -102;
+	econnaborted 	:= -103;
+	econnreset 		:= -104;
+	enobufs 		:= -105;
+	eisconn 		:= -106;
+	enotconn 		:= -107;
+	eshutdown 		:= -108;
+	etoomanyrefs	:= -109;
+	etimedout		:= -110;
+	econnrefused	:= -111;
+	ehostdown 		:= -112;
+	ehostunreach 	:= -113;
+	ealready 		:= -114;
+	einprogress 	:= -115;
+	estale 			:= -116;
+	euclean		 	:= -117;
+	enotnam 		:= -118;
+	enavail 		:= -119;
+	eisnam 			:= -120;
+	eremoteio 		:= -121;
+	edquot 			:= -122;
+	enomedium 		:= -123;
+	emediumtype 	:= -124;
+	
+	#if( @defined( __kernel__ ))
+		
+		erestartsys		:= -512;
+		erestartnointr	:= -513;
+		erestartnohand	:= -514;
+		enoioctlcmd		:= -515;
+		
+	#endif
+		
+end errno;
+
+#endif
+#if( ! @defined( types_hhf ))
+?types_hhf := true;
+
+namespace linux; @fast;
+
+const
+
+	ETIMEDOUT		:= -@global:errno.etimedout;
+
+	// Some generic constants:
+	
+	int_max		:= int32( $7FFF_FFFF );
+	uint_max	:= uns32( $FFFF_FFFF );
+	int_min		:= !int_max;
+	ssize_max	:= int_max;
+	page_size	:= 4096;
+
+	bits_per_long	:= 32;
+	
+type
+	umode_t		:word;
+	dev_t		:word;
+	ipc_pid_t	:word;
+	uid_t		:word;
+	gid_t		:word;
+	sid_t		:word;
+	mode_t		:word;
+	nlink_t		:word;
+	uid16_t		:word;
+	gid16_t		:word;
+	sa_family_t	:word;
+
+	ino_t		:dword;
+	off_t		:dword;
+	pid_t		:dword;
+	dma_addr_t	:dword;
+	size_t		:dword;
+	ptrdiff_t	:dword;
+	time_t		:dword;
+	suseconds_t	:dword;
+	clock_t		:dword;
+	daddr_t		:dword;
+	uid32_t		:dword;
+	gid32_t		:dword;
+	key_t		:dword;
+	kernel_cap_t:dword;
+	caddr_t		:pointer to char;
+	ssize_t		:int32;
+	uint		:uns32;
+	__u32		:uns32;
+
+	loff_t		:qword;
+	
+	
+	
+	// Kernel related types:
+	
+	kdev_t	:word;
+  	
+	__kernel_daddr_t	:int32;
+	__kernel_fsid_t:
+		record
+			__val	:int32[2];
+		endrecord;
+		
+	__kernel_ino_t	:dword;
+	__kernel_size_t	:uns32;
+
+	// These don't really belong here,
+	// but what the heck.
+	
+  	fd_set: record
+  		fds_bits	:dword[ 32 ];
+  	endrecord;
+  	fd_set_ptr	:pointer to fd_set;
+  	
+  	
+
+	__user_cap_user_header_struct: record
+		version	:uns32;
+		pid		:int32;
+	endrecord;
+			
+	cap_user_header_t	:pointer to __user_cap_user_header_struct;
+		
+	__user_cap_data_struct: record
+		effective	:uns32;
+		permitted	:uns32;
+		inheritable	:uns32;
+	endrecord;
+
+	cap_user_data_t		:pointer to __user_cap_data_struct;		
+		
+		
+		
+	old_sigset_t	:dword;
+			
+	mmap_arg_struct: record
+		addr	:dword;
+		len		:uns32;
+		prot	:dword;
+		flags	:dword;
+		fd		:dword;
+		offset	:uns32;
+	endrecord;
+			
+
+			
+	sel_arg_struct: record
+		n		:uns32;
+		inp		:dword;
+		outp	:dword;
+		exp		:dword;
+		tvp		:dword; //pointer to timeval;
+	endrecord;
+
+
+	#macro pushregs;
+	
+		push( ebx );
+		push( ecx );
+		push( edx );
+		push( esi );
+		push( edi );
+		
+	#endmacro
+	
+	#macro popregs;
+	
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		
+	#endmacro
+
+	#macro saveregs;
+	
+		mov( ebx, ebxSave );
+		mov( ecx, ecxSave );
+		mov( edx, edxSave );
+		mov( esi, esiSave );
+		mov( edi, ediSave );
+		
+	#endmacro
+	
+	#macro restoreregs;
+	
+		mov( ebxSave, ebx );
+		mov( ecxSave, ecx );
+		mov( edxSave, edx );
+		mov( esiSave, esi );
+		mov( ediSave, edi );
+		
+	#endmacro
+	
+
+end linux;
+#endif //types_hhf
+#if( ! @defined( aout_hhf ))
+?aout_hhf := true;
+
+namespace linux; //@fast;
+
+  type
+	exec: record
+		a_info	:dword;		
+  		a_text	:dword;		// length of text, in bytes
+		a_data	:dword;		// length of data, in bytes
+		a_bss	:dword;		// length of uninitialized data
+		a_syms	:dword;		// length of symbol table data
+		a_entry	:dword;		// start address
+		a_drsize:dword;		// length of relocation info for data
+	endrecord;
+
+end linux;
+
+#endif //aout_hhf
+#if( ! @defined( atomic_hhf ))
+?atomic_hhf := true;
+
+namespace linux; //@fast;
+
+  type
+	atomic_t:record
+		counter	:dword;
+	endrecord;
+
+end linux;
+
+#endif //atomic_hhf
+
+
+#if( ! @defined( list_hhf ))
+?list_hhf := true;
+
+
+namespace linux; //@fast;
+
+  type
+  	list_head_pt: pointer to list_head;
+  	list_head:record;
+  		next	:list_head_pt;
+  		prev	:list_head_pt;
+  	endrecord;
+  	
+  	
+  	
+  	// The following creates an initialized list_head constant.
+  	
+  	#macro list_head_init(__name);
+
+  		@global:linux.list_head:[ &__name, &__name ]
+  		
+  	#endmacro
+  	
+  	
+  	// The following is an approximation of the LIST_HEAD macro defined
+  	// in C.  The name and usage are quite different because of namespace
+  	// pollution and features that HLA provides.  In C, you'd declare an
+  	// initialized list head object by LIST_HEAD(var_name), in HLA you
+  	// do the following:
+  	//
+  	//	var_name:list_head_t;
+  	//
+  	// Note that this declaration is only legal in static, storage, and readonly
+  	// declaration sections.  Also note that this is not legal inside a namespace.
+  	
+  	#macro list_head_t:var_name;
+  		forward(var_name);
+		var_name: @global:linux.list_head := 
+			@global:linux.list_head:[ &var_name, &var_name]
+  	#endmacro
+  	
+  	// Run-time initialization of a list_head (useful for var objects!)
+  	// lvar must be a list_head variable (this is slightly different than
+  	// the C macro, which expects a pointer to a list_head variable).
+  	
+  	#macro init_list_head(__lvar);
+  		returns
+  		({
+  			#if( @class( __lvar ) = @global:hla.cStatic )
+  			
+  				mov( &__lvar, __lvar.next );
+  				mov( &__lvar, __lvar.prev );
+  				
+  			#else
+  
+  				push( eax );
+  				lea( eax, __lvar );
+  				mov( eax, __lvar.next );
+  				mov( eax, __lvar.prev );
+  				pop( eax );
+  				
+  			#endif
+ 		}, "")
+  	#endmacro
+  				
+  	
+	// Note: no macros for list manipulation for two reasons:
+	// (1) the discrete code to do it is trivial
+	// (2) the generalized code would extremely long and inefficient.
+	  			
+  	
+end linux;
+
+#endif //list_hhf
+#if( ! @defined( wait_hhf ))
+?wait_hhf := true;
+
+#if( ! @defined( spinlock_hhf ))
+?spinlock_hhf := true;
+
+// Note: since this is assembly language, not C, we'll
+// dispense with all the spin lock macros that preserve
+// flags (because it's much easier to preserve the flags
+// directly in assembly.
+
+namespace linux; //@fast;
+
+type
+	spinlock_t: record
+  		_lock	:dword;
+  	endrecord;
+  	wq_lock_t	:spinlock_t;
+  	
+  	rw_lock_t	:spinlock_t;
+	rwlock_t	:rw_lock_t;
+
+const
+	spin_lock_unlocked :spinlock_t := spinlock_t:[0];
+
+
+
+	#if( @defined( __SMP__ ))
+
+		#error( "Need to add SMP support to spinlock.hhf" )
+		
+	#else
+
+		// On single processor systems, spinlocks are empty
+		// since we can't preempt the kernel.
+		
+		// Really, this should be an empty macro since we
+		// don't really use spinlocks in a single processor
+		// system.  However, since this *is* assembly language,
+		// some assembly programmer might actually poke around
+		// with the internal structure, so it's best to go ahead
+		// and initialize the spinlock.
+		
+		#macro spin_lock_init(__x);
+			returns
+			(
+				{
+					mov( 0, __x._lock );
+				}, ""
+			)
+		#endmacro
+		
+		// spin_lock returns the value of the spinlock
+		// object passed as an argument.  This macro
+		// uses an empty "returns" statement rather than
+		// simply specifying "theLock._lock" as the macro
+		// body to allow the caller to specify this as
+		// a statement (as well as an instruction operand).
+		// If the user does this, HLA ignores the "rtn"
+		// value.
+		//
+		// Note that this macro can be used as a destination
+		// operand of an instruction, even though the caller
+		// should never really do that.
+		//
+		// In theory, this macro should spin until the lock
+		// is available, but since locks are never held in
+		// a uniprocessor system, there is no waiting.
+		
+		#macro spin_lock(__Lock):rtn;
+			?rtn := @string:__Lock + "._lock";
+			returns({},rtn)
+		#endmacro
+		
+		// On a uniprocessor system, bottom halves are automatically
+		// disabled since we can't preempt the kernel.
+		
+		#macro spin_lock_bh(__x):rtn;
+			?rtn := @string:__x + "._lock";
+			returns({},rtn)
+		#endmacro
+		
+		
+		// Since this is uniprocessor code, the following
+		// macro always returns false (zero) since the
+		// spinlock is never locked (this code ignores
+		// the spinlock value if an assembly programmer
+		// has set it to some value other than zero).
+		// Again, this macro uses the "returns" statement
+		// so that invoking this macro as a statement
+		// is okay.
+		
+		#macro spin_is_locked(__lock);
+			returns({}, "0")
+		#endmacro
+		
+		
+		// spin_trylock attempts to aquire the lock
+		// without waiting.  Since we can always aquire
+		// the lock, this code always returns zero to
+		// indicate that the lock is available.
+		
+		#macro spin_trylock(__lock);
+			returns({},"0")
+		#endmacro
+		
+		// spin_unlock_wait waits until the lock
+		// is available, but doesn't take possession of it.
+		// Of course, the lock is always available, so this
+		// macro really does nothing.
+		
+		#macro spin_unlock_wait(__lock);
+		#endmacro
+		
+		
+		// spin_unlock unlocks the specified spinlock.
+		// Since spinlocks in a uniprocessor system
+		// are never held, this macro does nothing.
+		
+		#macro spin_unlock(__lock);
+		#endmacro
+		
+		
+		/*
+		 * Read-write spinlocks, allowing multiple readers
+		 * but only one writer.
+		 *
+		 * NOTE! it is quite common to have readers in interrupts
+		 * but no interrupt writers. For those circumstances we
+		 * can "mix" irq-safe locks - any writer needs to get a
+		 * irq-safe write-lock, but readers can get non-irqsafe
+		 * read-locks.
+		 *
+		 * On a uniprocessor system, these macros are identical
+		 * to the spinlock macros.  See those macros for comments.
+		 */
+
+		#macro rwlock_init(__x):rtn;
+			?rtn := @string:__x + "._lock";
+			returns({},rtn)
+		#endmacro
+		
+		#macro read_lock(__Lock):rtn;
+			?rtn := @string:__Lock + "._lock";
+			returns({},rtn)
+		#endmacro
+		
+		#macro read_unlock(__lock);
+		#endmacro
+		
+		#macro write_lock(__Lock):rtn;
+			?rtn := @string:__Lock + "._lock";
+			returns({},rtn)
+		#endmacro
+		
+		#macro write_unlock(__lock);
+		#endmacro
+		
+		
+
+
+
+	#endif
+	
+	
+	
+
+	
+end linux;
+		
+	
+
+#endif // spinlock_hhf
+
+namespace linux; //@fast;
+
+type
+	wait_queue_head_t:record
+		_lock		:wq_lock_t;
+		task_list	:list_head;
+	endrecord;	
+	
+		
+const
+
+	// constants/macros associated with wait4
+
+	wnohang				:= 1;
+	wuntraced			:= 2;
+	__wall				:= $4000_0000;
+	__wclone			:= $8000_0000;
+	
+	#macro wexitstatus(s);
+		movzx( (type byte s[1]), eax )
+	#endmacro
+	
+	#macro wifexited(s);
+		returns
+		(
+			{
+				movzx( (type byte s), eax );
+				test( $7f, al );
+				setz( al );
+			},
+			"eax"
+		)
+	#endmacro
+	
+	#macro wifstopped(s);
+		returns
+		(
+			{
+				movzx( (type byte s), eax );
+				cmp( eax, $ff );
+				sete( al );
+			},
+			"eax"
+		)
+	#endmacro
+	
+
+	// wifsignaled returns false if L.O. byte of
+	// s contains 0, $80, or $ff (!wifstopped && !wifexited).
+	
+	#macro wifsignaled(s);
+		returns
+		(
+			{
+				movzx( (type byte s), eax );
+				rol( 1, al );	//0,80,ff-> 0,1,ff
+				inc( al );		//0,80,ff-> 1,2,0
+				cmp( al, 2 );
+				setnbe( al );	//0 if originally 0, 80, or ff.
+			},
+			"eax"
+		)
+	#endmacro
+	
+	#macro wtermsig(s);
+		returns
+		(
+			{
+				movzx( (type byte s), eax );
+				and( $7f, al );
+			},
+			"eax"
+		)
+	#endmacro
+	
+	
+	#macro wstopsig(s);
+		movzx( (type byte s[1]), eax )
+	#endmacro
+
+	
+end linux;
+#endif //wait_hhf
+#if( ! @defined( module_hhf ))
+?module_hhf := true;
+
+
+namespace linux; //@fast;
+
+const
+
+	// Bits of module.flags:
+	
+	mod_uninitialized	:= 0;
+	mod_running			:= 1;
+	mod_deleted			:= 2;
+	mod_autoclean		:= 4;
+	mod_visited			:= 8;
+	mod_used_once		:= $10;
+	mod_just_freed		:= $20;
+	mod_initializing	:= $40;
+
+	// Values for query module's which:
+	
+	qm_modules			:= 1;
+	qm_deps				:= 2;
+	qm_refs				:= 3;
+	qm_symbols			:= 4;
+	qm_info				:= 5;
+  	
+  	
+	
+type
+	kernel_sym: record
+		value	:dword;
+		theName	:char[60];
+	endrecord;
+	
+	module_persist	:dword;	// Really an empty structure, 
+							// But HLA doesn't allow this.
+	
+	module_symbol: record
+		value	:dword;
+		theName	:pointer to char;
+	endrecord;
+
+	module_ref: record
+		dep			:pointer to module_t;
+		ref			:pointer to module_t;
+		next_ref	:pointer to module_ref;
+	endrecord;
+
+	module_info: record
+		addr	:dword;
+		size	:dword;
+		flags	:dword;
+		usecount:uns32;
+	endrecord;
+
+	module_t: record
+		size_of_struct	:uns32;
+		next			:pointer to module_t;
+		_name			:pointer to char;
+		size			:uns32;
+		uc:
+			union
+				usecount	:atomic_t;
+				pad			:dword;
+			endunion;
+			
+		flags			:dword;
+		nsyms			:uns32;
+		ndeps			:uns32;
+		
+		syms			:pointer to module_symbol;
+		deps			:pointer to module_ref;
+		refs			:pointer to module_ref;
+		
+		init			:procedure; @returns( "eax" );
+		cleanup			:procedure;					
+		
+		
+		// The following members are all optional.
+		// At run-time, compare their offsets against
+		// the size_of_struct field to see if they are
+		// actually present (use mod_member_present for this).
+		
+		ex_table_start	:pointer to exception_table_entry;
+		ex_table_end	:pointer to exception_table_entry;
+		
+		persist_start	:pointer to module_persist;
+		persist_end		:pointer to module_persist;
+										   
+		can_unload		:procedure; @returns( "eax" );
+		
+		runsize			:dword;
+		kallsyms_start	:pointer to char;
+		kallsyms_end	:pointer to char;
+		archdata_start	:pointer to char;
+		archdata_end	:pointer to char;
+		kernel_data		:pointer to char;
+		
+	endrecord;
+	
+	// mod_member_present- passed a module_t object and
+	// a field.  Checks to see if the field is present in
+	// the particular instance of the module object.
+	// returns an "above" (@a) condition code if the field is present.
+	// Generally, you'd invoke this macro where a (run-time)
+	// boolean expression is expected (e.g., in an IF stmt).
+
+	
+	#macro mod_member_present(__mod,__member):__fn;
+		?__fn := "linux.module_t." + @string:__member;
+		returns({
+			cmp
+			( 
+				__mod.size_of_struct, 
+				@offset( @text(__fn) )
+			);
+		},"@a")
+	#endmacro
+	
+	
+	// mod_can_query - returns true in EAX if we can query the
+	// module.  We can query it if it's running or initializing,
+	// but not deleted.  Note that this macros *know* the values
+	// of mod_running, mod_initializing, and mod_deleted and
+	// you must rewrite this macros if their values change.
+	
+	#macro mod_can_query(__mod);
+		returns
+		({
+			mov( (type byte __mod.flags), al );
+			and
+			( 
+					linux.mod_running		// Bit 0 
+				|	linux.mod_initializing 	// Bit 6
+				|	linux.mod_deleted,		// Bit 1
+				eax
+			);
+			ror( 1, al );		// r0i0_000d
+			shr( 1, al );		// 0r0i_0000 d (in carry)
+			setnbe( al );		// carry = @b so fail if @be.
+		},"eax" )
+	#endmacro
+	
+static
+	__this_module	:module_t; external( "__this_module" );
+		
+	#macro mod_inc_use_count;
+		
+		push( eax );
+		mov( linux.__this_module.uc.usecount.counter, eax );
+		lock.inc( (type dword [eax]) );
+		or
+		( 
+			linux.mod_visited | linux.mod_used_once, 
+			linux.__this_module.flags 
+		);
+		pop( eax );
+		
+	#endmacro
+		
+	#macro mod_dec_use_count;
+		
+		push( eax );
+		mov( linux.__this_module.uc.usecount.counter, eax );
+		lock.dec( (type dword [eax]) );
+		or( linux.mod_visited, linux.__this_module.flags );
+		pop( eax );
+		
+	#endmacro
+		
+	#macro mod_in_use;
+	
+		returns
+		(
+			{
+				if
+				( 
+						linux.mod_member_present( can_unload )
+					&&	linux.__this_module <> 0  
+				) then
+
+					call( linux.__this_module.can_unload );
+						
+				else
+					
+						
+					mov
+					( 
+						linux.__this_module.uc.usecount.counter, 
+						eax 
+					);
+					mov( [eax], eax );
+					
+				endif;
+			}, "eax"
+		)
+		
+	#endmacro
+	
+	
+	
+	// module_parm( sym, typ) -
+	// sym must be the name of a global variable.
+	// typ must be a string constant.
+	// Creates a parameter definition record in the object file.
+	
+	#macro module_parm( sym, typ):modname,modstr;
+		?modname :string := "__module_parm_" + @string:sym;
+		?modstr  :string := "parm_" + @string:sym + "=" + typ;
+		#emit( " .globl " +	modname )
+		#emit( " .section .modinfo" )
+		#emit( " .type " + modname + ",@object" )
+		#emit
+		( 
+				" .size " 
+			+	modname 
+			+	","
+			+	string(@length(modstr)+1)
+		) 
+		#emit( modname + ":" )
+		#emit( " .string """ + modstr + """" )
+	#endmacro
+
+
+
+
+	// module_parm_desc( sym, typ) -
+	// sym must be the name of a global variable.
+	// cmnt must be a string constant.
+	// Creates a parameter description record in the object file.
+	
+	#macro module_parm_desc( sym, cmnt):modname,modstr;
+		?modname :string := "__module_parm_desc_" + @string:sym;
+		?modstr  :string := "parm_desc_" + @string:sym + "=" + cmnt;
+		#emit( " .globl " +	modname )
+		#emit( " .align 32" )
+		#emit( " .type " + modname + ",@object" )
+		#emit
+		( 
+				" .size " 
+			+	modname 
+			+	","
+			+	string(@length(modstr)+1)
+		) 
+		#emit( modname + ":" )
+		#emit( " .string """ + modstr + """" )
+	#endmacro		
+		
+	
+	
+
+	
+#if( @defined( __kernel__ ))
+
+type
+	inter_module_entry: record
+		list	:list_head;
+		im_name	:pointer to char;
+		owner	:pointer to module_t;
+		userdata:dword;
+	endrecord;
+	
+	procedure _inter_module_register
+	( 
+			_string	:string; 
+		var module	:module_t;
+		var	data	:var
+	);	@cdecl;
+		external( "inter_module_register" );
+		
+	#macro inter_module_register( __s, __m, __d );
+		returns
+		({
+			push( eax );
+			push( ecx );
+			push( edx );
+			_inter_module_register( __s, __m, __d );
+			add( 12, esp );
+			pop( edx );
+			pop( ecx );
+			pop( eax );
+		},"" )
+	#endmacro
+	
+	
+	
+
+	procedure _inter_module_unregister
+	( 
+			_string	:string
+	);	@cdecl;
+		external( "inter_module_unregister" );
+		
+	#macro inter_module_unregister( __s, __m, __d );
+		returns
+		({
+			push( eax );
+			push( ecx );
+			push( edx );
+			_inter_module_register( __s );
+			pop( eax );	// removes __s
+			pop( edx );
+			pop( ecx );
+			pop( eax );
+		},"" )
+	#endmacro
+	
+	
+	
+
+	procedure _inter_module_get
+	( 
+			_string	:string
+	);	@cdecl;
+		external( "inter_module_get" );
+		
+	#macro inter_module_get( __s );
+		returns
+		({
+			push( ecx );
+			push( edx );
+			_inter_module_get( __s );
+			pop( ecx );	// removes __s
+			pop( edx );
+			pop( ecx );
+		},"eax" )
+	#endmacro
+	
+	
+	
+
+	procedure _inter_module_put
+	( 
+			_string	:string
+	);	@cdecl;
+		external( "inter_module_put" );
+		
+	#macro inter_module_put( __s );
+		returns
+		({
+			push( eax );
+			push( ecx );
+			push( edx );
+			_inter_module_put( __s );
+			pop( ecx );	// removes __s
+			pop( edx );
+			pop( ecx );
+			pop( eax );
+		},"" )
+	#endmacro
+	
+	
+	
+
+	procedure _inter_module_get_request
+	( 
+			_string	:string;
+			_module	:string
+	);	@cdecl;
+		external( "inter_module_get_request" );
+		
+	#macro inter_module_get_request( __s, __m );
+		returns
+		({
+			push( ecx );
+			push( edx );
+			_inter_module_get_request( __s, __m );
+			add( 8, esp );
+			pop( edx );
+			pop( ecx );
+		},"eax" )
+	#endmacro
+	
+	
+	
+	
+#endif //__kernel__
+	
+end linux;
+		
+	
+
+#endif // module_hhf
+#if( ! @defined( timer_hhf ))
+?timer_hhf := true;
+
+namespace linux; //@fast;
+
+const
+	tvn_bits	:= 6;
+	tvr_bits	:= 8;
+	tvn_size	:= 1 << tvn_bits;
+	tvr_size	:= 1 << tvr_bits;
+	tvn_mask	:= tvn_size - 1;
+	tvr_mask	:= tvr_size - 1;
+	
+	noof_tvecs	:= 5;
+	
+	
+type
+	timer_list: record
+		list	:list_head;
+		expires	:dword;
+		data	:dword;
+		function:procedure( p:dword ); @cdecl;
+		base	:pointer to tvec_base_t;
+	endrecord;
+	
+	timer_t	:timer_list;
+	timer_pt:pointer to timer_t;
+	
+	
+	tvec_t: record
+		index	:dword;
+		vec		:list_head[ tvn_size ];
+	endrecord;
+	
+	tvec_root_t: record
+		index	:dword;
+		vec		:list_head[ tvr_size ];
+	endrecord;
+	
+	tvec_base_t: record
+		_lock	:spinlock_t;
+		timer_jiffies	:dword;
+		running_timer	:pointer to timer_t;
+		tv1				:tvec_root_t;
+		tv2				:tvec_t;
+		tv3				:tvec_t;
+		tv4				:tvec_t;
+		tv5				:tvec_t;
+	endrecord;
+	
+static
+	tvec_bases	:tvec_base_t; external;	// Actually an array.
+	
+
+	procedure add_timer( var timer:timer_t ); @cdecl; external;
+	procedure del_timer( var timer:timer_t );
+		@use eax;
+		@cdecl;
+		external;
+		
+	procedure mod_timer( var timer:timer_t; expires:dword );
+		@cdecl;
+		external;
+		
+	procedure it_real_fn( u:dword ); @cdecl; external;
+	procedure init_timers; external;
+	procedure run_local_timers; external;
+	
+	#macro init_timer( __timer);
+		returns
+		({
+			mov( 0, __timer.list.next );
+			mov( 0, __timer.list.prev );
+			mov( &tvec_bases, __timer.base );
+		},"" )
+	#endmacro
+	
+	
+	#macro timer_pending( __timer );
+		returns
+		({
+			cmp( __timer.list.next, 0 );
+		}, "@ne")
+	#endmacro
+
+end linux;
+#endif //timer_hhf
+#if( ! @defined( system_hhf ))
+?system_hhf := true;
+
+namespace linux; //@fast;
+
+	// The __dummy[] arguments forces the use
+	// of "()" after these macros so they better
+	// match the C syntax.
+	
+	#macro mb(__dummy[]);
+		returns
+		({
+			lock.add( 0, (type dword [esp]));
+		},"" )
+	#endmacro
+	
+	#macro rmb(__dummy[]);
+		returns
+		({
+			lock.add( 0, (type dword [esp]));
+		}, "" )
+	#endmacro
+	
+	#macro wmb(__dummy[]);
+		// Current intel CPUs already order writes.
+	#endmacro
+	
+	#macro set_mb(__var, __value);
+		returns
+		({
+			push( eax );
+			mov( __value, eax );
+			xchg( eax, __var );
+			pop( eax );
+		},"" )
+	#endmacro
+	
+	#macro set_wmb(__var, __value );
+		returns
+		({
+			push( eax );
+			mov( __value, eax );
+			mov( eax, __var );
+			pop( eax );
+		}, "", )
+	#endmacro
+
+
+	#if( @defined( __smp__ ))
+		
+		procedure __global_cli; @cdecl; external;
+		procedure __global_sti; @cdecl; external;
+		
+	#endif
+	
+	#macro _cli;
+		returns
+		({
+			#if( @defined( __smp__ ))
+				__global_cli();
+			#else
+				cli();
+			#endif
+		}, "eax" )
+	#endmacro
+	
+	
+	
+	#macro _sti;
+		returns
+		({
+			#if( @defined( __smp__ ))
+				__global_sti();
+			#else
+				sti();
+			#endif
+		}, "eax" )
+	#endmacro
+	
+	
+	
+	
+	
+
+end linux;
+#endif // system_hhf
+#if( ! @defined( param_hhf ))
+?param_hhf := true;
+
+namespace linux; //@fast;
+
+const
+
+	#if( !@defined( hz ) )
+		hz := 100;
+	#endif
+	
+	#if( !@defined( ngroups ))
+		ngroups := 32;
+	#endif
+	
+	#if( !@defined( nogroup ))
+		ngroup	:= -1;
+	#endif
+	
+	maxHostNameLen	:= 64;
+	exec_pagesize	:= 4096;
+	
+	#if( @defined( __kernel__ ))
+		clocks_per_sec := 100;
+	#endif
+	
+
+end linux;
+
+#endif // param_hhf
+#if( ! @defined( sched_hhf ))
+?sched_hhf := true;
+
+#if( ! @defined( resource_hhf ))
+?resource_hhf := true;
+
+#if( !@defined( time_hhf ))
+?time_hhf := true;
+
+namespace linux; //@fast;
+
+const
+
+	// itimer related constants
+	
+	itimer_real		:= 0;
+	itimer_virtual	:= 1;
+	itimer_prof		:= 2;
+	
+	
+
+type
+	timeval: record
+		tv_sec	:time_t;
+		tv_usec	:suseconds_t;
+	endrecord;
+
+	timex:record
+		modes		:dword;
+		offset		:dword;
+		freq		:dword;
+		maxerror	:dword;
+		esterror	:dword;
+		status		:dword;
+		constant	:dword;
+		precision	:dword;
+		tolerance	:dword;
+		time		:timeval;
+		tick		:dword;
+		ppsfreq		:dword;
+		jitter		:dword;
+		shift		:int32;
+		stabil		:dword;
+		jitcnt		:dword;
+		calcnt		:dword;
+		errcnt		:dword;
+		stbcnt		:dword;
+		align( 128 );
+	endrecord;
+		
+	timespec: record
+		tv_sec	:time_t;
+		tv_nsec	:dword;
+	endrecord;
+		
+	timezone: record
+		tz_minuteswest	:int32;
+		tz_dsttime		:int32;
+	endrecord;
+		
+	tms:record
+		tms_utime	:clock_t;
+		tms_stime	:clock_t;
+		tms_cutime	:clock_t;
+		tms_cstime	:clock_t;
+	endrecord;
+
+	itimerval: record
+		it_interval	:timeval;
+		it_value	:timeval;
+	endrecord;
+						
+	utimbuf: record
+		actime	:time_t;
+		modtime	:time_t;
+	endrecord;
+
+
+end linux;
+#endif //time_hhf
+
+namespace linux; //@fast;
+const
+	
+	// Constants for the resource limit calls:
+	
+	rlimit_cpu		:= 0;
+	rlimit_fsize	:= 1;
+	rlimit_data		:= 2;
+	rlimit_stack	:= 3;
+	rlimit_core		:= 4;
+	rlimit_rss		:= 5;
+	rlimit_nproc	:= 6;
+	rlimit_nofile	:= 7;
+	rlimit_memlock	:= 8;
+	rlimit_as		:= 9;
+	rlimit_locks	:= 10;
+	rlimit_nlimits	:= 11;
+	rlimit_inifinty	:= $ffff_ffff;
+	
+
+type
+	rlimit_t:record
+		rlim_cur	:dword;
+		rlim_max	:dword;
+	endrecord;
+	
+	rlimit	:rlimit_t;
+	
+	rusage_t: record
+		ru_utime	:timeval;
+		ru_stime	:timeval;
+		ru_maxrss	:dword;
+		ru_ixrss	:dword;
+		ru_idrss	:dword;
+		ru_isrss	:dword;
+		ru_minflt	:dword;
+		ru_majflt	:dword;
+		ru_nswap	:dword;
+		ru_inblock	:dword;
+		ru_oublock	:dword;
+		ru_msgsnd	:dword;
+		ru_msgrcv	:dword;
+		ru_nsignals	:dword;
+		ru_nvcsw	:dword;
+		ru_nivcsw	:dword;
+	endrecord;
+
+end linux;
+#endif //resource_hhf
+#if( ! @defined( processor_hhf ))
+?processor_hhf := true;
+
+
+namespace linux; //@fast;
+
+const
+  	
+  	io_bitmap_size_c:= 32;
+  	
+	
+
+type
+	mm_segment_t: record
+		seg		:dword;
+	endrecord;
+	
+	revectored_struct: record
+		__map	:dword[8];
+	endrecord;
+
+	
+	vm86_regs: record
+		_ebx		:dword;
+		_ecx		:dword;
+		_edx		:dword;
+		_esi		:dword;
+		_edi		:dword;
+		_ebp		:dword;
+		_eax		:dword;
+		__null_ds	:dword;
+		__null_es	:dword;
+		__null_fs	:dword;
+		__null_gs	:dword;
+		orig_eax	:dword;
+		_eip		:dword;
+		_cs			:word;
+		_csh		:word;
+		eflags		:dword;
+		_esp		:dword;
+		_ss			:word;
+		_ssh		:word;
+		_es			:word;
+		_esh		:word;
+		_ds			:word;
+		_dsh		:word;
+		_fs			:word;
+		_fsh		:word;
+		_gs			:word;
+		_gsh		:word;
+	endrecord;
+			
+	vm86_struct: record
+		regs			:vm86_regs;
+		flags			:dword;
+		screen_bitmap	:dword;
+		cpu_type		:dword;
+		int_revectored	:revectored_struct;
+		int21_revectored:revectored_struct;
+	endrecord;
+				
+	vm86plus_info_struct: record
+		flags				:dword;
+		vm86dbg_intxxtab	:byte[32];
+	endrecord;
+				
+	vm86plus_struct: record
+		regs			:vm86_regs;
+		flags			:dword;
+		screen_bitmap	:dword;
+		cpu_type		:dword;
+		int_revectored	:revectored_struct;
+		int21_revectored:revectored_struct;
+		vm86plus		:vm86plus_info_struct;
+	endrecord;
+
+	pt_regs: record
+		_ebx	:dword;
+		_ecx	:dword;
+		_edx	:dword;
+		_esi	:dword;
+		_edi	:dword;
+		_ebp	:dword;
+		_eax	:dword;
+		xds		:dword;
+		xes		:dword;
+		orig_eax:dword;
+		_eip	:dword;
+		xcs		:dword;
+		eflags	:dword;
+		_esp	:dword;
+		xss		:dword;
+	endrecord;
+
+	user_regs_struct: record
+		_ebx	:dword;
+		_ecx	:dword;
+		_edx	:dword;
+		_esi	:dword;
+		_edi	:dword;
+		_ebp	:dword;
+		_eax	:dword;
+		_ds		:word;
+		__ds	:word;
+		_es		:word;
+		__es	:word;
+		_fs		:word;
+		__fs	:word;
+		_gs		:word;
+		__gs	:word;
+		orig_eax:dword;
+		_eip	:dword;
+		_cs		:word;
+		__cs	:word;
+		eflags	:dword;
+		_esp	:dword;
+		_ss		:word;
+		__ss	:word;
+	endrecord;
+
+	i387_fsave_struct:record
+		_cwd	:dword;
+		swd		:dword;
+		twd		:dword;
+		fip		:dword;
+		fcs		:dword;
+		foo		:dword;
+		fos		:dword;
+		st_space:tbyte[8];
+		status	:dword;
+	endrecord;
+	
+	user_i387_struct	:i387_fsave_struct;
+	
+	
+	i387_fxsave_struct:record
+		_cwd		:word;
+		swd			:word;
+		twd			:word;
+		fop			:word;
+		fip			:dword;
+		fcs			:dword;
+		foo			:dword;
+		fos			:dword;
+		mxcsr		:dword;
+		reserved	:dword;
+		st_space	:dword[32];	// 8*16 bytes for each fp-reg.
+		xmm_space	:dword[32];
+		padding		:dword[56];
+	endrecord;
+	
+	user_fxsr_struct	: i387_fxsave_struct;
+	
+	
+	
+	i387_soft_struct:record
+		_cwd		:dword;
+		swd			:dword;
+		twd			:dword;
+		fip			:dword;
+		fcs			:dword;
+		foo			:dword;
+		fos			:dword;
+		st_space	:tbyte[8];
+		ftop		:byte;
+		changed		:byte;
+		lookahead	:byte;
+		no_update	:byte;
+		rm			:byte;
+		alimit		:byte;
+		info		:dword; // pointer to info struct.
+		entry_eip	:dword;
+		align( 4 );
+	endrecord;
+	
+	
+	i387_union:union
+		_fsave	:i387_fsave_struct;
+		_fxsave	:i387_fxsave_struct;
+		soft	:i387_soft_struct;
+	endunion;
+	
+	thread_struct:record
+		_esp0			:dword;
+		_eip			:dword;
+		_esp			:dword;
+		_fs				:dword;
+		_gs				:dword;
+		debugreg		:dword[8];
+		_cr2			:dword;
+		trap_no			:dword;
+		error_code		:dword;
+		i387			:i387_union;
+		vm86_info		:pointer to vm86_struct;
+		screen_bitmap	:dword;
+		v86flags		:dword;
+		v86mask			:dword;
+		v86mode			:dword;
+		saved_esp0		:dword;
+		ioperm			:dword;
+		io_bitmap		:dword[ io_bitmap_size_c + 1 ];
+		align( 4 );
+	endrecord;
+
+end linux;
+#endif // processor_hhf
+#if( ! @defined( signals_hhf ))
+?signals_hhf := true;
+
+#if( ! @defined( ipc_hhf ))
+?ipc_hhf := true;
+
+namespace linux; //@fast;
+
+const
+	// ipc system mode bits
+	
+	ipc_creat		:= $200;	// create key if it doesn't exist
+	ipc_excl		:= $400;	// Fail if key exists.
+	ipc_nowait		:= $800;	// Return on error wait
+	
+	// ipc system command codes for msgctl, semctl, and shmctl.
+	
+	ipc_rmid		:= 0;
+	ipc_set			:= 1;
+	ipc_stat		:= 2;
+	ipc_info		:= 3;
+	
+	ipc_private		:= 0;
+	
+	// IPC command codes:
+	
+	ipcop_semop		:= 1;
+	ipcop_semget	:= 2;
+	ipcop_semctl	:= 3;
+	
+	ipcop_msgsnd	:= 11;
+	ipcop_msgrcv	:= 12;
+	ipcop_msgget	:= 13;
+	ipcop_msgctl	:= 14;
+	
+	ipcop_shmat		:= 21;
+	ipcop_shmdt		:= 22;
+	ipcop_shmget	:= 23;
+	ipcop_shmctl	:= 24;
+	
+	// message flags
+	
+	msg_noerror		:= $1000;
+	msg_except		:= $2000;
+	
+	msg_stat		:= 11;
+	msg_info		:= 12;
+	
+	msgmax			:= 8192;
+	msgmnb			:= 16384;
+	
+	
+	
+	// shared memory flags
+	
+	shm_locked		:= $400;
+	shm_dest		:= $200;
+	shm_r			:= $100;
+	shm_w			:= $80;
+	
+	shm_rdonly		:= $1000;
+	shm_rnd			:= $2000;
+	shm_remap		:= $4000;
+	
+	shm_lock		:= 11;
+	shm_unlock		:= 12;
+	shm_stat		:= 13;
+	shm_info		:= 14;
+	
+	shmlba			:= page_size;
+	
+	
+	// Constants for mmap functions:
+	
+	
+	
+	mcl_current		:= 1;
+	mcl_future		:= 2;
+	
+	mremap_maymove	:= 1;
+	
+	madv_normal		:= 0;
+	madv_random		:= 1;
+	madv_sequential	:= 2;
+	madv_willneed	:= 3;
+	madv_dontneed	:= 4;
+	
+	
+type
+	// ipc data structure used to pass permission to IPC operations.
+	
+	ipc_perm: record
+		_key		:key_t;
+		uid			:uid_t;
+		gid			:gid_t;
+		cuid		:uid_t;
+		cgid		:gid_t;
+		mode		:word;
+		seq			:word;
+	endrecord;
+	
+
+
+end linux;
+#endif // ipc_hhf
+
+namespace linux; //@fast;
+
+  const
+  	_nsig		:= 64;
+  	_nseg_words	:= 2;
+  	
+	// Constants for signals:
+
+
+	sighup	:= 1;
+	sigint	:= 2;
+	sigquit	:= 3;
+	sigill	:= 4;
+	sigtrap	:= 5;
+	sigabrt	:= 6;
+	sigiot	:= 6;
+	sigbus	:= 7;
+	sigfpe	:= 8;
+	sigkill	:= 9;
+	sigusr1 := 10;
+	sigsegv := 11;
+	sigusr2 := 12;
+	sigpipe := 13;
+	sigalrm := 14;
+	sigterm := 15;
+	sigstkflt := 16;
+	sigcld	:= 17;
+	sigchld	:= 17;
+	sigcont := 18;
+	sigstop := 19;
+	sigtstp := 20;
+	sigttin := 21;
+	sigttou := 22;
+	sigurg	:= 23;
+	sigxcpu := 24;
+	sigxfsz := 25;
+	sigvtalrm := 26;
+	sigprof := 27;
+	sigwinch:= 28;
+	sigpoll := 29;
+	sigio	:= 29;
+	sigpwr	:= 30;
+	sigsys	:= 31;
+	sigunused := 31;
+	__sigrtmin := 32;
+	
+	sa_nocldstop	:= $00000001;
+	sa_nocldwait	:= $00000002;
+	sa_siginfo		:= $00000004;
+	sa_onstack		:= $08000000;
+	sa_restart		:= $10000000;
+	sa_nodefer		:= $40000000;
+	sa_resethand	:= $80000000;
+	sa_nomask		:= $40000000;
+	sa_oneshot		:= $80000000;
+	sa_interrupt	:= $20000000;
+	sa_restorer		:= $04000000;
+	
+	ill_illopc		:= 1;
+	ill_prvopc		:= 5;
+	
+	fpe_intdiv		:= 1;
+	fpe_intovf		:= 2;
+	fpe_fltdiv		:= 3;
+	fpe_fltovf		:= 4;
+	fpe_fltund		:= 5;
+	fpe_fltres		:= 6;
+	fpe_fltinv		:= 7;
+	fpe_fltsub		:= 8;
+	
+	trap_brkpt		:= 1;
+	trap_trace		:= 2;
+	
+	ss_onstack		:= 1;
+	ss_disable		:= 2;
+	minsigstksz		:= 2048;
+	sigstksz		:= 8192;
+	//_nsig			:= 64;
+	_nsig_bpw		:= 32;
+	_nsig_word		:= _nsig div _nsig_bpw;
+	
+	
+
+
+  	
+  type	
+	stack_t:record
+		ss_sp	:dword;
+		ss_flags:dword;
+		ss_size	:size_t;
+	endrecord;
+
+
+  	sigset_t:dword[32];
+  	
+	__sighandler_t	:procedure( signal:int32 );
+	siginfo_t:record
+		si_signo	:int32;
+		si_errno	:int32;
+		si_code		:int32;
+		
+		_sifields:
+			union
+			
+				_pad	:dword[ 29 ];
+				
+				/* kill() */
+				
+				_kill:
+					record
+						_pid	:@global:linux.pid_t;
+						_uid	:@global:linux.uid_t;
+					endrecord;
+					
+				/* POSIX.1b timers */
+				
+				_timer:
+					record
+						_timer1	:uns32;
+						_timer2	:uns32;
+					endrecord;
+					
+				/* POSIX.1b signals */
+				
+				_rt:
+					record
+						_pid	:@global:linux.pid_t;
+						_uid	:@global:linux.uid_t;
+						_sigval	:dword;
+					endrecord;
+					
+				/* SIGCHLD */
+				
+				_sigchld:
+					record
+						_pid	:@global:linux.pid_t;
+						_uid	:@global:linux.uid_t;
+						_status	:int32;
+						_utime	:@global:linux.clock_t;
+						_stime	:@global:linux.clock_t;
+					endrecord;
+					
+				/* SIGILL, SIGFPE, SIGSEGV, SIGBUS */
+				
+				_sigfault:
+					record
+						_addr	:dword;
+					endrecord;
+					
+				/* SIGPOLL */
+				
+				_sigpoll:
+					record
+						_band	:int32;
+						_fd		:int32;
+					endrecord;
+					
+			endunion;
+		
+	endrecord;
+	
+	sigaction_t:record
+		sa_sigaction:procedure
+					 ( 
+					 		signum:int32; 
+					 	var siginfo:siginfo_t;
+					 	var	buf:var
+					 );
+		sa_mask		:old_sigset_t;
+		sa_flags	:dword;
+		sa_restorer	:procedure;
+	endrecord;
+		
+	sigpending_t:record
+		head	:dword;		//pointer to sigqueue;
+		tail	:dword;		//pointer to pointer to sigqueue.
+		signal	:sigset_t;
+	endrecord;
+	
+	k_sigaction: record
+		sa	:sigaction_t;
+	endrecord;
+	
+	signal_struct: record
+		count	:atomic_t;
+		action	:k_sigaction[_nsig];
+		siglock	:spinlock_t;
+	endrecord;
+
+
+end linux;
+#endif //signals_hhf
+#if( ! @defined( tqueue_hhf ))
+?tqueue_hhf := true;
+
+
+namespace linux; //@fast;
+type
+	tq_struct: record
+		list	:list_head;
+		sync	:dword;
+		routine	:procedure;
+		data	:dword;
+	endrecord;
+	
+
+
+end linux;
+#endif //tqueue_hhf
+#if( ! @defined( semaphore_hhf ))
+?semaphore_hhf := true;
+
+
+namespace linux; //@fast;
+
+const
+	// semaphore flags and commands
+
+	sem_undo		:=	$200;
+	
+	sem_getpid		:= 11;
+	sem_getval		:= 12;
+	sem_getall		:= 13;
+	sem_getncnt		:= 14;
+	sem_getzcnt		:= 15;
+	sem_setval		:= 16;
+	sem_setall		:= 17;
+	sem_stat		:= 18;
+	sem_info		:= 19;
+	
+	semmni			:= 128;
+	semmsl			:= 250;
+	semmns			:= semmni * semmsl;
+	semopm			:= 32;
+	semvmx			:= 32767;
+	semume			:= semopm;
+	semmnu			:= semmns;
+	semaem			:= semvmx >> 1;
+	semmap			:= semmns;
+	semusz			:= 20;
+
+	rw_lock_unlocked:= 0;
+	
+	
+
+type
+	// semaphore data structures:
+	
+	semid_ds: record
+		sem_perm			:ipc_perm;
+		sem_otime			:time_t;
+		sem_ctime			:time_t;
+		__sembase			:dword;		// pointer to sem.
+		__sem_pending		:dword;		// pointer to sem_queue
+		__sem_pending_list	:dword;		// pointer to sem_queue
+		__undo				:dword;		// pointer to sem_undo
+		sem_nsems			:word;
+		align(4);
+	endrecord;
+		
+	sembuf: record
+		sem_num	:word;
+		sem_op	:word;
+		sem_flag:word;
+	endrecord;
+	
+	semun: union
+		_val	:dword;
+		buf		:dword; 			//pointer to semid_ds
+		array	:pointer to word;	//array for getall, setall.
+		__buf	:dword;				//pointer to seminfo.
+	endunion;
+	
+	seminfo: record
+		semmap	:dword;
+		semmni	:dword;
+		semmns	:dword;
+		semmnu	:dword;
+		semmsl	:dword;
+		semopm	:dword;
+		semume	:dword;
+		semusz	:dword;
+		semvmx	:dword;
+		semaem	:dword;
+	endrecord;
+
+  	rw_semaphore:record
+  		count		:dword;
+  		wait_lock	:spinlock_t;
+  		wait_list	:list_head;
+  	endrecord;
+  		
+  	semaphore:record
+		count		:atomic_t;
+		sleepers	:dword;
+		_wait		:wait_queue_head_t;
+	endrecord;
+	
+	#macro sema_init( s, v ):reg;
+		mov( v, s.count );
+		mov( 0, s.sleepers );
+		mov( linux.rw_lock_unlocked, s._wait._lock );
+		push( eax );
+		lea( eax, s._wait.task_list);
+		mov( eax, (type linux.wait_queue_head_t [eax]).task_list.next );
+		mov( eax, (type linux.wait_queue_head_t [eax]).task_list.prev );
+		pop( eax );
+	#endmacro
+	
+	#macro init_mutex(s);
+		sema_init(s,1)
+	#endmacro
+	
+	#macro init_mutex_lock(s);
+		sema_init(s,0)
+	#endmacro
+	
+	
+	procedure __down( var sem:semaphore ); @use eax; @cdecl; external;
+	
+	#macro down(s);
+		lock.dec( s.count.counter );  // s better be a semaphore object!
+		if( @s ) then
+			push(eax);		// We're calling C code, which will
+			push(ecx);		// munge EAX, ECX, and EDX.
+			push(edx);
+			linux.__down( s );
+			add( 4, esp );
+			pop( edx );
+			pop( ecx );
+			pop( eax );
+		endif;
+	#endmacro
+			
+	
+	
+			
+	
+	
+	#macro up(s);
+		lock.inc( s.count.counter );  // s better be a semaphore object!
+		if( @le ) then
+			push(eax);		// We're calling C code, which will
+			push(ecx);		// munge EAX, ECX, and EDX.
+			push(edx);
+			linux.wake_up( s._wait );
+			add( 4, esp );
+			pop( edx );
+			pop( ecx );
+			pop( eax );
+		endif;
+	#endmacro
+			
+	
+	
+	// Linux system function __down_failed_interruptible
+	// requires a pointer to a semaphore object in ECX!
+	
+	procedure __down_failed_interruptible
+	( 
+		var sem:semaphore in ecx
+	); 	external;
+	
+	#macro down_interruptible(s);
+	
+		returns
+		(
+			{
+			
+				// This is ugly code;  if you want it done better, do
+				// it manually (no macro invocation!)
+				// Warning: this macro cannot assume s <> "[eax]", 
+				// hence a large percentage of the ugliness.
+				//
+				// s better be a semaphore object!
+				
+				lock.dec( s.count.counter );
+				if( @s ) then
+
+					push(ecx);
+					linux.__down_failed_interruptible( s );
+					pop( ecx );
+					
+				else
+				
+					xor( eax, eax );	// return success.
+
+				endif;
+			}, "eax"
+		)
+	#endmacro
+			
+	
+	
+	procedure __down_failed_trylock
+	( 
+		var sem:semaphore in ecx
+	);	external;
+	
+	#macro down_trylock(s);
+	
+		returns
+		(
+			{
+			
+				// This is ugly code;  if you want it done better, do
+				// it manually (no macro invocation!)
+				// Warning: this macro cannot assume s <> "[eax]", 
+				// hence a large percentage of the ugliness.
+				//
+				// s better be a semaphore object!
+				
+				lock.dec( s.count.counter );	
+				if( @s ) then
+
+					push(ecx);
+					linux.__down_failed_trylock( s );
+					pop( ecx );
+					
+				else
+				
+					xor( eax, eax );	// We succeeded.
+
+				endif;
+			}, "eax"
+		)
+	#endmacro
+
+end linux;
+#endif // semaphore_hhf
+
+
+namespace linux; //@fast;
+
+const
+
+	// clone/sysclone flags:
+	
+	csignal 		:= $000000ff;
+	clone_vm 		:= $00000100;
+	clone_fs 		:= $00000200;
+	clone_files 	:= $00000400;
+	clone_sighand 	:= $00000800;
+	clone_pid 		:= $00001000;
+	clone_ptrace 	:= $00002000;
+	clone_vfork 	:= $00004000;
+	clone_parent 	:= $00008000;
+	clone_thread 	:= $00010000;
+	
+	clone_signal	:= clone_sighand | clone_thread;
+
+
+	// task values
+	
+	task_running		:= 0;
+	task_interruptible	:= 1;
+	task_uninterruptible:= 2;
+	task_zombie			:= 3;
+	task_stopped		:= 4;
+
+	// scheduler policies:
+	
+  	sched_other		:= 0;
+  	sched_fifo		:= 1;
+  	sched_rr		:= 2;
+  	_sched_yield	:= $10;
+  	
+  		// per process flags:
+	
+	pf_alignwarn 	:= $00000001;
+	pf_starting 	:= $00000002;
+	pf_exiting 		:= $00000004;
+	pf_forknoexec 	:= $00000040;
+	pf_superpriv 	:= $00000100;
+	pf_dumpcore 	:= $00000200;
+	pf_signaled 	:= $00000400;
+	pf_memalloc 	:= $00000800;
+	pf_usedfpu 		:= $00100000;
+	pf_atomicalloc 	:= $00400000;
+	pt_ptraced 		:= $00000001;
+	pt_tracesys 	:= $00000002;
+	pt_dtrace 		:= $00000004;
+	pt_tracesysgood := $00000008;
+	
+	// process priority constants
+	
+	prio_min		:= -20;
+	prio_max		:= 20;
+	
+	prio_process	:= 0;
+	prio_pgrp		:= 1;
+	prio_user		:= 2;
+
+
+  	
+  	// Misc constants:
+  	
+  	nr_open_default	:= 32;
+  	numGroups_c		:= 32;
+  	rlim_nlimits	:= 11;
+  	default_max_map_count	:= 65536;
+  	
+  	
+
+/*
+ * These are the constant used to fake the fixed-point load-average
+ * counting. Some notes:
+ *  - 11 bit fractions expand to 22 bits by the multiplies: this gives
+ *    a load-average precision of 10 bits integer + 11 bits fractional
+ *  - if you want to count load-averages more often, you need more
+ *    precision, or rounding will get you. With 2-second counting freq,
+ *    the EXP_n values would be 1981, 2034 and 2043 if still using only
+ *    11 bit fractions.
+ */
+
+	fshift		:= 11;
+	fixed_1		:= (1 << fshift);
+	load_freq	:= (5*hz);
+	exp_1		:= 1884;
+	exp_5		:= 2014;
+	exp_15		:= 2037;
+	
+	#macro calc_load( __load, __exp, __n );
+		returns
+		({
+			push( ebx );
+			mov( linux.fixed_1, ebx );
+			sub( __exp, ebx );
+			intmul( __n, ebx );
+			mov( __load, eax );
+			intmul( __exp, eax );
+			add( ebx, eax );
+			shr( linux.fshift, eax );
+			pop( ebx );
+		}, "eax" )
+	#endmacro
+	
+	#macro ct_to_secs(__x);
+		returns
+		({
+			push( edx );
+			mov( __x, eax );
+			cdq();
+			div( linux.hz, edx:eax );
+			pop( edx );
+		},"eax" )
+	#endmacro
+	
+	#macro ct_to_usecs(__x);
+		returns
+		({
+			push( edx );
+			mov( __x, eax );
+			cdq();
+			div( linux.hz, edx:eax );
+			intmul( 1_000_000, edx );
+			mov( edx, eax );
+			pop( edx );
+		},"eax" )
+	#endmacro
+	
+	
+type
+	sched_param_t: record
+		sched_priority	:int32;
+	endrecord;
+
+  	
+  	files_struct:record
+  		count				:atomic_t;
+  		file_lock			:rw_lock_t;
+  		max_fds				:dword;
+  		max_fdset			:dword;
+  		next_fd				:dword;
+  		fd					:dword;	// ptr to fd array;
+  		close_on_exec		:fd_set_ptr;
+  		open_fds			:fd_set_ptr;
+  		close_on_exec_unit	:fd_set;
+  		open_fds_init		:fd_set;
+  		fd_array			:dword[ bits_per_long ];
+  	endrecord;
+  		
+
+static
+	avenrun			:dword; external;
+	nr_running		:dword;	external;
+	nr_threads		:dword; external;
+	last_pid		:dword; external;
+	max_map_count	:dword;	external;
+	
+
+#if( @defined( __kernel__ ))
+
+type
+
+  	pgprot_t: record
+  		pgprot	:dword;
+  	endrecord;
+  	
+  		
+  		
+  		
+	exception_table_entry: record
+		insn	:dword;
+		fixup	:dword;
+	endrecord;
+
+
+  	task_struct:record
+  		state			:dword;	// -1 unrunnable, 0 runable, >0 stopped.
+  		flags			:dword;	// per process flags
+  		sigpending		:int32;
+  		addr_limit		:dword;	// BFFF_FFFF for users,
+  								// FFFF_FFFF for kernel.
+  		exec_domain		:dword;	// Pointer to struct exec_domain
+  		need_resched	:dword;
+  		ptrace			:dword;
+  		lock_depth		:dword;
+  		
+  		counter			:dword;
+  		nice			:dword;
+  		policy			:dword;
+  		mm				:pointer to mm_struct;
+  		has_cpu			:dword;
+  		processor		:dword;
+  		cpus_allowed	:dword;
+  		run_list		:list_head;
+  		sleep_time		:dword;
+  		next_task		:pointer to task_struct;
+  		prev_task		:pointer to task_struct;
+  		active_mm		:pointer to mm_struct;
+  		
+  		binfmt			:dword;	//pointer to linux_binfmt
+  		exit_code		:int32;
+  		exit_signal		:int32;
+  		pdeath_signal	:int32;
+  		personality		:dword;
+  		did_exec		:dword;
+  		pid				:pid_t;
+  		pgrp			:pid_t;
+  		tty_old_pgrp	:pid_t;
+  		session			:pid_t;
+  		tgid			:pid_t;
+  		leader			:dword;
+  		
+  		p_opptr			:pointer to task_struct;
+  		p_pptr			:pointer to task_struct;
+  		p_cptr			:pointer to task_struct;
+  		p_ysptr			:pointer to task_struct;
+  		p_osptr			:pointer to task_struct;
+  		thread_group	:list_head;
+  		pidhash_next	:pointer to task_struct;
+  		pid_has_pprev	:dword;	//pointer to pointer to task_struct
+  		
+  		wait_chldexit	:wait_queue_head_t;
+  		vfork_done		:dword;	//pointer to completion
+  		rt_priority		:dword;
+  		it_real_value	:dword;
+  		it_prof_value	:dword;
+  		it_virt_value	:dword;
+  		it_real_incr	:dword;
+  		it_prof_incr	:dword;
+  		it_virt_incr	:dword;
+  		real_timer		:timer_list;
+  		times			:tms;
+  		start_time		:dword;
+  		#if( @defined( __smp__ ))
+  		
+  			per_cpu_utime	:dword[32];
+  			per_cpu_stime	:dword[32];
+  			
+  		#else
+  		
+			per_cpu_utime	:dword[1];
+			per_cpu_stime	:dword[1];
+			
+		#endif
+  		min_flt			:dword;
+  		maj_flt			:dword;
+  		nswap			:dword;
+  		cmin_flt		:dword;
+  		cmaj_flt		:dword;
+  		cnswap			:dword;
+  		swappable		:dword;
+  		
+  		uid				:dword;
+  		euid			:dword;
+  		suid			:dword;
+  		fsuid			:dword;
+  		gid				:dword;
+  		egid			:dword;
+  		sgid			:dword;
+  		fsgid			:dword;
+  		
+  		ngroups			:dword;
+  		groups			:dword[ numGroups_c ];
+  		cap_effective	:kernel_cap_t;
+  		cap_inheritable	:kernel_cap_t;
+  		cap_permitted	:kernel_cap_t;
+  		keep_capabilities	:dword;
+  		user			:dword;		// pointer to user_struct.
+  		rlim			:rlimit_t[rlim_nlimits];
+  		used_math		:word;
+  		comm			:char[16];
+  		align(4);
+  		link_count		:dword;
+  		tty				:dword;	// pointer to tty_struct
+  		locks			:dword;
+  		semundo			:dword;	//pointer to sem_undo
+  		semsleeping		:dword; //pointer to sem_queue
+
+		align(8);
+  		thread			:thread_struct;
+  		_fs				:dword;	// pointer to fs_struct
+  		files			:dword; // pointer to files_struct
+  		sigmask_lock	:spinlock_t;
+  		sig				:pointer to signal_struct;
+  		blocked			:sigset_t;
+  		pending			:sigpending_t;
+  		sas_ss_sp		:dword;
+  		sas_ss_size		:size_t;
+  		notifier		:procedure( var priv:var );
+  		notifier_data	:dword;
+  		notifier_mask	:pointer to sigset_t;
+  		
+  		tux_info		:dword;
+  		tux_exit		:procedure;
+  		
+  		parent_exec_id	:dword;
+  		self_exec_id	:dword;
+  		alloc_lock		:spinlock_t;
+  		journal_info	:dword[4]; //?????
+  	endrecord;
+  	
+  	vm_area_struct: record
+  		vm_mm			:dword;		//pointer to mm_struct
+  		vm_start		:dword;
+  		vm_end			:dword;
+  		vm_next			:pointer to vm_area_struct;
+  		vm_page_prot	:pgprot_t;
+  		vm_flags		:dword;
+  		
+  		vm_avl_height	:word;
+  		vm_avl_left		:pointer to vm_area_struct;
+  		vm_avl_right	:pointer to vm_area_struct;
+  		vm_next_share	:pointer to vm_area_struct;
+  		vm_pprev_share	:pointer to vm_area_struct;
+  		
+  		vm_pgoff		:dword;
+  		vm_file			:dword;		//pointer to file
+  		fm_raend		:dword;
+  		vm_private_data	:dword;
+  	endrecord;
+
+  	mm_context_t:record
+  		segments	:dword;
+  		cpuvalid	:dword;
+  	endrecord;
+
+
+  	mm_struct:record
+  		mmap		:pointer to vm_area_struct;
+  		mmap_avl	:pointer to vm_area_struct;
+  		mmap_cache	:pointer to vm_area_struct;
+  		pgd			:dword;	// page ptr.
+  		mm_users	:atomic_t;
+  		mm_count	:atomic_t;
+  		map_count	:dword;	// # of VMAs.
+  		mmap_sem	:rw_semaphore;
+  		page_table_lock	:spinlock_t;
+  		mmlist		:list_head;
+  		
+  		start_code	:dword;
+  		end_code	:dword;
+  		start_data	:dword;
+  		end_data	:dword;
+  		start_brk	:dword;
+  		brk			:dword;
+  		start_stack	:dword;
+  		arg_start	:dword;
+  		arg_end		:dword;
+  		env_start	:dword;
+  		env_end		:dword;
+  		rss			:dword;
+  		total_vm	:dword;
+  		locked_vm	:dword;
+  		def_flags	:dword;
+  		cpu_vm_mask	:dword;
+  		swap_address:dword;
+  		dumpable	:dword;
+  		
+  		context		:mm_context_t;
+  		
+  	endrecord;
+			
+
+
+
+static
+	tasklist_lock	:rwlock_t;		external;
+	runqueue_lock	:spinlock_t;	external;
+	mmlist_lock		:spinlock_t;	external;
+	mmlist_nr		:dword;			external;
+	jiffies			:dword;			external;
+	itimer_ticks	:dword;			external;
+	itimer_next		:dword;			external;
+	xtime			:timeval;		external;
+	prof_buffer		:dword;			external;
+	prof_len		:dword;			external;
+	prof_shift		:dword;			external;
+	prof_pid		:pid_t;			external;
+	
+	
+	
+	procedure schedule;		external;
+	procedure sched_init; 	external;
+	procedure init_idle;	external;
+	procedure show_state;	external;
+	procedure cpu_init;		external;
+	procedure trap_init;	external;
+	procedure update_process_times( user:dword ); @cdecl; external;
+	
+	procedure update_one_process
+	(
+		var	p		:task_struct;
+			user	:dword;
+			system	:dword;
+			cpu		:dword
+	);
+		@cdecl;
+		external;
+		
+	procedure schedule_task( var task: tq_struct );
+		@use eax;
+		@cdecl;
+		@returns( "eax" );
+		external;
+		
+		
+	procedure flush_scheduled_tasks; external;
+	procedure start_context_thread; external;
+	procedure current_is_keventd; external;
+	
+	procedure __wake_up
+	( 
+		var	q		:wait_queue_head_t in eax; 
+			mode	:dword in edx; 
+			nr		:dword in ecx
+	);	external;
+		
+	#macro wake_up( __q );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				linux.__wake_up
+				( 
+					__q, 
+						linux.task_interruptible 
+					|	linux.task_uninterruptible, 
+					1 
+				);
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	
+		
+	#macro wake_up_interruptible( __q );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				linux.__wake_up
+				( 
+					__q, 
+						linux.task_interruptible, 
+					1 
+				);
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	
+	procedure __wake_up_sync
+	( 
+		var	q		:wait_queue_head_t in eax; 
+			mode	:dword in edx; 
+			nr		:dword in ecx
+	);	external;
+		
+		
+	#macro wake_up_sync( __q );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				linux.__wake_up_sync
+				( 
+					__q, 
+						linux.task_interruptible 
+					|	linux.task_uninterruptible, 
+					1 
+				);
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	
+
+		
+		
+	#macro wake_up_sync_interruptible( __q );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				linux.__wake_up_sync
+				( 
+					__q, 
+						linux.task_interruptible, 
+					1 
+				);
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	
+
+		
+
+	procedure __sleep_on
+	( 
+		var	q		:wait_queue_head_t in eax
+	);	external( "sleep_on" );
+		
+		
+	#macro sleep_on( __q );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				linux.__sleep_on( __q );
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	
+
+		
+
+	procedure __sleep_on_timeout
+	( 
+		var	q		:wait_queue_head_t in eax;
+			timeout	:dword in edx
+	);	external( "sleep_on_timeout" );
+		
+		
+	#macro sleep_on_timeout( __q, __t );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				linux.__sleep_on( __q, __t );
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	
+
+		
+
+	
+
+		
+
+	procedure __interruptible_sleep_on
+	( 
+		var	q		:wait_queue_head_t in eax
+	);	external( "interruptible_sleep_on" );
+		
+		
+	#macro interruptible_sleep_on( __q );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				linux.__interruptible_sleep_on( __q );
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	
+
+		
+
+	procedure __interruptible_sleep_on_timeout
+	( 
+		var	q		:wait_queue_head_t in eax;
+			timeout	:dword in edx
+	);	external( "interruptible_sleep_on_timeout" );
+		
+		
+	#macro interruptible_sleep_on_timeout( __q, __t );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				linux.__interruptible_sleep_on( __q, __t );
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	
+
+		
+
+#endif //__kernel__
+	
+	
+end linux;
+#endif // sched_hhf
+#if( !@defined( stat_hhf ))
+?stat_hhf := true;
+
+namespace linux; //@fast;
+
+const
+	
+	// Protection bit values:
+	
+	usr_r 	:= %100_000_000;
+	usr_w	:= %010_000_000;
+	usr_x	:= %001_000_000;
+	
+	grp_r	:= %000_100_000;
+	grp_w	:= %000_010_000;
+	grp_x	:= %000_001_000;
+	
+	all_r	:= %000_000_100;
+	all_w	:= %000_000_010;
+	all_x	:= %000_000_001;
+	
+	
+	// More protection bits:
+	
+	s_isuid	:= %100_000_000_000;
+	s_isgid	:= %010_000_000_000;
+	s_isvtx	:= %001_000_000_000;
+	s_iread	:= usr_r;
+	s_iwrite:= usr_w;
+	s_iexec	:= usr_x;
+	s_irgrp	:= grp_r;
+	s_iwgrp	:= grp_w;
+	s_ixgrp	:= grp_x;
+	s_iroth	:= all_r;
+	s_iwoth	:= all_w;
+	s_ixoth	:= all_x;
+	
+	s_irwxu	:= usr_r | usr_w | usr_x;
+	s_irwxg	:= grp_r | grp_w | grp_x;
+	s_irwxo	:= all_r | all_w | all_x;
+	
+	
+	
+	// File types:
+	
+	s_ifmt	:= %001_111_000_000_000_000;
+	s_ifreg	:= %001_000_000_000_000_000;
+	s_ifdir	:= %000_100_000_000_000_000;
+	s_ifchr	:= %000_010_000_000_000_000;
+	s_ifblk	:= %000_110_000_000_000_000;
+	s_ififo	:= %000_001_000_000_000_000;
+	s_iflnk	:= %001_010_000_000_000_000;
+	s_ifsock:= %001_100_000_000_000_000;
+
+	
+type
+	stat_t:	record
+		st_dev		:word;
+		__pad1		:word;
+		st_ino		:dword;
+		st_mode		:word;
+		st_nlink	:word;
+		st_uid		:word;
+		st_gid		:word;
+		st_rdev		:word;
+		__pad2		:word;
+		st_size		:dword;
+		st_blksze	:dword;
+		st_blocks	:dword;
+		st_atime	:dword;
+		__unused1	:dword;
+		st_mtime	:dword;
+		__unused2	:dword;
+		st_ctime	:dword;
+		__unused3	:dword;
+		__unused4	:dword;
+		__unused5	:dword;
+	endrecord;
+	
+	stat64_t:	record
+		st_dev		:qword;
+		__pad1		:dword;
+		st_ino32	:dword;
+		st_mode		:dword;
+		st_nlink	:dword;
+		st_uid		:dword;
+		st_gid		:dword;
+		st_rdev		:qword;
+		__pad2		:dword;
+		st_size		:qword;
+		st_blksze	:dword;
+		st_blocks	:qword;
+		st_atime	:qword;
+		st_mtime	:qword;
+		st_ctime	:qword;
+		st_ino		:qword;
+	endrecord;
+	
+end linux;
+#endif
+#if( !@defined( fcntl_hhf ))
+?fcntl_hhf := true;
+
+namespace linux; //@fast;
+
+const
+	
+	// Constants for the flock calls:
+	
+	lock_sh		:= 1;
+	lock_ex		:= 2;
+	lock_un		:= 8;
+	lock_nb		:= 4;
+	lock_mand	:= 32;
+	lock_read	:= 64;
+	lock_write	:= 128;
+	lock_rw		:= 192;
+	
+	// constants for the open calls:
+	
+	o_rdonly	:= 0;
+	o_wronly	:= 1;
+	o_rdwr		:= 2;
+	o_accmode	:= 3;
+	o_creat		:= $40;
+	o_excl		:= $80;
+	o_noctty	:= $100;
+	o_trunc		:= $200;
+	o_append	:= $400;
+	o_noblock	:= $800;
+	o_ndelay	:= o_noblock;
+	o_sync		:= $1000;
+	o_fsync		:= o_sync;
+	o_async		:= $2000;
+	
+	o_direct	:= $4000;
+	o_largefile	:= $8000;
+	o_directory	:= $1_0000;
+	o_nofollow	:= $2_0000;
+	o_atomiclookup	:= $20_0000;
+	
+	
+	// Constants for fcntl
+	
+	f_dupfd := 0;
+	f_getfd := 1;
+	f_setfd := 2;
+	f_getfl := 3;
+	f_setfl := 4;
+	f_getlk := 5;
+	f_setlk := 6;
+	f_setlkw := 7;
+	f_setown := 8;
+	f_getown := 9;
+	f_setsig := 10;
+	f_getsig := 11;
+	f_getlk64 := 12;
+	f_setlk64 := 13;
+	f_setlkw64 := 14;
+	
+	fd_cloexec := 1;
+	
+	f_rdlck := 0;
+	f_wrlck := 1;
+	f_unlck := 2;
+	f_exlck := 4;
+	f_shlck := 8;
+	f_inprogress := 16;
+
+
+	f_linux_specific_base := 1024;
+
+
+type
+	// Lock data structures:
+	
+	flock_t:record
+		l_type		:word;
+		l_whence	:word;
+		l_start		:off_t;
+		l_len		:off_t;
+		l_pid		:pid_t;
+		align(4);
+	endrecord;
+	
+	flock64:record
+		l_type		:word;
+		l_whence	:word;
+		l_start		:loff_t;
+		l_len		:loff_t;
+		l_pid		:pid_t;
+		align(4);
+	endrecord;
+
+
+	
+	
+
+
+
+end linux;
+#endif //fcntl_hhf
+#if( !@defined( unistd_hhf ))
+?unistd_hhf := true;
+
+namespace linux; //@fast;
+
+const
+
+	// Constants for the lseek calls:
+	
+	seek_set	:= 0;
+	set_seek	:= seek_set;
+	
+	seek_cur	:= 1;
+	cur_seek	:= seek_cur;
+
+	seek_end	:= 2;
+	end_seek	:= seek_end;
+	
+	
+end linux;
+#endif //unistd_hhf
+#if( !@defined( syscall_hhf ))
+?syscall_hhf := true;
+
+#if( !@defined( dirent_hhf ))
+?dirent_hhf := true;
+
+namespace linux; //@fast;
+
+type
+
+	dirent: record
+		d_ino	:dword;
+		d_off	:off_t;
+		d_reclen:uns16;
+		d_name	:char[256];
+		align(4);
+	endrecord;
+	
+	dirent64: record
+		d_ino	:qword;
+		d_off	:qword;
+		d_reclen:uns16;
+		d_type	:byte;
+		d_name	:char[256];
+	endrecord;
+	
+
+end linux;
+#endif //dirent_hhf
+#if( !@defined( sysctl_hhf ))
+?sysctl_hhf := true;
+
+
+namespace linux; //@fast;
+
+type
+			
+	__sysctl_args: record
+		theName		:pointer to char;
+		nlen		:int32;
+		oldval		:dword;
+		oldlenp		:pointer to size_t;
+		newval		:dword;
+		newlen		:size_t;
+		__unused	:dword[4];
+	endrecord;
+
+end linux;
+#endif //sysctl_hhf
+#if( !@defined( utsname_hhf ))
+?utsname_hhf := true;
+
+namespace linux; //@fast;
+
+type
+	utsname: record
+		sysname		:char[65];
+		nodename	:char[65];
+		release		:char[65];
+		version		:char[65];
+		machine		:char[65];
+		domainname	:char[65];
+	endrecord;
+			
+
+end linux;
+#endif //utsname_hhf
+#if( !@defined( kernel_hhf ))
+?kernel_hhf := true;
+
+#if( !@defined( fs_hhf ))
+?fs_hhf := true;
+
+#if( !@defined( quota_hhf ))
+?quota_hhf := true;
+
+namespace linux; //@fast;
+
+const
+
+	
+	// quotactl constants:
+	
+	max_iq_time	:= 7*24*60*60;	// 1 week;
+	max_dq_time	:= 7*24*60*60;
+	
+	maxquotas	:= 2;
+	usrquota	:= 0;
+	grpquota	:= 1;
+	
+	subcmdmask	:= $ff;
+	subcmdshift	:= 8;
+	
+	q_quotaon	:= $100;
+	q_quotaoff	:= $200;
+	q_getquota	:= $300;
+	q_setquota	:= $400;
+	q_setuse	:= $500;
+	q_sync		:= $600;
+	q_setqlim	:= $700;
+	q_getstats	:= $800;
+	q_rsquash	:= $1000;
+	
+	
+	#macro qcmd( cmd, typ );
+		(((cmd) << linux.subcmdshift ) | ((typ) & linux.sumcmdmask))
+	#endmacro
+
+end linux;
+#endif //quota_hhf
+
+namespace linux; //@fast;
+
+const
+
+		
+	// Filesystem constants
+	
+	nr_open			:= 1024*1024;
+	inr_open		:= 1024;
+	block_size_bits	:= 10;
+	block_size		:= 1 << block_size_bits;
+	maxpathlen		:= 1024;
+	max_iovec		:= 10;
+	
+	nr_file				:= 8192;
+	nr_reserved_files	:= 10;
+	nr_super			:= 256;
+	
+	may_exec		:= 1;
+	may_write		:= 2;
+	may_read		:= 4;
+	fmode_read		:= 1;
+	fmode_write		:= 2;
+	
+	fs_read			:= 0;
+	fs_write		:= 1;
+	fs_reada		:= 2;
+	fs_special		:= 4;
+	
+	sel_in			:= 1;
+	sel_out			:= 2;
+	sel_ex			:= 4;
+	
+	fs_requires_dev	:= 1;
+	fs_no_dcache	:= 2;
+	fs_no_prelim	:= 4;
+	fs_single		:= 8;
+	fs_nomount		:= 16;
+	fs_litter		:= 32;
+	fs_odd_rename	:= 32768;
+	
+	
+	ms_rdonly		:= 1;
+	ms_nosuid		:= 2;
+	ms_nodev		:= 4;
+	ms_noexec		:= 8;
+	ms_synchronous	:= 16;
+	ms_remount		:= 32;
+	ms_mandlock		:= 64;
+	ms_noatime		:= 1024;
+	ms_nodiratime	:= 2048;
+	ms_bind			:= 4096;
+	
+	ms_rmt_mask		:= ms_rdonly | ms_nosuid | ms_nodev | ms_noexec
+						| ms_synchronous | ms_mandlock | ms_noatime 
+						| ms_nodiratime;
+						
+	ms_mgc_val		:= $c0ed_0000;
+	ms_mgc_mask		:= $ffff_0000;
+	
+	s_sync			:= 1;
+	s_noatime		:= 2;
+	s_quota			:= 4;
+	s_append		:= 8;
+	s_immutable		:= 16;
+	s_dead			:= 32;
+		
+type
+	
+	address_space: record
+		clean_pages	:list_head;
+		dirty_pages	:list_head;
+		locked_pages:list_head;
+		
+		nrpages			:dword;
+		page_lock		:spinlock_t;
+		a_ops			:dword;	// pointer to address_space_operations
+		host			:dword;	// pointer to inode;
+		i_mmap			:dword;	// pointer to vm_area_struct
+		i_mmap_shared	:dword;	// pointer to vm_area_struct
+		i_shared_lock	:spinlock_t;
+		gfp_mask		:dword;
+	endrecord;
+
+  	statfs_t:record
+		f_type		:dword;
+		f_bsize		:dword;
+		f_blocks	:dword;
+		f_bfree		:dword;
+		f_bavail	:dword;
+		f_files		:dword;
+		f_ffree		:dword;
+		f_fsid		:__kernel_fsid_t;
+		f_namelen	:dword;
+		f_frsize	:dword;
+		f_spare		:dword[4];
+		align(4);
+	endrecord;
+			
+  	statfs64_t:record
+		f_type		:dword;
+		f_bsize		:dword;
+		f_blocks	:qword;
+		f_bfree		:qword;
+		f_bavail	:qword;
+		f_files		:qword;
+		f_ffree		:qword;
+		f_fsid		:__kernel_fsid_t;
+		f_namelen	:dword;
+		f_frsize	:dword;
+		f_spare		:dword[5];
+		align(4);
+	endrecord;
+
+	
+			
+	ustat_t: record
+		f_tfree		:__kernel_daddr_t;
+		f_tinode	:__kernel_ino_t;
+		f_fname		:char[6];
+		f_fpack		:char[6];
+		align( 4 );
+	endrecord;
+	
+
+#if( @defined( __kernel__ ))
+
+  	// Kernel file owner structure:
+  	
+  	fown_struct: record
+  		pid		:dword;
+  		uid		:uid_t;	align(4);
+  		euid	:uid_t;	align(4);
+  		signum	:dword;
+  	endrecord;
+  	
+  	
+  	// Kernel file structure:
+  	
+  	file: record
+  		f_list		:list_head;
+  		f_dentry	:dword;		//pointer to dentry.
+  		f_vfsmnt	:dword;		//pointer to vfsmount.
+  		f_op		:dword;		//pointer to file_operations.
+  		f_count		:atomic_t;
+  		f_flags		:dword;
+  		f_mode		:mode_t; align(4);
+  		f_pos		:loff_t;
+  		freada		:dword;
+  		framax		:dword;
+  		fraend		:dword;
+  		fralen		:dword;
+  		frawin		:dword;
+  		f_owner		:fown_struct;
+  		f_uid		:dword;
+  		f_gid		:dword;
+  		f_error		:int32;
+  		f_version	:dword;
+  		private_data:dword;
+  	endrecord;
+  	  	
+  	// file_operations record for drivers:
+  	
+	file_operations:record
+		owner		:dword;  // Pointer to module_t;
+		llseek		:procedure
+					 ( 
+					 	file	:dword; // Pointer to file 
+					 	offset	:qword; // 64-bit offset
+					 	whence	:dword 	// Type of seek.
+					 ); @cdecl;
+					 
+		read		:procedure
+					 ( 
+					 		file	:dword; // Pointer to file 
+					 		buf		:dword; // Buffer address.
+					 		size	:dword; // Size of transfer
+					 	var offset	:qword  // Store new ofs here.
+					 ); @cdecl;
+					 
+		write		:procedure
+					 ( 
+					 		file	:dword; // Pointer to file 
+					 		buf		:dword; // Buffer address.
+					 		size	:dword; // Size of transfer
+					 	var offset	:qword  // Store new ofs here.
+					 ); @cdecl;
+					 
+		readdir		:procedure
+					 ( 
+					 	file	:dword;	// Pointer to file. 
+					 	buf		:dword; // data buffer.
+					 	count	:dword	// ignored (?) 
+					 ); @cdecl;
+					 
+		poll		:procedure
+					 ( 
+					 	file:dword; 
+					 	poll_table_struct:dword 
+					 ); @cdecl;
+					 
+		_ioctl		:procedure( inode:dword; file:dword ); @cdecl;
+		
+		mmap		:procedure
+					 (
+					 	file:dword;	// pointer to file
+					 	vmas:dword  // pointer to vm_area_struct
+					 ); @cdecl;
+					 
+		open		:procedure
+					 (
+					 	inod	:dword;	//pointer to inode
+					 	file	:dword  //pointer to file
+					 );  @cdecl;
+					 
+		flush		:procedure
+					 (
+					 	file	:dword	//pointer to file
+					 ); @cdecl;
+					 
+		release		:procedure
+					 (
+					 	inod	:dword;	//pointer to inode
+					 	file	:dword	//pointer to file
+					 );
+					 
+		fsync		:procedure
+					 (
+					 	inod	:dword;	//pointer to inode
+					 	de		:dword;	//pointer to dentry
+					 	datasync:dword					 	
+					 ); @cdecl;
+					 
+		fasync		:procedure
+					 (
+					 	fd		:dword;	//file descriptor
+					 	file	:dword; //pointer to file
+					 	on		:dword
+					 );  @cdecl;
+					 
+		lock		:procedure
+					 (
+					 	file	:dword;	//file pointer
+					 	typ		:dword;
+					 	filock	:dword	//pointer to file_lock
+					 ); @cdecl;
+					 
+		readv		:procedure
+					 (
+					 	file	:dword;	//pointer to file
+					 	iov		:dword; //pointer to iovec
+					 	count	:dword;
+					 	offs	:dword
+					 ); @cdecl;
+					 
+		writev		:procedure
+					 (
+					 	file	:dword;	//pointer to file
+					 	iov		:dword; //pointer to iovec
+					 	count	:dword;
+					 	offs	:dword
+					 ); @cdecl;
+
+		
+		// New entries I haven't yet looked up:
+		
+		sendpage	:procedure
+					 (
+					 		file	:dword;	// Pointer to file.
+					 		thePage	:dword;	// Pointer to page struct.
+					 		pgNum	:dword;	// ???
+					 		size	:dword;
+					 	var	offset	:qword
+					 );
+					 	
+		get_unmapped_area:
+					 procedure
+					 (
+					 	file	:dword;
+					 	u1		:dword;
+					 	u2		:dword;
+					 	u3		:dword;
+					 	u4		:dword
+					 );
+	endrecord;
+	
+	
+	// The fileops_c macro allows the user to create
+	// a file_operations record constant whose fields
+	// are specified by name rather than position, e.g.,
+	//
+	//	linux.fileops_c
+	//	( 
+	//		read:&readproc, 
+	//		open:&openproc,
+	//		release:&releaseproc,
+	//		llseek:&llseekproc
+	//	);
+	//
+	//	Entries that are absent in the list are filled with NULLs.
+	//  The entries may appear in any order.
+	//
+	// Using this macro rather than a file_operations record
+	// constant to initialize a file_operations variable helps
+	// reduce maintenence of your driver when the file_operations
+	// record structure changes (as it does every now and then).
+	
+const
+  	_fops_fields:= @localsyms( file_operations );
+
+	#macro fileops_c(__ops[]):
+			__opsIndex, 
+			__exit,
+			__syntaxError,
+			__namesIndex, 
+			__maxIndex, 
+			__maxNames,
+			__curLine,
+			__curVal,
+			__curName,
+			__curField,
+			__thisField;
+			
+		// This is a file_operations record constant, so output
+		// some syntax to begin the constant:
+		
+		linux.file_operations:[
+		
+		// Now generate the "guts" for this constant:
+		
+		?__curVal	:string;
+		?__curName	:string;
+		?__maxIndex := @elements( __ops );
+		?__maxNames := @elements( linux._fops_fields );
+		?__namesIndex := 0;
+		?__syntaxError := false;
+		#while( __namesIndex < __maxNames & !__syntaxError )
+		
+			?__curField := linux._fops_fields[ __namesIndex ];
+			?__opsIndex := 0;
+			?__exit := false;
+			?__thisField := "NULL";
+			#while( __opsIndex < __maxIndex & !__exit )
+			
+				?__curLine :string := __ops[ __opsIndex ];
+				?__exit := 
+					@uptoChar
+					( 
+						__curLine, 
+						':', 
+						__curVal, 
+						__curName 
+					);
+				
+				#if( !__exit )
+				
+					#error
+					( 
+						"Syntax error in file_operations constant: "+
+						__curLine
+					)
+					?__exit := true;
+					?__syntaxError := true;
+				
+				#else
+				
+					?__curName := @trim( __curName, 0 );
+					?__exit := __curName = __curField;
+					#if( __exit )
+				
+					?__thisField := @substr( __curVal, 1, 1024 );
+
+					#endif
+					
+				#endif
+				?__opsIndex += 1;
+				
+			#endwhile
+			
+			// If not the first table entry, emit a comma:
+			
+			#if( __namesIndex <> 0 )
+				,
+			#endif
+			
+			// emit the table entry:
+		
+			@text( __thisField )
+			
+			?__namesIndex += 1;
+			
+		#endwhile
+		
+		// Okay, close up the constant:
+		
+		]
+		
+		// Now, to be on the safe side, verify that there
+		// weren't any extra fields in the parameter list:
+		
+		?__opsIndex := 0;
+		#while( __opsIndex < __maxIndex & !__syntaxError )
+		
+			?__namesIndex := 0;
+			?__exit := false;
+			#while( __namesIndex < __maxNames & !__exit )
+			
+				?__exit := 
+					@uptoChar
+					( 
+						__ops[ __opsIndex ], 
+						':', 
+						__curVal, 
+						__curName 
+					); 
+				
+				?__curName := @trim( __curName, 0 );	
+				?__exit := 
+					__curName = linux._fops_fields[ __namesIndex ];
+						
+				?__namesIndex += 1;
+				
+			#endwhile
+			#if( !__exit )
+			
+				#error
+				(
+					"Unexpected field in fileops_c (" +
+					__curName +
+					")"
+				)
+				
+			#endif
+		
+			?__opsIndex += 1;
+		
+		#endwhile 
+			
+	#endmacro
+
+	
+	
+type
+	
+	//?ext3_fragments := @global:true;
+	//?ext3_preallocate := @global:true;
+	
+	ext3_inode_info: record
+	
+		i_data				:dword[15];
+		i_flags				:dword;
+		
+		#if( @defined( ext3_fragments ))
+		
+			i_faddr				:dword;
+			i_frag_no			:byte;
+			i_frag_size			:byte;
+			i_osync				:word;
+		#endif
+		
+		i_file_acl			:dword;
+		i_dir_acl			:dword;
+		i_dtime				:dword;
+		i_block_group		:dword;
+		i_state				:dword;
+		i_next_alloc_block	:dword;
+		i_next_alloc_goal	:dword;
+		
+		#if( @defined( ext3_preallocate ))
+		
+			i_prealloc_block	:dword;
+			i_prealloc_count	:dword;
+		#endif
+		
+		i_orphan			:list_head;
+		i_disksize			:loff_t;
+		truncate_sem		:rw_semaphore;
+
+	endrecord;
+	
+		
+	ext2_inode_info: record
+	
+		i_data				:dword[15];
+		i_flags				:dword;
+		i_faddr				:dword;
+		i_frag_no			:byte;
+		i_frag_size			:byte;
+		i_osync				:word;
+		i_file_acl			:dword;
+		i_dir_acl			:dword;
+		i_dtime				:dword;
+		i_block_group		:dword;
+		i_next_alloc_block	:dword;
+		i_next_alloc_goal	:dword;
+		i_prealloc_block	:dword;
+		i_prealloc_count	:dword;
+		i_new_node			:dword;
+		
+	endrecord;
+	
+	inode: record
+	
+		i_hash			:list_head;
+		i_list			:list_head;
+		i_dentry		:list_head;
+		i_dirty_buffers	:list_head;
+		
+		i_no			:dword;
+		i_count			:atomic_t;
+		i_dev			:kdev_t;
+		i_mode			:umode_t;
+		i_nlink			:nlink_t;	align(4);
+		i_uid			:uid_t;		align(4);
+		i_gid			:gid_t;		align(4);
+		i_rdev			:kdev_t;	align(4);
+		i_size			:loff_t;
+		i_atime			:time_t;
+		i_mtime			:time_t;
+		i_ctime			:time_t;
+		i_blksize		:dword;
+		i_blocks		:dword;
+		i_version		:dword;
+		i_bytes			:word;		align(4);
+		i_sem			:semaphore;
+		i_truncate_sem	:rw_semaphore;
+		i_zombie		:semaphore;
+		i_op			:dword; // pointer to inode_operations
+		i_fop			:dword;	// pointer to file_operations
+		i_sb			:dword; // pointer to super block.
+		i_wait			:wait_queue_head_t;
+		i_flock			:dword;	// pointer to file_lock.
+		i_mapping		:dword; // pointer to address_space;
+		i_data			:address_space;
+		i_dquot			:dword[ maxquotas ]; //ptrs to dquot
+		i_pipe			:dword;	// pointer to pipe_inode_info
+		i_bdev			:dword; // pointer to block_device
+		i_cdev			:dword; // pointer to char_device
+		i_dnotify_mask	:dword;
+		i_dnotify		:dword; // pointer to dnotify_struct
+		i_state			:dword;
+		i_flags			:dword;
+		i_sock			:byte;	align(4);
+		i_writecount	:atomic_t;
+		i_attr_flags	:dword;
+		i_generation	:dword;
+		
+		u: union
+		
+			ext2_i		:ext2_inode_info;
+			ext3_i		:ext3_inode_info;
+			
+			// Need to add all the other file system structs here!
+		
+		
+		endunion;
+		
+	endrecord;
+
+#endif //__kernel__
+  	
+
+	
+
+end linux;
+#endif //fs_hhf.hhf
+
+// kdebug is outside any namespace because we're going
+// to use it fairly often.
+// Ditto for kassert (text constant) and KDEBUG.
+
+
+#if( @defined( __kernel__ ))
+
+	// The following disables debugging code by default
+	// (KNDEBUG = true prevents emission of debug code).
+	// Note that "boolean(1)" is another way of saying
+	// "true" except it doesn't require true to be
+	// defined.
+
+	?KNDEBUG : boolean := boolean(1); //true
+
+	#macro kdebug( instrs );
+		#if( !KNDEBUG )
+			pushad();
+			pushfd();
+			instrs;
+			popfd();
+			popad();
+		#endif
+	#endmacro
+	
+	
+const
+	kassert	:text := 
+		"?linux.kassertLN := @linenumber; "
+		"?linux.kassertFN := @filename; "
+		"linux.kassert";
+
+	// The following kernel constants also exist outside the
+	// linux namespace because they get used so often it's too
+	// much of a pain to always type "linux." as a prefix to them:
+	
+	kern_emerg		:text := """<0>"""; // system is unusable
+	kern_alert		:text := """<1>""";	// action must be take immediately
+	kern_crit		:text := """<2>""";	// critical conditions
+	kern_err		:text := """<3>""";	// error conditions
+	kern_warning	:text := """<4>""";	// warning conditions
+	kern_notice		:text := """<5>""";	// normal, but significant condition
+	kern_info		:text := """<6>""";	// informational
+	kern_debug		:text := """<6>""";	// debug-level messages
+	
+
+namespace linux; //@fast;
+	
+val
+	kassertLN: dword;
+	kassertFN: string;
+
+	
+	#macro kassert( expr ):skipCode,msg,fn,ln;
+		#if( !KNDEBUG )
+			readonly
+				msg	:string := @string:expr;
+				fn	:string := linux.kassertFN;
+				ln	:dword := linux.kassertLN;
+			endreadonly;
+			
+			pushfd();
+			jt( expr ) skipCode;
+			pushad();
+			linux.printk
+			( 
+				"Kernel assertion failed: '%s' (line:%d, file: %s)\n",
+				msg,
+				ln,
+				fn
+			);
+			popad();
+			
+			// We can't really abort the kernel, so just keep going!
+			
+			skipCode:
+			popfd();
+			
+		#endif
+	#endmacro
+end linux;
+
+#endif
+
+
+
+
+namespace linux; //@fast;
+
+type
+		sysinfo_t:
+			record
+				uptime		:int32;
+				loads		:uns32[3];
+				totalram	:uns32;
+				freeram		:uns32;
+				shardram	:uns32;
+				bufferram	:uns32;
+				totalswap	:uns32;
+				freeswap	:uns32;
+				procs		:uns16; align(4);
+				totalhigh	:dword;
+				freehigh	:dword;
+				mem_unit	:dword;
+				align(64);
+			endrecord;
+
+#if( @defined( __kernel__ ))
+
+  		
+  // Only allow kernel-module access to the following symbols.
+  // Constants, types, and macros related to the
+  // major and minor device numbers:
+
+  const
+  	minorbits	:= 8;
+  	minormask	:= ((1 << minorbits) - 1);
+  	
+  val
+  	kdev_t_name	:kdev_t;
+  	
+	// These macros are ugly because I decided to stick
+	// lots of type checking and optimization into them.
+
+	// major(dev) - extracts a major device number
+	// from dev object (which should be a kdev_t object).
+	//
+	//	Returns a constant if dev is a constant, otherwise
+	//	returns the major number in EAX.
+	//
+	// Accepts: unsigned constants, two and four byte registers,
+	// and memory objects whose type is kdev_t (or whatever
+	// kdev_t's base type is, "word" currently).
+	//
+	// Note that this macro fully knows that kdev_t is currently
+	// a word and must be rewritten if (when) kdev_t changes to
+	// some other type.
+	//
+	// Note that the major number is currently the H.O. byte
+	// of the kdev_t object, but there are plans to change this
+	// by Linux v2.6.
+	
+  	#macro major(dev):rtns;
+  		returns
+  		(
+  			{
+  				#if( @isconst( dev ))
+  				
+  					// If "dev" is a constant, just assume it's
+  					// an integer (rely upon HLA to catch non-int
+  					// consts) and return the constant as this
+  					// macro's RETURNS value.  If this macro were
+  					// consistent, I'd return the value in EAX.
+  					// However, by returning a constant if it
+  					// gets passed a constant, we can invoke
+  					// this macro in a constant expression.
+  					
+  					?rtns :string := 
+  						string( dev >> linux.minorbits );
+  				
+  				#elseif( @isreg(dev) )
+  				
+  					// It's a register.  Allow 16-bit and 32-bit
+  					// registers (assume they contain legitimate
+  					// kdev_t values).
+  					
+  					#if( @size( dev ) = 2 )
+  					
+						// Do some optimization if it's 
+						// AX, BX, CX, or DX:
+						
+  						#if( @lowercase( @string:dev, 0 ) = "ax" )
+  						
+  							movzx( ah, eax );
+  							
+  						#elseif( @lowercase( @string:dev, 0 ) = "bx" )
+  						
+  							movzx( bh, eax );
+  							
+  						#elseif( @lowercase( @string:dev, 0 ) = "cx" )
+  						
+  							movzx( ch, eax );
+  							
+  						#elseif( @lowercase( @string:dev, 0 ) = "dx" )
+  						
+  							movzx( dh, eax );
+  							
+  							
+  						#else
+  						
+  							// If it's SI, DI, BP, or SP, do
+  							// this the hard way:
+  							
+  							movzx( dev, eax );
+  							shr( linux.minorbits, eax );
+  							
+  						#endif
+  				
+  					#elseif( @size( dev ) = 4 )
+		  		
+						// Do some optimization if it's 
+						// EAX, EBX, ECX, or EDX:
+						
+  						#if( @lowercase( @string:dev, 0 ) = "eax" )
+  						
+  							movzx( ah, eax );
+  							
+  						#elseif( @lowercase( @string:dev, 0 ) = "ebx" )
+  						
+  							movzx( bh, eax );
+  							
+  						#elseif( @lowercase( @string:dev, 0 ) = "ecx" )
+  						
+  							movzx( ch, eax );
+  							
+  						#elseif( @lowercase( @string:dev, 0 ) = "edx" )
+  						
+  							movzx( dh, eax );
+  							
+		  				#else
+		  				
+	  						mov( dev, eax );
+							shr( linux.minorbits, eax );
+	  					
+	  					#endif
+  				
+  					#endif
+					?rtns := "eax";
+				
+				#elseif
+				( 
+					@typename(dev) = @typename(linux.kdev_t_name) 
+				  | @typename(dev) = "kdev_t" 
+				)
+				
+					// If it's a valid memory location, then just
+					// extract the H.O. byte:
+					
+					movzx( (type byte dev[1]), eax );
+					?rtns := "eax";
+				
+				#else
+				
+					#error
+					( 
+						"Expected a kdev_t argument, found: " +
+						@typename( dev )
+					)
+					?rtns := "";
+  				#endif
+  				
+  			}, rtns
+  		)
+  	#endmacro
+  	
+  	
+  	
+	// minor(dev) - extracts a minor device number
+	// from dev object (which should be a kdev_t object).
+	//
+	//	Returns a constant if dev is a constant, otherwise
+	//	returns the major number in EAX.
+	//
+	// Accepts: unsigned constants, two and four byte registers,
+	// and memory objects whose type is kdev_t (or whatever
+	// kdev_t's base type is, "word" currently).
+	//
+	// Note that this macro fully knows that kdev_t is currently
+	// a word and must be rewritten if (when) kdev_t changes to
+	// some other type.
+	//
+	// Note that the minor number is currently the L.O. byte
+	// of the kdev_t object, but there are plans to change this
+	// by Linux v2.6.
+	
+  	#macro minor(dev):rtns;
+  		returns
+  		(
+  			{
+  				#if( @isconst( dev ))
+  				
+  					// If "dev" is a constant, just assume it's
+  					// an integer (rely upon HLA to catch non-int
+  					// consts) and return the constant as this
+  					// macro's RETURNS value.  If this macro were
+  					// consistent, I'd return the value in EAX.
+  					// However, by returning a constant if it
+  					// gets passed a constant, we can invoke
+  					// this macro in a constant expression.
+  					
+  					?rtns :string := 
+  						string( dev & linux.minormask );
+  				
+  				#elseif( @isreg(dev) )
+  				
+  					// It's a register.  Allow 16-bit and 32-bit
+  					// registers (assume they contain legitimate
+  					// kdev_t values).
+  					
+  					#if( @size( dev ) = 2 )
+  					
+						// Do some optimization if it's 
+						// AX, BX, CX, or DX:
+						
+  						#if( @lowercase( @string:dev, 0 ) = "ax" )
+  						
+  							movzx( al, eax );
+  							
+  						#elseif( @lowercase( @string:dev, 0 ) = "bx" )
+  						
+  							movzx( bl, eax );
+  							
+  						#elseif( @lowercase( @string:dev, 0 ) = "cx" )
+  						
+  							movzx( cl, eax );
+  							
+  						#elseif( @lowercase( @string:dev, 0 ) = "dx" )
+  						
+  							movzx( dl, eax );
+  							
+  							
+  						#else
+  						
+  							// If it's SI, DI, BP, or SP, do
+  							// this the hard way:
+  							
+  							movzx( dev, eax );
+  							and( linux.minormask, eax );
+  							
+  						#endif
+  				
+  					#elseif( @size( dev ) = 4 )
+		  		
+						// Do some optimization if it's 
+						// EAX, EBX, ECX, or EDX:
+						
+  						#if( @lowercase( @string:dev, 0 ) = "eax" )
+  						
+  							movzx( al, eax );
+  							
+  						#elseif( @lowercase( @string:dev, 0 ) = "ebx" )
+  						
+  							movzx( bl, eax );
+  							
+  						#elseif( @lowercase( @string:dev, 0 ) = "ecx" )
+  						
+  							movzx( cl, eax );
+  							
+  						#elseif( @lowercase( @string:dev, 0 ) = "edx" )
+  						
+  							movzx( dl, eax );
+  							
+		  				#else
+		  				
+	  						mov( dev, eax );
+							and( linux.minormask, eax );
+	  					
+	  					#endif
+  				
+  					#endif
+					?rtns := "eax";
+				
+				#elseif
+				( 
+					@typename(dev) = @typename(linux.kdev_t_name) 
+				  | @typename(dev) = "kdev_t" 
+				)
+				
+					// If it's a valid memory location, then just
+					// extract the L.O. byte:
+					
+					movzx( (type byte dev), eax );
+					?rtns := "eax";
+				
+				#else
+				
+					#error
+					( 
+						"Expected a kdev_t argument, found: " +
+						@typename( dev )
+					)
+					?rtns := "";
+  				#endif
+  			}, rtns
+  		)
+  	#endmacro
+  	
+  	
+  	// mkdev(ma,mi)
+  	//
+  	//	Creates a kdev_t value from the major (ma) and minor (mi)
+  	// values supplied as arguments.  If both arguments are constants,
+  	// then this macro returns a constant operand.  If either or both
+  	// arguments are not constants, then this function returns the
+  	// kdev_t value in EAX (AX contains the value which is zero-
+  	// extended into EAX).
+  	//
+  	//	This macro fully knows about kdev_t's internal format
+  	// and must be rewritten if (when) kdev_t's internal representation
+  	// changes.
+  	
+  	#macro mkdev(ma,mi):rtns, a, az, i, iz;
+  		returns
+  		(
+  			{
+  				#if( @isconst( ma ) & @isconst( mi ))
+
+  					?rtns:string := string( (ma << 8) | mi );
+
+  				#else
+  					?a  := @lowercase( @string:ma, 0 );
+  					?az := @size( ma );
+  					
+  					?i  := @lowercase( @string:mi, 0 );
+  					?iz := @size( mi );
+  					
+  					#if( az <> iz ) 
+  						
+  						#error( "mkdev operands must be the same size" )
+  						?rtns := "0";
+  						
+  					#elseif( az=1 ) // iz is also 1
+  					
+  						#if( a = "al" & i = "ah" )
+  						
+  							xchg( al, ah );
+  							and( $FFFF, eax );
+  							
+  						#elseif( a = "ah" & i = "al" )
+
+  							and( $FFFF, eax );
+
+  						#elseif( a = "ah" )
+  							
+  							mov( mi, al );
+  							and( $FFFF, eax );
+
+  						#elseif( a = "al" )
+  							
+  							mov( al, ah );
+  							mov( mi, al );
+  							and( $FFFF, eax );
+
+						#elseif( i = "al" )
+						
+							mov( ma, ah );
+  							and( $FFFF, eax );
+  							
+						#elseif( i = "ah" )
+						
+							mov( ah, al );
+							mov( ma, ah );
+  							and( $FFFF, eax );
+  							
+  						#else
+  							
+  							movzx( mi, eax );
+  							mov( ma, ah );
+  							
+  						#endif;
+  						
+  					#elseif( az=2 ) // iz is also 2
+  					
+  						#if( a = "ax" )
+  						
+  							// We'll just have to assume
+  							// that mi is in the range 0..255:
+  							
+  							mov( al, ah );
+  							or( mi, ax );
+							and( $FFFF, eax );
+							
+						#elseif( i = "ax" )
+						
+  							// We'll just have to assume
+  							// that ma is in the range 0..255:
+  							
+							mov( al, ah );
+							or( ma, ax );
+							xchg( al, ah );
+							and( $FFFF, eax );
+							
+						#elseif( @isreg( ma ) )
+						
+							// ma is register, who knows
+							// what mi is?
+							
+							mov( ma, ax );
+							mov( al, ah );
+							or( mi, ax );
+							and( $FFFF, eax );
+							
+						#elseif( @isreg( mi ) )
+
+						
+							// ma is memory, mi is register:
+							
+							mov( (type byte ma), ah );
+							or( mi, ax );
+							and( $FFFF, eax );
+							
+						#else
+						
+							// Assume they're both memory:
+							
+							movzx( (type byte mi), eax );
+							mov( (type byte ma), ah );
+							
+						#endif
+							  							
+  					#elseif( az=4 ) // iz is also 4
+  					
+  						#if( a = "eax" )
+  						
+  							// We'll just have to assume
+  							// that mi is in the range 0..255:
+  							
+  							mov( al, ah );
+  							or( mi, eax );
+							and( $FFFF, eax );
+							
+						#elseif( i = "eax" )
+						
+  							// We'll just have to assume
+  							// that ma is in the range 0..255:
+  							
+							mov( al, ah );
+							or( ma, eax );
+							xchg( al, ah );
+							and( $FFFF, eax );
+							
+						#elseif( @isreg( ma ) )
+						
+							// ma is register, who knows
+							// what mi is?
+							
+							mov( ma, eax );
+							mov( al, ah );
+							or( mi, eax );
+							and( $FFFF, eax );
+							
+						#elseif( @isreg( mi ) )
+						
+							// ma is memory, mi is register:
+							
+							mov( (type byte ma), ah );
+							or( mi, eax );
+							and( $FFFF, eax );
+							
+						#else
+						
+							// Assume they're both memory:
+							
+							movzx( (type byte mi), eax );
+							mov( (type byte ma), ah );
+							
+						#endif
+						
+					#endif
+					?rtns := "eax";
+					
+				#endif
+							  							
+  			}, rtns
+  		)
+  	#endmacro
+  	
+  	
+  	// kdev_t_to_nr( kdt )
+  	//
+  	// Translates a kdev_t object (currently a word)
+  	// to a dword object in EAX.
+  	
+  	#macro kdev_t_to_nr(dev);
+  		returns
+  		(
+  			{
+  			
+		  		#if
+		  		( 
+		  			@typename(dev) <> @typename( linux.kdev_t_name ) 
+		  		)
+		  		
+		  			#error
+		  			( 
+		  				"kdev_t_to_nr argument must be of type kdev_t" 
+		  			)
+		  			
+		  		#else
+		  		
+		  			movzx( dev, eax );
+		  			
+		  		#endif;
+		  	},"eax"
+		)
+  	#endmacro
+  	
+  	
+  	// to_kdev_t(dev)-
+  	//
+  	//	Translates a dword object to a kdev_t object in AX.
+  	
+  	#macro to_kdev_t(dev);
+  		returns
+  		(
+  			{
+  				#if( @size( dev ) <> 4 )
+  					
+  					#error( "to_kdev_t expects a dword operand" )
+  					
+  				#else
+  				
+  					#if( @lowercase( @string:dev, 0 ) <> "eax" )
+  				
+  						mov( dev, eax );
+  						
+  					#endif
+  					and( $FFFF, eax );
+  					
+  				#endif
+  					
+  			}, "(type linux.kdev_t ax)"
+  		)
+  	#endmacro
+  			
+  	
+  	// Here's the macros that a device driver writer can use to
+  	// define ioctl numbers.
+  	
+const
+	_ioc_none 	:= 0;
+	_ioc_write	:= 1;
+	_ioc_read	:= 2;
+  	
+  	#macro _ioc(__d,__t,__n,__s);
+  		(
+  				(byte(__n) & $FF)
+  			|	((byte(__t) << 8) & $FF00 )
+  			|	((word(__s) << 16 ) & $3FFF_0000)
+  			|	((byte(__d) << 30 ) & $C000_0000 )
+  		)
+  	#endmacro
+  	
+  	#macro _io(__typ,__nr);
+  		linux._ioc( linux.ioc_none, __typ, __nr, 0 )
+  	#endmacro
+  	
+  	
+  	#macro _ior(__typ,__nr,__size);
+  		linux._ioc( linux._ioc_read, __typ, __nr, @size(__size) )
+  	#endmacro
+  	
+  	#macro _iow(__typ,__nr,__size);
+  		linux._ioc( linux._ioc_write, __typ, __nr, @size(__size) )
+  	#endmacro
+  	
+  	#macro _iorw(__typ,__nr,__size);
+  		linux._ioc
+  		( 
+  			linux._ioc_write | linux._ioc_write, 
+  			__typ, 
+  			__nr, 
+  			@size(__size) 
+  		)
+  	#endmacro
+  	
+  	
+  
+  	
+  	// Get current- returns the current process task_struct
+	// info pointer (which is at the bottom of the 8K kernel
+	// stack in use by the current module).
+	
+	#macro get_current;
+	
+		returns
+		(
+			{
+				mov( esp, eax );
+				and( !8192, eax );
+			},
+			"eax"
+		)
+	#endmacro
+	
+	
+
+	// printk- Macro for displaying debug messages in the kernel.
+
+	procedure _printk; external( "printk" );
+	#macro printk( fmtstr, args[] ): ndx, fstr, parmsize;
+
+		// Output the format string to the readonly segment:
+			
+		readonly
+			fstr	:byte;	@nostorage;
+				 	 byte	fmtstr, 0;
+		endreadonly;
+
+		// printk uses the C calling convention, so
+		// push the arguments in the reverse order.
+		// All arguments must be dwords.
+		
+		?ndx 		:int32 := @elements( args ) - 1;
+		?parmsize	:uns32 := 4;
+		#while( ndx >= 0 )
+			
+			push( @text( args[ndx] ));
+			?ndx := ndx - 1;
+			?parmsize := parmsize + 4;
+			
+		#endwhile
+		pushd( &fstr );
+		call linux._printk;
+		add( parmsize, esp );	// Remove parameters from stack.
+		
+	#endmacro 
+
+	// export_no_symbols- Tells the kernel not to export
+	// any symbols from this module unless there is an
+	// explicit export_symbol macro invocation.
+	
+	#macro export_no_symbols;
+		#asm
+			.section	__ksymtab
+			.previous
+		#endasm
+	#endmacro
+	
+	
+	// export_proc(sym) - Tells the kernel to export the
+	// procedure identifier passed as an argument.
+	
+	#macro export_proc(sym):strtab,symtab,strtabstr;
+		?strtab :string := "__kstrtab_" + @string:sym;
+		?symtab :string := "__ksymtab_" + @string:sym;
+		?strtabstr :string := 
+			@string:sym + "_R__ver_" + @string:sym;
+			
+		#emit( " .globl " + strtab )
+		#emit( " .section .kstrtab,""a"",@progbits" )
+		#emit( " .type " + strtab + ",@object" )
+		#emit
+		( 
+				" .size " 
+			+ 	strtab 
+			+ 	"," 
+			+ 	string(@length(strtabstr) + 1) 
+		)
+		#emit( strtab + ":" )
+		#emit( " .string """ + strtabstr + """" )
+		
+		#emit( " .globl " + symtab )
+		#emit( " .section __ksymtab,""a"",@progbits" )
+		#emit( " .align 4" )
+		#emit( " .type " + symtab + ",@object" )
+		#emit( " .size " + symtab + ",8" )
+		#emit( symtab + ":" )
+		#emit( " .long " + @string:sym )
+		#emit( " .long " + strtab )
+	#endmacro
+	
+		
+
+		
+		
+	
+	// export_var(sym) - Tells the kernel to export the
+	// variable identifier passed as an argument.
+	
+	#macro export_var(sym):strtab,symtab,strtabstr;
+		?strtab :string := "__kstrtab_" + @string:sym;
+		?symtab :string := "__ksymtab_" + @string:sym;
+		?strtabstr :string := 
+			@string:sym + "_R__ver_" + @string:sym;
+			
+		#emit( " .globl " + strtab )
+		#emit( " .section .kstrtab" )
+		#emit( " .align 32" )
+		#emit( " .type " + strtab + ",@object" )
+		#emit
+		( 
+				" .size " 
+			+ 	strtab 
+			+ 	"," 
+			+ 	string(@length(strtabstr) + 1) 
+		)
+		#emit( strtab + ":" )
+		#emit( " .string """ + strtabstr + """" )
+		
+		#emit( " .globl " + symtab )
+		#emit( " .section __ksymtab" )
+		#emit( " .align 4" )
+		#emit( " .type " + symtab + ",@object" )
+		#emit( " .size " + symtab + ",8" )
+		#emit( symtab + ":" )
+		#emit( " .long " + @string:sym )
+		#emit( " .long " + strtab )
+	#endmacro
+	
+	
+	// I/O registry functions/macros:
+	
+	#macro check_region( start, len );
+		returns
+		(
+			{
+				push( ecx );
+				push( edx );
+				linux.__check_region
+				( 
+					linux.ioport_resource, 
+					start, 
+					len 
+				);
+				add( 12, esp );
+				pop( edx );
+				pop( ecx );
+			},
+			"eax"
+		)
+		
+	#endmacro
+
+	
+	#macro check_mem_region( start, len );
+		returns
+		(
+			{
+				push( ecx );
+				push( edx );
+				linux.__check_region
+				( 
+					linux.iomem_resource, 
+					start, 
+					len 
+				);
+				add( 12, esp );
+				pop( edx );
+				pop( ecx );
+			},
+			"eax"
+		)
+		
+	#endmacro
+
+	#macro request_region( start, len, theName );
+	
+		returns
+		(
+			{
+				push( ecx );
+				push( edx );
+				linux.__request_region
+				( 
+					linux.ioport_resource, 
+					start, 
+					len, 
+					theName 
+				);
+				add( 16, esp );
+				pop( edx );
+				pop( ecx );
+			},
+			"eax"
+		)
+		
+	#endmacro
+			
+	#macro request_mem_region( start, n, theName );
+	
+		returns
+		(
+			{
+				push( ecx );
+				push( edx );
+				linux.__request_region
+				(
+					linux.iomem_resource, 
+					start, 
+					n, 
+					theName 
+				);
+				add( 16, esp );
+				pop( edx );
+				pop( ecx );
+			},
+			"eax"
+		)
+		
+	#endmacro
+			
+	#macro release_region( start, n ); 
+		
+		returns
+		(
+			{
+			
+				push( eax );
+				push( ecx );
+				push( edx );
+				linux.__release_region
+				( 
+					linux.ioport_resource, 
+					start, 
+					n 
+				);
+				add( 12, esp );
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+		
+		
+	#endmacro
+			
+	#macro release_mem_region( start, n ); 
+		
+		returns
+		(
+			{
+			
+				push( eax );
+				push( ecx );
+				push( edx );
+				linux.__release_region
+				( 
+					linux.iomem_resource, 
+					start, 
+					n 
+				);
+				add( 12, esp );
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			},""
+		)
+		
+	#endmacro
+	
+	
+			
+			
+	procedure __disable_irq( irqnum:dword ); 
+		@cdecl; 
+		external( "disable_irq" );
+		
+	#macro disable_irq( irqnum );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				__disable_irq( irqnum );
+				add( 4, esp );
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	 
+	procedure __enable_irq( irqnum:dword ); 
+		@cdecl; 
+		external( "enable_irq" );
+
+	#macro enable_irq( irqnum );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				__enable_irq( irqnum );
+				add( 4, esp );
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	 
+	procedure __disable_irq_nosync( irqnum:dword );  
+		@cdecl; 
+		external( "disable_irq_nosync" );
+
+	#macro disable_irq_nosync( irqnum );
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				__disable_irq_nosync( irqnum );
+				add( 4, esp );
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			}, ""
+		)
+	#endmacro
+	 
+	 
+	procedure __ioremap( offset:dword; size:dword; flags:dword );
+		@cdecl;
+		external;
+		
+	#macro ioremap( offset, size );
+	
+		returns
+		(
+			{
+				push( ecx );
+				push( edx );
+				linux.__ioremap( offset, size, 0 );
+				add( 12, esp );
+				pop( edx );
+				pop( ecx );
+			}, "eax"
+		)
+	#endmacro
+	
+	
+	
+	
+const
+
+	// kmalloc & kfree:
+
+  	__gfp_dma		:= $01;
+  	__gfp_highmem	:= $02;
+  	__gfp_wait		:= $10;
+  	__gfp_high		:= $20;
+  	__gfp_io		:= $40;
+  	__gfp_fs		:= $80;
+  	
+  	gfp_noio		:= __gfp_high | __gfp_wait;
+  	gfp_nofs		:= __gfp_high | __gfp_wait | __gfp_io;
+  	gfp_atomic		:= __gfp_high;
+  	gfp_user		:= __gfp_wait | __gfp_io | __gfp_fs;
+  	gfp_highuser	:= __gfp_wait | __gfp_io | __gfp_fs | __gfp_highmem;
+  	gfp_kernel		:= __gfp_high | __gfp_wait | __gfp_io | __gfp_fs;
+  	gfp_nfs			:= __gfp_high | __gfp_wait | __gfp_io | __gfp_fs;
+  	gfp_kswapd		:= __gfp_io | __gfp_fs;
+  	gfp_dma			:= __gfp_dma;
+  	
+	
+	procedure _kmalloc( size:size_t; flags:dword );
+		@cdecl;
+		external( "kmalloc" );
+		
+	#macro kmalloc( s, f );
+		returns
+		(
+			{
+				push( ecx );
+				push( edx );
+				linux._kmalloc(s,f);
+				add( 8, esp );
+				pop( edx );
+				pop( ecx );
+			}, "eax"
+		)
+	#endmacro
+	
+		
+	procedure _kfree( ptr:dword );
+		@cdecl;
+		external( "kfree" );
+		
+	#macro kfree(p);
+		returns
+		(
+			{
+				push( eax );
+				push( ecx );
+				push( edx );
+				_kfree(p);
+				add(4, esp );
+				pop( edx );
+				pop( ecx );
+				pop( eax );
+			},""
+		)
+	#endmacro
+	
+		
+	
+	// Routines to copy data between user and kernel space
+	
+		
+	procedure __generic_copy_to_user
+	( 
+		var	_to		:var; 
+		var	from	:var; 
+			count	:dword 
+	);	@cdecl;
+		external;
+
+	procedure __constant_copy_to_user
+	( 
+		var	_to		:var; 
+		var	from	:var; 
+			count	:dword 
+	);	@cdecl;
+		external;
+
+	#macro copy_to_user( t,f,c );
+		returns
+		(
+			{
+				push( ecx );
+				push( edx );
+				linux.__generic_copy_to_user(t,f,c);
+				add( 12, esp );
+				pop( edx );
+				pop( ecx );
+			}, "eax"
+		)
+	#endmacro
+	
+	procedure __constant_copy_from_user
+	( 
+		var	_to		:var; 
+		var	from	:var; 
+			count	:dword 
+	);	@cdecl;
+		external;
+		
+	
+	procedure __generic_copy_from_user
+	( 
+		var	_to		:var; 
+		var	from	:var; 
+			count	:dword 
+	);	@cdecl;
+		external;
+		
+	#macro copy_from_user( t, f, c );
+		returns
+		(
+			{
+				push( ecx );
+				push( edx );
+				linux.__generic_copy_from_user(t,f,c);
+				add( 12, esp );
+				pop( edx );
+				pop( ecx );
+			}, "eax"
+		)
+	#endmacro
+	
+	procedure _register_chrdev
+	( 
+			_major:dword; 
+			_name:string; 
+		var	fops:file_operations 
+	);	@cdecl; external( "register_chrdev" );
+	
+	#macro register_chrdev( m, n, f );
+		returns
+		(
+			{
+				push( ecx );
+				push( edx );
+				linux._register_chrdev( m, n, f );
+				pop( edx );
+				pop( ecx );
+				add( 12, esp );
+			}, "eax"
+		)
+	#endmacro
+	
+	
+
+	
+	procedure _unregister_chrdev
+	( 
+			_major:dword; 
+			_name:string 
+	);	@cdecl; external( "unregister_chrdev" );
+	
+	#macro unregister_chrdev( m, n );
+		returns
+		(
+			{
+				push( ecx );
+				push( edx );
+				linux._unregister_chrdev( m, n );
+				add( 8, esp );
+				pop( edx );
+				pop( ecx );
+			}, "eax"
+		)
+	#endmacro
+	
+	
+
+#endif // #if( @defined( __linux__) )
+
+
+end linux;
+#endif //kernel_hhf
+#if( !@defined( poll_hhf ))
+?poll_hhf := true;
+
+namespace linux; //@fast;
+
+type
+	pollfd: record
+		fd		:dword;
+		events	:word;
+		revents	:word;
+	endrecord;
+	
+
+end linux;
+#endif //poll_hhf
+#if( !@defined( msg_hhf ))
+?msg_hhf := true;
+
+namespace linux; //@fast;
+
+  type
+
+	
+	// message data structures:
+	
+	msgqnum_t	:word;
+	msglen_t	:word;
+	
+	
+	msqid_ds: record
+		msg_perm	:ipc_perm;
+		msg_first	:dword;		// pointer to msg
+		msg_last	:dword;		// pointer to msg
+		msg_stime	:time_t;
+		msg_rtime	:time_t;
+		msg_ctime	:time_t;
+		msg_lcbytes	:dword;
+		msg_lqbytes	:dword;
+		msg_cbytes	:word;
+		msg_qnum	:msgqnum_t;
+		msg_qbytes	:msglen_t;
+		msg_lspid	:word;
+		msg_lrpid	:word;
+		__dummy		:word;
+	endrecord;
+	
+	msginfo: record
+		msgpool	:dword;
+		msgmap	:dword;
+		msgmax	:dword;
+		msgmnb	:dword;
+		msgmni	:dword;
+		msgssz	:dword;
+		msgtql	:dword;
+		msgseg	:word;
+		align(4);
+	endrecord;
+
+	
+	msgbuf: record
+		mtype	:dword;
+		__mtext	:char[1];
+		align(4);
+	endrecord;
+	
+
+end linux;
+#endif //msg_hhf
+#if( !@defined( shm_hhf ))
+?shm_hhf := true;
+
+namespace linux; //@fast;
+
+type
+	// Shared memory data structures:
+	
+	shmid_ds: record
+		shm_perm	:ipc_perm;
+		shm_segsz	:dword;
+		shm_atime	:time_t;
+		shm_dtime	:time_t;
+		shm_ctime	:time_t;
+		shm_cpid	:word;
+		shm_lpid	:word;
+		shm_nattch	:word;
+		__unused	:word[5];
+	endrecord;
+	
+	shminfo: record
+		shmmax	:dword;
+		shmmin	:dword;
+		shmmni	:dword;
+		shmseg	:dword;
+		shmall	:dword;
+	endrecord;
+	
+	shm_info_t: record
+		used_ids		:dword;
+		shm_tot			:dword;
+		shm_rss			:dword;
+		shm_swp			:dword;
+		swap_attempts	:dword;
+		swap_successes	:dword;
+	endrecord;
+
+end linux;
+#endif //shm_hhf
+#if( !@defined( socket_hhf ))
+?socket_hhf := true;
+
+#if( !@defined( net_hhf ))
+?net_hhf := true;
+
+namespace linux; //@fast;
+
+const
+  	
+  	// Socket related constants:
+  	
+	sockop_socket 		:= 1;
+	sockop_bind			:= 2;
+	sockop_connect		:= 3;
+	sockop_listen		:= 4;
+	sockop_accept		:= 5;
+	sockop_getsockname	:= 6;
+	sockop_getpeername	:= 7;
+	sockop_socketpair	:= 8;
+	sockop_send			:= 9;
+	sockop_recv			:= 10;
+	sockop_sendto		:= 11;
+	sockop_recvfrom		:= 12;
+	sockop_shutdown		:= 13;
+	sockop_setsockopt	:= 14;
+	sockop_getsockopt	:= 15;
+	sockop_sendmsg		:= 16;
+	sockop_recvmsg		:= 17;
+
+
+  	nproto				:= 32;
+  	sys_socket			:= 1;
+  	sys_bind			:= 2;
+  	sys_connect			:= 3;
+  	sys_listen			:= 4;
+  	sys_accept			:= 5;
+  	sys_getsockname		:= 6;
+  	sys_getpeername		:= 7;
+  	sys_socketpair		:= 8;
+  	sys_send			:= 9;
+  	sys_recv			:= 10;
+  	sys_sendto			:= 11;
+  	sys_recvfrom		:= 12;
+  	sys_shutdown		:= 13;
+  	sys_setsockopt		:= 14;
+  	sys_getsockopt		:= 15;
+  	sys_sendmsg			:= 16;
+  	sys_recvmsg			:= 17;
+  	
+  	sock_async_nospace	:= 0;
+  	sock_async_waitdata	:= 1;
+  	sock_nospace		:= 2;
+  	
+  	sol_socket 			:= 1;
+	so_debug 			:= 1;
+	so_reuseaddr		:= 2;
+	so_type				:= 3;
+	so_erro				:= 4;
+	so_dontroute		:= 5;
+	so_broadcast		:= 6;
+	so_sndbuf			:= 7;
+	so_rcvbuf			:= 8;
+	so_keepalive		:= 9;
+	so_oobinline		:= 10;
+	so_no_check			:= 11;
+	so_priority			:= 12;
+	so_linger			:= 13;
+	so_bsdcompat		:= 14;
+	so_passcred			:= 16;
+	so_peercred			:= 17;
+	so_rcvlowat			:= 18;
+	so_sndlowat			:= 19;
+	so_rcvtimeo			:= 20;
+	so_sndtimeo			:= 21;
+	so_security_authentication := 22;
+	so_security_encryption_transport := 23;
+	so_security_encryption_network := 24;
+	so_bindtodevice		:= 25;
+	so_attach_filter	:= 26;
+	so_detach_filter	:= 27;
+	so_peername			:= 28;
+	so_timestamp		:= 29;
+	scm_timestamp		:= so_timestamp;
+	so_acceptconn		:= 30;
+	sock_stream			:= 1;
+	sock_dgram			:= 2;
+	sock_raw			:= 3;
+	sock_rdm			:= 4;
+	sock_seqpacket		:= 5;
+	sock_packet			:= 10;
+	
+	ipx_node_len		:= 6;
+	eth_alen			:= 6;
+	ifnamsiz			:= 16;
+	
+	dn_maxaddl			:= 2;
+	dn_addl				:= 2;
+	dn_maxaccl			:= 40;
+	dn_maxobjl			:= 16;
+	
+	
+
+end linux;
+#endif //net_hhf
+namespace linux; //@fast;
+
+type
+
+
+	// Socket related types:
+	
+	msghdr: record
+		msg_name		:dword;
+		msg_namelen		:dword;
+		msg_iov			:dword;	// pointer to iovec.
+		msg_iovlen		:size_t;
+		msg_control		:dword;
+		msg_controllen	:dword;
+		msg_flags		:dword;
+	endrecord;
+	
+	socket_state:
+  		enum
+  		{
+  			ss_free,
+  			ss_unconnected,
+  			ss_connecting,
+  			ss_connected,
+  			ss_disconnecting
+  		};
+
+	socklen_t:	dword;
+	
+	socket_lock_t: record
+		slock	:spinlock_t;
+		users	:dword;
+		wq		:wait_queue_head_t;
+	endrecord;
+	
+	sk_buff_head: record
+		next	:dword;	//pointer to sk_buff_head.
+		prev	:dword;	//pointer to sk_buff_head.
+		qlen	:dword;
+		_lock	:spinlock_t;
+	endrecord;
+	
+
+	in6_addr: union
+		in6_u:union
+			u6_addr8	:byte [ 16 ];
+			u6_addr16	:word [  8 ];
+			u6_addr32	:dword[  4 ];
+		endunion;
+		s6_addr		:byte [ 16 ];
+		s6_addr16	:word [  8 ];
+		s6_addr32	:dword[  4 ];
+	endunion;
+	
+	sockaddr_in6: record
+		sin6_family		:word;
+		sin6_port		:word;
+		sin6_flowinfo	:dword;
+		sin6_addr		:in6_addr;
+		sin6_scope_id	:dword;
+	endrecord;
+	
+	icmp6_filter: record
+		data	:dword[8];
+	endrecord;
+	
+	icmp_filter: record
+		data	:dword;
+	endrecord;
+	
+	tcp_sack_block: record
+		start_seq	:dword;
+		end_seq		:dword;
+	endrecord;
+		
+		
+	ipv6_pinfo: record;
+		saddr		:in6_addr;
+		rcv_saddr	:in6_addr;
+		daddr		:in6_addr;
+		daddr_cache	:dword;		//pointer to in6_addr
+		flow_label	:dword;
+		frag_size	:dword;
+		hop_limit	:dword;
+		mcast_hops	:dword;
+		mcast_oif	:dword;
+		
+		rxopt: union
+			
+			// bits:
+			//	0-1:	srcrt
+			//	2:		rxinfo
+			//	3:		rxhlim
+			//	4:		hopopts
+			//	5:		dstopts
+			//	6:		authhdr
+			//	7:		rxflow
+			
+			bits	:byte;
+			all		:byte;
+			
+		endunion;
+		
+		//sockoptFlags:
+		// 0:	mc_loop
+		// 1:	recverr
+		// 2:	sndflow
+		// 3-4:	pmtudisc
+		
+		sockoptFlags	:byte;
+		
+		ipv6_mc_list	:dword;	//pointer to ipv6_mc_socklist
+		ipv6_fl_list	:dword; //pointer to ipv6_fl_socklist
+		
+		dst_cookie		:dword;
+		
+		opt				:dword;	//pointer to ipv6_txoptions
+		pktoptions		:dword;	//pointer to sk_buff
+	endrecord;
+	
+	raw6_opt: record
+		checksum	:dword;
+		offset		:dword;
+		filter		:icmp6_filter;
+	endrecord;
+	
+	raw_opt: record
+		filter	:icmp_filter;
+	endrecord;
+	
+	inet_opt: record
+		ttl			:dword;
+		tos			:dword;
+		cmsg_flags	:dword;
+		opt			:dword; //pointer to ip_options
+		hdrincl		:byte;
+		mc_ttl		:byte;
+		mc_loop		:byte;
+		
+		// rAndF:
+		// 0:	recverr
+		// 1:	freebind
+		
+		rAndF		:word;
+	
+		id			:word;
+		pmtudisc	:byte;
+		mc_index	:dword;
+		mc_addr		:dword;
+		mc_list		:dword;	//pointer to ip_mc_socklist
+	endrecord;
+	
+	ppp_channel_ops: record
+		start_xmit	:procedure( ppp_ch: dword; skbptr:dword ); @cdecl;
+		ioctl		:procedure
+					 ( 
+					 	ppp_ch	:dword; 
+					 	p1		:dword; 
+					 	p2		:dword 
+					 ); @cdecl;
+	endrecord;
+	
+	ppp_channel: record
+		private	:dword;
+		ops		:dword;	//pointer to ppp_channel_ops
+		mtu		:dword;
+		hdrlen	:dword;
+		ppp		:dword;
+		speed	:dword;
+		latency	:dword;
+	endrecord;
+	
+	pppoe_addr: record
+		sid		:sid_t;
+		remote	:char[  eth_alen ];
+		dev		:char[ ifnamsiz ];
+	endrecord;
+	
+	sockaddr_pppox: record
+		sa_family	:sa_family_t;
+		sa_protocol	:dword;
+		sa_addr: union
+			pppoe	:pppoe_addr;
+		endunion;
+	endrecord;
+	
+	pppoe_opt: record
+		dev		:dword; // pointer to net_device
+		pa		:pppoe_addr;
+		relay	:sockaddr_pppox;
+	endrecord;
+	
+	poppox_opt: record
+		chan	:ppp_channel;
+		sk		:dword;		// pointer to sock.
+		next	:dword;		// pointer to ppox_opt
+		proto: union
+			pppoe	:pppoe_opt;
+		endunion;
+	endrecord;
+	
+	tcp_opt: record
+		tcp_header_len	:dword;
+		pred_flags		:dword;
+		rcv_nxt			:dword;
+		snd_nxt			:dword;
+		snd_una			:dword;
+		snd_sml			:dword;
+		rcv_tstamp		:dword;
+		lsndtime		:dword;
+		ack: record
+			pending			:byte;
+			quick			:byte;
+			pingpong		:byte;
+			blocked			:byte;
+			ato				:dword;
+			timeout			:dword;
+			lrcvtime		:dword;
+			last_seg_size	:word;
+			rcv_mss			:word;
+		endrecord;
+		
+		ucopy: record
+			prequeue	:sk_buff_head;
+			memory		:dword;
+			task		:dword; // pointer to task_struct
+			iov			:dword; // pointer to iovec
+			len			:dword;
+		endrecord;
+		
+		snd_wl1			:dword;
+		snd_wnd			:dword;
+		max_window		:dword;
+		pmtu_cookie		:dword;
+		mss_cache		:word;
+		mss_clamp		:word;
+		ext_header_len	:word;
+		ca_state		:byte;
+		retransmits		:byte;
+		reordering		:byte;
+		queue_shrunk	:byte;
+		defer_accept	:byte;
+		
+		backoff			:byte;
+		srtt			:dword;
+		mdev			:dword;
+		mdev_max		:dword;
+		rttvar			:dword;
+		rtt_seq			:dword;
+		rto				:dword;
+		packets_out		:dword;
+		left_out		:dword;
+		retrans_out		:dword;
+		
+		snd_ssthresh	:dword;
+		snd_cwnd		:dword;
+		snd_cwnd_cnt	:dword;
+		snd_cwnd_used	:dword;
+		snd_cwnd_stamp	:dword;
+		
+		timeout			:dword;
+		retransmit_timer:timer_list;
+		delack_timer	:timer_list;
+		out_of_order_queue	:sk_buff_head;
+		af_specific		:dword; // pointer to tcp_func.
+		send_head		:dword;	// pointer to sk_buff.
+		sndmsg_page		:dword; // pointer to page.
+		sndmsg_off		:dword;
+		
+		rcv_wnd			:dword;
+		rcv_wup			:dword;
+		write_seq		:dword;
+		pushed_seq		:dword;
+		copied_seq		:dword;
+		
+		tstamp_ok		:byte;
+		wscale_ok		:byte;
+		sack_ok			:byte;
+		saw_tstamp		:byte;
+		snd_wscale		:byte;
+		rcv_wscale		:byte;
+		nonagle			:byte;
+		keepalive_probes:byte;
+		
+		rcv_tsval		:dword;
+		rcv_tsecr		:dword;
+		ts_recent		:dword;
+		ts_recent_stamp	:dword;
+		
+		user_mss		:dword;
+		dsack			:byte;
+		eff_sacks		:byte;
+		
+		duplicate_sack	:tcp_sack_block[1];
+		selective_acks	:tcp_sack_block[4];
+		
+		window_clamp	:dword;
+		rcv_ssthresh	:dword;
+		probes_out		:byte;
+		num_sacks		:byte;
+		advmss			:word;
+		
+		syn_retries		:byte;
+		ecn_flags		:byte;
+		prior_ssthresh	:word;
+		lost_out		:dword;
+		sacked_out		:dword;
+		fackets_out		:dword;
+		high_seq		:dword;
+		
+		retrans_stamp	:dword;
+		
+		undo_marker		:dword;
+		undo_retrans	:dword;
+		urg_seq			:dword;
+		urg_data		:word;
+		pending			:byte;
+		urg_mode		:byte;
+		snd_up			:dword;
+		
+		syn_wait_lock	:rwlock_t;
+		listen_opt		:dword;	// pointer to tcp_listen_opt
+		accept_queue	:dword;	// pointer to open_request
+		accept_queue_tail	:dword;	//pointer to open_request
+		write_pending	:dword;
+		keepalive_time	:dword;
+		keepalive_intvl	:dword;
+		linger2			:dword;
+		
+	endrecord;
+		
+	unix_opt: record
+		addr		:dword;	// pointer to unix_address
+		dentery		:dword;	// pointer to dentry
+		mnt			:dword;	// pointer to vfsmount
+		readsem		:semaphore;
+		other		:dword;	// pointer to sock
+		list		:dword; // pointer to pointer to sock.
+		gc_tree		:dword;	// pointer to sock.
+		inflight	:atomic_t;
+		_lock		:rwlock_t;
+		peer_wait	:wait_queue_head_t;
+	endrecord;
+	
+	ipx_address: record
+		net		:dword;
+		node	:char[ ipx_node_len ];
+		sock	:word;
+	endrecord;
+	ipx_opt: record
+		dest_addr	:ipx_address;
+		intrfc		:dword;		//pointer to ipx_interface
+		port		:word;
+		node		:byte[ ipx_node_len ];
+		_type		:word;
+		ipx_ncp_conn:word;
+	endrecord;
+	
+	
+	spx_opt: record
+		state			:dword;
+		sndbuf			:dword;
+		retries			:dword;
+		retransmits		:dword;
+		max_retries		:dword;
+		wd_interval		:dword;
+		owner			:dword;
+		dest_connid		:word;
+		source_connid	:word;
+		sequence		:word;
+		alloc			:word;
+		rmt_ack			:word;
+		rmt_seq			:word;
+		acknowledge		:word;
+		rmt_alloc		:word;
+		dest_addr		:ipx_address;
+		source_addr		:ipx_address;
+		watchdog		:timer_list;
+		retransmit		:timer_list;
+		rcv_queue		:sk_buff_head;
+		transmit_queue	:sk_buff_head;
+		retransmit_queue:sk_buff_head;
+	endrecord;
+		
+	ucred: record
+		pid	:dword;
+		uid	:dword;
+		gid	:dword;
+	endrecord;
+	
+	at_addr: record
+		s_net	:word;
+		s_node	:byte;
+	endrecord;
+	
+	sockaddr_at: record
+		sat_family	:sa_family_t;
+		sat_port	:byte;
+		sat_addr	:at_addr;
+		sat_zero	:byte[8];
+	endrecord;
+	
+	atalk_sock: record
+		dest_net	:word;
+		src_net		:word;
+		dest_node	:byte;
+		src_node	:byte;
+		dest_port	:byte;
+		src_port	:byte;
+	endrecord;
+	
+	dn_naddr: record
+		a_len	:word;
+		a_addr	:char[ dn_maxaddl ];
+	endrecord;
+	
+	sockaddr_dn: record
+		sdn_family	:word;
+		sdn_flags	:byte;
+		sdn_objnum	:byte;
+		sdn_objnamel:word;
+		sdn_objname	:char[ dn_maxobjl ];
+		sdn_add		:dn_naddr;
+	endrecord;
+	
+	accessdata_dn: record
+		acc_accl	:byte;
+		acc_acc		:char[ dn_maxaccl ];
+		acc_passl	:byte;
+		acc_pass	:char[ dn_maxaccl ];
+		acc_userl	:byte;
+		acc_user	:char[ dn_maxaccl ];
+	endrecord;
+	
+	etheraddress: record
+		dne_addr	:char[6];
+		dne_remote	:record
+			dne_hiord		:byte[4];
+			dne_nodeaddr	:byte[2];
+		endrecord;
+	endrecord;
+	
+	dn_addr: record
+		dna_family	:word;
+		dna_netaddr	:etheraddress;
+	endrecord;
+	
+	optdata_dn: record
+		opt_status	:word;
+		opt_optl	:word;
+		opt_data	:byte[16];
+	endrecord;
+	
+	dn_scp: record
+		state			:byte;
+		addrloc			:word;
+		addrrem			:word;
+		numdat			:word;
+		numoth			:word;
+		numoth_rcv		:word;
+		numdat_rcv		:word;
+		ackxmt_dat		:word;
+		ackxmt_oth		:word;
+		ackrcv_dat		:word;
+		ackrcv_oth		:word;
+		flowrem_sw		:byte;
+		flowloc_sw		:byte;
+		flowrem_dat		:word;
+		flowrem_oth		:word;
+		flowloc_dat		:word;
+		flowloc_oth		:word;
+		services_rem	:byte;
+		services_loc	:byte;
+		info_rem		:byte;
+		info_loc		:byte;
+		segsize_rem		:word;
+		segsize_loc		:word;
+		nonagle			:byte;
+		multi_ireq		:byte;
+		accept_mode		:byte;
+		seg_total		:dword;
+		conndata_in		:optdata_dn;
+		conndata_out	:optdata_dn;
+		discdata_in		:optdata_dn;
+		discdata_out	:optdata_dn;
+		accessdata		:accessdata_dn;
+		addr			:sockaddr_dn;
+		peer			:sockaddr_dn;
+		max_window		:dword;
+		snd_window		:dword;
+		nsp_srtt		:dword;
+		nsp_rttvar		:dword;
+		nsp_rxtshift	:dword;
+		data_xmit_queue	:sk_buff_head;
+		other_xmit_queue:sk_buff_head;
+		other_receive_queue	:sk_buff_head;
+		other_report	:dword;
+		stamp			:dword;
+		
+		persist			:dword;
+		persist_fxn		:procedure( sk:dword ); @cdecl;
+		
+		keepalive		:dword;
+		keepalive_fxn	:procedure( sk:dword ); @cdecl;
+		
+		delack_timer	:timer_list;
+		delack_pending	:dword;
+		delack_fxn		:procedure( sk:dword ); @cdecl;
+		
+	endrecord;
+		
+		
+		
+	sock: record
+		daddr			:dword;
+		rcv_saddr		:dword;
+		dport			:word;
+		num				:word;
+		bound_dev_if	:dword;
+		
+		next			:dword;		// pointer to sock.
+		pprev			:dword;		// pointer to pointer to sock.
+		bind_next		:dword;		// pointer to sock.
+		bind_pprev		:dword;		// pointer to pointer to sock.
+		
+		state			:byte;
+		zapped			:byte;
+		sport			:word;
+		family			:word;
+		reuse			:byte;
+		shutdown		:byte;
+		refcnt			:atomic_t;
+		
+		_lock			:socket_lock_t;
+		rcvbuf			:dword;
+		sleep			:dword;		// pointer to wait_queue_head_t
+		dst_cache		:dword;		// pointer to dst_entry.
+		dst_lock		:rwlock_t;
+		rmem_alloc		:atomic_t;
+		receive_queue	:sk_buff_head;
+		wmem_alloc		:atomic_t;
+		write_queue		:sk_buff_head;
+		omem_alloc		:atomic_t;
+		wmem_queued		:dword;
+		forward_alloc	:dword;
+		saddr			:dword;
+		allocation		:dword;
+		sndbuf			:dword;
+		prev			:dword;		// pointer to sock.
+		
+		dead			:byte;
+		done			:byte;
+		urginline		:byte;
+		keepopen		:byte;
+		linger			:byte;
+		destroy			:byte;
+		no_check		:byte;
+		broadcast		:byte;
+		bsdism			:byte;
+		debug			:byte;
+		rcvtstamp		:byte;
+		use_write_queue	:byte;
+		userlocks		:byte;
+		
+		route_caps		:dword;
+		_proc			:dword;
+		lingertime		:dword;
+		hashent			:dword;
+		pair			:dword;	// pointer to sock.
+		
+		backlock: record
+			head	:dword;	// pointer to sk_buff.
+			tail	:dword;	// pointer to sk_buff.
+		endrecord;
+		
+		callback_lock	:rwlock_t;
+		prot			:dword;	// pointer to proto.
+		
+		net_pinfo: union
+			af_inet6	:ipv6_pinfo;
+		endunion;
+		
+		tp_pinfo: union
+			af_tcp	:tcp_opt;
+			tp_raw4	:raw_opt;
+			tp_raw	:raw6_opt;
+			af_spx	:spx_opt;
+		endunion;
+		
+		err				:dword;
+		err_soft		:dword;
+		ack_backlog		:word;
+		max_ack_backlog	:word;
+		priority		:dword;
+		_type			:word;
+		localroute		:byte;
+		protocol		:byte;
+		peercred		:ucred;
+		rcvlowat		:dword;
+		rcvtimeo		:dword;
+		sndtimeo		:dword;
+		
+		filter			:dword;	// pointer to sk_filter.
+		
+		protinfo: union
+			destruct_hook	:dword;
+			af_unix			:unix_opt;
+			af_inet			:inet_opt;
+			af_at			:atalk_sock;
+			af_ipx			:ipx_opt;
+			dn				:dn_scp;
+			af_packet		:dword; //pointer to packet_opt
+			x25				:dword;	//pointer to x25_cb
+			ax25			:dword; //pointer to x25_cb
+			nr				:dword; //pointer to nr_cb
+			rose			:dword; //pointer to rose_cb
+			pppox			:dword; //pointer pppox_opt
+			af_netlink		:dword; //pointer to netlink_opt
+			af_econet		:dword; //pointer to econet_opt
+			af_atm			:dword; //pointer to  atm_vcc
+			irda			:dword; //pointer to irda_sock
+			af_wanpipe		:dword; //pointer to wanpipe_opt
+		endunion;
+		
+		timer				:timer_list;
+		stamp				:timeval;
+		
+		socket				:dword;	//pointer to socket.
+		user_data			:dword;
+		
+		state_change	:procedure( sk:dword ); @cdecl;
+		data_ready		:procedure( sk:dword; bytes:dword ); @cdecl;
+		write_space		:procedure( sk:dword ); @cdecl;
+		error_report	:procedure( sk:dword ); @cdecl;
+		backlog_rcv		:procedure( sk:dword; skb:dword ); @cdecl;
+		destruct		:procedure( sk:dword ); @cdecl;
+		
+	endrecord;
+		
+		
+		
+		
+		
+		
+  	socket_t: record
+  		state		:socket_state;
+  		flags		:dword;
+  		ops			:dword;		// pointer to proto_ops.
+  		inode		:dword;		// pointer to inode.
+		fasync_list	:dword;		// pointer to fasync_struct.
+		file		:dword;		// pointer to file structure.
+		sk			:sock;
+		_wait		:wait_queue_head_t;
+		_type		:word;
+		passcred	:byte;
+	endrecord;
+	
+	sockaddr: record
+		sa_family	:sa_family_t;
+		sa_data		:char[14];
+	endrecord;
+	
+	sockaddr_in: record 
+		sa_family	:sa_family_t;
+		sin_port	:word;
+		sin_addr	:dword;
+	endrecord;
+	
+	hostent	:record
+	
+		h_name		:zstring;
+		h_aliases	:dword;
+		h_addrtype	:dword;
+		h_length	:dword;
+		h_addr_list	:dword;
+		
+	endrecord;
+	
+	
+
+		
+
+	
+
+end linux;
+#endif //socket_hhf
+
+namespace linux; //@fast;
+
+const
+
+	// Constants for the nfsctl calls:
+	
+	nfsctl_svc			:= 0;
+	nfsctl_addclient	:= 1;
+	nfsctl_delclient	:= 2;
+	nfsctl_export		:= 3;
+	nfsctl_unexport		:= 4;
+	nfsctl_ugidupdate	:= 5;
+	nfsctl_getfh		:= 6;
+	
+  // Linux system call opcodes:
+		
+	sys_exit				:= 1;
+	sys_fork				:= 2;
+	sys_read				:= 3;
+	sys_write				:= 4;
+	sys_open				:= 5;
+	sys_close				:= 6;
+	sys_waitpid				:= 7;
+	sys_creat				:= 8;
+	sys_link				:= 9;
+	sys_unlink				:= 10;
+	sys_execve				:= 11;
+	sys_chdir				:= 12;
+	sys_time				:= 13;
+	sys_mknod				:= 14;
+	sys_chmod				:= 15;
+	sys_lchown				:= 16;
+	old_stat				:= 18;
+	sys_lseek				:= 19;
+	sys_getpid				:= 20;
+	sys_mount				:= 21;
+	sys_oldmount			:= 22;
+	sys_setuid				:= 23;
+	sys_getuid				:= 24;
+	sys_stime				:= 25;
+	sys_ptrace				:= 26;
+	sys_alarm				:= 27;
+	old_fstat				:= 28;
+	sys_pause				:= 29;
+	sys_utime				:= 30;
+	sys_access				:= 33;
+	sys_nice				:= 34;
+	sys_sync				:= 36;
+	sys_kill				:= 37;
+	sys_rename				:= 38;
+	sys_mkdir				:= 39;
+	sys_rmdir				:= 40;
+	sys_dup					:= 41;
+	sys_pipe				:= 42;
+	sys_times				:= 43;
+	sys_brk					:= 45;
+	sys_setgid				:= 46;
+	sys_getgid				:= 47;
+	sys_signal				:= 48;
+	sys_geteuid				:= 49;
+	sys_getegid				:= 50;
+	sys_acct				:= 51;
+	sys_umount				:= 52;
+	sys_ioctl				:= 54;
+	sys_fcntl				:= 55;
+	sys_setpgid				:= 57;
+	sys_olduname			:= 59;
+	sys_umask				:= 60;
+	sys_chroot				:= 61;
+	sys_ustat				:= 62;
+	sys_dup2				:= 63;
+	sys_getppid				:= 64;
+	sys_getpgrp				:= 65;
+	sys_setsid				:= 66;
+	sys_sigaction			:= 67;
+	sys_sgetmask			:= 68;
+	sys_ssetmask			:= 69;
+	sys_setreuid			:= 70;
+	sys_setregid			:= 71;
+	sys_sigsuspend			:= 72;
+	sys_sigpending			:= 73;
+	sys_sethostname			:= 74;
+	sys_setrlimit			:= 75;
+	sys_getrlimit			:= 76;
+	sys_getrusage			:= 77;
+	sys_gettimeofday		:= 78;
+	sys_settimeofday		:= 79;
+	sys_getgroups			:= 80;
+	sys_setgroups			:= 81;
+	sys_old_select			:= 82;
+	sys_symlink				:= 83;
+	old_lstat				:= 84;
+	sys_readlink			:= 85;
+	sys_uselib				:= 86;
+	sys_swapon				:= 87;
+	sys_reboot				:= 88;
+	old_readdir				:= 89;
+	sys_mmap				:= 90;
+	sys_munmap				:= 91;
+	sys_truncate			:= 92;
+	sys_ftruncate			:= 93;
+	sys_fchmod				:= 94;
+	sys_fchown				:= 95;
+	sys_getpriority			:= 96;
+	sys_setpriority			:= 97;
+	sys_statfs				:= 98;
+	sys_fstatfs				:= 100;
+	sys_ioperm				:= 101;
+	sys_socketcall			:= 102;
+
+
+	sys_syslog				:= 103;
+	sys_setitimer			:= 104;
+	sys_getitimer			:= 105;
+	sys_stat				:= 106;
+	sys_lstat				:= 107;
+	sys_fstat				:= 108;
+	old_uname				:= 109;
+	sys_iopl				:= 110;
+	sys_vhangup				:= 111;
+	sys_idle				:= 112;
+	sys_vm86old				:= 113;
+	sys_wait4				:= 114;
+	sys_swapoff				:= 115;
+	sys_sysinfo				:= 116;
+	sys_ipc					:= 117;
+	sys_fsync				:= 118;
+	sys_sigreturn			:= 119;
+	sys_clone				:= 120;
+	sys_setdomainname 		:= 121;
+	sys_uname				:= 122;
+	sys_modify_ldt			:= 123;
+	sys_adjtimex			:= 124;
+	sys_mprotect			:= 125;
+	sys_sigprocmask			:= 126;
+	sys_create_module 		:= 127;
+	sys_init_module			:= 128;
+	sys_delete_module 		:= 129;
+	sys_get_kernel_syms 	:= 130;
+	sys_quotactl			:= 131;
+	sys_getpgid				:= 132;
+	sys_fchdir				:= 133;
+	sys_bdflush				:= 134;
+	sys_sysfs				:= 135;
+	sys_personality			:= 136;
+	sys_setfsuid			:= 138;
+	sys_setfsgid			:= 139;
+	sys_llseek				:= 140;
+	sys_getdents			:= 141;
+	sys_select				:= 142;
+	sys_flock				:= 143;
+	sys_msync				:= 144;
+	sys_readv				:= 145;
+	sys_writev				:= 146;
+	sys_getsid				:= 147;
+	sys_fdatasync			:= 148;
+	sys_sysctl				:= 149;
+	sys_mlock				:= 150;
+	sys_munlock				:= 151;
+	sys_mlockall			:= 152;
+	sys_munlockall			:= 153;
+	sys_sched_setparam 		:= 154;
+	sys_sched_getparam 		:= 155;
+	sys_sched_setscheduler 	:= 156;
+	sys_sched_getscheduler 	:= 157;
+	sys_sched_yield	:= 158;
+	sys_sched_get_priority_max := 159;
+	sys_sched_get_priority_min := 160;
+	sys_sched_rr_get_interval := 161;
+	sys_nanosleep			:= 162;
+	sys_mremap				:= 163;
+	sys_setresuid			:= 164;
+	sys_getresuid			:= 165;
+	sys_vm86				:= 166;
+	sys_query_module		:= 167;
+	sys_poll				:= 168;
+	sys_nfsservctl			:= 169;
+	sys_setresgid			:= 170;
+	sys_getresgid			:= 171;
+	sys_prctl				:= 172;
+	sys_rt_sigreturn		:= 173;
+	sys_rt_sigaction		:= 174;
+	sys_rt_sigprocmask 		:= 175;
+	sys_rt_sigpending  		:= 176;
+	sys_rt_sigtimedwait		:= 177;
+	sys_rt_sigqueueinfo		:= 178;
+	sys_rt_sigsuspend  		:= 179;
+	sys_pread64				:= 180;
+	sys_pwrite64			:= 181;
+	sys_chown				:= 182;
+	sys_getcwd				:= 183;
+	sys_capget				:= 184;
+	sys_capset				:= 185;
+	sys_sigaltstack			:= 186;
+	sys_sendfile			:= 187;
+	sys_vfork				:= 190;
+	sys_ugetrlimit			:= 191;
+	sys_mmap2				:= 192;
+	sys_truncate64			:= 193;
+	sys_ftruncate64			:= 194;
+	sys_stat64				:= 195;
+	sys_lstat64				:= 196;
+	sys_fstat64				:= 197;
+	sys_lchown32			:= 198;
+	sys_getuid32			:= 199;
+	sys_getgid32			:= 200;
+	sys_geteuid32			:= 201;
+	sys_getegid32			:= 202;
+	sys_setreuid32			:= 203;
+	sys_setregid32			:= 204;
+	sys_getgroups32			:= 205;
+	sys_setgroups32			:= 206;
+	sys_fchown32			:= 207;
+	sys_setresuid32			:= 208;
+	sys_getresuid32			:= 209;
+	sys_setresgid32			:= 210;
+	sys_getresgid32			:= 211;
+	sys_chown32				:= 212;
+	sys_setuid32			:= 213;
+	sys_setgid32			:= 214;
+	sys_setfsuid32			:= 215;
+	sys_setfsgid32			:= 216;
+	sys_pivot_root			:= 217;
+	sys_mincore				:= 218;
+	sys_madvise				:= 219;
+	sys_getdents64			:= 220;
+	sys_fcntl64				:= 221;
+	// 222 is unused
+	// 223 is unused
+	sys_gettid				:= 224;
+	sys_readahead			:= 225;
+	sys_setxattr			:= 226;
+	sys_lsetxattr			:= 227;
+	sys_fsetxattr			:= 228;
+	sys_getxattr			:= 229;
+	sys_lgetxattr			:= 230;
+	sys_fgetxattr			:= 231;
+	sys_listxattr			:= 232;
+	sys_llistxattr			:= 233;
+	sys_flistxattr			:= 234;
+	sys_removexattr			:= 235;
+	sys_lremovexattr		:= 236;
+	sys_fremovexattr		:= 237;
+	sys_tkill				:= 238;
+	sys_sendfile64			:= 239;
+	sys_futex				:= 240;
+	sys_sched_setaffinity	:= 241;
+	sys_sched_getaffinity	:= 242;
+	sys_set_thread_area		:= 243;
+	sys_get_thread_area		:= 244;
+	sys_io_setup			:= 245;
+	sys_io_destroy			:= 246;
+	sys_io_getevents		:= 247;
+	sys_io_submit			:= 248;
+	sys_io_cancel			:= 249;
+	sys_fadvise64			:= 250;
+	// 251 is unused
+	sys_exit_group			:= 252;
+	sys_lookup_dcookie		:= 253;
+	sys_epoll_create		:= 254;
+	sys_epoll_ctl			:= 255;
+	sys_epoll_wait			:= 256;
+	sys_remap_file_pages	:= 257;
+	sys_set_tid_address		:= 258;
+	sys_timer_create		:= 259;
+	sys_timer_settime		:= 260;
+	sys_timer_gettime		:= 261;
+	sys_timer_getoverrun	:= 262;
+	sys_timer_delete		:= 263;
+	sys_clock_settime		:= 264;
+	sys_clock_gettime		:= 265;
+	sys_clock_getres		:= 266;
+	sys_clock_nanosleep		:= 267;
+	sys_statfs64			:= 268;
+	sys_fstatfs64			:= 269;
+	sys_tgkill				:= 270;
+	sys_utimes				:= 271;
+	sys_fadvise64_64		:= 272;
+	sys_vserver				:= 273;
+	sys_mbind				:= 274;
+	sys_get_mempolicy		:= 275;
+	sys_set_mempolicy		:= 276;
+	sys_mq_open				:= 277;
+	sys_mq_unlinke			:= 278;
+	sys_mq_timedsend		:= 279;
+	sys_mq_timedreceive		:= 280;
+	sys_mq_notify			:= 281;
+	sys_mq_getsetattr		:= 282;
+	sys_kexec_load			:= 283;
+	sys_waitid				:= 284;
+	// 285 is setaltroot?
+	sys_add_key				:= 285;
+	sys_request_key			:= 286;
+	sys_keyctl				:= 288;
+	
+	NR_SYSCALLS				:= 289;
+	
+
+	// Prototypes for various Linux calls.
+	// Note that we don't allow kernel modules (those
+	// that have defined "__kernel__" access to these symbols.
+	
+	procedure _exit( status:int32 ); 
+		external( "linux_status" );
+		
+	procedure fork; 	
+		@returns( "eax" ); 
+		external( "linux_fork" );
+		
+	procedure read( fd:dword; var buf:var; count:size_t );
+		@returns( "eax" );
+		external( "linux_read" );
+		 
+	procedure write( fd:dword; var buf:var; count:size_t );
+		@returns( "eax" );
+		external( "linux_write" );
+		
+	procedure open( filename:string; flags:dword; mode:mode_t );
+		@returns( "eax" );
+		external( "linux_open" );
+		
+	procedure close( fd:dword );
+		@returns( "eax" );
+		external( "linux_close" );
+		
+	procedure waitpid( pid:pid_t; var stat_addr:dword; options:dword );
+		@returns( "eax" );
+		external( "linux_waitpid" );
+		
+	procedure creat( pathname:string; mode:mode_t );
+		@returns( "eax" );
+		external( "linux_creat" );
+		
+	procedure link( oldname:string; newname:string );
+		@returns( "eax" );
+		external( "linux_link" );
+		
+	procedure unlink( pathname:string );
+		@returns( "eax" );
+		external( "linux_unlink" );
+		
+	procedure execve( filename:string; var argv:var; var envp:var );
+		@returns( "eax" );
+		external( "linux_execve" );
+		
+	procedure chdir( filename:string );
+		@returns( "eax" );
+		external( "linux_chdir" );
+		
+	procedure time( var tloc:dword );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_time" );
+		
+	procedure mknod( filename:string; mode:dword; dev:dev_t );
+		@returns( "eax" );
+		external( "linux_mknod" );
+		
+	procedure chmod( filename:string; mode:mode_t );
+		@returns( "eax" );
+		external( "linux_chmod" );
+		
+	procedure lchown( filename:string; user:uid_t; group:gid_t );
+		@returns( "eax" );
+		external( "linux_lchown" );
+		
+	procedure _break;
+		@returns( "eax" );
+		external( "linux_break" );
+		
+	procedure lseek( fd:dword; offset:off_t; origin:dword );
+		@returns( "eax" );
+		external( "linux_lseek" );
+				
+	procedure getpid;
+		@returns( "eax" );
+		external( "linux_getpid" );
+		
+	procedure mount
+	( 
+			dev_name	:string; 
+			dir_name	:string; 
+			theType		:string; 
+			new_flags	:dword; 
+		var data		:var 
+	);
+		@use eax;
+		@returns( "eax" );
+		external( "linux_mount" );
+		
+				
+	procedure setuid( uid:uid_t );
+		@returns( "eax" );
+		external( "linux_setuid" );
+		
+	procedure getuid;
+		@returns( "eax" );
+		external( "linux_getuid" );
+		
+	procedure stime( var tptr:int32 );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_stime" );
+				
+	procedure ptrace( request:dword; pid:dword; addr:dword; data:dword );
+		@returns( "eax" );
+		external( "linux_ptrace" );
+		
+	procedure alarm( seconds:uns32 );
+		@returns( "eax" );
+		external( "linux_alarm" );
+		
+	procedure _pause;
+		@returns( "eax" );
+		external( "linux_pause" );
+		
+	procedure utime( filename:string; var times: utimbuf );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_utime" );
+		
+	procedure access( pathname:string; mode:int32 );
+		@returns( "eax" );
+		external( "linux_access" );
+		
+	procedure nice( increment: int32 );
+		@returns( "eax" );
+		external( "linux_nice" );
+		
+	procedure sync;
+		@returns( "eax" );
+		external( "linux_sync" );
+		
+	procedure kill( pid:pid_t; sig:int32 );
+		@returns( "eax" );
+		external( "linux_kill" );
+		
+	procedure rename( oldpath:string; newpath:string );
+		@returns( "eax" );
+		external( "linux_rename" );
+		
+	procedure mkdir( pathname:string; mode:int32 );
+		@returns( "eax" );
+		external( "linux_mkdir" );
+		
+	procedure rmdir( pathname:string );
+		@returns( "eax" );
+		external( "linux_rmdir" );
+	
+	procedure dupfd( oldfd:dword );
+		@returns( "eax" );
+		external( "linux_dup" );
+		
+	procedure pipe( fd:dword );
+		@returns( "eax" );
+		external( "linux_pipe" );
+		
+	procedure times( var buf:tms );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_times" );
+		
+	procedure brk( end_data_segment:dword );
+		@returns( "eax" );
+		external( "linux_brk" );
+		
+	procedure setgid( gid:gid_t );
+		@returns( "eax" );
+		external( "linux_setgid" );
+		
+	procedure getgid;
+		@returns( "eax" );
+		external( "linux_getgid" );
+		
+	procedure signal( signum:int32; sighandler:procedure( signum:int32) );
+		@returns( "eax" );
+		external( "linux_signal" );
+		
+	procedure geteuid;
+		@returns( "eax" );
+		external( "linux_geteuid" );
+		
+	procedure getegid;
+		@returns( "eax" );
+		external( "linux_getegid" );
+		
+	procedure acct( filename: string );
+		@returns( "eax" );
+		external( "linux_acct" );
+		
+	procedure umount
+	( 
+			specialfile		:string; 
+			dir				:string; 
+			filesystemtype	:string; 
+			mountflags		:dword; 
+		var data			:var
+	);
+		@use eax;
+		@returns( "eax" );
+		external( "linux_umount" );
+		
+	procedure ioctl2( d:int32;  request:int32 );
+		@returns( "eax" );
+		external( "linux_ioctl2" );
+		
+	procedure ioctl3( d:int32;  request:int32; argp:string );
+		@returns( "eax" );
+		external( "linux_ioctl3" );
+		
+	#macro ioctl( d, request, argp[] );
+	
+		#if( @elements( argp ) = 0 )
+		
+			linux.ioctl2( d, request )
+			
+		#else
+		
+			linux.ioctl3( d, request, @text( argp[0] ))
+			
+		#endif
+		
+	#endmacro
+	
+	procedure fcntl2( fd:dword; cmd:dword );
+		@returns( "eax" );
+		external( "linux_fcntl2" );
+		
+	procedure fcntl3( fd:dword; cmd:dword; arg:dword );
+		@returns( "eax" );
+		external( "linux_fcntl3" );
+		
+	#macro fcntl( fd, cmd, arg[] );
+	
+		#if( @elements( arg ) = 0 )
+		
+			fcntl2( fd, cmd )
+			
+		#else
+		
+			fcntl3( fd, cmd, @text( arg[0] ))
+			
+		#endif
+		
+	#endmacro
+	
+		
+	procedure setpgid( pid:pid_t; pgid:pid_t );
+		@returns( "eax" );
+		external( "linux_setpgid" );
+		
+	procedure umask( mask:mode_t );
+		@returns( "eax" );
+		external( "linux_umask" );
+		
+	procedure chroot( path:string );
+		@returns( "eax" );
+		external( "linux_chroot" );
+
+	procedure dup2( oldfd:dword; newfd:dword );
+		@returns( "eax" );
+		external( "linux_dup2" );
+	
+	procedure getppid;
+		@returns( "eax" );
+		external( "linux_getppid" );
+		
+	procedure getpgrp;
+		@returns( "eax" );
+		external( "linux_getpgrp" );
+	
+	procedure setsid;
+		@returns( "eax" );
+		external( "linux_setsid" );
+	
+	procedure sigaction
+	( 
+			signum		:int32; 
+		var	act			:sigaction_t; 
+		var oldaction	:sigaction_t 
+	);
+		@returns( "eax" );
+		external( "linux_sigaction" );
+		
+	procedure sgetmask;
+		@returns( "eax" );
+		external( "linux_sgetmask" );
+		
+	procedure ssetmask( mask:dword );
+		@returns( "eax" );
+		external( "linux_ssetmask" );
+	
+	procedure setreuid( ruid:uid_t; euid:uid_t );
+		@returns( "eax" );
+		external( "linux_setreuid" );
+		
+	procedure setregid( rgid:gid_t; egid:gid_t );
+		@returns( "eax" );
+		external( "linux_setregid" );
+	
+	procedure sigsuspend( var mask:sigset_t );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_sigsuspend" );
+	
+	procedure sigpending( var set:sigset_t );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_sigpending" );
+	
+	procedure sethostname( theName:string; len:size_t );
+		@returns( "eax" );
+		external( "linux_sethostname" );
+	
+	procedure setrlimit( resource:dword; var rlim:rlimit );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_setrlimit" );
+	
+	procedure getrlimit( resource:dword; var rlim:rlimit );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_getrlimit" );
+	
+	procedure getrusage( who:dword; var usage:rusage_t );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_getrusage" );
+	
+	procedure gettimeofday( var tv:timeval; var tz:timezone );
+		@returns( "eax" );
+		external( "linux_gettimeofday" );
+	
+	procedure settimeofday( var tv:timeval; var tz:timezone );
+		@returns( "eax" );
+		external( "linux_settimeofday" );
+	
+	procedure getgroups( size:dword; var list:var );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_getgroups" );
+		
+	procedure setgroups( size:size_t; var list:var );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_setgroups" );
+	
+	procedure symlink( oldpath:string; newpath:string );
+		@returns( "eax" );
+		external( "linux_symlink" );
+	
+	procedure readlink( path:string; var buf:var; bufsize:size_t );
+		@returns( "eax" );
+		external( "linux_readlink" );
+	
+	procedure uselib( library:string );
+		@returns( "eax" );
+		external( "linux_uselib" );
+	
+	procedure swapon( path:string; swapflags:dword );
+		@returns( "eax" );
+		external( "linux_swapon" );
+	
+	procedure reboot( magic:dword; magic2:dword; flag:dword; var arg:var );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_reboot" );
+		
+	procedure mmap
+	( 
+		start:dword; 
+		length:size_t; 
+		prot:int32; 
+		flags:dword; 
+		fd:dword; 
+		offset:off_t
+	);
+		@stdcall;			// Must be stdcall (6 parameters)!
+		@returns( "eax" );
+		external( "linux_mmap" );
+		
+	procedure munmap( start:dword; length:size_t );
+		@returns( "eax" );
+		external( "linux_munmap" );
+		
+	procedure truncate( path:string; length:loff_t );
+		@returns( "eax" );
+		external( "linux_truncate" );
+	
+	procedure ftruncate( fd:dword; length:loff_t );
+		@returns( "eax" );
+		external( "linux_ftruncate" );
+	
+	procedure fchmod( fd:dword; mode:mode_t );
+		@returns( "eax" );
+		external( "linux_fchmod" );
+	
+	procedure fchown( fd:dword; owner:uid_t; group:gid_t );
+		@returns( "eax" );
+		external( "linux_fchown" );
+		
+	procedure getpriority( which:dword; who:dword );
+		@returns( "eax" );
+		external( "linux_getpriority" );
+	
+	procedure setpriority( which:dword; who:dword );
+		@returns( "eax" );
+		external( "linux_setpriority" );
+		
+	procedure ioperm( from:dword; num:dword; turn_on:int32 );
+		@returns( "eax" );
+		external( "linux_ioperm" );
+		
+	procedure socketcall( callop:dword; var args:var );
+		@returns( "eax" );
+		external( "linux_socketcall" );
+		
+	procedure syslog( theType:dword; var bufp:var; len:dword );
+		@returns( "eax" );
+		external( "linux_syslog" );
+		
+	procedure setitimer
+	( 
+			which:dword;
+		var	ivalue:itimerval; 
+		var ovalue:itimerval 
+	);
+		@returns( "eax" );
+		external( "linux_setitimer" );
+	
+	procedure getitimer( which:dword; var theValue:itimerval );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_getitimer" );
+	
+	procedure stat( filename:string; var buf:stat64_t );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_stat" );
+	
+	procedure fstat( fd:dword; var buf:stat64_t );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_fstat" );
+	
+	procedure lstat( filename:string; var buf:stat64_t );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_lstat" );
+	
+	procedure uname( var buf:utsname );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_uname" );
+	
+	procedure iopl( level:dword );
+		@returns( "eax" );
+		external( "linux_iopl" );
+	
+	procedure vhangup;
+		@returns( "eax" );
+		external( "linux_vhangup" );
+		
+	procedure idle;
+		@returns( "eax" );
+		external( "linux_idle" );
+	
+	procedure wait4
+	( 
+			pid		:pid_t; 
+			status	:dword; 
+			options	:dword; 
+		var rusage	:rusage_t 
+	);
+		@use eax;
+		@returns( "eax" );
+		external( "linux_wait4" );
+		
+	procedure swapoff( path:string );
+		@returns( "eax" );
+		external( "linux_swapoff" );
+	
+	procedure sysinfo( var info:sysinfo_t );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_sysinfo" );
+	
+	procedure ipc
+	( 
+			theCall	:dword;
+			first	:dword;
+			second	:dword;
+			third	:dword;
+		var	ptr		:var;
+			fifth	:dword 
+	);
+		@returns( "eax" );
+		external( "linux_ipc" );
+	
+	
+	procedure fsync( fd:dword );
+		@returns( "eax" );
+		external( "linux_fsync" );
+	
+	procedure sigreturn( unused:dword );
+		@returns( "eax" );
+		external( "linux_sigreturn" );
+		
+	type clonefn_t:procedure(var p:var );
+	procedure clone
+	( 
+			fn			:clonefn_t; 
+		var	child_stack	:var; 
+			flags		:dword; 
+			arg			:dword 
+	);
+		@returns( "eax" );
+		external( "linux_clone" );
+	
+	procedure sysclone
+	( 
+		var	child_stack	:var; 
+			flags		:dword 
+	);
+		@returns( "eax" );
+		external( "linux_sysclone" );
+	
+	procedure setdomainname( domainName:string; len:size_t );
+		@returns( "eax" );
+		external( "linux_setdomainname" );
+		
+	procedure modify_ldt( func:dword; var ptr:var; bytecount:dword );
+		@returns( "eax" );
+		external( "linux_modify_ldt" );
+	
+	procedure adjtimex( var buf:timex );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_adjtimex" );
+	
+	procedure mprotect( var addr:var; len:size_t; prot:dword );
+		@returns( "eax" );
+		external( "linux_mprotect" );
+		
+	procedure sigprocmask
+	(
+			how		:dword;
+		var	set		:sigset_t;
+		var	oldset	:sigset_t  
+	);
+		@returns( "eax" );
+		external( "linux_sigprocmask" );
+	
+	procedure quotactl( cmd:dword; special:string; id:dword; addr:caddr_t );
+		@returns( "eax" );
+		external( "linux_quotactl" );
+	
+	procedure getpgid( pid:pid_t );
+		@returns( "eax" );
+		external( "linux_getpgid" );
+	
+	procedure fchdir( fd:dword );
+		@returns( "eax" );
+		external( "linux_fchdir" );
+	
+	procedure bdflush( func:dword; address:dword );
+		@returns( "eax" );
+		external( "linux_bdflush" );
+	
+	procedure sysfs1( option:dword );
+		@returns( "eax" );
+		external( "linux_sysfs1" );
+	
+	procedure sysfs2( option:dword; fsname:string );
+		@returns( "eax" );
+		external( "linux_sysfs2" );
+	
+	procedure sysfs3( option:dword; fs_index:dword; var buf:var );
+		@returns( "eax" );
+		external( "linux_sysfs3" );
+	
+	#macro sysfs( option, args[] );
+	
+		#if( @elements( args ) = 0 )
+		
+			linux.sysfs1( option )
+			
+		#elseif( @elements( args ) = 1 )
+		
+			linux.sysfs2( option, @text( args[0] ) )
+			
+		#else
+		
+			linux.sysfs3
+			( 
+				option, 
+				@text( args[0] ), 
+				@text( args[1] )
+			)
+			
+		#endif
+		
+	#endmacro
+
+	procedure personality( persona:dword );
+		@returns( "eax" );
+		external( "linux_personality" );
+	
+	procedure setfsuid( fsuid:uid_t );
+		@returns( "eax" );
+		external( "linux_setfsuid" );
+	
+	procedure setfsgid( fsgid:gid_t );
+		@returns( "eax" );
+		external( "linux_setfsgid" );
+	
+	procedure llseek
+	( 
+			fd:dword; 
+			offset_high:dword; 
+			offset_low:dword; 
+		var	theResult:loff_t; 
+			whence:dword 
+	);
+		@returns( "eax" );
+		external( "linux_llseek" );
+	
+	procedure getdents( fd:dword; var dirp:dirent64; count:int32 );
+		@returns( "eax" );
+		external( "linux_getdents" );
+	
+	
+	procedure flock( fd:dword; operation:int32 );
+		@returns( "eax" );
+		external( "linux_flock" );
+		
+	procedure msync( start:dword; length:size_t; flags:dword );
+		@returns( "eax" );
+		external( "linux_msync" );
+	
+	procedure readv( fd:dword; var vector:var; count:int32 );
+		@returns( "eax" );
+		external( "linux_readv" );
+	
+	procedure writev( fd:dword; var vector:var; count:int32 );
+		@returns( "eax" );
+		external( "linux_writev" );
+	
+	procedure getsid( pid:pid_t );
+		@returns( "eax" );
+		external( "linux_getsid" );
+		
+	procedure fdatasync( fd:dword );
+		@returns( "eax" );
+		external( "linux_fdatasync" );
+		
+	procedure sysctl( var args:__sysctl_args );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_sysctl" );
+	
+	procedure mlock( addr:dword; len:size_t );
+		@returns( "eax" );
+		external( "linux_mlock" );
+	
+	procedure munlock( addr:dword; len:size_t );
+		@returns( "eax" );
+		external( "linux_munlock" );
+	
+	procedure mlockall( flags:dword );
+		@returns( "eax" );
+		external( "linux_mlockall" );
+	
+	procedure munlockall;
+		@returns( "eax" );
+		external( "linux_munlockall" );
+	
+	procedure sched_setparam( pid:pid_t; var p:sched_param_t );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_sched_setparam" );
+		
+	procedure sched_getparam( pid:pid_t; var p:sched_param_t );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_sched_getparam" );
+	
+	procedure sched_setscheduler( pid:pid_t; policy:dword; var p:sched_param_t );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_sched_setscheduler" );
+	
+	
+	procedure sched_getscheduler( pid:pid_t );
+		@returns( "eax" );
+		external( "linux_sched_getscheduler" );
+	
+	
+	procedure sched_yield;
+		@returns( "eax" );
+		external( "linux_yield" );
+	
+	procedure sched_get_priority_max( policy:dword );
+		@returns( "eax" );
+		external( "linux_sched_get_priority_max" );
+	
+	
+	procedure sched_get_priority_min( policy:dword );
+		@returns( "eax" );
+		external( "linux_sched_get_priority_min" );
+	
+	
+	procedure sched_rr_get_interval( pid:pid_t; var tp:timespec );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_sched_rr_get_interval" );
+	
+	procedure nanosleep( var req:timespec; var rem:timespec );
+		@returns( "eax" );
+		external( "linux_nanosleep" );
+		
+	procedure mremap
+	( 
+		old_address	:dword; 
+		old_size	:size_t;
+		new_size	:size_t;
+		flags		:dword
+	);
+		@returns( "eax" );
+		external( "linux_mremap" );
+		
+	procedure setresuid( ruid:uid_t; euid:uid_t; suid:uid_t );
+		@returns( "eax" );
+		external( "linux_setresuid" );
+	
+	procedure setresgid( rgid:gid_t; egid:gid_t; sgid:gid_t );
+		@returns( "eax" );
+		external( "linux_setresgid" );
+	
+	procedure getresuid
+	(
+		var	ruid	:uid_t;
+		var	euid	:uid_t;
+		var	suid	:uid_t
+	);
+		@returns( "eax" );
+		external( "linux_getresuid" );
+	
+	
+	procedure getresgid
+	(
+		var	rgid	:gid_t;
+		var	egid	:gid_t;
+		var	sgid	:gid_t
+	);
+		@returns( "eax" );
+		external( "linux_getresgid" );
+	
+	
+	procedure query_module
+	( 
+			theName	:string; 
+			which	:dword; 
+		var	buf		:var;
+			bufsize	:size_t;
+		var	retval	:size_t
+	);
+		@returns( "eax" );
+		external( "linux_query_module" );
+	
+	procedure vm86( fn:dword; var vm86pss:vm86plus_struct );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_vm86" );
+
+	procedure poll( var ufds:pollfd; nfds:dword; timeout:dword );
+		@returns( "eax" );
+		external( "linux_poll" );
+		
+	
+	procedure prctl
+	(
+		option	:dword;
+		arg2	:dword;
+		arg3	:dword;
+		arg4	:dword;
+		arg5	:dword
+	);
+		@returns( "eax" );
+		external( "linux_prctl" );
+	
+	
+	procedure pread
+	(
+			fd		:dword;
+		var	buf		:var;
+			count	:size_t;
+			offset	:loff_t
+	);
+		@returns( "eax" );
+		external( "linux_pread" );
+	
+		
+	procedure pwrite
+	( 
+			fd		:dword;
+		var	buf		:var;
+			count	:size_t;
+			offset	:loff_t 
+	);
+		@returns( "eax" );
+		external( "linux_pwrite" );
+	
+	
+	procedure chown( path:string; owner:uid_t; group:gid_t );
+		@returns( "eax" );
+		external( "linux_chown" );
+	
+	
+	procedure getcwd( var buf:var; maxlen:size_t );
+		@returns( "eax" );
+		external( "linux_getcwd" );
+	
+	procedure sigaltstack
+	( 
+		var sss:stack_t; 
+		var oss:stack_t  
+	);
+		@returns( "eax" );
+		external( "linux_sigaltstack" );
+	
+	procedure sendfile
+	( 
+			out_fd	:dword; 
+			in_fd	:dword; 
+		var offset	:off_t; 
+			count	:size_t  
+	);
+		@returns( "eax" );
+		external( "linux_sendfile" );
+	
+	
+	procedure vfork;
+		@returns( "eax" );
+		external( "linux_vfork" );
+	
+	
+	procedure semop
+	( 
+			semid	:dword; 
+		var sops	:sembuf; 
+			nsops	:dword 
+	);
+		@returns( "eax" );
+		external( "linux_semop" );
+	
+	
+	procedure semctl
+	(
+		semid:dword; 
+		semnum:int32; 
+		cmd:dword; 
+		arg:semun 
+	);
+		@returns( "eax" );
+		external( "linux_semctl" );
+	
+	procedure semget( key:key_t; nsyms:int32; semflg:dword );
+		@returns( "eax" );
+		external( "linux_semget" );
+		
+		
+	procedure msgrcv
+	(
+			msgid	:dword; 
+		var	msgp	:msgbuf; 
+			msgsz	:size_t; 
+			msgtyp	:dword;
+			msgflg	:dword
+	);
+		@returns( "eax" );
+		external( "linux_msgrcv" );
+		
+		
+	procedure msgsnd
+	(
+			msgid	:dword; 
+		var	msgp	:msgbuf; 
+			msgsz	:size_t; 
+			msgflag	:dword 
+	);
+		@returns( "eax" );
+		external( "linux_msgsnd" );
+
+
+	procedure msgctl
+	(
+			msqid	:dword; 
+			cmd		:dword;
+		var	buf		:msqid_ds
+	);
+		@returns( "eax" );
+		external( "linux_msgctl" );
+
+
+	procedure msgget
+	(
+			key		:key_t; 
+			msgflg	:dword
+	);
+		@returns( "eax" );
+		external( "linux_msgget" );
+
+
+	procedure shmat
+	(
+			shmid	:dword;
+			shmaddr	:dword; 
+			shmflg	:dword
+	);
+		@returns( "eax" );
+		external( "linux_shmat" );
+
+	procedure shmctl
+	(
+			shmid	:dword;
+			cmd		:dword;
+		var	buf		:shmid_ds
+	);
+		@returns( "eax" );
+		external( "linux_shmctl" );
+
+	
+	procedure shmdt
+	(
+			shmaddr	:dword
+	);
+		@returns( "eax" );
+		external( "linux_shmdt" );
+
+	procedure shmget
+	(
+			key		:key_t;
+			size	:dword;
+			shmflg	:dword
+	);
+		@returns( "eax" );
+		external( "linux_shmget" );
+		
+	procedure accept
+	( 
+			s		:dword; 
+		var	addr	:sockaddr; 
+		var	addrlen	:socklen_t 
+	);
+		@stdcall;
+		@returns( "eax" );
+		external( "linux_accept" );
+		
+	procedure bind
+	( 
+			sockfd	:dword; 
+		var	addr	:sockaddr; 
+			addrlen	:socklen_t 
+	);
+		@stdcall;
+		@returns( "eax" );
+		external( "linux_bind" );
+		
+	procedure connect
+	( 
+			sockfd		:dword; 
+		var	serv_addr	:sockaddr; 
+			addrlen		:socklen_t 
+	);
+		@stdcall;
+		@returns( "eax" );
+		external( "linux_connect" );
+		
+		
+		
+	procedure gethostbyaddr( var addr:var; len:dword; _type:dword );
+		@returns( "eax" );
+		external( "linux_gethostbyaddr" );
+		
+	procedure gethostbyname( s:string );
+		@returns( "eax" );
+		external( "linux_gethostbyname" );
+		
+		
+	procedure gethostname( var buf:var; len:dword );
+		@returns( "eax" );
+		external( "linux_gethostname" );
+		
+		
+		
+	procedure getpeername
+	( 
+			s		:dword; 
+		var	_name	:sockaddr; 
+		var	namelen	:socklen_t 
+	);
+		@stdcall;
+		@returns( "eax" );
+		external( "linux_getpeername" );
+		
+		
+	procedure getsockname
+	( 
+			s		:dword; 
+		var	_name	:sockaddr; 
+		var	namelen	:socklen_t 
+	);
+		@stdcall;
+		@returns( "eax" );
+		external( "linux_getsockname" );
+		
+	procedure getsockopt
+	( 
+			s		:dword; 
+			level	:dword;
+			optname	:dword;
+		var	optval	:var;
+		var	optlen	:socklen_t 
+	);
+		@stdcall;
+		@returns( "eax" );
+		external( "linux_getsockopt" );
+		
+	procedure setsockopt
+	( 
+			s		:dword; 
+			level	:dword;
+			optname	:dword;
+		var	optval	:var;
+			optlen	:socklen_t 
+	);
+		@stdcall;
+		@returns( "eax" );
+		external( "linux_setsockopt" );
+
+		
+	procedure listen
+	( 
+			s		:dword; 
+			backlog	:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		external( "linux_listen" );
+		
+		
+	procedure recv
+	( 
+			s		:dword; 
+		var	buf		:var;
+			len		:size_t;
+			flags	:dword 
+	);
+		@stdcall;
+		@returns( "eax" );
+		external( "linux_recv" );
+
+		
+		
+		
+		
+	procedure recvmsg
+	( 
+			s		:dword; 
+		var	msg		:msghdr;
+			flags	:dword 
+	);						
+		@stdcall;
+		@returns( "eax" );
+		external( "linux_recvmsg" );
+
+		
+		
+		
+	procedure recvfrom
+	( 
+			s		:dword; 
+		var	buf		:var;
+			len		:size_t;
+			flags	:dword;
+		var	from	:sockaddr;
+		var	fromlen	:socklen_t 
+	);
+		@stdcall;
+		@returns( "eax" );
+		external( "linux_recvfrom" );
+
+		
+
+		
+		
+	procedure send
+	( 
+			s		:dword; 
+		var	buf		:var;
+			len		:size_t;
+			flags	:dword 
+	);
+		@stdcall;
+		@returns( "eax" );
+		external( "linux_send" );
+
+		
+		
+		
+		
+	procedure sendmsg
+	( 
+			s		:dword; 
+		var	msg		:msghdr;
+			flags	:dword 
+	);
+		@stdcall;
+		@returns( "eax" );
+		external( "linux_sendmsg" );
+
+		
+		
+		
+	procedure sendto
+	( 
+			s		:dword; 
+		var	buf		:var;
+			len		:size_t;
+			flags	:dword;
+		var	_to		:sockaddr;
+		var	tolen	:socklen_t 
+	);
+		@stdcall;
+		@returns( "eax" );
+		external( "linux_sendto" );
+
+		
+		
+	procedure shutdown
+	( 
+		s		:dword; 
+		how		:dword 
+	);
+		@stdcall;
+		@returns( "eax" );
+		external( "linux_shutdown" );
+		
+		
+	procedure socket
+	( 
+		domain	:dword;
+		_type	:dword; 
+		protocol:dword 
+	);
+		@stdcall;
+		@returns( "eax" );
+		external( "linux_socket" );
+
+		
+		
+  type pairfd_t : dword[2];
+	
+	procedure socketpair
+	( 
+			d		:dword;
+			_type	:dword; 
+			protocol:dword;
+		var	sv		:pairfd_t 
+	);
+		@stdcall;
+		@returns( "eax" );
+		external( "linux_socketpair" );
+		
+		
+		
+
+	procedure select
+	( 
+			n			:int32; 
+		var readfds		:fd_set; 
+		var writefds	:fd_set;
+		var	exceptfds	:fd_set;
+		var	timeout		:timespec;
+		var	sigmask		:sigset_t 
+	);
+		@returns( "eax" );
+		external( "linux_select" );
+		
+	procedure statfs( path:string; var buf:statfs64_t );
+		@returns( "eax" );
+		external( "linux_statfs" );
+		
+	procedure fstatfs( fd:dword; var buf:statfs64_t );
+		@returns( "eax" );
+		external( "linux_fstatfs" );
+		
+	procedure ustat( dev:dev_t; var ubuf:ustat_t );
+		@returns( "eax" );
+		external( "linux_ustat" );
+		
+
+	procedure create_module( theName:string; size:size_t );
+		@returns( "eax" );
+		external( "linux_create_module" );
+	
+	
+	procedure init_module
+	( 
+			theName:string; 
+		var	image:module_t 
+	);
+		@returns( "eax" );
+		external( "linux_init_module" );
+	
+	procedure delete_module( theName:string );
+		@returns( "eax" );
+		external( "linux_delete_module" );
+		
+	procedure get_kernel_syms( var table:kernel_sym );
+		@use eax;
+		@returns( "eax" );
+		external( "linux_get_kernel_syms" );
+		
+		
+	// PThread constants, types, and functions:
+	
+const	
+	pThreadAttrSize 		:= 36;
+	pThreadMutexSize 		:= 24;
+	pThreadMutexAttrSize 	:= 4;
+	pThreadCondSize			:= 48;
+	pThreadCondAttrSize		:= 4;
+	
+	PTHREAD_CREATE_JOINABLE	:= 0;
+	PTHREAD_CREATE_DETACHED	:= 1;
+	
+		// IPC and semaphore stuff
+	
+	IPC_CREATE	:= $200;
+	SETVAL		:= 16;
+
+
+type
+
+	// These are *NIX opaque types:
+	
+	pthread_key_t			:dword;
+	pthread_t				:dword;
+	pthread_attr_t			:byte[ pThreadAttrSize ];
+	pthread_mutex_t			:byte[ pThreadMutexSize ];
+	pthread_mutex_attr_t	:byte[ pThreadMutexAttrSize ];
+	pthread_cond_t			:byte[ pThreadCondSize ];
+	pthread_condattr_t		:byte[ pThreadCondAttrSize ];
+
+	start_routine_t			:procedure( parm:dword );
+	
+	procedure pthread_create
+	( 
+		var thrd			:pthread_t;
+		var	attr			:pthread_attr_t;
+			start_routine	:start_routine_t;
+			parm			:dword
+	);
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_CREATE" );
+		
+	procedure pthread_exit( value_ptr:dword );	
+		external( "LINUX_PTHREAD_EXIT" );
+
+	procedure pthread_self;	
+		external( "LINUX_PTHREAD_SELF" );
+
+	procedure pthread_attr_init( var pta:pthread_attr_t );
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_ATTR_INIT" );
+	
+	procedure pthread_attr_setdetachstate( var attr:pthread_attr_t; detachstate:dword );
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_ATTR_SETDETACHSTATE" );
+	
+	procedure pthread_attr_destroy( var pta:pthread_attr_t );
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_ATTR_DESTROY" );
+	
+	procedure pthread_attr_setstacksize( var pta:pthread_attr_t; size:dword );
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_ATTR_SETSTACKSIZE" );
+		
+		
+		
+		
+
+	procedure pthread_key_create( var key:pthread_key_t; destructor:start_routine_t );
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_KEY_CREATE" );
+		
+	procedure pthread_key_delete( key:pthread_key_t );
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_KEY_DELETE" );
+		
+	procedure pthread_getspecific( key:pthread_key_t );
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_GETSPECIFIC" );
+		
+	procedure pthread_setspecific( key:pthread_key_t; value_ptr:dword );
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_SETSPECIFIC" );
+		
+
+	
+	
+	procedure pthread_mutex_destroy( var mutex:pthread_mutex_t );
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_MUTEX_DESTROY" );
+
+	procedure pthread_mutex_init
+	( 
+		var mutex	:pthread_mutex_t;
+		var	attr	:pthread_mutex_attr_t 
+	);
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_MUTEX_INIT" );
+
+	procedure pthread_mutex_lock( var mutex:pthread_mutex_t );
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_MUTEX_LOCK" );
+
+	procedure pthread_mutex_unlock( var mutex:pthread_mutex_t );
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_MUTEX_UNLOCK" );
+
+
+	procedure ftok( path:string; id:dword );
+		@returns( "eax" );
+		external( "LINUX_FTOK" );
+		
+		
+		
+		
+		
+	procedure pthread_cond_init
+	( 
+		var cond	:pthread_cond_t;
+		var	attr	:pthread_condattr_t 
+	);
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_COND_INIT" );
+
+
+	procedure pthread_cond_destroy
+	( 
+		var cond	:pthread_cond_t 
+	);
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_COND_DESTROY" );
+
+
+	procedure pthread_cond_signal
+	( 
+		var cond	:pthread_cond_t 
+	);
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_COND_SIGNAL" );
+
+
+	procedure pthread_cond_broadcast
+	( 
+		var cond	:pthread_cond_t 
+	);
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_COND_BROADCAST" );
+
+
+	procedure pthread_cond_wait
+	( 
+		var cond	:pthread_cond_t;
+		var	mutex	:pthread_mutex_t 
+	);
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_COND_WAIT" );
+
+
+	procedure pthread_cond_timedwait
+	( 
+		var cond	:pthread_cond_t;
+		var	mutex	:pthread_mutex_t;
+		var timeout	:@global:hla.timespec 
+	);
+		@returns( "eax" );
+		external( "LINUX_PTHREAD_COND_TIMEDWAIT" );
+
+
+
+
+end linux;
+#endif //syscall_hhf
+#if( !@defined( mman_hhf ))
+?mman_hhf := true;
+
+namespace linux; //@fast;
+
+const
+
+	// Constants for the memory mapxxx calls
+	
+	prot_read	:= 1;
+	prot_write	:= 2;
+	prot_exec	:= 4;
+	prot_none	:= 0;
+	
+	map_shared		:= 1;
+	map_private		:= 2;
+	map_type		:= $f;
+	map_fixed		:= $10;
+	map_file		:= 0;
+	map_anonymous	:= $20;
+	map_anon		:= map_anonymous;
+	map_growsdown	:= $100;
+	map_denywrite	:= $800;
+	map_executable	:= $1000;
+	map_locked		:= $2000;
+	map_noreserve	:= $4000;
+	map_populate	:= $8000;
+
+	ms_async	  	:= 1;
+	ms_invalidate 	:= 2;
+	ms_sync		  	:= 4;
+	
+	max_swapfiles	:= 32;
+	swap_flag_prefer:= $8000;
+	
+	
+	
+
+end linux;
+#endif //mman_hhf.hhf
+#if( !@defined( prctl_hhf ))
+?prctl_hhf := true;
+
+namespace linux; //@fast;
+
+const
+
+	
+	// Process control values
+	
+	pr_set_pdeathsig	:= 1;
+	pr_get_pdeathsig	:= 2;
+	pr_get_dumpable		:= 3;
+	pr_set_dumpable		:= 4;
+	pr_get_unalign		:= 5;
+	pr_set_unalign		:= 6;
+	pr_get_keepcaps		:= 7;
+	pr_set_keepcaps		:= 8;
+	
+	pr_unalign_noprint	:= 1;
+	pr_unalign_sigbus	:= 2;
+	
+
+end linux;
+#endif //prctl_hhf
+#if( !@defined( ptrace_hhf ))
+?ptrace_hhf := true;
+
+namespace linux; //@fast;
+
+const
+	
+	// ptrace constants
+	
+	ptrace_traceme		:= 0;
+	ptrace_peektext		:= 1;
+	ptrace_peekdata		:= 2;
+	ptrace_peekusr		:= 3;
+	ptrace_poketext		:= 4;
+	ptrace_pokedata		:= 5;
+	ptrace_pokeusr		:= 6;
+	ptrace_cont			:= 7;
+	ptrace_kill			:= 8;
+	ptrace_singlestep	:= 9;
+	ptrace_getregs		:= 12;
+	ptrace_setregs		:= 13;
+	ptrace_getfpregs	:= 14;
+	ptrace_setfpregs	:= 15;
+	ptrace_attach		:= 16;
+	ptrace_detach		:= 17;
+	ptrace_getfpxregs	:= 18;
+	ptrace_setfpxregs	:= 19;
+	ptrace_setoptions	:= 20;
+	ptrace_syscall		:= 24;
+	
+	ptrace_o_tracesysgood	:= 1;
+	
+	_ebx		:= 0;
+	_ecx		:= 1;
+	_edx		:= 2;
+	_esi		:= 3;
+	_edi		:= 4;
+	_ebp		:= 5;
+	_eax		:= 6;
+	_ds			:= 7;
+	_es			:= 8;
+	_fs			:= 9;
+	_gs			:= 10;
+	orig_eax	:= 11;
+	_eip		:= 12;
+	_cs			:= 13;
+	efl			:= 14;
+	uesp		:= 15;
+	_ss			:= 16;
+	frame_size	:= 17;
+	
+	
+	
+
+end linux;
+#endif //ptrace_hhf
+#if( !@defined( reboot_hhf ))
+?reboot_hhf := true;
+
+namespace linux; //@fast;
+
+const
+  
+  	// Linux reboot system call constants
+  	
+  	reboot_magic1	:= $fee1_dead;
+  	reboot_magic2	:= $28121969;	// Obviously a date (birthday?)
+  	reboot_magic2a	:= $05121996;	// Obviously another date
+  	reboot_magic2b	:= $16041998;	// Yet another date.
+  	
+  	reboot_cmd_restart	:= $0123_4567;	// How original :-)
+  	reboot_cmd_halt		:= $cdef_0123;
+  	reboot_cad_on		:= $89ab_cdef;
+  	reboot_cad_off		:= $0000_0000;	// How boring!
+  	reboot_cmd_power_off:= $4321_fedc;
+  	reboot_cmd_restart2	:= $a1b2_c3d4;
+	
+
+end linux;
+#endif //reboot_hhf
+#if( !@defined( ioport_hhf ))
+?ioport_hhf := true;
+
+namespace linux; //@fast;
+
+type
+	resource: record
+		theName	:pointer to char;
+		start	:dword;
+		_end	:dword;
+		flags	:dword;
+		parent	:dword;
+		sibling	:dword;
+		child	:dword;
+	endrecord;
+			
+	resource_list: record
+		next	:dword;	// pointer to resource_list
+		res		:dword;	// pointer to resource
+		dev		:dword; // pointer to pci_dev
+	endrecord;
+				
+static
+		ioport_resource	:resource; external;
+		iomem_resource	:resource; external;
+		
+
+  // Only provide kernel-level programs access to the
+  // following symbols.
+  		
+#if( @defined( __kernel__ ))
+  
+	procedure get_resource_list
+	( 
+		var res		:resource; 
+		var buf		:var; 
+			size	:dword 
+	);
+		@cdecl;
+		@returns( "eax" );
+		external;
+		
+	procedure request_resource
+	( 
+		var root:resource; 
+			start:dword; 
+			_end:dword 
+	);
+		@cdecl;
+		@use eax;
+		@returns( "eax" );
+		external;
+		
+	procedure release_resource( var new:resource );
+		@cdecl;
+		@use eax;
+		@returns( "eax" );
+		external;
+		
+	procedure allocate_resource
+	(
+		var	root	:resource;
+		var	new		:resource;
+			size	:dword;
+			min		:dword;
+			max		:dword;
+			_align	:dword;
+			alignf	:procedure( var x:var; var r:resource; a:dword );
+		var	alignf_data:var
+	);
+		@cdecl;
+		@returns( "eax" );
+		external;
+		
+	procedure __check_region
+	( 
+ 		var res:resource; 
+ 			start	:dword; 
+			len		:dword
+	);
+		@cdecl;
+		@use eax;
+		@returns( "eax" );
+		external;
+		
+		
+	procedure __request_region
+	( 
+		var res		:resource; 
+			start	:dword; 
+			n		:dword; 
+			theName	:string
+	);
+		@cdecl;
+		@use eax;
+		@returns( "eax" );
+		external;
+		
+		
+		
+		
+	procedure __release_region
+	( 
+		var res		:resource; 
+			start	:dword; 
+			n		:dword 
+	);
+		@cdecl;
+		external;
+		
+
+#endif // #if( @defined( __kernel__ ))
+
+end linux;
+#endif //ioport_hhf
+#if( !@defined( mm_hhf ))
+?mm_hhf := true;
+
+
+namespace linux; //@fast;
+
+type
+  	page: record
+  		list		:list_head;
+  		mapping		:dword;		// pointer to address_space
+  		index		:dword;
+  		next_hash	:dword;		// pointer to page
+  		count		:atomic_t;
+  		flags		:dword;
+  		lru			:list_head;
+  		age			:dword;
+  		_wait		:wait_queue_head_t;
+  		pprev_hash	:dword;		// ptr to ptr to page
+  		buffers		:dword;		// ptr to buffer_head
+  		virtual		:dword;
+  		zone		:dword;		// pointer to zone_struct
+  	endrecord;
+  	
+
+end linux;
+#endif //mm_hhf
+
+#if( !@defined( uio_hhf ))
+?uio_hhf := true;
+
+namespace linux; //@fast;
+
+const
+	uio_fastiov	:= 8;
+	uio_maxiov	:= 1024;
+	
+type
+  	iovec:record
+		iov_base	:dword;
+		iov_len		:__kernel_size_t;
+	endrecord;
+			
+
+	
+
+end linux;
+#endif //uio_hhf
+
+
+
+// termios
+
+namespace linux;
+const
+	NCCS := 32;
+	
+	// c_iflag bits:
+	
+	IGNBRK	:= @{0};
+	BRKINT	:= @{1};
+	IGNPAR	:= @{2};
+	PARMRK	:= @{3};
+	INPCK	:= @{4};
+	ISTRIP	:= @{5};
+	INLCR	:= @{6};
+	IGNCR	:= @{7};
+	ICRNL	:= @{8};
+	IUCLC	:= @{9};
+	IXON	:= @{10};
+	IXANY	:= @{11};
+	IXOFF	:= @{12};
+	IMAXBEL	:= @{13};
+	IUTF8	:= @{14};
+
+	// c_oflag bits:
+	
+	OPOST	:= @{0};
+	OLCUC	:= @{1};
+	ONLCR	:= @{2};
+	OCRNL	:= @{3};
+	ONOCR	:= @{4};
+	ONLRET	:= @{5};
+	OFILL	:= @{6};
+	OFDEL	:= @{7};
+
+	// c_Jflag bits:
+	
+	ISIG	:= @{0};
+	ICANON	:= @{1};
+	XCASE	:= @{2};
+	ECHO	:= @{3};
+	ECHOE	:= @{4};
+	ECHOK	:= @{5};
+	ECHONL	:= @{6};
+	NOFLSH	:= @{7};
+	TOSTOP	:= @{8};
+	ECHOCTL	:= @{9};
+	ECHOPRT	:= @{10};
+	ECHOKE	:= @{11};
+	FLUSHO	:= @{12};
+	PENDIN	:= @{13};
+	IEXTEN	:= @{14};
+	
+	// tcsetattr commands:
+	
+	TCSANOW		:= 0;
+	TCSADRAIN	:= 1;
+	TCSAFLUSH	:= 2;
+	
+	// Indexes into the c_cc array:
+	
+	VINTR		:= 0;
+	VQUIT		:= 1;
+	VERASE		:= 2;
+	VKILL		:= 3;
+	VEOF		:= 4;
+	VTIME		:= 5;
+	VMIN		:= 6;
+	VSWTC		:= 7;
+	VSTART		:= 8;
+	VSTOP		:= 9;
+	VSUSP		:= 10;
+	VEOL		:= 11;
+	VREPRINT	:= 12;
+	VDISCARD	:= 13;
+	VWERASE		:= 14;
+	VLNEXT		:= 15;
+	VEOL2		:= 16;
+
+
+type
+
+	termios	:record
+	
+		c_iflag		:dword;
+		c_oflag		:dword;
+		c_cflag		:dword;
+		c_lflag		:dword;
+		c_line		:byte;
+		c_cc		:char[ NCCS ];
+		c_ispeed	:dword;
+		c_ospeed	:dword;
+		
+	endrecord;
+	
+end linux;
+
+#endif
+
+
+
+
+
+
+
+
+	
+  		
+  		
+  		

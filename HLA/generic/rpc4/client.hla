@@ -1,0 +1,78 @@
+
+program t; 
+?@nodisplay := true; 
+?@noalignstack := true; 
+
+#include( "stdlib.hhf" )
+#include( "sleep.hhf" )
+
+#include( "sc.hhf" ) 
+#include( "rpc_client_implementation.hhf" )
+
+////////////////////////////////////////////////////////////////////////
+//
+// Here is the client-side code:
+
+
+
+static
+	argc		:uns32;
+	ipAdrs		:dword;
+	ipAdrsStr	:string;
+	s			:string;
+	anArray		:array_t;
+	rsltArray	:array_t;
+	
+	
+	
+begin t;
+
+	sock.socketInit();
+
+	arg.c();
+	mov( eax, argc );
+	if( eax <> 2 ) then
+	
+		stdout.put( "usage: client <<ipaddress>>" nl );
+		exit t;
+		
+	endif;
+	arg.a_v( 1 );
+	mov( eax, ipAdrsStr );
+	sock.strToIP( eax );
+	mov( eax, ipAdrs );
+	
+	mov( eax, ebx );
+	bswap( ebx );
+	stdout.put
+	( 
+		"Server address:", 
+		(type uns8 bl), 
+		'.', 
+		(type uns8 bh),
+		'.',
+		(type uns8 ah),
+		'.',
+		(type uns8 al), 
+		nl 
+	);
+	
+	// Create the client (and its message handling thread):
+	
+	debugRPC_client.create( ipAdrs, $9998 );
+	stdout.put( "Client connected to server" nl );
+	
+	arg.c();
+	stdout.put( "argc=", argc, ", ", (type uns32 eax), nl );			
+	rpc.put( rpcputs, "Hello World" nl "argc=", argc, ", ", (type uns32 eax), nl );
+		
+	// Clean up and leave.
+	// Always wait a brief amount of time before destroying the
+	// client object so that all network communications complete.
+	
+	os.sleep( 2 );
+
+	debugRPC_client.destroy();
+	stdout.put( "Done" nl );	
+
+end t;

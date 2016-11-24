@@ -1,0 +1,90 @@
+
+program rpcServer; 
+?@nodisplay := true; 
+?@noalignstack := true; 
+
+#include( "stdlib.hhf" )
+#include( "sleep.hhf" )
+
+#include( "sc.hhf" ) 
+#include( "rpc_server_implementation.hhf" )
+
+	
+
+////////////////////////////////////////////////////
+//
+// Here is the server-side code:
+
+procedure rpc_sync;
+begin rpc_sync;
+end rpc_sync;
+
+
+procedure rpc_async;
+begin rpc_async;
+end rpc_async;
+
+
+procedure rpc_bisync;
+begin rpc_bisync;
+
+	rpc_bisync_return();
+	
+end rpc_bisync;
+
+
+
+static
+	ipAdrs		:dword;
+	quitServer	:boolean := false;
+	
+
+procedure serverConnected;
+begin serverConnected;
+
+	stdout.put( "Client connected with server" nl );
+
+	// Start the real server code:
+	
+	profileRPC_server.connected( 0 );
+	
+	stdout.put( "Client disconnected from server" nl );
+	mov( true, quitServer );
+	
+end serverConnected;
+
+
+	
+begin rpcServer;
+
+	mov( false, quitServer );	
+	profileRPC_server.create
+	( 
+		$9998, 
+		&serverConnected,
+		thunk
+		#{			
+			// On entry to thunk, EAX contains the address of the timeout
+			// variable. Set this as desired for the timeout (1 second,
+			// in this case).
+			
+			if( eax <> NULL ) then
+			
+				// Timeout is 0.1 seconds while waiting for
+				// connection:
+				
+					mov( 100_000, (type hla.timeval [eax]).tv_usec ); 
+				
+			endif;
+	        movzx( quitServer, eax );
+				
+		}#
+	);
+	
+	// Short delay to allow all transmissions to complete before we bail:
+	
+	os.sleep( 2 );
+	
+	profileRPC_server.destroy();
+				
+end rpcServer;

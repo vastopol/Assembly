@@ -1,0 +1,134 @@
+program t;
+#include( "stdlib.hhf" )
+
+
+const
+	nodeEDI: text := "(type node [edi])";
+	nodeEAX: text := "(type node [eax])";
+	
+
+	
+
+type
+	intNode: class inherits( node )
+	
+				var
+					i:int32;
+				
+				override procedure create;
+				override method destroy;
+				
+			 endclass;
+			 
+			 
+method intNode.destroy; @nodisplay; @noframe;
+begin destroy;
+
+	free( esi );
+	ret();
+	
+end destroy;
+
+procedure intNode.create; @nodisplay; @noframe;
+begin create;
+
+	push( eax );
+	if( esi = NULL ) then
+	
+		mov( malloc( @size( intNode )), esi );
+		
+	endif;
+	mov( &intNode._VMT_, this._pVMT_ );
+	mov( 0, this.i );
+	(type node [esi]).create();
+	pop( eax );
+	ret();
+	
+end create;
+
+
+
+procedure dump( var lst:list ); @nodisplay;
+begin dump;
+
+	xor( ecx, ecx );
+	mov( lst, ebx );
+	foreach (type list [ebx]).nodeInList() do
+	
+		stdout.put
+		(
+			"node(",
+			(type uns32 ecx),
+			") = ",
+			(type int32 (type intNode [esi]).i), 
+			nl
+		);
+		inc( ecx );
+		
+	endfor;
+	
+end dump;
+
+
+static
+	VMT( intNode );
+	
+var
+	l:pointer to list;
+	n:pointer to intNode;
+	n2:pointer to intNode;
+	n3:pointer to intNode;
+		
+begin t;
+
+	mov( list.create(), l );
+	
+	mov( intNode.create(), n );
+	mov( 1, (type intNode [esi]).i );
+	l.append( n );
+	
+	mov( intNode.create(), n2 );
+	mov( 3, (type intNode [esi]).i );
+	l.append( n2, 2 );
+	
+	mov( intNode.create(), n3 );
+	mov( 2, (type intNode [esi]).i );
+	l.append( n3, n );
+	
+	mov( intNode.create(), n );
+	mov( 0, (type intNode [esi]).i );
+	l.insert( n, 0 );
+	
+	mov( intNode.create(), n );
+	mov( -2, (type intNode [esi]).i );
+	l.insert( n, n2 );
+	
+	mov( intNode.create(), n );
+	mov( -1, (type intNode [esi]).i );
+	l.insert( n );
+	
+	
+	
+	dump( l );
+	
+	stdout.put ( nl, "Delete first: ", nl );
+	l.delete();
+	
+	dump( l );
+	
+	stdout.put( nl "Delete last: " nl );
+	l.deleteLast();
+	dump( l );
+	
+	stdout.put( nl "Deleting node n3:" nl );
+	l.delete( n3 );
+	dump( l );
+	
+	stdout.put( nl "Deleting node #1:" nl );
+	l.delete( 1 );
+	dump( l );
+	
+	l.index( 1 );
+	stdout.put( "Node at index #1 = ", (type intNode [esi]).i, nl );
+	
+end t;

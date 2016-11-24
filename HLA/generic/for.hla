@@ -1,0 +1,88 @@
+/*
+> can you give my an example of a For loop in Masm 6.11
+> 
+> the command exists but I don't know the syntax
+> well more to the point actualy..
+> 
+> I know the Syntax but it makes no sense to me
+> 
+> Syntax:   FOR parameter[:REQ:=default], <argument [,argument]...>
+>               statements
+>             ENDM
+>
+<< snipped description>>
+  
+ First I would ask if you are aware that MASM's FOR
+(at least the one you've listed) is executed at
+assembly-time, not run-time;  that is, it's a macro
+not a program control structure.
+
+Typically, the MASM FOR loop is used to process a
+variable list of parameters (macro parameters or
+explicitly supplied parameters) and it expands the
+code for each operand you specify.  A typical
+example might be something like
+
+FOR value, <1, 2, 3, 4, 5, 6>
+    byte value
+endm
+
+This compiles to the sequence
+
+byte 1
+byte 2
+byte 3
+byte 4
+byte 5
+byte 6
+
+For more information on the FOR macro, please consult
+Chapter Eight of "The Art of Assembly Language Programming"
+You can find AoA at http://webster.cs.ucr.edu.
+
+If you're looking to implement a traditional for loop at
+run time, the basic idea is to translate the for into
+a while loop.  Since MASM has a HLL ".while"
+statement, I'll leave that translation in your capable
+hands.
+
+You might also want to take a look at HLA (High
+Level Assembler), also on Webster.  It contains
+lots of HLL control structures including a foreach
+loop.  It does not have a standard C or Pascal-like
+FOR loop, but you can easily write a macro to
+give you this statement as the following example
+demonstrates:
+
+*/
+
+program forMacroDemo;
+#include( "stdlib.hhf" );
+
+#macro forloop( InitStmt, expr, PostStmt );
+
+	InitStmt;
+	while( expr ) do
+
+#terminator endforloop;
+
+	PostStmt;
+	endwhile;
+
+#endmacro;
+
+
+static
+
+	i:	int32;
+
+begin forMacroDemo;
+
+	stdout.put( "Demonstration of for loop macro:" nl nl );
+	forloop( mov(0, i), i < 10, inc(i) )
+
+		stdout.put( "i=", i, nl );
+
+	endforloop;
+
+end forMacroDemo;

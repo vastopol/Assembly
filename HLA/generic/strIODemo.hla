@@ -1,0 +1,132 @@
+program stringIODemo;
+#include( "stdlib.hhf" );
+
+var
+	i:int32;
+	s:string;
+		
+begin stringIODemo;
+
+	// Strings are *pointers*.  Therefore, we must
+	// allocate storage for the string before using it!
+	
+	stralloc( 256 );
+	mov( eax, s );
+	
+	// If there is currently nothing in the input buffer,
+	// then reading a string will force the system to
+	// input a new line from the user:
+	
+	stdout.put( "Testing 1st input", nl );
+	stdout.put( "Enter a string: " );
+	stdin.get( s );
+	stdout.put( "The string you entered: """, s, """" nl );
+	
+	// If you've previously called gets (or something that
+	// calls gets, like stdin.get) to read a line from the
+	// user, the next time you read any input from the user
+	// it will force the input of a new line:
+	
+	stdout.put( "Testing string input immediately after a string input", nl );
+	stdout.put( "Enter another string: " );
+	stdin.get( s );
+	stdout.put( "That string was """, s, """" nl );
+	
+	// This is true, even if the next input is not a string object:
+	
+	stdout.put
+	( 
+		"Demonstrating string input after a non-string input", 
+		nl 
+	);
+	stdout.put( "Enter an integer value: " );
+	stdin.get( i );
+	stdout.put( "i=", i , nl );
+	
+	// However, once you read a non-string entity, the HLA
+	// run-time system does not automatically advance the
+	// input line index beyond the end of the line.  For example,
+	// had the user entered "123" in response to the previous
+	// prompt, the input pointer would be pointing at the end
+	// of the line, but an attempt to read a string at this
+	// point would return an empty string, just as though the
+	// user had typed nothing but the enter key upon the prompt:
+	
+	stdout.put( "You won't get a chance to input this string:", nl );
+	stdin.get( s );
+	stdout.put( "String you didn't enter was """, s, """" nl );
+	
+	// Of course, once the system makes a call to gets, the end of
+	// the line is reached and the next gets call will force the
+	// input of a new line from the user:
+	
+	stdout.put( "Demonstrating another string input after string input", nl );
+	stdout.put( "Enter this string: " );
+	stdin.get( s );
+	stdout.put( "You typed """, s, """" nl );
+	
+	// The previous example assumed that the user entered "123"
+	// immediately followed by enter in response to the prompt.
+	// Had the user entered any text beyond the 123, that data
+	// would have been read by the string, as demonstrated by
+	// the following code:
+	
+	stdout.put
+	( 
+		"Demonstrating string input immediately after integer input",
+		nl
+	);
+	stdout.put( "Enter '123 abc' as the input line: " );
+	
+	stdin.get( i );		// These two statements could be coded as
+	stdin.get( s );		// the single statement "stdin.get( i, s );"
+	
+	stdout.put( "i=", i, " s=""", s, """" nl );
+	
+	// If you need to force the input of a new line, throwing away
+	// any data that is currently in the input buffer, you can call
+	// the ReadLn function to accomplish this.
+	
+	stdout.put( "Demonstrating the use of the ReadLn() function", nl );
+	stdout.put( "Enter '123 abc': " );
+	stdin.get( i );
+	
+	stdout.put( "Enter another string: " );
+	
+	stdin.readLn();		// Force input of new line, ignoring " abc".
+	stdin.get( s );
+	
+	stdout.put( "i = ", i, " s= """, s, """" nl );
+	
+	// Occasionally, you might want to know if you are currently
+	// at the end of an input line.  HLA's standard input library
+	// provides two routines to let you test this: eoln and eoln2.
+	// The "eoln" function returns true (1) in AL if the current
+	// input pointer is at the end of the input buffer.  The eoln2
+	// function returns true in AL if the input pointer is pointing
+	// at the end of the buffer, or if there are nothing but
+	// delimiter characters left on the input line (see the
+	// description of GetDelimiters in the HLA Standard Library
+	// documentation for a description of the input delimiters).
+	// Note that calling eoln2 will remove those delimiter characters
+	// from the input buffer, even if the function returns false.
+	
+	stdout.put( "Demonstrate eoln and eoln2 calls", nl );
+	stdout.put( "Enter '123  ':" );
+	stdin.get( i );
+	stdout.put( "integer input = ", i, nl );
+	stdin.eoln();
+	stdout.put( "eoln() = ", (type boolean al ), nl );
+	stdin.eoln2();
+	stdout.put( "eoln2() = ", (type boolean al ), nl );
+	
+	// Since eoln2 ate all the delimiters (which include spaces)
+	// to the end of the line, but leaves the input index pointing
+	// at the end of the line, any string input at this point
+	// will return the empty string.
+	
+	stdout.put( "You cannot enter this string: " nl );
+	stdin.get( s );
+	stdout.put( "The string you could not enter: """, s, """" nl );
+	
+end stringIODemo;

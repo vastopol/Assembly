@@ -1,0 +1,106 @@
+/******************
+I am writing a program to place numbers in a specific order inside of a 
+Matrix.  Before placing the number in a postion, I must test to see if it 
+already occupied by a number.  How can I do this ?
+
+Also... When declaring a matrix, such as...
+
+matrix dw 15 dup(15)
+
+... Does the computer automatically fill the slots with junk or what?
+*/
+
+
+program fillMatrix;
+#include( "stdlib.hhf" )
+
+const
+	maxY := 3;
+	maxX := 5;
+	
+static
+	i			:uns32;
+	j			:uns32;
+	cnt			:byte;
+	dataArray	:word[ maxY, maxX ];
+	testArray	:boolean[ maxY, maxX ] := [maxY dup [ maxX dup [false]]];
+		
+begin fillMatrix;
+
+	// Initialize cnt to zero so we'll know when we're done:
+	
+	mov( 0, cnt );
+	
+	// Randomly fill array elements until we fill the
+	// entire array:
+	
+	repeat
+	
+		rand.range( 0, 2 );
+		mov( eax, i );
+		rand.range( 0, 4 );
+		mov( eax, j );
+		
+		// Get pointer to testArray[i,j] into ebx:
+		
+		array.index( ebx, testArray, i, j );
+		
+		if( !(type boolean [ebx]) ) then
+		
+			// Get address of dataArray[ i, j ] into ecx:
+			
+			array.index( ecx, dataArray, i, j );
+		
+			// Fill that location with a random value:
+			
+			rand.range( 0, 65535 );
+			mov( ax, [ecx] );
+			
+			// Mark the entry as occupied:
+			
+			mov( true, (type boolean [ebx]));
+			
+			// Note that we've filled this location:
+			
+			stdout.put
+			( 
+				"Filled dataArray[ ", 
+				i, 
+				", ", 
+				j, 
+				" ] with ",
+				(type uns16 ax),
+				nl
+			);
+			
+			// Note that we've filled another entry:
+			
+			inc( cnt );
+			
+		else
+		
+			// Note that the location was already filled:
+			
+			stdout.put( "dataArray[ ", i, ", ", j, " ] is already filled" nl );
+			
+		endif;
+		
+	until( cnt >= maxX*maxY );
+	
+	// Okay, display the matrix:
+
+	stdout.put( nl nl "dataArray:" nl nl );	
+	for( mov( 0, ebx ); ebx<maxY; inc( ebx )) do
+	
+		for( mov(0, ecx ); ecx<maxX; inc( ecx )) do
+		
+			array.index( edx, dataArray, ebx, ecx );
+			stdout.put( (type uns16 [edx]):6 );
+			
+		endfor;
+		stdout.newln();
+		
+	endfor;
+		
+		
+end fillMatrix;

@@ -1,0 +1,60 @@
+/*
+Bombadil T <sdem4393@euronet.be> wrote in message news:7timrr$1ecl$1@buty.wanadoo.nl...
+> Hello all,
+> 
+> How to have the logarithm of a number in eax ?
+> How this number must be declared  (integer,floating point) ?
+> 
+> Any help appreciated (links,examples, algorithm) !
+> 
+> Many thanks.
+> 
+> Stephan
+
+*/
+
+
+
+program DemoLog;
+#include( "stdlib.hhf" );
+
+    procedure log10( x:real64 ); @nodisplay; @returns( "st0" );
+    begin log10;
+
+        fld1();     // yl2x() computes st1 * log2(st0)!
+        fld( x );
+        fyl2x();    // Compute log2(x) [lg(x)].
+        fldl2t();   // Push lg(10).
+        fdiv();     // Compute Log10(x) = lg(x)/lg(10).
+
+        
+    end log10;
+    
+
+
+static
+    r:       real64;
+    LogVals: real64[10] :=  [
+                                1.0, 5.0, 10.0, 50.0, 100.0,
+                                500.0, 1000.0, 5000.0, 10000.0, 50000.0
+                            ];
+        
+    
+begin DemoLog;
+
+    mov( 0, ebx );
+    while( ebx < @elements( LogVals )) do
+    
+        log10( (type real64 LogVals[ ebx*8 ]) );
+        fstp( r );
+
+        stdout.put( "Log( " );
+		stdout.put( LogVals[ ebx*8 ]:7:1 );
+		stdout.put( ")=" );
+		stdout.put( r:10 );
+		stdout.put(	nl );
+        inc( ebx );
+        
+    endwhile;
+        
+end DemoLog;

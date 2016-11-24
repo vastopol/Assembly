@@ -1,0 +1,692 @@
+program stlDemo;
+#include( "stdlib.hhf" )
+#include( "stl.hhf" )
+
+
+#macro pair(firstType, secondType);
+	record
+		first	:firstType;
+		second	:secondType;
+	endrecord;
+#endmacro
+
+/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+//
+// Some demos of the vector class:
+
+type
+	pairType:pair( byte, word );
+
+	int32Vector	:stl.vector( int32, supportsOutput:1, supportsCompare:1 );
+	strVector	:stl.vector( string, supportsCompare:1 );
+	recVector	:stl.vector( pairType, supportsAppend:0 );
+
+	int32Deque	:stl.deque( int32, supportsOutput:1 );
+	int32List	:stl.list( int32, supportsOutput:1 );
+	int32Tbl	:stl.table( int32 );
+
+static
+	b		:int32Vector;
+	b_value	:int32;
+	bc		:int32Vector_cursor;
+
+	d		:int32Deque;
+	dc		:int32Deque_cursor;
+	
+	p		:p_int32Vector;
+
+	s		:strVector;
+	sc		:strVector_cursor;
+
+	l		:int32List;
+	lc		:int32List_cursor;
+	
+
+	r:recVector;
+
+	i0		:int32 := 0;
+	i1		:int32 := 1;
+	i2		:int32 := 2;
+	i4		:int32 := 4;
+	i8		:int32 := 8;
+	i16		:int32 := 16;
+	i32		:int32 := 32;
+	i64		:int32 := 64;
+	i128	:int32 := 128;
+
+
+
+
+// Demonstrate how to write an output method for a vector.
+// To work within an str.put macro invocation, we need to supply
+// an "a_toString" method that converts the data type to a string (allocated
+// on the heap) and returns a pointer to this string in EAX. Note that
+// the str.put macro will automatically deallocate the storage that
+// this method creates.
+
+method int32Vector.a_toString; 
+	@nodisplay; 
+	@noalignstack;
+	
+var
+	temp:string;
+	
+begin a_toString;
+
+	push( ebx );
+	mov( str.talloc( 1024 ), temp );
+	mov( this.data, ebx );
+	while( ebx < this.endData ) do
+
+		str.length( temp );
+		if( eax < 1000 ) then
+
+			str.cati32( temp, [ebx] );
+						
+		endif;
+		add( @size(int32), ebx );
+		if( eax < 1020 && ebx < this.endData ) then
+
+			str.cat( ", ", temp ); 
+
+		endif;
+		
+	endwhile;
+	str.a_cpy( temp );
+	pop( ebx );
+
+end a_toString;
+
+
+method int32Deque.a_toString; @nodisplay; @noalignstack;
+var
+	temp:string;
+begin a_toString;
+
+	push( ebx );
+	mov( str.talloc( 1024 ), temp );
+	mov( this.data, ebx );
+	while( ebx < this.endData ) do
+
+		str.length( temp );
+		if( eax < 1000 ) then
+
+			str.cati32( temp, [ebx] );
+						
+		endif;
+		add( @size(int32), ebx );
+		if( eax < 1020 && ebx < this.endData ) then
+
+			str.cat( ", ", temp ); 
+
+		endif;
+		
+	endwhile; 
+	str.a_cpy( temp );
+	pop( ebx );
+
+end a_toString;
+
+
+method int32List.a_toString; @nodisplay; @noalignstack;
+var
+	temp:string;
+begin a_toString;
+
+	push( ebx );
+	mov( str.talloc( 1024 ), temp );
+	mov( this.head, ebx );
+	while( ebx <> NULL ) do
+
+		str.length( temp );
+		if( eax < 1000 ) then
+
+			str.cati32( temp, (type int32List_node [ebx]).data );
+						
+		endif;
+		mov( (type int32List_node [ebx]).next, ebx );
+		if( eax < 1020 && ebx <> NULL ) then
+
+			str.cat( ", ", temp ); 
+
+		endif;
+		
+	endwhile; 
+	str.a_cpy( temp );
+	pop( ebx );
+
+end a_toString;
+
+
+
+
+
+
+
+begin stlDemo;
+
+	stdout.put( "int32 vector operations: " nl );
+
+	// Create a vector with 10 elements preallocated and
+	// add five items to the vector:
+
+	b.create( 10 );
+	b.appendVal( 1 );
+	b.appendVal( 2 );
+	b.appendVal( 3 );
+	b.appendVal( 4 );
+	b.appendVal( 5 );
+
+	// Print those five elements:
+
+	foreach b.forEachElement() do
+
+		stdout.put( "value=", (type int32 [eax]), nl );
+
+	endfor;
+
+	// Demonstrate sequencing through the vector using a cursor:
+
+	b.beginCursor( bc );
+	while( !b.atBack( bc )) do
+
+		b.at( bc );	// Puts address of item bc references into EAX
+		stdout.put( "Cursor'd value = ", (type int32 [eax]), nl );
+		b.nextCursor( bc );	// Move on to next item in vector
+
+	endwhile;
+	   
+	// As above, but demonstrate sequencing backwards through the
+	// vector.
+
+	b.endCursor( bc );
+	while( !b.atFront( bc )) do
+
+		b.prevCursor( bc );
+		b.at( bc );
+		stdout.put( "revCursor'd value = ", (type int32 [eax]), nl );
+
+	endwhile;
+
+	// Demonstrate printing the entire vector within an stdout.put invocation:
+
+	stdout.put( "b='", b, "'" nl );
+
+	// Destroy the int32 vector:
+
+	b.destroy();
+
+
+
+
+	// Demonstrate the same sort of stuff with a string vector:
+
+	stdout.put( nl "String vector operations" nl );
+
+	s.create( 10 );
+	s.appendVal( "string #0" );
+	s.appendVal( "string #1" );
+	s.appendVal( "string #2" );
+	s.appendVal( "string #3" );
+	s.appendVal( "string #4" );
+	s.appendVal( "string #5" );
+	foreach s.forEachElement() do
+
+		stdout.put( "value=", (type string [eax]), nl );
+
+	endfor;
+
+	s.beginCursor( sc );
+	while( !s.atBack( sc ) ) do
+
+		s.at( sc );
+		stdout.put( "Cursor'd value = ", (type string [eax]), nl );
+		s.nextCursor( sc );
+
+	endwhile;
+
+	while( !s.atFront( sc ) ) do
+
+		s.prevCursor( sc );
+		s.at( sc );
+		stdout.put( "revCursor'd value = ", (type string [eax]), nl );
+
+	endwhile;
+
+	s.destroy();
+
+
+	// Deque demo:
+	
+	stdout.put(  nl nl "Demonstration of deque operations: " nl nl );
+	d.create( 2 );
+	d.appendVal( 0 );
+	d.appendVal( 1 );
+	d.appendVal( 2 );
+	stdout.put( "d=", d, nl );
+	
+	d.insertVal( -1, 0 );
+	d.insertVal( -2, 0 );
+	d.insertVal( -3, 0 );
+	d.insertVal( -4, 0 );
+	d.insertVal( -5, 0 );
+	d.insertVal( 10, 5 );
+	stdout.put( "d=", d, nl );
+	
+	d.remove( 5 );
+	stdout.put( "d=", d, nl );
+	
+	d.destroy();
+	d.create(2);
+	
+	d.prependVal( 5 );
+	d.prependVal( 4 );
+	d.prependVal( 3 );
+	d.prependVal( 2 );
+	d.prependVal( 1 );
+	d.prependVal( 0 );
+	d.prependVal( -1 );
+	d.prependVal( -2 );
+	d.prependVal( -3 );
+	d.prependVal( -4 );
+	d.prependVal( -5 );
+	stdout.put( "d=", d, nl );
+	
+	d.beginCursor( dc );
+	while( !d.atBack( dc )) do
+	
+		d.at(dc);
+		stdout.put( "deque item: ", (type int32 [eax]), nl );
+		d.nextCursor( dc );
+		
+	endwhile;
+
+
+	// List demo:
+
+	stdout.put(  nl nl "Demonstration of list operations: " nl nl );
+
+	l.create(0);	// Parameter is irrelevant.
+
+	l.appendVal( 0 );
+	l.appendVal( 1 );
+	l.appendVal( 2 );
+	l.appendVal( 3 );
+	l.appendVal( 4 );
+	l.appendVal( 5 );
+	stdout.put( "l=", l, nl );
+
+	l.prependVal( -1 );
+	l.prependVal( -2 );
+	stdout.put( "l=", l, nl );
+
+	l.appendRef( i8 );
+	l.prependRef( i16 );
+	stdout.put( "l=", l, nl );
+
+	l.insertVal( 100, 3 );
+	l.insertRef( i32, 5 );
+	stdout.put( "l=", l, nl );
+
+	l.remove( 5 );
+	l.remove( 3 );
+	l.remove_first();
+	l.remove_last();
+	stdout.put( "l=", l, nl );
+
+	stdout.put( "reversed: " );
+	foreach l.rForEachElement() do
+
+		stdout.put( (type int32 [eax]), ' ' );
+
+	endfor;
+	stdout.newln();
+
+
+	stdout.put( nl "via cursor:" nl );
+	l.beginCursor( lc );
+	while( !l.atBack( lc )) do
+	
+		l.at(lc);
+		stdout.put( "list item: ", (type int32List_node [eax]).data, nl );
+		l.nextCursor( lc );
+		
+	endwhile;
+
+	l.destroy();
+	
+	
+
+
+
+
+
+	/////////////////////////////////////////////////
+	//
+	// Code coverage test code:
+	//
+	// Check the code paths through create and delete:
+	
+	stdout.put
+	( 
+		nl nl "Code Coverage Tests:" nl nl
+		"Testing create and delete: " nl  
+	);
+	int32Vector.create( 8 );
+	mov( esi, p );
+	p.destroy();
+
+	stdout.put( "Checking appendRef: " nl );
+
+	// Test reallocation in appendRef when we exceed the vector size specified
+	// in the initial create call:
+
+	b.create( 4 );
+	b.appendRef( i0 );
+	b.appendRef( i1 );
+	b.appendRef( i2 );
+	b.appendRef( i4 );
+	b.appendRef( i8 );
+	b.appendRef( i16 );
+	b.appendRef( i32 );
+
+	// Ditto for appendVal:
+
+	stdout.put( "Checking appendVal: ", nl  );
+	b.appendVal( 64 );
+	b.appendVal( 128 );
+	b.appendVal( 256 );
+	b.appendVal( 512 );
+	b.appendVal( 1024 );
+	b.appendVal( 2048 );
+	b.appendVal( 8192 );
+	b.appendVal( 16384 );
+	b.appendVal( 32768 );
+	b.appendVal( 65536 );
+
+	stdout.put( "Checking output code:" nl );
+	stdout.put( "b=", b, nl );
+
+	// Same tests as above, but using insertRef/insertVal rather
+	// than appendRef/appendVal:
+
+	stdout.put( nl "Checking out insertRef:" nl );
+	b.destroy();
+	b.create(2);
+
+	b.appendVal( -1 );
+	stdout.put( "b(0) = ", b, nl );
+
+	b.insertRef( i1, 10 );
+	stdout.put( "b(1) = ", b, nl );
+
+	b.insertRef( i0, 0 );
+	stdout.put( "b(2) = ", b, nl );
+
+
+	b.insertRef( i2, 2 );
+	stdout.put( "b(3) = ", b, nl );
+
+	b.insertRef( i4, 4 );
+	stdout.put( "b(4) = ", b, nl );
+
+	b.insertRef( i8, 0 );
+	stdout.put( "b(5) = ", b, nl );
+
+	b.insertRef( i16, 0 );
+	stdout.put( "b(6) = ", b, nl );
+
+
+
+	stdout.put( nl "Checking out insertVal:" nl );
+	b.destroy();
+	b.create(2);
+
+	b.appendVal( -1 );
+	stdout.put( "b(0) = ", b, nl );
+
+	b.insertVal( 1, 10 );
+	stdout.put( "b(1) = ", b, nl );
+
+	b.insertVal( 0, 0 );
+	stdout.put( "b(2) = ", b, nl );
+
+	b.insertVal( 2, 2 );
+	stdout.put( "b(3) = ", b, nl );
+
+	b.insertVal( 4, 4 );
+	stdout.put( "b(4) = ", b, nl );
+
+	b.insertVal( 8, 0 );
+	stdout.put( "b(5) = ", b, nl );
+
+	b.insertVal( 16, 0 );
+	stdout.put( "b(6) = ", b, nl );
+
+
+	// Test the operation of the remove method:
+
+	stdout.put( nl "Checking out remove:" nl );
+
+	b.remove( 0 );
+	stdout.put( "b(0) = ", b, nl );
+
+	b.remove( 0 );
+	stdout.put( "b(1) = ", b, nl );
+
+	b.remove( 4 );
+	stdout.put( "b(2) = ", b, nl );
+
+	b.remove( 2 );
+	stdout.put( "b(3) = ", b, nl );
+
+	b.remove( 0 );
+	stdout.put( "b(4) = ", b, nl );
+
+	b.remove( 10 );
+	stdout.put( "b(5) = ", b, "(Should be same as b(4)" nl );
+
+
+	// Test the operation of the remove method:
+
+	stdout.put( nl "Checking out clear:" nl );
+
+	b.clear( );
+	stdout.put( "b(0) = ", b, nl );
+
+
+	// Some iterator tests:
+
+	stdout.put( nl "Trying forEachElement with an empty data structure:" nl );
+
+	foreach b.forEachElement() do
+
+		stdout.put( "iterator = ", (type uns32 [eax]), nl );
+
+	endfor;
+
+	stdout.put( nl "Trying rForEachElement with an empty data structure:" nl );
+
+	foreach b.rForEachElement() do
+
+		stdout.put( "iterator = ", (type uns32 [eax]), nl );
+
+	endfor;
+
+	b.appendVal( 1 );
+	b.appendVal( 2 );
+	b.appendVal( 3 );
+	b.appendVal( 4 );
+
+
+	stdout.put( nl "Trying forEachElement with 4 items:" nl );
+
+	foreach b.forEachElement() do
+
+		stdout.put( " ", (type uns32 [eax]) );
+
+	endfor;
+
+	stdout.put( nl "Trying rForEachElement with 4 items:" nl );
+
+	foreach b.rForEachElement() do
+
+		stdout.put( " ", (type uns32 [eax]) );
+
+	endfor;
+
+
+
+	// Testing the cursor routines:
+
+	stdout.put
+	( 
+		nl nl 
+		"Trying out beginCursor, getAt, nextCursor, and atBack" 
+		nl 
+	);
+	b.beginCursor( bc );
+	while( !b.atBack( bc )) do
+
+		b.getAt( bc, b_value );
+		mov( bc, eax );
+		stdout.put( "getAt(", eax, ") yields ", b_value, nl );
+		b.nextCursor( bc );
+
+	endwhile;
+
+	stdout.put( nl "Inserting at end:" nl );
+	b.insertAtVal( 10, bc );
+	stdout.put( "b=", b, nl );
+
+	stdout.put( nl "Inserting at beginning:" nl );
+	b.beginCursor( bc );
+	b.insertAtRef( i128, bc );
+	stdout.put( "b=", b, nl );
+
+	stdout.put( nl "Inserting two spots from end:" nl );
+	b.endCursor( bc );
+	b.prevCursor( bc );
+	b.prevCursor( bc );
+	b.insertAtVal( 22, bc );
+	stdout.put( "b=", b, nl );
+
+	stdout.put( nl "Testing atFront" nl );
+	while( !b.atFront( bc )) do
+
+		b.getAt( bc, b_value );
+		mov( bc, eax );
+		stdout.put( "getAt(", eax, ") yields ", b_value, nl );
+		b.prevCursor( bc );
+
+	endwhile;
+
+	stdout.put( nl "Testing front, back, and RemoveAt:" nl );
+	b.front();
+	mov( eax, bc );
+	b.removeAt( bc );
+	stdout.put( "Remove Front =", b, nl );
+
+	b.back();
+	mov( eax, bc );
+	b.prevCursor( bc );
+	b.removeAt( bc );
+	stdout.put( "Remove Back =", b, nl );
+
+	b.prevCursor( bc );
+	b.prevCursor( bc );
+	b.removeAt( bc );
+	stdout.put( "Remove 2 Back =", b, nl );
+
+
+	// Miscellaneous tests:
+
+	b.getSize();
+	stdout.put( nl "Testing getSize, #elements=", (type uns32 eax), nl );
+
+	b.getVal( 2, b_value );
+	stdout.put( nl "Testing getVal(2) = ", b_value, nl );
+
+
+
+
+
+	stdout.put( nl nl nl "Traits for b:" nl nl );
+
+
+	#for( hName in stl.hierarchyNames )
+
+		mov( b.hierarchy, eax );
+		test( @text( "stl."+hName+"_c"), eax );
+		setne( al );
+		stdout.put( hName, " = ", (type boolean al), nl );
+
+	#endfor
+	stdout.newln();
+
+	#for( cName in stl.capabilityNames )
+
+		mov( b.capabilities, eax );
+		test( @text( "stl."+cName+"_c"), eax );
+		setne( al );
+		stdout.put( cName, " = ", (type boolean al), nl );
+
+	#endfor
+	stdout.newln();
+
+	#for( pName in stl.performanceNames )
+
+		mov( b.performance, eax );
+		test( @text( "stl."+pName+"_c"), eax );
+		setne( al );
+		stdout.put( pName, " = ", (type boolean al), nl );
+
+	#endfor
+	stdout.newln();
+
+	stdout.put( "typeName=", b.typeName, nl );
+	stdout.put( "containerName=", b.containerName, nl );
+
+
+
+
+
+
+	stdout.put( nl nl nl "Traits for r:" nl nl );
+	r.create( 4 );
+
+	#for( hName in stl.hierarchyNames )
+
+		mov( r.hierarchy, eax );
+		test( @text( "stl."+hName+"_c"), eax );
+		setne( al );
+		stdout.put( hName, " = ", (type boolean al), nl );
+
+	#endfor
+	stdout.newln();
+
+	#for( cName in stl.capabilityNames )
+
+		mov( r.capabilities, eax );
+		test( @text( "stl."+cName+"_c"), eax );
+		setne( al );
+		stdout.put( cName, " = ", (type boolean al), nl );
+
+	#endfor
+	stdout.newln();
+
+	#for( pName in stl.performanceNames )
+
+		mov( r.performance, eax );
+		test( @text( "stl."+pName+"_c"), eax );
+		setne( al );
+		stdout.put( pName, " = ", (type boolean al), nl );
+
+	#endfor
+	stdout.newln();
+	stdout.put( "typeName=", r.typeName, nl );
+	stdout.put( "containerName=", r.containerName, nl );
+
+
+end stlDemo;

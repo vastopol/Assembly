@@ -1,0 +1,106 @@
+#if( !@defined( siteSpecific_hhf ))
+?siteSpecific_hhf := true;
+
+
+const
+	Standalone		:= true;		// Standalone version of HLA Basic
+	
+	numTabs_c		:= 6;
+	maxTabs_c		:= numTabs_c - 1;
+	
+	
+type
+	stmt_t	:record
+	
+		identifier	:string;
+		numArgs		:uns32;
+		IDmap		:dword;
+		
+	endrecord;
+	
+	
+
+	#if( Standalone ) // Stand alone version of HLA Basic:
+	
+	const
+	
+		// If no site-specific code, then use "hbbc" as the default
+		// suffix for HLA Basic Byte Code files:
+		
+		HLABasicByteCodeExt_c	:text := """hbbc""";
+		siteTitle_c 			:string	:=	"HLA Basic Compiler v2.0" nl;
+		
+		
+		// If no site-specific code, then we must create an empty macro
+		// for "siteSpecificPseudoVars" and "siteSpecificFunctions:
+		
+		#macro siteSpecificPseudoVars;
+		#endmacro
+		
+		#macro siteSpecificFunctions;
+		#endmacro
+		
+		const
+			siteSpecificStmts_c	:stmt_t[] := 
+			[
+				// Last entry isn't referenced.
+				
+				stmt_t:[ "    dummy    ",		 0, 0		]
+			];
+			numSiteSpecificStmts := @elements( siteSpecificStmts_c ) - 1; 
+		
+		
+		
+		
+		
+	#else // No particular site specific code:
+	
+	const
+	
+		// If no site-specific code, then use "hbbc" as the default
+		// suffix for HLA Basic Byte Code files:
+		
+		HLABasicByteCodeExt_c	:text := """hbbc""";
+		siteTitle_c 			:string	:=	"HLA Basic Compiler v2.0" nl;
+		
+		
+		// If no site-specific code, then we must create an empty macro
+		// for "siteSpecificPseudoVars" and "siteSpecificFunctions:
+		
+		#macro siteSpecificPseudoVars;
+		#endmacro
+		
+		#macro siteSpecificFunctions;
+		#endmacro
+		
+		const
+			siteSpecificStmts_c	:stmt_t[] := 
+			[
+				// Last entry isn't referenced.
+				
+				stmt_t:[ "    dummy    ",		 0, 0		]
+			];
+			numSiteSpecificStmts := @elements( siteSpecificStmts_c ) - 1; 
+		
+		
+		
+	#endif
+	
+const
+	siteSpecificReservedWords	:string :=
+		""
+		#for( _i_ := 0 to numSiteSpecificStmts-1 )
+		
+			+
+			siteSpecificStmts_c[_i_].identifier + "_tkn, " +
+			"""" + siteSpecificStmts_c[_i_].identifier + """, " +
+			"@{}, " +
+			"stmt_c,"
+		
+		#endfor
+		+ nl;		
+
+				
+		
+
+#endif

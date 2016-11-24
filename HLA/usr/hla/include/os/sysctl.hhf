@@ -1,0 +1,21 @@
+#if( !@defined( sysctl_hhf ))
+?sysctl_hhf := true;
+
+#includeonce( "os/types.hhf" )
+
+namespace linux; @fast;
+
+type
+			
+	__sysctl_args: record
+		theName		:pointer to char;
+		nlen		:int32;
+		oldval		:dword;
+		oldlenp		:pointer to size_t;
+		newval		:dword;
+		newlen		:size_t;
+		__unused	:dword[4];
+	endrecord;
+
+end linux;
+#endif //sysctl_hhf

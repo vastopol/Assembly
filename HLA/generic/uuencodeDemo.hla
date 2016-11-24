@@ -1,0 +1,139 @@
+/*
+BIT SHIFTING
+
+Here's my Problem,
+
+I want to make a 6bit register out of a 8bit register and retain the
+data that was shifted in the next register, then make that register
+6bit, and so on... Basicly making 3 bytes into 4bytes(with the info
+shifted from the other 3 bytes).
+
+Example,
+
+14h          0Fh          A8h
+00010100     00001111     10101000
+
+25h          00h          5Eh          48h
+00000101     00000000     00111110     00101000
+
+(editorial note (RLH):
+	The real values are
+	05h		 00h          3Eh          28h
+	00000101 00000000     00111110     00101000
+)
+
+(UUENCODE, if you havn't guessed already)
+the best I can think of is
+
+UUEncode db 0014h, 000Fh, 00A8h
+LEA ESI, UUEncode
+MOV EAX, [ESI]
+SHR EAX, 2
+
+
+The Problem I run into is, each Register is Indivdualy Shifted over 2
+bits, dumping the shifted info instead of moving it to the next
+register.
+
+EX: 00000101  00000011 00101010
+
+
+I'm new to the concept of Bit Shifting..
+
+Thanks In Advance.
+Jeremy
+*/
+
+
+
+program uuencodeDemo;
+
+#include( "stdlib.hhf" );
+
+	
+
+procedure Encode3( var ThreeBytes:byte; var FourBytes:byte ); @nodisplay;
+begin Encode3;
+
+	push( eax );
+	push( esi );
+	push( edi );
+	
+	mov( ThreeBytes, esi );
+	mov( FourBytes, edi );
+	
+	// Get the first byte "abcdefgh" and store
+	// away "00abcdef" into the first destination
+	// and leave "000000gh" in ah for the next
+	// operation:
+	
+	movzx( (type byte [esi]), ax );
+	ror( 2, ax );
+	shr( 6, ah );
+	mov( al, [edi] );
+
+	// Fetch the second byte, "ijklmnop" into
+	// al and shift to produce "00ijklgh" in
+	// the al register and "0000mnop" in ah.
+	// Store away the value in al.
+	
+	mov( [esi+1], al );
+	ror( 4, ax );
+	shr( 4, ah );
+	mov( al, [edi+1] );
+	
+	// Fetch the third byte, "qrstuvwx" and
+	// shift to produce "00mnopqr" in al and
+	// "00stuvwx" in ah.  Store al, then ah
+	// away to complete the process.
+	
+	mov( [esi+2], al );
+	ror( 6, ax );
+	shr( 2, ah );
+	mov( al, [edi+2] );
+	mov( ah, [edi+3] );
+	
+	pop( edi );
+	pop( esi );
+	pop( eax );
+	
+end Encode3;
+	
+	
+	
+	
+static
+
+	ThreeBytes:byte[3] := [ $14, $0f, $a8 ];
+	FourBytes:byte[4];
+	
+begin uuencodeDemo;
+
+	Encode3( ThreeBytes, FourBytes );
+	
+	stdout.put
+	( 
+		"ThreeBytes = ", 
+		ThreeBytes[0],
+		" ", 
+		ThreeBytes[1], 
+		" ", 
+		ThreeBytes[2], 
+		nl 
+	);
+	
+	stdout.put
+	( 
+		"FourBytes  = ", 
+		FourBytes[0], 
+		" ", 
+		FourBytes[1], 
+		" ", 
+		FourBytes[2], 
+		" ", 
+		FourBytes[3], 
+		nl 
+	);
+	
+	
+end uuencodeDemo;

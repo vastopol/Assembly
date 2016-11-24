@@ -1,0 +1,70 @@
+/*
+Hi,
+
+I am trying to figure out how to implement this code snippet in ASM.
+
+int myfib = fib(5);
+int fib(int N)
+{
+    if(N<=2)
+        return 1;
+    else
+    return fib(N-1) + fib(N-2)
+}
+
+I cannot figure out how to keep track of the local variables on the
+stack. Have you seen examples of this anywhere on the net?
+
+Thanks, Scott
+*/
+
+
+
+program DemoRecursion;
+#include( "stdlib.hhf" );
+
+var
+	myfib:int32;
+	
+
+	/*
+	** Compute fibonocci sequence (digusting, slow, way )
+	** using a recursive call.
+	*/
+	
+	procedure fib( n:int32 ); @nodisplay;
+	begin fib;
+	
+		if( n <= 2 ) then
+		
+			mov( 1, eax );
+		
+		else
+		
+			mov( n, eax );		// Compute fib( n-1 );
+			dec( eax );
+			fib( eax );
+			push( eax );		// Save result of fib(n-1);
+			
+			mov( n, eax );		// Compute fib( n-2 );
+			sub( 2, eax );
+			fib( eax );
+			add( [esp], eax );	// Add fib(n-1) and fib(n-2)
+			add( 4, esp );		// Clean up stack.
+			
+		endif;
+		
+	end fib;
+	
+begin DemoRecursion;
+
+	mov( 0, myfib );
+	while( myfib < 10 ) do
+	
+		fib( myfib );
+		stdout.put( "fib(", myfib, ") = ", (type int32 eax ), nl );
+		inc( myfib );
+		
+	endwhile;
+	
+end DemoRecursion;

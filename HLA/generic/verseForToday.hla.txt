@@ -1,0 +1,80 @@
+program verseForToday;
+
+// /////////////////////////////////////////////
+// need full data file "verses.dat" in same dir
+// command line parameters added
+// modified from Randy's version
+ 
+
+#include( "stdlib.hhf" ) 
+
+
+static 
+	inFile:		dword; 
+	dateVal:	uns32; 
+	verseDate:	uns32; 
+	inStr:		str.strvar(128); 
+
+	now:		date.daterec; 
+	
+	defaultStr:	string:=	"Matt";
+	      
+
+begin verseForToday; 
+
+	console.setAttrs( console.blue, console.cyan );
+	console.cls();
+
+	date.today( now );	// let dateVal = month*100 + day
+	movzx( now.month, eax ); 
+	intmul( 100, eax ); 
+	movzx( now.day, ebx ); 
+	add( ebx, eax ); 
+	mov( eax, dateVal ); 
+ 
+	stdout.puts( "Food for your heart, "); // Matt, 
+
+	arg.c(); // get the total number of parameters on the command line
+
+	if (eax > 1 ) then	
+	// Print each of the individual command line parmeters:
+	
+	   // put number of parameters on command line in ecx
+	   mov( eax, ecx ); 
+
+	   // start with first (if any) parameter beyond progam name
+	   mov( 1, ebx );    
+	   while( ebx < ecx ) do 
+
+		arg.v( ebx );  // return pointer to parameter ebx in eax
+		stdout.puts( eax );
+		inc( ebx );
+		if ( ebx < ecx ) then stdout.putc( ' ' ); endif;
+
+	   endwhile;
+
+	else
+	   stdout.puts( defaultStr );
+	endif;
+
+	date.setFormat( date.yyyymmdd );
+        date.setSeparator( '-' ); 
+	
+	stdout.puts( ", for " );
+	date.print( now );
+	stdout.puts( " ..." nl nl );
+
+        fileio.open( "verses.dat", fileio.r ); 
+        mov( eax, inFile ); 
+        while( !fileio.eof( inFile )) do 
+		fileio.get( inFile, verseDate, inStr ); 
+		mov( verseDate, eax );
+                if( eax = dateVal ) then 
+                        stdout.put( inStr, nl ); 
+                endif; 
+        endwhile; 
+        fileio.close( inFile ); 
+
+	stdin.readLn();
+
+end verseForToday;

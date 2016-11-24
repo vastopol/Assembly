@@ -1,0 +1,53 @@
+#if( ! @defined( random_hhf ))
+?random_hhf := true;
+
+#if( @thread )
+
+	#includeOnce( "cstdlib.hhf" )
+	
+#endif
+#includeOnce( "_hla.hhf" )
+
+namespace rand; @fast;
+
+	proc
+		randomize:
+			procedure;
+			@global:_hla._ext( "RAND_RANDOMIZE" );
+
+		uniform:
+			procedure {@returns( "eax" )};
+			@global:_hla._ext( "RAND_UNIFORM" );
+
+		random:
+			procedure {@returns( "eax" )};
+			@global:_hla._ext( "RAND_RANDOM" );
+
+		range:
+			procedure( startRange:dword; endRange:dword ) {@returns( "eax" )};
+			@global:_hla._ext( "RAND_RANGE" );
+
+		urange:
+			procedure( startRange:dword; endRange:dword ) {@returns( "eax" )};
+			@global:_hla._ext( "RAND_URANGE" );
+
+
+		deal: 
+			iterator( count:dword );
+			@global:_hla._ext( "RAND_DEAL" );
+				
+		#if( @thread )
+		
+			_enterCS:
+			procedure;	@global:_hla._ext( "RAND_ENTERCS" );
+			_leaveCS:
+			procedure; @global:_hla._ext( "RAND_LEAVECS" );
+			
+		#endif
+	
+
+
+end rand;
+
+
+#endif

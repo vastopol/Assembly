@@ -1,0 +1,176 @@
+// wc
+//
+//	This program demonstrates a quick and dirty "word count" in
+// assembly language. This is based on the "wc.c" 
+// program that is part of "The Great Computer
+// Language Shoot-out" found at
+//
+//		http://www.bagley.org/~doug/shootout/
+//
+// The purpose of that web page is to demonstrate several
+// applications written in various languages. Although one
+// of the primary purposes of that web site is to demonstrate
+// the different run-time efficiencies of various languages,
+// this HLA implementation was not created to demonstrate
+// that assembly code is faster or smaller (everyone pretty
+// much accepts the fact that the fastest and/or smallest
+// example of a program will be written in assembly language).
+// Instead, this example demonstrates that with the use of
+// a high level assembler (e.g., HLA), it's also possible to
+// write code almost as easily as in a high level language
+// like C. As such, this example freely sacrifices efficiency
+// for readability.
+
+#if( false )
+	/* -*- mode: c -*-
+	 * $Id: wc.gcc,v 1.9 2001/10/09 23:42:44 doug Exp $
+	 * http://www.bagley.org/~doug/shootout/
+	 * Author: Waldemar Hebisch (hebisch@math.uni.wroc.pl)
+	 * Optimizations: Michael Herf (mike@herfconsulting.com)
+	 */
+
+	#include <stdio.h>
+	#include <unistd.h>
+
+	#define CHAR int
+	#define BSIZ 4096
+
+	unsigned long ws[256];
+	char buff[BSIZ];
+
+	int main() {
+
+	    int w_cnt=0,l_cnt=0,b_cnt=0,cnt;
+	    unsigned long was_sp = 1;
+	    unsigned char *pp, *pe;
+
+	    /* Fill tables */
+	    for (cnt = 0; cnt < 256; cnt++)
+	    {
+	    	ws[cnt] = 0;
+		}
+
+	    /* also: ws['\r']=ws['\v']=ws['\f']= */
+	    ws[' ']=ws['\t']=ws['\n']=1;
+	    ws['\n']=65536 + 1;
+
+	    /* Main loop */
+
+	    while((cnt=read(0,buff,BSIZ))) 
+	    {
+	        unsigned long tcnt = 0;
+
+			b_cnt += cnt;
+			pe = buff + cnt;
+			pp = buff;
+
+			while(pp < pe) 
+			{
+			    tcnt += ws[*pp] ^ was_sp;
+			    was_sp = ws[*pp] & 0xFFFF;
+			    pp ++;
+			}
+			w_cnt += tcnt  & 0xFFFF;
+			l_cnt += tcnt >> 16;
+	    }
+
+	    w_cnt += (ws[ buff[b_cnt&(BSIZ-1)-1] ]^1)&1;
+	    w_cnt>>=1;
+
+	    printf("%d %d %d\n", l_cnt, w_cnt, b_cnt);
+	    return 0;
+	}
+#endif
+
+
+// Here's a version of "wc" done in HLA. Unlike other
+// "Great Shootout" examples, this code is *not* a translation
+// of the C code above. Instead, this version demonstrates a
+// "quick and dirty" version of the code written using the
+// HLA Standard Library str.tokenize function. If you want
+// an "optimized" word count program, there are dozens of them
+// on the net. As such, there was no real need to convert the
+// code above; instead, this code continues the philosophy of
+// demonstrating that assembly code is easy to write with HLA.
+
+program wc;
+#include( "stdlib.hhf" )
+
+static
+	wordCnt		:uns32 := 0;
+	lineCnt		:uns32 := 0;
+	charCnt		:uns32 := 0;
+	f			:dword;
+	filename	:string;
+	inputLine	:str.strvar( 1024 );
+	inputWords	:string[ 512 ];
+
+begin wc;
+
+	// Let's read a filename from the command line (different
+	// than the C code, but lots more practical):
+
+	if( arg.c() != 2 ) then
+
+		stdout.put( "Usage: wc <filename>" nl );
+		exit wc;
+
+	endif;
+	mov( arg.v( 1 ), filename );
+	mov( fileio.open( eax, fileio.r ), f );
+
+	// For each line in the source file, read the line
+	// and count the words on it:
+
+	while( !fileio.eof( f )) do
+
+		fileio.gets( f, inputLine );
+
+		// Quick and dirty way to count the words -
+		// just call the str.tokenize routine to do
+		// all the work.  str.tokenize returns the
+		// word count in EAX.  Note: technically,
+		// we should probably call str.tokenize2
+		// and feed it a better delimiter character
+		// set, as str.tokenize includes delimeter
+		// chars we don't normally accept in English
+		// (e.g., ":"). Therefore, this program
+		// may "overcount" words in some files compared
+		// with other programs that don't use such
+		// delimeters to separate words.
+
+		str.tokenize( inputLine, inputWords, 512 );
+		add( eax, wordCnt );
+
+		// Whoops! Don't for get to deallocate
+		// all the memory associated with the
+		// strings created by str.tokenize.
+
+		while( eax > 0 ) do
+
+			dec( eax );
+			strfree( inputWords[ eax*4] );
+
+		endwhile;
+		
+		// Bump up the line count:
+
+		inc( lineCnt );
+		
+		// Bump up the character count (plus 1 or 2
+		// to account for EOLN chars in Linux/Windows).
+		// Note that we may be off by one or two characters
+		// if there is no EOLN sequence at the end of
+		// the file.
+
+		mov( inputLine, eax );
+		mov( (type str.strRec [eax]).length, eax );	// Get string length
+		add( uns32( os.win32 )+1, eax );			// Add in newln size
+		add( eax, charCnt );						// Bump up char cnt.
+
+	endwhile;
+	fileio.close( f );
+	stdout.put( lineCnt, ' ', wordCnt, ' ', charCnt, nl );
+	strfree( filename );
+	  	
+end wc;

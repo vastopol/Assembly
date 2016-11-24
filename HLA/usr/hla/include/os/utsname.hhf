@@ -1,0 +1,18 @@
+#if( !@defined( utsname_hhf ))
+?utsname_hhf := true;
+
+namespace linux; @fast;
+
+type
+	utsname: record
+		sysname		:char[65];
+		nodename	:char[65];
+		release		:char[65];
+		version		:char[65];
+		machine		:char[65];
+		domainname	:char[65];
+	endrecord;
+			
+
+end linux;
+#endif //utsname_hhf

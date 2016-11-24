@@ -1,0 +1,172 @@
+program main; 
+#include( "stdlib.hhf" )
+
+
+// BuildJmpTable-
+//
+// Constructs a table of addresses based on a list of constants passed
+// to this macro.
+//
+// Parameters:
+//
+//  _table_
+//      BuildJmpTable returns an array constant (compile-time object)
+//      in this parameter. The caller should assign this constant to
+//      a run-time array that will hold the jump table.
+//
+//  _default_
+//      This parameter should be some address that the calling code
+//      will use as the *default* case, to select when an index into
+//      the jump table does *not* match any of the constants fed to
+//      the BuildJmpTable macro.
+//
+//  _minVal_
+//      BuildJmpTable returns an integer constant in this compile-time
+//      variable that corresponds to the minimum index value passed
+//      to BuildJmpTable.
+//
+//  _maxVal_
+//      BuildJmpTable returns an integer constant in this compile-time
+//      variable that corresponds to the maximum index value passed
+//      to BuildJmpTable.
+//
+//  _prefix_
+//      BuildJmpTable constructs function names by concatenating this
+//      string value with each of the constants passed in. The caller
+//      is responsible for supplying labels/procedures with each of
+//      these names.
+//
+//  _constants_
+//      This is the array of constant values that BuildJmpTable uses
+//      to construct the jump table array constant.
+
+#macro BuildJmpTable
+( 
+    _table_, 
+    _default_,
+    _minVal_, 
+    _maxVal_,
+    _prefix_, 
+    _constants_[] 
+):_numEntries_, _curConst_, _curVal_;
+    
+    ?_numEntries_ := @elements( _constants_ );
+    #if( _numEntries_ = 0 )
+    
+        #error( "Attempted to construct an empty jump table" )
+        ?_table_ :dword[1] := [_default_];
+        ?_minVal_ := 0;
+        ?_maxVal_ := 0;
+    
+    #else
+    
+        // Determine the minimum and maximum values
+        // for the constants listed in this jump table:
+        
+        ?_minVal_ := @text( _constants_[0] );
+        ?_maxVal_ := _minVal_;
+        #for( _curConst_ in _constants_ )
+        
+            // _constant_ elements are actually strings,
+            // we need to convert those strings to numeric
+            // values for use in generating the jump table:
+            
+            ?_curVal_ := @text( _curConst_ );
+            
+            // Now determine the min/max values:
+            
+            #if( _minVal_ > _curVal_ )
+            
+                ?_minVal_ := _curVal_;
+            
+            #endif
+            #if( _maxVal_ < _curVal_ )
+            
+                ?_maxVal_ := _curVal_;
+                
+            #endif
+            
+        #endfor
+    
+        // Allocate storage for an empty array with sufficient
+        // elements to hold all of the constant values. Note that
+        // the array is indexed from 0..(_maxVal_-_minVal_+1) to
+        // represent the entries _minVal_.._maxVal_
+        
+        ?_table_ :dword[ _maxVal_ - _minVal_ + 1] :=
+            (_maxVal_ - _minVal_ + 1) dup [_default_];
+        
+        // Okay, fill in the jump table array constant with
+        // the addresses of appropriate routines:
+        
+        #for( _curConst_ in _constants_ )
+        
+            ?_curVal_ := @text( _curConst_ );
+            
+            // For the entries with actual addresses, construct
+            // the address by concatenating "&" with the prefix
+            // supplied as a parameter and the current constant value.
+            //
+            // E.g., a prefix of "xyz" and the constant 5 yields:
+            //
+            //      &xyz5
+
+            ?_table_[_curVal_ - _minVal_] := 
+                @text( "&" + _prefix_ + _curConst_ );
+            
+        #endfor     
+        
+    #endif
+#endmacro
+
+BuildJmpTable
+( 
+    jmpTableConst,  // Put the jump table constant here. 
+    &dfltFunc,      // Default function to call for "holes" in table .
+    minVal,         // Return minimum index here. 
+    maxVal,         // Return maximum index here.
+    "func",         // Prefix to use when creating function names.
+    
+    // Constants, around which we'll build the jump table:
+    
+    5, 10, 11, 12, 14, 16, 19, 20, 22
+)
+
+// Here is the actual (run-time) jump table, we initialize it with
+// the constant array we created in the BuildJmpTable macro invocation
+// above.
+
+static
+    jmpTable    :dword[ maxVal-minVal+1 ] := jmpTableConst;
+    
+
+// Functions to be called from the jmp table entries.
+// We must supply the procedure specified as the default parameter
+// and also one procedure for each of the constants supplied to
+// BuildJmpTable. Because the prefix string was "func" in the
+// macro invocation, the procedure names must be "funcN" where
+// "N" represents the specific constant:
+    
+procedure func5; begin func5; end func5;
+procedure func10; begin func10; end func10;
+procedure func11; begin func11; end func11;
+procedure func12; begin func12; end func12;
+procedure func14; begin func14; end func14;
+procedure func16; begin func16; end func16;
+procedure func19; begin func19; end func19;
+procedure func20; begin func20; end func20;
+procedure func22; begin func22; end func22;
+ 
+procedure dfltFunc; begin dfltFunc; end dfltFunc;
+
+
+begin main;
+
+    // Okay, so I lied. I'm really creating a *call* table rather than
+    // a jump table :-)
+    
+    // << load EAX with a value in the range minVal..maxVal)
+    
+    call( jmpTable[ eax*4 - minVal*4 ] );
+
+end main;

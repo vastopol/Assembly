@@ -1,0 +1,31 @@
+
+#if( !@defined( sc_hhf ))
+?sc_hhf := true;
+
+#include( "rpc.hhf" ) 
+
+		  
+
+remoteProcedures( my )
+
+	sync( proc1( i:dword; j:word; k:byte; s:string )   )
+	sync( proc2 )
+	sync( proc3( b:byte; c:char; bo:boolean; i8:int8; u8:uns8 ))
+	sync( proc4( w:word; i16:int16; u16:uns16 ))
+	sync( proc5( d:dword; i32:int32; u32:uns32; r32:real32 ))
+	sync( proc6( q:qword; i64:int64; u64:uns64; r64:real64 ))
+	sync( proc7( tb:tbyte; r80:real80 ))
+	sync( proc8( l:lword; i128:int128; u128:uns128; c:cset ))
+
+	async( aproc1( i:dword; j:word; k:byte; s:string )   )
+	async( aproc2 )
+	async( aproc3( b:byte; c:char; bo:boolean; i8:int8; u8:uns8 ))
+
+	bisync( bproc1( i:dword; j:word; k:byte; s:string ):string  )
+	bisync( bproc2  )
+	bisync( bproc3:int32  )
+
+	
+endRemoteProcedures
+
+#endif

@@ -1,0 +1,100 @@
+// Example program that demonstrates the 
+// Psuedo Random Number Generators.
+
+program DemoRandom;
+
+#include( "stdio.hhf" );
+#include( "stdout.hhf" );
+#include( "rand.hhf" );
+	
+	
+	// A cheap for loop, because I'm too lazy
+	// to write while loops.
+	
+	#macro forlp( v, start, stop );
+
+		mov( start, v );
+		while( v <= stop ) do
+		
+	#terminator endforlp;
+		inc( v );
+		endwhile;
+	#endmacro;
+
+
+static
+	i:int32;
+	Freq: uns32[15];
+		
+begin DemoRandom;
+
+	// Randomize the seed based
+	// on how long the CPU has
+	// been up and running
+	// (requires Pentium or other
+	// CPU with rdtsc instr).
+	
+	rand.randomize();
+	
+	// Generate a short sequence of
+	// uniformly distributed pseudo-random
+	// numbers:
+	
+	forlp( i, 1, 10 )
+	
+		rand.uniform();
+		stdout.put( "Random number (", i, ")= ", (type uns32 eax), nl);
+		
+	endforlp;
+	
+
+	// Generate a sequence of random numbers within the range
+	// 2..i (i=5..15).
+	
+	forlp( i, 5, 15 )
+	
+		rand.range( 2, i );
+		stdout.put
+		( 
+			"Random # in range (2..", 
+			i, 
+			")= ", 
+			(type uns32 eax),
+			nl 
+		);
+		
+	endforlp;
+	
+	// Use the deal iterator to generate a sequence of unique random
+	// numbers in the range 1..10:
+	
+	foreach rand.deal( 10 ) do
+	
+		stdout.put( "Deal: ", (type uns32 eax ), nl);
+		
+	endfor;
+	stdout.newln();
+	
+	// Count frequency of certain values:
+	
+	forlp( ebx, 0, 14 )
+	
+		mov( 0, Freq[ebx*4] );
+		
+	endforlp;
+	
+	forlp( i, 1, 1_000_000 )
+	
+		rand.range( 0, 14 );
+		inc( Freq[ eax*4 ] );
+		
+	endforlp;
+	
+	stdout.put( "Frequency distribution (1,000,000 random #s):", nl );
+	forlp( ebx, 0, 14 )
+	
+		stdout.put( "Freq[", (type uns32 ebx), "]= ", Freq[ebx*4], nl );
+		
+	endforlp; 
+				
+end DemoRandom;

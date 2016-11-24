@@ -1,0 +1,304 @@
+// I'm new to assembler and I have to finish a school project, I need your
+// help!
+// 
+// I have to code an Intel Assembler program, which inputs a sequence of
+// decimal numeric values each followed by an "operator" symbol.  The valid
+// operator symbols are:
+// 
+// 
+//         + add the number which follows to a running total
+//         - subtract the number which follows from a running total
+//         = reset the running total to the number which follows
+//         Q display a message containing your name followed by the running
+// total (as a decimal value) and quit
+// 
+// For example:
+// 
+//     an input sequence of "231 +47+6 -199 Q"
+//         should output "J.Eleanore Snaird 95"
+// and
+//     an input sequence of "456 - 19 =1+56 Q"
+//         should output "J.Eleanore Snaird 57"
+//
+//
+//	Implementation by R. Hyde
+
+
+
+program ThisCodeIsPlagiarized;
+#include( "stdlib.hhf" );
+const
+	curChar:text := "(type char [esi+ebx])";
+
+static
+	Total:		int32;
+	Operation:	thunk;
+
+
+	// Skip all leading spaces and tabs starting at the
+	// current position on the line.
+
+	procedure SkipWS; @nodisplay; @noframe;
+	begin SkipWS;
+
+		push( eax );
+		while( cs.member( curChar, {#10, ' '} )) do
+
+			inc( ebx );
+
+		endwhile;
+		pop( eax );
+		ret();
+
+	end SkipWS;
+
+	// IsDigit returns true in AL if the current character
+	// is a numeric digit.
+	//
+	// IsSigned returns true if the current character is
+	// a leading minus sign or a decimal digit.
+	
+	#macro IsDigit( c );
+
+		cs.member( c, {'0'..'9'} )
+
+	#endmacro;
+
+	#macro IsSigned( c );
+
+		cs.member( c, {'0'..'9', '-'} )
+
+	#endmacro;
+	
+	
+	// Get an operand:
+	//
+	//	Parses a numeric value at the current position in
+	//	the input line.  The "Operation" thunk describes
+	//	what this code is to do with the resulting value
+	//	(for this program, the Operation thunk either copies
+	//	the data in EAX to Total, adds EAX to total, or
+	//	subtracts EAX from Total; see GetAnOperator if you
+	//	want to extend this list).
+	
+	procedure GetAnOperand; @nodisplay; @noframe;
+	begin GetAnOperand;
+	
+		SkipWS();
+		
+		// See if we've got a numeric value.
+		
+		if( IsSigned( curChar ) ) then
+		
+			// Okay, convert the current operand to an integer.
+
+			push( esi );
+			lea( esi, curChar );
+			conv.atoi32( [esi] );
+			pop( esi );
+			
+			// Merge this into our total using the last
+			// operator we encountered:
+
+			Operation();
+
+			// Okay, skip over the digits that make up this number.
+			// Note that we inc ebx first to skip over the char we
+			// matched above.
+
+			repeat
+			
+				inc( ebx );
+				
+			until( !IsDigit( curChar ));
+
+		
+		
+		// See if we've got the replacement operator (=value).
+		
+		elseif( curChar = '=' ) then
+
+			thunk Operation := #{ mov( eax, Total ); }#;
+			inc( ebx );		// Skip '=';
+			GetAnOperand();
+
+		
+		
+		// Neither of the above?  Then it must be an error.
+		
+		else
+
+			stdout.put
+			( 
+				"GetAnOperand: Syntax error in expression near '", 
+				curChar, 
+				"'" nl 
+			);
+
+		endif;
+		
+		// Skip any WS chars after the number.
+		
+		SkipWS();
+		ret();
+		
+	end GetAnOperand;
+	
+	
+	
+	// GetAnOperator checks for the '+', '-', '=', or 'Q'
+	// operators and sets up the "Operation" thunk accordingly.
+	
+	procedure GetAnOperator; @nodisplay; @noframe; @returns( "al" );
+	
+	readonly
+		rhyde:string := "R.Hyde ";
+	
+	begin GetAnOperator;
+	
+		// Okay, now get an operator:
+
+		mov( curChar, al );
+		if( al = '+' ) then
+
+			// Set up thunk so GetAnOperand will add the
+			// next operand into our running total.
+			
+			thunk Operation := #{ add( eax, Total); }#;
+			
+			// Skip the '+' operator.
+			
+			inc( ebx );
+
+		elseif( al = '-' ) then
+
+			// See comments above.
+			
+			thunk Operation := #{ sub( eax, Total); }#;
+			inc( ebx );
+
+		// For "Q" and 'q' just immediately output the data.
+		// ("Q" isn't a very mnemonic choice, but that's what
+		// the specs called for.)
+		
+		elseif( al = 'Q' ) then
+
+			stdout.put( rhyde, Total, nl );
+			inc( ebx );
+			
+		elseif( al = 'q' ) then
+
+			stdout.put( rhyde, Total, nl );
+			inc( ebx );
+			
+		elseif( al = '=' ) then
+		
+			// Allow the '=' operator where an operand
+			// is allowed (extended syntax over specs).
+			// Note that we have to get an operand and
+			// another operator for this to be legal.
+			
+			thunk Operation := #{ mov( eax, Total ); }#;
+			inc( ebx );			// Skip the '='.
+			GetAnOperand();		// Get the following operand.
+			GetAnOperator();	// Get the next operator.
+
+		elseif( al <> #0 ) then
+
+			stdout.put
+			( 
+				"GetAnOperator: Syntax error in expression near '", 
+				curChar, 
+				"'" nl 
+			);
+			inc( ebx );
+
+		endif;
+		SkipWS();
+		ret();
+
+	end GetAnOperator;	
+	
+
+
+begin ThisCodeIsPlagiarized;
+
+	// Allow numeric strings to end with any non-digit value:
+
+	conv.setDelimiters( -{'0'..'9'} );
+
+	// Repeat for each expression the user inputs:
+
+	repeat
+
+		// Get the current line of input from the user:
+		
+		stdout.put( "Enter an expression: " );
+		stdin.flushInput();
+		stdin.a_gets();
+
+		// Some initialization before we begin.
+		// Set up ESI+EBX to contain the current position into our string,
+		// set up "Operation" to copy the first operand into Total.
+		
+		mov( eax, esi );	// ESI is the base address of our string.
+		xor( ebx, ebx );	// EBX is the index into the string.
+
+		thunk Operation := #{ mov( eax, Total); }#;
+
+
+		// Get the leftmost operand:
+		
+		GetAnOperand();
+
+		// Repeat the following for each operator on the line:
+
+		repeat
+
+			GetAnOperator();
+			
+			// If the operator wasn't "Q" then get the next operand
+			// and perform the operation listed above.
+			
+			if( al <> 'Q' ) then
+			
+				GetAnOperand();
+				
+			endif;
+			
+		until( curChar = #0 );
+		
+		// Free up the storage allocated earlier:
+
+		strfree( esi );
+
+		// See if the user wants to play again:
+
+		repeat
+
+			stdout.put( "Would you like to try another expression: ");
+			stdin.flushInput();
+			stdin.getc();
+			and( $5f, al );	// Convert lc->UC.
+			cmp( al, 'Y' );	// Set BL to true if AL contains
+			sete( bh );		// 'Y' or 'N'.
+			cmp( al, 'N' );
+			sete( bl );
+			or( bh, bl );
+			if( !bl ) then
+
+				stdout.put( "Enter 'Y' or 'N'", nl );
+
+			endif;
+
+		until( bl );
+
+	until( al = 'N' );
+
+end ThisCodeIsPlagiarized;
+
+
+
+
+				 
+		 

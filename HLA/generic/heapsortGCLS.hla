@@ -1,0 +1,288 @@
+// heapsortGCLS-
+//
+// This program demonstrates a heap sort algorithm written in
+// assembly language (HLA). It is a fairly straight-forward
+// conversion of the "heapsort.gcc" program provided with the
+// examples in "The Great Computer Language Shoot-out".
+// "The Great Computer Language Shoot-out" is found at
+//
+//		http://www.bagley.org/~doug/shootout/
+//
+// The purpose of that web page is to demonstrate several
+// applications written in various languages. Although one
+// of the primary purposes of that web site is to demonstrate
+// the different run-time efficiencies of various languages,
+// this HLA implementation was not created to demonstrate
+// that assembly code is faster or smaller (everyone pretty
+// much accepts the fact that the fastest and/or smallest
+// example of a program will be written in assembly language).
+// Instead, this example demonstrates that with the use of
+// a high level assembler (e.g., HLA), it's also possible to
+// write code almost as easily as in a high level language
+// like C. As such, this example freely sacrifices efficiency
+// for readability.
+
+
+#if( false )
+
+	/* -*- mode: c -*-
+	 * $Id: heapsort.gcc,v 1.11 2001/08/01 23:41:52 doug Exp $
+	 * http://www.bagley.org/~doug/shootout/
+	 */
+
+	#include <stdlib.h>
+	#include <math.h>
+	#include <stdio.h>
+
+	#define IM 139968
+	#define IA   3877
+	#define IC  29573
+
+	double
+	gen_random(double max) {
+	    static long last = 42;
+	    return( max * (last = (last * IA + IC) % IM) / IM );
+	}
+
+	void
+	heapsort(int n, double *ra) {
+	    int i, j;
+	    int ir = n;
+	    int l = (n >> 1) + 1;
+	    double rra;
+
+	    for (;;) {
+		if (l > 1) {
+		    rra = ra[--l];
+		} else {
+		    rra = ra[ir];
+		    ra[ir] = ra[1];
+		    if (--ir == 1) {
+			ra[1] = rra;
+			return;
+		    }
+		}
+		i = l;
+		j = l << 1;
+		while (j <= ir) {
+		    if (j < ir && ra[j] < ra[j+1]) { ++j; }
+		    if (rra < ra[j]) {
+			ra[i] = ra[j];
+			j += (i = j);
+		    } else {
+			j = ir + 1;
+		    }
+		}
+		ra[i] = rra;
+	    }
+	}
+
+	int
+	main(int argc, char *argv[]) {
+	    int N = ((argc == 2) ? atoi(argv[1]) : 1);
+	    double *ary;
+	    int i;
+	    
+	    /* create an array of N random doubles */
+	    ary = (double *)malloc((N+1) * sizeof(double));
+	    for (i=1; i<=N; i++) {
+		ary[i] = gen_random(1);
+	    }
+
+	    heapsort(N, ary);
+
+	    printf("%.10f\n", ary[N]);
+
+	    free(ary);
+	    return(0);
+	}
+#endif
+
+program heapSort;
+#include( "stdlib.hhf" )
+
+const
+	ary :text := "(type real64 [edi])";
+
+	// gen_random-
+	//
+	// Generates a real80 value between 0..max and
+	// leaves this value sitting on the FPU stack:
+
+	procedure gen_random( max:real64 ); @returns( "st0" );
+	const
+		IA	:int32	:= 3877;
+		IC	:int32	:= 29573;
+		IM	:int32	:= 139968;
+		fIM :real64	:= 139968.0;
+
+	static
+		last :int32 := 42;
+
+	begin gen_random;
+
+		mov( IA, eax );
+		imul( last );
+		add( IC, eax );
+		adc( 0, edx );
+		idiv( IM, edx:eax );
+		mov( edx, last );
+		fild( last );
+		fld( fIM );
+		fdiv();
+		fld( max );
+		fmul();
+
+	end gen_random;
+
+
+
+	// sort-
+	//
+	//	Does a sort of elements 1..n of
+	// the array pointed at by array:
+
+	procedure sort( n:int32; var ra:real64 in edi );
+	const
+		i	:text := "ebx";
+		j	:text := "ecx";
+		ir	:text := "edx";
+		l	:text := "esi";
+	var
+		rra	:real64;
+
+		// Utility macros to save a bit of typing
+		// in this procedure:
+		//
+		// fmov- copies source operand to dest operand:
+
+		#macro fmov( src, dst );
+			fld( src );
+			fstp( dst );
+		#endmacro
+
+		// fcmplt - computes "left < right" and
+		// returns true/false in carry flag.
+		// Note: this code requires a Pentium Pro or later
+		// processor.
+
+		#macro fcmplt( left, right );
+			returns
+			(
+				{
+					fld( right );
+					fld( left );
+					fcomip( st0, st1 );
+					fstp( st0 );
+				},
+				"@c"
+			)
+		#endmacro
+
+	begin sort;
+
+		pushad();
+		mov( n, ir );
+		mov( ir, l );
+		shr( 1, l );
+		inc( l );
+
+		begin sortBody;
+
+			forever
+
+				if( l > 1 ) then
+
+					dec( l );
+					fmov( ary[ l*8 ], rra );
+
+				else
+
+					fmov( ary[ ir*8 ], rra );
+					fmov( ary[ 1*8 ], ary[ ir*8 ] );
+					if( dec( ir ) = 1 ) then
+
+						fmov( rra, ary[ 1*8 ] );
+						exit sortBody;
+
+					endif;
+
+				endif;
+				mov( l, i );
+				lea( j, [l*2] );
+				while( j <= ir ) do
+
+					if( j < ir ) then
+
+						// j += ary[j] < ary[j+1]:
+
+						fcmplt( ary[ j*8 ], ary[ j*8 + 1*8 ] );
+						adc( 0, j );
+
+					endif;
+					if( fcmplt( rra, ary[ j*8] ) ) then
+
+						fmov( ary[ j*8 ], ary[ i*8 ] );
+						mov( j, i );
+						add( j, j );
+
+					else
+
+						lea( j, [ir+1] );
+
+					endif;
+					fmov( rra, ary[ i*8 ] );
+
+				endwhile;
+
+			endfor;
+
+		end sortBody;
+		popad();
+
+	end sort;
+
+static
+	n	:int32;
+	res	:real64;
+
+begin heapSort;
+
+	// Allocate "n" real64 objects, where "n" is passed
+	// on the command line:
+
+	if( arg.c() <> 2 ) then
+
+		stdout.put( "Usage: heapsortGCLS <n>" nl );
+		exit heapSort;
+
+	endif;
+	mov( conv.strTou32( arg.v( 1 ), 0 ), n );
+	lea( eax, [eax*8+8]);
+	mov( malloc( eax ), edi );	// EDI holds pointer to real array.
+
+	// Initialize the array with random values:
+
+	for( mov( 1, ebx ); ebx <= n; inc( ebx )) do
+	
+		gen_random( 1 );
+		fstp( ary[ ebx*8 ] );
+		
+	endfor;
+
+	// Sort elements 1..n of the array:
+
+	sort( n, ary );
+
+	// Dump the sorted array (minor change from original code):
+
+	for( mov( 1, ebx ); ebx <= n; inc( ebx )) do
+
+		fld( ary[ ebx*8 ] );
+		fstp( res );
+		stdout.put( res:12:9, nl );
+
+	endfor;
+	free( edi );
+
+end heapSort;

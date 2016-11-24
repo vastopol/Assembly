@@ -1,0 +1,50 @@
+/*
+
+Hi!
+
+I'm quite new to assembler and i have a problem!
+
+I'm trying to make a list program, and when I i'm going to use _lwrite, it
+objects!
+
+i would like to make a write function like _lread.
+
+_lread has these parameters:
+_lread(HFILE hFile,LPVOID lpBuffer,UINT uBytes);
+
+while _lwrite has got these:
+_lwrite(HFILE hFile,LPCSTR lpBuffer, UINT uBytes);
+
+these are the same as:
+lRead(int file, void *buffer,unsigned int uBytes);
+                                  and
+lWrite(int file,unsigned char *lpBuffer,unsigned int uBytes);
+
+How do I open/close a file in assembler, and how do i read/write to a file
+too???
+
+
+*/
+
+
+program DemoFile;
+#include( "stdlib.hhf" );
+
+static
+	f:file;        
+    
+begin DemoFile;
+
+	f.create();		// Constructor for file class.
+	f.openNew( "Data.txt" );
+	f.put( "Hello World" nl );
+	f.close();
+	
+	f.open( "Data.txt", fileio.r );
+	f.a_gets();
+	stdout.put( "String=", (type string eax) );
+	strfree( eax );
+	f.close();
+	
+        
+end DemoFile;

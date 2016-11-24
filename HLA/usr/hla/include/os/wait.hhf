@@ -1,0 +1,89 @@
+#if( ! @defined( wait_hhf ))
+?wait_hhf := true;
+
+#includeonce( "os/spinlock.hhf" )
+#includeonce( "os/lists.hhf" )
+
+namespace linux; @fast;
+
+type
+	wait_queue_head_t:record
+		_lock		:wq_lock_t;
+		task_list	:list_head;
+	endrecord;	
+	
+		
+const
+
+	// constants/macros associated with wait4
+
+	wnohang				:= 1;
+	wuntraced			:= 2;
+	__wall				:= $4000_0000;
+	__wclone			:= $8000_0000;
+	
+	#macro wexitstatus(s);
+		movzx( (type byte s[1]), eax )
+	#endmacro
+	
+	#macro wifexited(s);
+		returns
+		(
+			{
+				movzx( (type byte s), eax );
+				test( $7f, al );
+				setz( al );
+			},
+			"eax"
+		)
+	#endmacro
+	
+	#macro wifstopped(s);
+		returns
+		(
+			{
+				movzx( (type byte s), eax );
+				cmp( eax, $ff );
+				sete( al );
+			},
+			"eax"
+		)
+	#endmacro
+	
+
+	// wifsignaled returns false if L.O. byte of
+	// s contains 0, $80, or $ff (!wifstopped && !wifexited).
+	
+	#macro wifsignaled(s);
+		returns
+		(
+			{
+				movzx( (type byte s), eax );
+				rol( 1, al );	//0,80,ff-> 0,1,ff
+				inc( al );		//0,80,ff-> 1,2,0
+				cmp( al, 2 );
+				setnbe( al );	//0 if originally 0, 80, or ff.
+			},
+			"eax"
+		)
+	#endmacro
+	
+	#macro wtermsig(s);
+		returns
+		(
+			{
+				movzx( (type byte s), eax );
+				and( $7f, al );
+			},
+			"eax"
+		)
+	#endmacro
+	
+	
+	#macro wstopsig(s);
+		movzx( (type byte s[1]), eax )
+	#endmacro
+
+	
+end linux;
+#endif //wait_hhf

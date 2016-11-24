@@ -1,0 +1,424 @@
+/***************
+ 
+
+  I like your tutorial, I'd like to advance into things that can
+actually be used in my early programs that show important points, here
+is a partial list that is roughly in increasing complexity for C
+programs.  What you could do for these and later programs is give the
+info needed to write the program and have the user try to write it
+before looking at the actual coded example.
+
+1)  A program that inputs your age in years and outputs the number
+of seconds in that time.  (Show simple input and math)
+2)  A program that inputs your height in feet and inches (two
+entries), then outputs your height in feet as a decimal. (Shows math
+on two variables of different types (I have no idea what this means to
+assembler but types in C are a big deal :)
+3)  Input first name, then last name then output as "last, first"
+(Introduces Strings and formatted output).
+4)  A program that uses a loop to calculate the cubes of the numbers 1
+to 6. (Shows looping)
+5)  A program that inputs sex and height, then outputs "Hello,
+Sir/Maam you are shorter/taller/equal to the average height for
+men/women" (Shows IF branching).
+
+*****/
+
+program FiveParts;
+#include( "stdlib.hhf" );
+
+
+	procedure date_print( d:date.daterec );
+	begin date_print;
+	
+		push( eax );
+		date.a_toString( d );
+		stdout.put( (type string eax) );
+		str.free( eax );
+		pop( eax );
+		
+	end date_print;
+	
+	// InputInt-
+	//
+	//	Gets a good input integer between the specified ranges.
+	//	Prompts the user to reenter the data if an input error occurs
+	//	or the value is out of the specified range.
+	
+	procedure InputInt( prompt:string; lowRange:int32; hiRange:int32 ); 
+		@nodisplay;
+		@returns( "eax" );
+	begin InputInt;
+	
+		forever
+		
+			stdout.put( prompt, ": " );
+			try
+			
+				stdin.flushInput();	// Force a new input line.
+				stdin.geti32();
+				
+				// stdin.get checks to see if the value is within the
+				// range of a 32-bit integer.  Now check to see if it's
+				// within the range specified by the caller.
+
+				if( eax < lowRange ) then raise( ex.ValueOutOfRange ); endif;
+				if( eax > hiRange  ) then raise( ex.ValueOutOfRange ); endif;
+				
+				
+			  // If we fall through to this point, then the input number
+			  // is okay.  So break out of the forever loop and return
+			  // the value currently in EAX.
+			  
+			  unprotected
+			  
+			  	break;
+				
+				
+			  // If there were illegal characters in the number,
+			  // tell the user about it and make them re-enter the data.
+			  
+			  exception( ex.ConversionError )
+			  
+			  	stdout.put
+				( 
+					"Illegal characters in value, please re-enter" nl 
+				);
+			
+			  // If the value was outside the range lowRange..hiRange
+			  // then tell them about it and make them reenter the data.
+			  	
+			  exception( ex.ValueOutOfRange );
+			  
+			  	stdout.put
+				( 
+					"Value is out of range, please enter a value between ",
+					lowRange,
+					" and ",
+					hiRange,
+					nl
+				);
+				
+			endtry;
+			
+		endfor;
+		
+	end InputInt;
+	
+	
+	
+	
+	
+	// This procedure asks the user to input their birthday.  Then it will
+	// tell them how old they are in seconds, +/- one day (since they
+	// probably don't know what time they were born, it's hard to be
+	// exceptionally accurate here.
+	
+	procedure ProblemOne;
+	const
+		EpochYear	:=	1900;	// Add this value to two-digit years.
+		
+	readonly
+		EarliestDate: date.daterec := date.daterec:[ 1, 1, 1850 ];
+		
+	var
+		BirthDay:	date.daterec;
+		theDate:	date.daterec;
+		theTime:	time.timerec;	
+		
+	begin ProblemOne;
+	
+		// Output dates in a reasonable fashion:
+		
+		date.setFormat( date.mmddyyyy );
+	
+		// Get the current date and time so we can compute the
+		// number of seconds since birth.
+		
+		date.today( theDate );
+		time.curTime( theTime );
+	
+		// Get the user's birthday:
+		
+		InputInt( "Enter the month you were born", 1, 12 );
+		mov( al, BirthDay.month );
+		InputInt( "Enter the day you were born", 1, 31 );
+		mov( al, BirthDay.day );
+		
+		forever
+		
+			InputInt( "Enter the year you were born", 1, 9999 );
+			
+			// If the user entered only a two-digit date, assume
+			// the H.O. two digits are "19".  Obviously this will
+			// have to be changed at some point to assume the
+			// year of birth is in the 2000's.
+			
+			if( eax < 100 ) then
+			
+				add( EpochYear, ax );
+				
+			endif;
+			mov( ax, BirthDay.year );
+			mov( (type dword BirthDay), eax );
+			if( eax >= (type dword EarliestDate) ) then
+			
+				breakif( eax <= (type dword theDate) );
+			
+			endif;
+			stdout.put
+			( 
+				"That does not seem like a reasonable year." nl
+				"Please enter a year between "
+			);
+			date_print( EarliestDate );
+			stdout.put( " and " );
+			date_print( theDate );
+			stdout.newln();
+						
+		endfor;
+		
+		// Okay, convert the birth date and today's date
+		// to Julian day numbers.
+		
+		date.toJulian( theDate );
+		mov( eax, ebx );
+		date.toJulian( BirthDay );
+		sub( eax, ebx );
+		
+		// EBX contains the number of days the person has been alive.
+		// Convert that to seconds:
+		
+		intmul( 60*60*24, ebx );
+		
+		// Take the current time entered earlier and convert that
+		// to seconds:
+		
+		time.toSecs( theTime );
+
+		// Sum the two to determine the number of seconds this person
+		// has been alive:
+		
+		add( ebx, eax );
+		
+		// Okay, display the results:
+		
+		stdout.put
+		( 
+			"You have been alive ", 
+			(type uns32 eax), 
+			" seconds," 
+			nl
+			"plus or minus about 86,000 seconds depending on the time "
+			"of your birth" nl nl
+		);
+		
+	end ProblemOne;
+	
+	
+	
+	// This procedure has the user enter their height in
+	// feet and inches.  It displays their height in decimal inches.
+	
+	procedure ProblemTwo;
+	readonly
+		Twelve:	real64 := 12.0;
+	var
+		Feet: 	uns32;
+		Inches:	uns32;
+		decimal:real64;
+		
+	begin ProblemTwo;
+	
+		InputInt
+		( 
+			"Enter your height in feet and inches, starting with feet", 
+			0, 
+			12 
+		);
+		mov( eax, Feet );
+		InputInt( "Enter the inches", 0, 11 );
+		mov( eax, Inches );
+		
+		// Compute the decimal height as
+		// Ht := flt( feet ) + float(inches)/12.0;
+		
+		fild( Inches );
+		fld( Twelve );
+		fdiv();
+		fild( Feet );
+		fadd();
+		fstp( decimal );
+		stdout.put( "Your height is ", decimal:5:2, " feet." nl nl );
+		
+	end ProblemTwo;
+	
+	
+	
+	
+	// Input the user's name as a single string.
+	// Scan through the string and pick out the user's first
+	// and last names and display them.
+	//
+	//	Assumption: since we're only asking for the first and
+	// last names from the user, if we get more than two words
+	// assume that the 2nd through Nth words are part of the
+	// last name (e.g., Van Halen) as opposed to a middle name.
+	//
+	//	Assumption #2: Names only contain alphabetic characters
+	// and everything else is to be ignored (sorry, artist with
+	// unpronouncable name who was formerly known as "Prince"
+	// but no longer wants to be called the artist formerly known
+	// as "Prince").
+	
+	procedure ProblemThree;
+	var
+		FullName:	string;
+		Names:		string[ 128 ];	// Max words tokenize will find.
+		
+	begin ProblemThree;
+	
+		stdout.put( "Enter your full name (first, last): " );
+		stdin.flushInput();
+		stdin.a_gets();
+		mov( eax, FullName );
+		
+		str.tokenize4( eax, -{'a'..'z', 'A'..'Z'}, (type string Names), 128 );
+		stdout.puts( "Name:" );
+		
+		// Output the last name (may be multiple components):
+		
+		for( mov( 1, ebx); ebx < eax; inc( ebx )) do
+		
+			stdout.putc( ' ' );
+			stdout.put( Names[ ebx*4 ] );
+			
+		endfor;
+		
+		// Output the first name:
+		
+		stdout.put( ", ", Names[0], nl nl );
+		
+		
+		// Free up dynamic storage this code allocates:
+		
+		strfree( FullName );
+		for( mov( 0, ebx ); ebx < eax; inc( ebx )) do
+		
+			strfree( Names[ ebx*4 ] );
+			
+		endfor;
+		
+	end ProblemThree;
+	
+	
+	
+	// The following code prints the cubes of the numbers
+	// in the range 1..LastValToCube.
+	
+	procedure ProblemFour;
+	const
+		LastValToCube := 6;
+	
+		procedure cube( ValueToCube:int32 ); 
+			@nodisplay; 
+			@returns( "eax" );
+			
+		begin cube;
+		
+			mov( ValueToCube, eax );
+			intmul( eax, eax );
+			intmul( ValueToCube, eax );
+			
+		end cube;
+				
+	begin ProblemFour;
+	
+		for( mov( 1, ebx ); ebx <= LastValToCube; inc( ebx )) do
+		
+			cube( ebx );
+			stdout.put( (type uns32 ebx), "**3 = ", (type uns32 eax), nl );
+			
+		endfor;
+		stdout.newln();
+		
+	end ProblemFour;
+	
+		
+
+
+	// This procedure has the user enter their height in
+	// feet and inches.  It will tell them if they are above
+	// or below the average height hard coded into this procedure.
+	
+	procedure ProblemFive;
+	readonly
+		Twelve:	real64 := 12.0;
+		AveHt:	real64 := 5 + 7/12; // 5' 7".
+		
+	var
+		Feet: 	uns32;
+		Inches:	uns32;
+		
+	begin ProblemFive;
+	
+		InputInt
+		( 
+			"Enter your height in feet and inches, starting with feet", 
+			0, 
+			12 
+		);
+		mov( eax, Feet );
+		InputInt( "Enter the inches", 0, 11 );
+		mov( eax, Inches );
+		
+		// Compute the decimal height as
+		// Ht := flt( feet ) + float(inches)/12.0;
+		
+		fild( Inches );
+		fld( Twelve );
+		fdiv();
+		fild( Feet );
+		fadd();
+
+		// Compare the height with the average ht.
+		
+		fld( AveHt );
+		fcompp();
+		fstsw( ax );
+		sahf();
+		
+		// Okay, check the flags to see what is going on.
+		// Note that C=0 if UserHt < AveHt.
+		
+		if( @z ) then
+		
+			stdout.put( "You are the average height" nl );
+			
+		elseif( @nc ) then
+		
+			stdout.put( "You are below the average height" nl );
+			
+		else
+		
+			stdout.put( "You are above the average height" nl );
+			
+		endif;		
+		
+	end ProblemFive;
+	
+	
+	
+		
+		
+		
+begin FiveParts;
+
+	   ProblemOne();
+	   ProblemTwo();
+	   ProblemThree();
+	   ProblemFour();
+	   ProblemFive();
+
+end FiveParts;
+

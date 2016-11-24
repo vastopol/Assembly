@@ -1,0 +1,177 @@
+/*
+** This program generates a CRC16/CCITT CRC table
+** suitable for including in a CRC module (see the
+** accompanying CRCDEMO program).
+**
+**	This code generates a CRC-16 table with the following
+** attributes:
+**
+**	CRC-16 bits
+**	CCCITT polynomial $1021
+**	Bits are *not* reversed
+**
+**	To use the program:
+**
+**		crcgen >crctbl.hla
+**
+**	Then just include (or cut and paste) the crctbl.hla file
+** into your program that uses the CRC table.
+*/
+
+program crcGen;
+#include ("stdlib.hhf")
+
+const
+	GenPoly_c	:= $1021;
+
+static
+	crcTable	:word[256];
+
+/*
+** HLA compile-time program to generate the CRC-16 table
+** directly during a compilation (slower to compile, but
+** doesn't require monkey business with include files or
+** cut and paste).
+*/
+
+readonly
+	crcTable2	:word[256] :=
+	[
+		?tableIndex := 0;
+		#while( tableIndex < 256 )
+
+			?acc := 0;
+			?curData := tableIndex;
+			#for( _ecx := 0 to 3 )
+
+				?accHO := (acc >> 8) & $ff;
+				?acc := acc << 1;
+				?accHO := accHO ^ curData;
+				#if( (accHO & $80) <> 0 )
+
+					?acc := acc ^ GenPoly_c;
+
+				#endif
+				?curData := curData << 1;
+				?accHO := (acc >> 8) & $ff;
+				?acc := acc << 1;
+				?accHO := accHO ^ curData;
+				#if( (accHO & $80) <> 0 )
+
+					?acc := acc ^ GenPoly_c;
+
+				#endif
+				?curData := curData << 1;
+
+			#endfor
+			acc & $ffff
+			?tableIndex += 1;
+			#if( tableIndex <> 256 )
+				,
+			#endif
+
+		#endwhile
+	];
+	
+/*
+** genCRCTable-
+**
+**	Generates the 16-bit CCITT CRC table for fast CRC computations.
+*/
+
+procedure genCRCTable;
+begin genCRCTable;
+
+	pushad();
+
+	xor( edx, edx );		// Index into CRC table/loop counter.
+	mov( GenPoly_c, esi );	// Divisor polynomial.
+	repeat
+
+		xor( eax, eax );	// Initialize CRC accumulator with zeros
+		mov( dl, bl );		// Compute the CRC of the counts 0..255.
+		mov( 4, cl );		// Do four pairs of bits per byte
+		repeat
+
+			mov( ah, bh );
+			shl( 1, eax );
+			xor( bl, bh );
+			if( @s ) then
+
+				xor( esi, eax );
+
+			endif;
+			shl( 1, bl );
+			mov( ah, bh );
+			shl( 1, eax );
+			xor( bl, bh );
+			if( @s ) then
+
+				xor( esi, eax );
+
+			endif;
+			shl( 1, bl );
+			dec( cl );
+			
+		until( @z );
+		mov( ax, crcTable[ edx*2 ] );
+		inc( dl );
+
+	until( @z );
+	popad();
+
+end genCRCTable;
+	
+begin crcGen;
+
+	genCRCTable();
+
+	/*
+	** Write the table out in an HLA syntax friendly form:
+	*/
+
+	stdout.put
+	( 
+		"readonly" nl,
+		stdio.tab, "CRC_table", stdio.tab, ":word[256] :=" nl,
+		stdio.tab, "["
+	);
+	for( mov( 0, ecx ); ecx<256; inc( ecx )) do
+
+		test( 7, ecx );
+		if( @z ) then
+
+			stdout.put( nl, stdio.tab, stdio.tab );
+
+		endif;
+		stdout.put( "$" );
+		stdout.putwSize( crcTable[ ecx*2 ], 4, '0' );
+		if( ecx <> 255 ) then
+
+			stdout.put( ", " );
+
+		endif;
+
+	endfor;
+	stdout.put( nl, stdio.tab, "];" nl );
+	
+	/*
+	** Compare the two tables to verify the compile-time generated table
+	** (the computed table was independently verified)
+	*/
+	
+	for( mov(0, ecx); ecx<256; inc( ecx )) do
+	
+		mov( crcTable[ ecx*2 ], ax );
+		if( ax <> crcTable2[ ecx*2 ] ) then
+		
+			stdout.put( "Tables do not agree at index ", (type uns32 ecx), nl );
+			
+		endif;
+		
+	endfor;
+		
+end crcGen;
+
+
+       

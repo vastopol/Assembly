@@ -1,0 +1,369 @@
+program main; 
+
+// chuck-
+//
+// Generate a jump table (only in the read-only data section)
+// according to Chuck Crayne's syntax
+//
+// Usage:
+//
+//  someID: chuckTable( defaultCaseLabel, label:constList, label:constList, ... );
+//
+// This macro serves as a "data type" declaration returning the type and
+// constant data for a jump table. It also defines a constant
+// "someID_minIndex" that specifies the offset that you must subtract from
+// the index into this jump table when doing an indirect jump or call (this
+// value is four times the minimum index value supplied in the constant
+// lists).
+
+namespace chuck_ns;
+
+    // Constants you may want to change to control warnings emitted by
+    // the mwjmp macro:
+    
+    val
+        maxCases    := 4096;    // Maximum # of cases we will allow
+                                
+        largeTable  := 256;     // A "large" table has at least 256 entries
+        
+        sparseTable := 3;       // A "sparse" table is one that has 3x as
+                                // many (or more) unused entries as it has
+                                // actual entries.
+
+    type
+        caseRecord:
+            record
+
+                value   :dword;
+                clabel  :string;
+
+            endrecord;
+            
+    val
+        cases   :caseRecord[ maxCases ] := maxCases dup [caseRecord:[0,""]];
+        
+            
+    // _SortCases_
+    //
+    //  This routine does a bubble sort on an array
+    // of caseRecord objects.  It sorts in ascending
+    // order using the "value" field as the key.
+    //
+    // This is a good old fashioned bubble sort which
+    // turns out to be very efficient because:
+    //
+    //  (1) The list of cases is usually quite small, and
+    //  (2) The data is usually already sorted (or mostly sorted).
+
+    #macro _SortCases_( _sort_size_ ):
+        _sort_i_, 
+        _sort_bnd_, 
+        _sort_didswap_, 
+        _sort_temp_;
+
+        ?_sort_bnd_ := _sort_size_ - 1;
+        ?_sort_didswap_ := true;
+        #while( _sort_didswap_ )
+        
+            ?_sort_didswap_ := false;
+            ?_sort_i_ := 0;
+            #while( _sort_i_ < _sort_bnd_ )
+
+                #if
+                ( 
+                    chuck_ns.cases[_sort_i_].value > 
+                        chuck_ns.cases[_sort_i_+1].value 
+                )
+                
+                    ?_sort_temp_ := chuck_ns.cases[_sort_i_];
+                    ?chuck_ns.cases[_sort_i_] := chuck_ns.cases[_sort_i_+1];
+                    ?chuck_ns.cases[_sort_i_+1] := _sort_temp_;
+                    ?_sort_didswap_ := true;
+
+                #elseif
+                ( 
+                    chuck_ns.cases[_sort_i_].value = 
+                        chuck_ns.cases[_sort_i_+1].value 
+                )
+                    
+                    #error
+                    ( 
+                        "Two cases have the same value: (",
+                        string( sort_array[sort_i].value ),
+                        "): ",
+                        sort_array[sort_i].clabel,
+                        " & ",
+                        sort_array[sort_i+1].clabel                      
+                    )
+                    
+                #endif
+                ?_sort_i_ := _sort_i_ + 1;
+                
+            #endwhile
+            ?_sort_bnd_ := _sort_bnd_ - 1;
+            
+        #endwhile;
+            
+        
+    #endmacro;
+            
+
+end chuck_ns;
+
+
+#macro chuckTable( _defaultCase_, _entries_[] ):
+    _boundsError_,
+    _numEntries_, 
+    _i_,
+    _j_,
+    _k_,
+    _endLabel_,
+    _endConst_,
+    _curLabel_,
+    _valueList_,
+    _slots_,
+    _minLabel_,
+    _tableID_;
+
+    // First, save the label applied to this array so we
+    // can generate the minLabel later.
+    
+    forward( _tableID_ );   
+    ?_numEntries_ := @elements( _entries_ );
+
+    
+    // Okay, parse each of the arguments and extract the constant
+    // and label components, and insert them into the chuck_ns.cases 
+    // array:
+    
+    ?_i_ := 0;
+    ?_j_ := 0;
+    ?_boundsError_ := false;
+    #while( (_i_ < _numEntries_) & (!_boundsError_) )
+    
+        ?_endLabel_ := @index( _entries_[_i_], 0, ':' );
+        #if( _endLabel_ > 0 )
+                             
+            ?_curLabel_ := @substr( _entries_[_i_], 0, _endLabel_ );
+            ?_valueList_ := @substr(  _entries_[_i_], _endLabel_+1, 10000 );
+            
+            // Okay, generate a chuck_ns.cases entry for each of the values:
+            //
+            // Begin by deleting any leading spaces in the value:
+            
+            ?_dummy_ := @OneOrMoreChar( _valueList_, ' ', _valueList_ );
+            
+            // Search for the next space in the string:
+            
+            ?_endConst_ := @index( _valueList_, 0, ' ' );
+            
+            // See if we've added too many entries to the cases array:
+            
+            ?_boundsError_ := _j_ >= chuck_ns.maxCases;
+            
+            // Now, repeat for each value in the values list:
+             
+            #while( (_endConst_ > 0) & (!_boundsError_) )
+            
+                ?chuck_ns.cases[_j_].clabel := _curLabel_;
+                ?chuck_ns.cases[_j_].value := 
+                    @text( @substr( _valueList_, 0, _endConst_ ));
+                    
+                // Remove the first item from the start of the value list:
+                
+                ?_valueList_ := @substr( _valueList_, _endConst_, 10000 );
+                
+                // Move the next item (if it exists) to the beginning of
+                // the value list:
+                
+                ?_dummy_ := 
+                    @OneOrMoreChar
+                    (
+                        _valueList_, // Search through this string
+                        ' ',         // For one or more of these
+                        _valueList_  // Put the remainder of the string here
+                    );
+                    
+                ?_endConst_ := @index( _valueList_, 0, ' ' );
+
+                // Check for too many cases:
+                
+                ?_j_ := _j_ + 1;
+                ?_boundsError_ := _j_ >= chuck_ns.maxCases;
+
+            #endwhile
+            
+            // When there are no more spaces in the string,
+            // we could still have one value left. We're not
+            // guaranteed a value (there could have been a space
+            // at the end of the list), but there may be one
+            // value left to process. Test for that here:
+            
+            #if( !_boundsError_ )   // Don't do this if we've
+                                    // exceeded the array bounds
+                                    
+                ?chuck_ns.cases[_j_].clabel := _curLabel_;
+                ?chuck_ns.cases[_j_].value := @text( _valueList_ );
+                
+                ?_j_ := _j_ + 1;
+                ?_boundsError_ := _j_ >= chuck_ns.maxCases;
+
+            #endif          
+            
+        
+        #else
+        
+            #error( "Error, mal-formed case entry: '", _entries_[_i_], "'" )
+            
+        #endif
+        ?_i_ := _i_ + 1;
+    
+    #endwhile
+
+    #if( _j_ > 0 )
+    
+        // Okay, now sort the case entries in ascending order:
+        
+        chuck_ns._SortCases_( _j_ );
+        
+        
+        // A quick sanity check on the jump table we're about to create.
+        // If the difference between the minimum and maximum values is
+        // quite large, and the table is sparse, we should warn the user
+        // about this situation. For the purposes of "large" we'll assume
+        // a distance of at least 1,024 items (see the constant in the
+        // chuck_ns namespace). For the purposes of "sparse", we'll assume
+        // that at least 75% of the entries are unused (again see the
+        // constant declarations in chuck_ns).
+        //
+        //
+        // Begin by computing the number of "slots" (entries) in the jump
+        // table:
+        
+        ?_slots_ := 
+                chuck_ns.cases[ _j_ - 1 ].value // Maximum case value 
+            -   chuck_ns.cases[ 0 ].value                   // Minimum case value
+            +   1;
+            
+        #if( _slots_ >= chuck_ns.largeTable )
+        
+            #if( (real32( _j_ ) / real32( _slots_ )) < 0.25 )
+            
+                #print
+                ( 
+                    "Warning: jump table created by chuck macro is LARGE" 
+                )
+                #print
+                ( 
+                    "and sparse (", 
+                    uns32( _j_ ), 
+                    " cases and ",
+                    uns32( _slots_ ),
+                    " entries)"
+                )
+                #print( "You might want to consider whether you really")
+                #print( "want to use a jump table here." )  
+            
+            #endif
+            
+        #endif
+        
+        // Created the minLabel constant:
+
+        ?_minLabel_ := @string( @text( @string( _tableID_ )))+ "_minIndex";
+        ?@text(_minLabel_) := chuck_ns.cases[0].value*4;
+
+        // Okay, emit the entries for the jmp table:
+        
+        _tableID_:dword[ _slots_ ] :=
+        [   
+            // Always emit the first entry into the table:
+            
+            &@text( chuck_ns.cases[0].clabel )
+            
+            // Emit the remaining entries (if any):
+            
+            ?_curIndex_ := chuck_ns.cases[0].value+1;
+            #for( _k_ := 1 to _slots_-1 )
+                
+                // Fill in any "holes" in the jump table with
+                // the address of the default case label:
+                
+                #while( _curIndex_ < chuck_ns.cases[_k_].value )
+                
+                    ,&_defaultCase_
+                    ?_curIndex_ := _curIndex_ + 1;
+                    
+                #endwhile
+                
+                // Emit the next user-specified entry in the
+                // jump table:
+                
+                ,&@text( chuck_ns.cases[_k_].clabel )
+                ?_curIndex_ := _curIndex_ + 1;
+                
+            #endfor 
+        
+        ]
+            
+        
+        
+        
+    #else
+    
+        #error( "chuck must have at least one valid case entry" )
+        
+    #endif  
+    
+#endmacro
+
+
+readonly
+
+    jmpTable : 
+        chuckTable
+        (
+            _default_entry,
+            actdef: 9, 
+            brmatr: 10, 
+            buildx: 0, 
+            motion: 5, 
+            oadj:   12, 
+            osetup: 8, 
+            ovride: 16, 
+            rdmsg:  14 15, 
+            _text:  2 3 4 6 7 11 13, 
+            vocab:  1 
+        );
+    
+        
+begin main;     
+
+    // Note: jmpTable_minIndex turns out to be zero
+    // in this particular case, but in the general
+    // case you wouldn't make this assumption. We could
+    // easily create a "jmpTable_maxIndex" constant, too,
+    // if you wanted to be able to test the range of
+    // index values before executing a jmp like the
+    // following. Adding such a label is trivial (see the
+    // code for "jmpTable_minIndex" for details), so I'll
+    // leave that implementation to the reader.
+
+
+    jmp( jmpTable[ eax*4 - jmpTable_minIndex ] );   
+    
+// Do the cases here:
+
+_default_entry:
+buildx:
+vocab: 
+motion:
+osetup:
+actdef:
+brmatr:
+oadj:
+rdmsg: 
+ovride:
+_text:
+  
+end main;

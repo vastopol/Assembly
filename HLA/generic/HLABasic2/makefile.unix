@@ -1,0 +1,25 @@
+build: 							\
+	include/basic.hhf 			\
+	include/siteSpecific.hhf 	\
+	bc 							\
+	bd 							\
+	bx.o
+
+
+clean:
+	rm -f bc
+	rm -f bd
+	rm -f *.o
+	rm -f *.link
+	rm -f *.tbbc
+	rm -f *.hbbc
+
+
+bc: bc.hla include/basic.hhf include/siteSpecific.hhf
+	hla -p:tmp -obj:tmp -e:bc bc
+
+bd: bd.hla include/basic.hhf include/siteSpecific.hhf
+	hla -p:tmp -obj:tmp -e:bd bd
+
+bx.o: bx.hla include/basic.hhf include/siteSpecific.hhf
+	hla -c -p:tmp bx

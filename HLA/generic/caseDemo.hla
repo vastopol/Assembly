@@ -1,0 +1,108 @@
+// hll_hhf_Demo
+//
+// This program demonstrates the HLA HLL switch statement
+// from the switch.hhf module.
+//
+// It also demonstrates the for..forend loop (also from
+// the hll.hhf module).
+//
+// Finally, just to finish off the routines in hll.hhf,
+// this code also demonstrates the _for and _foreachparm
+// compile-time loops that are defined in hll.hhf.
+
+program hll_hhf_Demo;
+#include( "stdlib.hhf" )
+#include( "switch.hhf" )
+
+var
+	i:int32;
+	
+begin hll_hhf_Demo;
+
+	stdout.put( "Pascal case(expr) semantics:", nl nl );
+	
+	
+	// Run ecx from 'f' downto 'f'-9 so
+	// we can test nested switch statements.
+	
+	mov( 'f', ecx );
+	for( mov( 0, i); i<10; inc( i ) ) do
+	
+		mov( i, ebx );
+		switch( ebx )
+		
+			// When i is one, do a switch on the
+			// ECX register as a way of trying out
+			// nested switch statements.
+			
+			case( 1 )
+			
+				switch(ecx)
+				
+					case( 'a' ) stdout.put( 'a' );
+					case( 'b' ) stdout.put( 'b' );
+					case( 'c' ) stdout.put( 'c' );
+					case( 'd' ) stdout.put( 'd' );
+					case( 'e' ) stdout.put( 'e' );
+					case( 'f' ) stdout.put( 'f' );
+					default stdout.put('g');
+					
+				endswitch;
+				
+			case( 2 )
+				stdout.put( "2" );
+				
+			case( 8 )
+				stdout.put( "8" );
+				
+			case( 7, 5 )
+				stdout.put( "(5|7)" );
+				
+			case( 'a' );
+				stdout.put( 'a' );
+				
+			default
+				stdout.put( "?" );
+				
+		endswitch;
+		dec( ecx );
+		
+	endfor;
+	
+	
+	// Okay, let's try the (ugly) C/C++ version.
+
+	?hll.cswitch := true;	// Activate C/C++ semantics for switch	
+	
+	stdout.put( nl nl "C/C++ switch(expr) semantics:" nl nl );
+	for( mov( 0, i); i<10; inc( i ) ) do
+	
+		mov( i, ebx );
+		switch( ebx )
+		
+			case( 1 )
+				stdout.put( "1" );
+				break;
+				
+			case( 2 )
+				stdout.put( "2" );
+				
+				// Fall through to case 8.
+							
+			case( 8 )
+				stdout.put( "8" );
+				break;
+				
+			case( 7 )
+			case( 5 )
+				stdout.put( "(5|7)" );
+				break;
+				
+			default
+				stdout.put( "?" );
+				
+		endswitch;
+		
+	endfor;
+
+end hll_hhf_Demo;

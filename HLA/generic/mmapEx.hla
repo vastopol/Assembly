@@ -1,0 +1,41 @@
+program mmap_example;
+#include( "stdlib.hhf" )
+
+// Quick program to demonstrate the use of a mmap object.
+
+var
+	mmfile:	mmap;
+
+begin mmap_example;
+
+	// Initialize memory-mapped file object.
+
+	mmfile.create();				
+	
+	// Open the mmap.asm file.
+
+	mmfile.open( "mmapEx.asm", fileio.r );	
+
+	// Get pointer to file's data
+
+	mov( mmfile.filePtr, edx );		
+
+	// Display the contents of the file:
+
+	while( edx < mmfile.endFilePtr ) do
+
+		stdout.putc( (type char [edx]) );
+		inc( edx );
+
+	endwhile;
+
+
+	// Close the file:
+
+	mmfile.close();
+
+	// Clean up the associated object:
+
+	mmfile.destroy();
+
+end mmap_example;

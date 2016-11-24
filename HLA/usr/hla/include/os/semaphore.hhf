@@ -1,0 +1,222 @@
+#if( ! @defined( semaphore_hhf ))
+?semaphore_hhf := true;
+
+#includeonce( "os/ipc.hhf" )
+
+namespace linux; @fast;
+
+const
+	// semaphore flags and commands
+
+	sem_undo		:=	$200;
+	
+	sem_getpid		:= 11;
+	sem_getval		:= 12;
+	sem_getall		:= 13;
+	sem_getncnt		:= 14;
+	sem_getzcnt		:= 15;
+	sem_setval		:= 16;
+	sem_setall		:= 17;
+	sem_stat		:= 18;
+	sem_info		:= 19;
+	
+	semmni			:= 128;
+	semmsl			:= 250;
+	semmns			:= semmni * semmsl;
+	semopm			:= 32;
+	semvmx			:= 32767;
+	semume			:= semopm;
+	semmnu			:= semmns;
+	semaem			:= semvmx >> 1;
+	semmap			:= semmns;
+	semusz			:= 20;
+
+	rw_lock_unlocked:= 0;
+	
+	
+
+type
+	// semaphore data structures:
+	
+	semid_ds: record
+		sem_perm			:ipc_perm;
+		sem_otime			:time_t;
+		sem_ctime			:time_t;
+		__sembase			:dword;		// pointer to sem.
+		__sem_pending		:dword;		// pointer to sem_queue
+		__sem_pending_list	:dword;		// pointer to sem_queue
+		__undo				:dword;		// pointer to sem_undo
+		sem_nsems			:word;
+		align(4);
+	endrecord;
+		
+	sembuf: record
+		sem_num	:word;
+		sem_op	:word;
+		sem_flag:word;
+	endrecord;
+	
+	semun: union
+		_val	:dword;
+		buf		:dword; 			//pointer to semid_ds
+		array	:pointer to word;	//array for getall, setall.
+		__buf	:dword;				//pointer to seminfo.
+	endunion;
+	
+	seminfo: record
+		semmap	:dword;
+		semmni	:dword;
+		semmns	:dword;
+		semmnu	:dword;
+		semmsl	:dword;
+		semopm	:dword;
+		semume	:dword;
+		semusz	:dword;
+		semvmx	:dword;
+		semaem	:dword;
+	endrecord;
+
+  	rw_semaphore:record
+  		count		:dword;
+  		wait_lock	:spinlock_t;
+  		wait_list	:list_head;
+  	endrecord;
+  		
+  	semaphore:record
+		count		:atomic_t;
+		sleepers	:dword;
+		_wait		:wait_queue_head_t;
+	endrecord;
+	
+	#macro sema_init( s, v ):reg;
+		mov( v, s.count );
+		mov( 0, s.sleepers );
+		mov( linux.rw_lock_unlocked, s._wait._lock );
+		push( eax );
+		lea( eax, s._wait.task_list);
+		mov( eax, (type linux.wait_queue_head_t [eax]).task_list.next );
+		mov( eax, (type linux.wait_queue_head_t [eax]).task_list.prev );
+		pop( eax );
+	#endmacro
+	
+	#macro init_mutex(s);
+		sema_init(s,1)
+	#endmacro
+	
+	#macro init_mutex_lock(s);
+		sema_init(s,0)
+	#endmacro
+	
+	
+	procedure __down( var sem:semaphore ); @use eax; @cdecl; @external;
+	
+	#macro down(s);
+		lock.dec( s.count.counter );  // s better be a semaphore object!
+		if( @s ) then
+			push(eax);		// We're calling C code, which will
+			push(ecx);		// munge EAX, ECX, and EDX.
+			push(edx);
+			linux.__down( s );
+			add( 4, esp );
+			pop( edx );
+			pop( ecx );
+			pop( eax );
+		endif;
+	#endmacro
+			
+	
+	
+			
+	
+	
+	#macro up(s);
+		lock.inc( s.count.counter );  // s better be a semaphore object!
+		if( @le ) then
+			push(eax);		// We're calling C code, which will
+			push(ecx);		// munge EAX, ECX, and EDX.
+			push(edx);
+			linux.wake_up( s._wait );
+			add( 4, esp );
+			pop( edx );
+			pop( ecx );
+			pop( eax );
+		endif;
+	#endmacro
+			
+	
+	
+	// Linux system function __down_failed_interruptible
+	// requires a pointer to a semaphore object in ECX!
+	
+	procedure __down_failed_interruptible
+	( 
+		var sem:semaphore in ecx
+	); 	@external;
+	
+	#macro down_interruptible(s);
+	
+		returns
+		(
+			{
+			
+				// This is ugly code;  if you want it done better, do
+				// it manually (no macro invocation!)
+				// Warning: this macro cannot assume s <> "[eax]", 
+				// hence a large percentage of the ugliness.
+				//
+				// s better be a semaphore object!
+				
+				lock.dec( s.count.counter );
+				if( @s ) then
+
+					push(ecx);
+					linux.__down_failed_interruptible( s );
+					pop( ecx );
+					
+				else
+				
+					xor( eax, eax );	// return success.
+
+				endif;
+			}, "eax"
+		)
+	#endmacro
+			
+	
+	
+	procedure __down_failed_trylock
+	( 
+		var sem:semaphore in ecx
+	);	@external;
+	
+	#macro down_trylock(s);
+	
+		returns
+		(
+			{
+			
+				// This is ugly code;  if you want it done better, do
+				// it manually (no macro invocation!)
+				// Warning: this macro cannot assume s <> "[eax]", 
+				// hence a large percentage of the ugliness.
+				//
+				// s better be a semaphore object!
+				
+				lock.dec( s.count.counter );	
+				if( @s ) then
+
+					push(ecx);
+					linux.__down_failed_trylock( s );
+					pop( ecx );
+					
+				else
+				
+					xor( eax, eax );	// We succeeded.
+
+				endif;
+			}, "eax"
+		)
+	#endmacro
+
+end linux;
+#endif // semaphore_hhf

@@ -1,0 +1,350 @@
+program consoleTest;
+#include( "stdlib.hhf" )
+#include( "console.hhf" )
+	
+begin consoleTest;
+
+	stdout.put( "Test of cls:" nl nl );
+	stdout.put( "This should be cleared" nl );
+	stdout.put( "Press Enter to clear screen" nl );
+	stdin.readLn();
+	console.cls();
+	stdout.put( "<-( 0,  0)" nl nl );
+	for( mov( 0, ecx ); ecx < 24; inc( ecx )) do
+	
+		console.gotoxy( ecx, ecx );
+		stdout.put( "<-(", (type uns32 ecx):2, ", ", (type uns32 ecx):2, ")" );
+		
+	endfor;
+	console.gotorc( 11, 40 );
+	stdout.put( "****Testing clrBOScrn, press Enter:" );
+	stdin.readLn();
+	console.gotorc( 11, 43 );
+	console.clrToBOScrn();
+	
+	console.gotorc( 13, 40 );
+	stdout.put( "****Testing clrEOScrn, press Enter:" );
+	stdin.readLn();
+	console.gotorc( 13, 44 );
+	console.clrToEOScrn();
+	
+	console.gotorc( 0, 0 );
+	stdout.put
+	(
+		"1111111111111111111111" nl
+		"2222222222222222222222" nl
+		"3333333333333333333333" nl
+		"4444444444444444444444" nl
+		"5555555555555555555555"
+	);
+	console.gotorc( 2, 40 );
+	stdout.put( "Testing clrLn, press Enter: " );
+	stdin.readLn();
+	console.gotorc( 2, 40 );
+	console.clrLn();
+	console.gotorc( 10, 0 );
+	console.clrToEOScrn();
+	stdout.put
+	(
+		"1111111111111111111111" nl
+		"2222222222222222222222" nl
+		"3333333333333333333333" nl
+		"4444444444444444444444" nl
+		"5555555555555555555555"
+	);
+	console.gotorc( 12, 22);
+	stdout.put( "<-clrToBOLN, press Enter:" );
+	stdin.readLn();
+	console.gotorc( 12, 21);
+	console.clrToBOLN();
+	console.gotorc( 10, 0 );
+	console.clrToBOScrn();
+	console.gotorc( 0, 0 );
+	stdout.put
+	(
+		"1111111111111111111111" nl
+		"2222222222222222222222" nl
+		"clrToEOLN ->3333333333333333333333" nl
+		"4444444444444444444444" nl
+		"5555555555555555555555" nl
+		"Press Enter:"
+	);
+	stdin.readLn();
+	console.gotorc( 2, 12 );
+	console.clrToEOLN();
+	console.gotorc( 5, 0 );
+	stdout.put( "deleteChar->*Press Enter:" );
+	stdin.readLn();
+	console.gotorc( 5, 12 );
+	console.deleteChar();
+	console.gotorc( 6, 0 );
+	stdout.put( "deleteChars->****Press Enter:" );
+	stdin.readLn();
+	console.gotorc( 6, 13 );
+	console.deleteChars( 4 );
+	console.gotorc( 7, 0 );
+	console.clrToEOScrn();
+	stdout.put
+	(
+		"1111111111111111111111" nl
+		"2222222222222222222222" nl
+		"deleteLine ->3333333333333333333333" nl
+		"4444444444444444444444" nl
+		"5555555555555555555555" nl
+		"Press Enter:"
+	);
+	stdin.readLn();
+	console.gotorc( 9, 10 );
+	console.deleteLine();
+	console.gotorc( 16, 0 );
+	stdout.put
+	(
+		"1111111111111111111111" nl
+		"2222222222222222222222" nl
+		"deleteLines ->3333333333333333333333" nl
+		"4444444444444444444444" nl
+		"5555555555555555555555" nl
+		"Press Enter:"
+	);
+	stdin.readLn();
+	console.gotorc( 18, 0 );
+	console.deleteLines( 2 );
+	console.gotorc( 12, 0 );
+	console.clrToBOScrn();
+	console.gotorc( 20, 0 );
+	stdout.put( "Press Enter to continue: " );
+	stdin.readLn();
+	
+	console.home();
+	stdout.put( "down:*" );
+	console.down();
+	stdout.putc( '*' );
+	console.down();
+	stdout.putc( '*' );
+	console.down();
+	stdout.putc( '*' );
+	console.down();
+	stdout.putc( '*' );
+	console.down();
+	stdout.putc( '*' );
+	console.down();
+	stdout.putc( '*' );
+	stdout.put( nl nl "Press Enter to continue:" );
+	stdin.readLn();
+	console.home();
+
+	
+	console.gotorc( 10, 10 );
+	stdout.put( "* -- left v" );
+	console.gotorc( 10, 10 );
+	console.left();
+	stdout.putc( '*' );
+	console.left();
+	console.left();
+	stdout.putc( '*' );
+	console.left();
+	console.left();
+	stdout.putc( '*' );
+	console.left();
+	console.left();
+	stdout.putc( '*' );
+	console.left();
+	console.left();
+	stdout.putc( '*' );
+	console.gotorc( 25, 0 );
+	stdout.put( "right->*" );
+	console.right();
+	stdout.putc( '*' );
+	console.right();
+	stdout.putc( '*' );
+	console.right();
+	stdout.putc( '*' );
+	console.right();
+	stdout.put( "*" nl nl "Press Enter to continue: " );
+	stdin.readLn();
+	
+	console.cls();
+	console.gotorc( 5, 10 );
+	stdout.put( '*' );
+	console.up();
+	stdout.put( '*' );
+	console.up();
+	stdout.put( '*' );
+	console.up();
+	stdout.put( '*' );
+	console.up();
+	stdout.put( '*' );
+	console.up();
+	stdout.put( "* -- Press enter to do up once more:" );
+	stdin.readLn();
+	console.up();   // Counteracts readln.
+	console.up();
+	console.gotorc( 10, 0 );
+	stdout.put( "Press Enter to continue:" );
+	stdin.readLn();
+	console.cls();
+	stdout.put
+	(
+		nl
+		nl
+		"insertChar->*****  Press Enter to insert char: "
+	);
+	stdin.readLn();
+	console.gotorc( 2, 12 );
+	console.insertChar();
+	console.gotorc( 3, 0 );
+	stdout.put( "Press Enter to continue: " );
+	stdin.readLn();
+	stdout.put
+	(
+		nl
+		nl
+		"insertChars->*****  Press Enter to insert char: "
+	);
+	stdin.readLn();
+	console.gotorc( 6, 13 );
+	console.insertChars(4);
+	console.gotorc( 8, 0 );
+	stdout.put( "Press Enter to continue: " );
+	stdout.put
+	(
+		nl
+		"1111111111111111111111" nl
+		"2222222222222222222222" nl
+		"insertLine ->3333333333333333333333" nl
+		"4444444444444444444444" nl
+		"5555555555555555555555" nl
+		"Press Enter:"
+	);
+	stdin.readLn();
+	console.gotorc( 11, 0 );
+	console.insertLine();
+	console.gotorc( 16, 0 );
+	stdout.put( "Press Enter to continue:" );
+	stdin.readLn();
+	console.home();
+
+	stdout.put
+	(
+		nl
+		"1111111111111111111111" nl
+		"2222222222222222222222" nl
+		"insertLines ->3333333333333333333333" nl
+		"4444444444444444444444" nl
+		"5555555555555555555555" nl
+		"Press Enter:"
+	);
+	stdin.readLn();
+	console.gotorc( 3, 0 );
+	console.insertLines(3);
+	console.gotorc( 10, 0 );
+	stdout.put( "Press Enter to continue:" );
+	stdin.readLn();
+	
+	console.cls();
+	console.gotorc( 0, 10 );
+	stdout.put( "down(2)->v" );
+	console.ndown( 2 );
+	stdout.put( "*" );
+	console.ndown( 3 );
+	stdout.put( "* <- down 3" );
+	console.ndown( 4 );
+	stdout.put( "* <- down 4" nl );
+	stdout.put( "Press Enter to continue:" );
+	stdin.readLn ();
+	
+	console.cls();
+	console.gotorc( 3, 20 );
+	stdout.put( "*<-left 2, 3, 4" );
+	console.gotorc( 3, 20 );
+	console.nleft( 2 );
+	stdout.putc( '*' );
+	console.nleft( 4 );
+	stdout.putc( '*' );
+	console.nleft( 5 );
+	stdout.putc( '*' );
+	console.gotorc( 5, 0 );
+	stdout.put( "Press Enter to continue: " );
+	stdin.readLn ();
+	
+	console.cls();
+	console.gotorc( 15, 0 );
+	stdout.put(	"nup(x)->*" );
+	console.nup( 1 );
+	stdout.put( "* nup(1)" );
+	console.nup( 2 );
+	stdout.put( "* nup(2)" );
+	console.nup( 3 );
+	stdout.put( "* nup(3)" );
+	console.nup( 4 );
+	stdout.put( "* nup(4)" );
+	console.gotorc( 16, 0 );
+	stdout.put( "Press Enter to continue:" );
+	stdin.readLn();
+	
+	console.cls();
+	console.gotorc( 0, 10 );
+	stdout.put( "nright(1, 2, 3, 4, 5):*" );
+	stdout.put( "*" );
+	console.nright( 1 );
+	stdout.put( "*" );
+	console.nright( 2 );
+	stdout.put( "*" );
+	console.nright( 3 );
+	stdout.put( "*" );
+	console.nright( 4 );
+	stdout.put( "*" );
+	console.nright( 5 );
+	stdout.put( "*" nl nl);
+	stdout.put( "Press Enter to continue: " );
+	stdin.readLn();
+	
+	console.cls();
+	stdout.put
+	(
+		nl
+		"1111111111111111111111" nl
+		"2222222222222222222222" nl
+		"3333333333333333333333" nl
+		"4444444444444444444444" nl
+		"5555555555555555555555" nl
+		"Press Enter to scroll down:"
+	);
+	stdin.readLn();
+	console.scrollDn();
+	stdout.put( nl "Press Enter to scroll up: " );
+	stdin.readLn();
+	console.scrollUp();
+	stdout.put( "Press Enter to continue: " );
+	stdin.readLn();
+	
+	console.cls();
+	console.gotorc( 10, 10 );
+	stdout.put( "Save cursor here->" );
+	console.saveCursor();
+	console.gotorc( 20, 20 );
+	stdout.put( "Temporarily move here->*" );
+	console.restoreCursor();
+	stdout.put( "Moved back here" );
+	console.gotorc( 21, 0 );
+	stdout.put( "Press Enter to continue: " );
+	stdin.readLn();
+	
+	console.cls();
+	
+	console.setAttrs( console.black, console.white );
+	stdout.put( "Black foreground, white background" nl );
+	console.setAttrs( console.red, console.yellow );
+	stdout.put( "Red foreground, Yellow background" nl );
+	console.setAttrs( console.green, console.magenta );
+	stdout.put( "Green foreground, Magenta background" nl );
+	console.setAttrs( console.blue, console.cyan );
+	stdout.put( "Blue foreground, Cyan background" nl );
+	
+	console.setAttrs( console.white, console.black );
+	stdout.put( "Press Enter to continue: " );
+	stdin.readLn();	
+	
+		
+	
+end consoleTest;

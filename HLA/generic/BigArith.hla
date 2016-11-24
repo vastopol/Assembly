@@ -1,0 +1,1032 @@
+// BigArith-
+//
+// Test file for 64/128 bit arithmetic routines and conversions.
+//
+// I used this code to test out the HLA 64/128-bit support.
+// It makes a good example of how to use the HLA Standard Library
+// routines to manipulate these large values.
+// Randy Hyde
+
+
+program  BigArith;
+#include( "stdlib.hhf" )
+
+const
+	Biggest128	:uns128 := 100_000_000_000_000_000_000_000_000_000_000_000_000;
+	Biggest64	:uns128 := 10_000_000_000_000_000_000;
+
+static
+
+	NumResult	:string;
+	
+	laddq		:uns64	:= 1234567890123;
+	raddq		:uns64	:= 1111111111111;
+	daddq		:uns64;
+	saddq		:string	:= "2345679001234";
+	
+	laddl		:uns128	:= 222222222222222222222222222222222;
+	raddl		:uns128	:= 333333333333333333333333333333333;
+	daddl		:uns128;
+	saddl		:string	:= "555555555555555555555555555555555";
+	
+
+	landq		:qword	:= $137f_5555_aaaa_ffff;
+	randq		:qword	:= $F731_aaaa_5555_ffff;
+	dandq		:qword;
+	sandq		:string	:= "1331_0000_0000_ffff";
+	
+	landl		:lword	:= $137f_5555_aaaa_ffff_0000_FFFF_1111_2222;
+	randl		:lword	:= $F731_aaaa_5555_ffff_FFFF_0000_FFFF_AAAA;
+	dandl		:lword;
+	sandl		:string	:= "1331_0000_0000_ffff_0000_0000_1111_2222";
+	
+
+	ldivq		:uns64	:= 1000000000000;
+	rdivq		:uns64	:= 100;
+	ddivq		:uns64;
+	sdivq		:string	:= "10000000000";
+	
+	ldivl		:uns128	:= 24682468246824682468246824682468;
+	rdivl		:uns128	:= 2;
+	ddivl		:uns128;
+	sdivl		:string	:= "12341234123412341234123412341234";
+	
+
+	ldivq2		:uns64	:= 1000000000000;
+	rdivq2		:uns64	:= 10000000000;
+	ddivq2		:uns64;
+	sdivq2		:string	:= "100";
+	
+	ldivl2		:uns128	:= 24682468246824682468000000000000;
+	rdivl2		:uns128	:= 2000000000000;
+	ddivl2		:uns128;
+	sdivl2		:string	:= "12341234123412341234";
+	
+
+	
+
+	lmodq		:uns64	:= 1000000000099;
+	rmodq		:uns64	:= 100;
+	dmodq		:uns64;
+	smodq		:string	:= "99";
+	
+	lmodl		:uns128	:= 24682468246824682468246824682469;
+	rmodl		:uns128	:= 2;
+	dmodl		:uns128;
+	smodl		:string	:= "1";
+	
+
+	lmodq2		:uns64	:= 1009999999999;
+	rmodq2		:uns64	:= 10000000000;
+	dmodq2		:uns64;
+	smodq2		:string	:= "9999999999";
+	
+	lmodl2		:uns128	:= 24682468246824682468246824682468;
+	rmodl2		:uns128	:= 24682468246824682468246800000000;
+	dmodl2		:uns128;
+	smodl2		:string	:= "24682468";
+	
+	
+	
+
+	lidivq		:int64	:= 1000000000000;
+	ridivq		:int64	:= -100;
+	didivq		:int64;
+	sidivq		:string	:= "-10000000000";
+	
+	lidivl		:int128	:= 24682468246824682468246824682468;
+	ridivl		:int128	:= -2;
+	didivl		:int128;
+	sidivl		:string	:= "-12341234123412341234123412341234";
+	
+
+	lidivq2		:int64	:= 1000000000000;
+	ridivq2		:int64	:= -10000000000;
+	didivq2		:int64;
+	sidivq2		:string	:= "-100";
+	
+	lidivl2		:int128	:= 24682468246824682468000000000000;
+	ridivl2		:int128	:= -2000000000000;
+	didivl2		:int128;
+	sidivl2		:string	:= "-12341234123412341234";
+	
+
+	
+
+	limodq		:int64	:= 1000000000099;
+	rimodq		:int64	:= -100;
+	dimodq		:int64;
+	simodq		:string	:= "-99";
+	
+	limodl		:int128	:= 24682468246824682468246824682469;
+	rimodl		:int128	:= -2;
+	dimodl		:int128;
+	simodl		:string	:= "-1";
+	
+
+	limodq2		:int64	:= 1009999999999;
+	rimodq2		:int64	:= -10000000000;
+	dimodq2		:int64;
+	simodq2		:string	:= "-9999999999";
+	
+	limodl2		:int128	:= 24682468246824682468246824682468;
+	rimodl2		:int128	:= -24682468246824682468246800000000;
+	dimodl2		:int128;
+	simodl2		:string	:= "-24682468";
+	
+
+	
+
+	lmulq		:uns64	:= 10000000000;
+	rmulq		:uns64	:= 100;
+	dmulq		:uns64;
+	smulq		:string	:= "1000000000000";
+	
+	lmull		:uns128	:= 12341234123412341234123412341234;
+	rmull		:uns128	:= 2;
+	dmull		:uns128;
+	smull		:string	:= "24682468246824682468246824682468";
+	
+
+	limulq		:int64	:= 10000000000;
+	rimulq		:int64	:= -100;
+	dimulq		:int64;
+	simulq		:string	:= "-1000000000000";
+	
+	limull		:int128	:= 12341234123412341234123412341234;
+	rimull		:int128	:= -2;
+	dimull		:int128;
+	simull		:string	:= "-24682468246824682468246824682468";
+	
+	
+	
+	
+	
+
+	lnegq		:int64	:= -3333333333333333;
+	dnegq		:int64;
+	snegq		:string	:= "3333333333333333";
+	
+	lnegl		:int128	:= -55555555555555555555555555555555;
+	dnegl		:int128;
+	snegl		:string	:= "55555555555555555555555555555555";
+	
+	
+	
+	
+	
+
+	lnotq		:qword	:= $3333_3333_3333_3333;
+	dnotq		:qword;
+	snotq		:string	:= "cccc_cccc_cccc_cccc";
+	
+	lnotl		:lword	:= $5555_5555_5555_5555_5555_5555_5555_5555;
+	dnotl		:lword;
+	snotl		:string	:= "aaaa_aaaa_aaaa_aaaa_aaaa_aaaa_aaaa_aaaa";
+	
+	
+
+	lorq		:qword	:= $137f_5555_aaaa_ffff;
+	rorq		:qword	:= $F731_aaaa_5555_ffff;
+	dorq		:qword;
+	sorq		:string	:= "f77f_ffff_ffff_ffff";
+	
+	lorl		:lword	:= $137f_5555_aaaa_ffff_0000_FFFF_1111_2222;
+	rorl		:lword	:= $F731_aaaa_5555_ffff_FFFF_0000_FFFF_AAAA;
+	dorl		:lword;
+	sorl		:string	:= "f77f_ffff_ffff_ffff_ffff_ffff_ffff_aaaa";
+	
+	
+
+	lshlq		:uns32	:= 1;
+	rshlq		:qword	:= $137f_5555_aaaa_ffff;
+	dshlq		:qword;
+	sshlq		:string	:= "26fe_aaab_5555_fffe";
+	
+	lshll		:uns32	:= 1;
+	rshll		:lword	:= $137f_5555_aaaa_ffff_0000_FFFF_1111_2222;
+	dshll		:lword;
+	sshll		:string	:= "26fe_aaab_5555_fffe_0001_fffe_2222_4444";
+	
+	
+	
+	
+
+	lsubq		:uns64	:= 3333333333333;
+	rsubq		:uns64	:= 1111111111111;
+	dsubq		:uns64;
+	ssubq		:string	:= "2222222222222";
+	
+	lsubl		:uns128	:= 555555555555555555555555555555555;
+	rsubl		:uns128	:= 333333333333333333333333333333333;
+	dsubl		:uns128;
+	ssubl		:string	:= "222222222222222222222222222222222";
+	
+	
+
+	lxorq		:qword	:= $137f_5555_aaaa_ffff;
+	rxorq		:qword	:= $F731_aaaa_5555_ffff;
+	dxorq		:qword;
+	sxorq		:string	:= "e44e_ffff_ffff_0000";
+	
+	lxorl		:lword	:= $137f_5555_aaaa_ffff_0000_FFFF_1111_2222;
+	rxorl		:lword	:= $F731_aaaa_5555_ffff_FFFF_0000_FFFF_AAAA;
+	dxorl		:lword;
+	sxorl		:string	:= "e44e_ffff_ffff_0000_ffff_ffff_eeee_8888";
+	
+
+	// Build a table with each succeeding entry containing exactly one
+	// more digit than the previous entry (up to the maximum allowable
+	// of 39 digits for an uns128 value):
+	 
+	v128	:uns128[39] :=
+			[
+				?i:= 0;
+				?j := 1;
+				
+				#while( i < 38 )
+
+					j,
+					?j := j * 10;
+					?i += 1;
+					
+				#endwhile
+				Biggest128
+			];
+	 
+	// Same as above, but use negative values.
+	
+	sv128	:int128[39] :=
+			[
+				?i:= 0;
+				?j := 1;
+				
+				#while( i < 38 )
+
+					-j,
+					?j := j * 10;
+					?i += 1;
+					
+				#endwhile
+				-Biggest128
+			];
+			
+	// Now do the same for 64-bit values (max 20 digits):
+	
+	v64		:uns64[20] :=
+			[
+				?i:= 0;
+				?j := 1;
+				
+				#while( i < 19 )
+
+					j,
+					?j := j * 10;
+					?i += 1;
+					
+				#endwhile
+				Biggest64
+			];
+	
+	sv64	:int64[20] :=
+			[
+				?i:= 0;
+				?j := 1;
+				
+				#while( i < 19 )
+
+					-j,
+					?j := j * 10;
+					?i += 1;
+					
+				#endwhile
+				-Biggest64 div 2  //Biggest64 has H.O. bit set already!
+			];
+	
+				
+begin BigArith;
+
+	// Allocate some string space for testing purposes:
+	
+	stralloc( 1024 );
+	mov( eax, NumResult );
+	
+	
+	// The following few lines of code need someone to visually
+	// inspect the output to verify that the output is correct.
+	// These loops check the putuXXXsize and putiXXXsize routines
+	// the conversion routines, and so on (
+
+	// Print a series of 128-bit values, each requiring a different
+	// number of digits to print (1 to 39 digits).
+	
+	for( mov( 0, ecx );  ecx < 39*16; add( 16, ecx )) do
+	
+		
+		stdout.put
+		( 
+			v128[ecx]:40, 
+			", ", 
+			sv128[ecx]:-40, 
+			(type lword v128[ecx]), 
+			nl 
+		);
+		
+	endfor;
+	
+	// Print a series of 64-bit values, each requiring a different
+	// number of digits to print (1 to 39 digits).
+	
+	stdout.newln();
+	for( mov( 0, ecx );  ecx < 20; inc( ecx )) do
+	
+		stdout.put
+		( 
+			v64[ecx*8]:21, 
+			", ", 
+			sv64[ecx*8]:-21, 
+			" ", 
+			(type qword v64[ecx*8]), 
+			nl 
+		);
+		
+	endfor;
+	
+	
+	// Okay, now start testing some arithmetic routines.
+	
+	math.addq( laddq, raddq, daddq );
+	conv.u64ToStr( daddq, 1, ' ', NumResult );
+	if( str.ne( NumResult, saddq )) then
+	
+		stdout.put
+		( 
+			"addq did not produce the correct result" nl
+			"Expected: ",
+			saddq,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	math.addl( laddl, raddl, daddl );
+	conv.u128ToStr( daddl, 1, ' ', NumResult );
+	if( str.ne( NumResult, saddl )) then
+	
+		stdout.put
+		( 
+			"addl did not produce the correct result" nl
+			"Expected: ",
+			saddl,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	
+	
+	
+	conv.setUnderscores( true );
+	math.andq( landq, randq, dandq );
+	conv.h64ToStr( dandq, 1, ' ', NumResult );
+	if( str.ine( NumResult, sandq )) then
+	
+		stdout.put
+		( 
+			"andq did not produce the correct result" nl
+			"Expected: ",
+			sandq,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	math.andl( landl, randl, dandl );
+	conv.h128ToStr( dandl, 1, ' ', NumResult );
+	if( str.ine( NumResult, sandl )) then
+	
+		stdout.put
+		( 
+			"andl did not produce the correct result" nl
+			"Expected: ",
+			sandl,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	
+	
+	
+	
+	conv.setUnderscores( false );
+	math.divq( ldivq, rdivq, ddivq );
+	conv.u64ToStr( ddivq, 1, ' ', NumResult );
+	if( str.ine( NumResult, sdivq )) then
+	
+		stdout.put
+		( 
+			"divq(a) did not produce the correct result" nl
+			"Expected: ",
+			sdivq,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	math.divl( ldivl, rdivl, ddivl );
+	conv.u128ToStr( ddivl, 1, ' ', NumResult );
+	if( str.ine( NumResult, sdivl )) then
+	
+		stdout.put
+		( 
+			"divl(a) did not produce the correct result" nl
+			"Expected: ",
+			sdivl,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	
+	
+	math.divq( ldivq2, rdivq2, ddivq2 );
+	conv.u64ToStr( ddivq2, 1, ' ', NumResult );
+	if( str.ine( NumResult, sdivq2 )) then
+	
+		stdout.put
+		( 
+			"divq(b) did not produce the correct result" nl
+			"Expected: ",
+			sdivq2,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	math.divl( ldivl2, rdivl2, ddivl2 );
+	conv.u128ToStr( ddivl2, 1, ' ', NumResult );
+	if( str.ine( NumResult, sdivl2 )) then
+	
+		stdout.put
+		( 
+			"divl(b) did not produce the correct result" nl
+			"Expected: ",
+			sdivl2,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	math.modq( lmodq, rmodq, dmodq );
+	conv.u64ToStr( dmodq, 1, ' ', NumResult );
+	if( str.ine( NumResult, smodq )) then
+	
+		stdout.put
+		( 
+			"modq(a) did not produce the correct result" nl
+			"Expected: ",
+			smodq,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	math.modl( lmodl, rmodl, dmodl );
+	conv.u128ToStr( dmodl, 1, ' ', NumResult );
+	if( str.ine( NumResult, smodl )) then
+	
+		stdout.put
+		( 
+			"modl(a) did not produce the correct result" nl
+			"Expected: ",
+			smodl,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	
+	
+	math.modq( lmodq2, rmodq2, dmodq2 );
+	conv.u64ToStr( dmodq2, 1, ' ', NumResult );
+	if( str.ine( NumResult, smodq2 )) then
+	
+		stdout.put
+		( 
+			"modq(b) did not produce the correct result" nl
+			"Expected: ",
+			smodq2,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	math.modl( lmodl2, rmodl2, dmodl2 );
+	conv.u128ToStr( dmodl2, 1, ' ', NumResult );
+	if( str.ine( NumResult, smodl2 )) then
+	
+		stdout.put
+		( 
+			"modl(b) did not produce the correct result" nl
+			"Expected: ",
+			smodl2,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	
+	
+	
+
+
+
+
+	
+	
+	
+	
+	
+	math.idivq( lidivq, ridivq, didivq );
+	conv.i64ToStr( didivq, 1, ' ', NumResult );
+	if( str.ine( NumResult, sidivq )) then
+	
+		stdout.put
+		( 
+			"idivq(a) did not produce the correct result" nl
+			"Expected: ",
+			sidivq,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	math.idivl( lidivl, ridivl, didivl );
+	conv.i128ToStr( didivl, 1, ' ', NumResult );
+	if( str.ine( NumResult, sidivl )) then
+	
+		stdout.put
+		( 
+			"idivl(a) did not produce the correct result" nl
+			"Expected: ",
+			sidivl,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	
+	
+	math.idivq( lidivq2, ridivq2, didivq2 );
+	conv.i64ToStr( didivq2, 1, ' ', NumResult );
+	if( str.ine( NumResult, sidivq2 )) then
+	
+		stdout.put
+		( 
+			"idivq(b) did not produce the correct result" nl
+			"Expected: ",
+			sidivq2,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	math.idivl( lidivl2, ridivl2, didivl2 );
+	conv.i128ToStr( didivl2, 1, ' ', NumResult );
+	if( str.ine( NumResult, sidivl2 )) then
+	
+		stdout.put
+		( 
+			"idivl(b) did not produce the correct result" nl
+			"Expected: ",
+			sidivl2,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	math.imodq( limodq, rimodq, dimodq );
+	conv.i64ToStr( dimodq, 1, ' ', NumResult );
+	if( str.ine( NumResult, simodq )) then
+	
+		stdout.put
+		( 
+			"imodq(a) did not produce the correct result" nl
+			"Expected: ",
+			simodq,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	math.imodl( limodl, rimodl, dimodl );
+	conv.i128ToStr( dimodl, 1, ' ', NumResult );
+	if( str.ine( NumResult, simodl )) then
+	
+		stdout.put
+		( 
+			"imodl(a) did not produce the correct result" nl
+			"Expected: ",
+			simodl,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	
+	
+	math.imodq( limodq2, rimodq2, dimodq2 );
+	conv.i64ToStr( dimodq2, 1, ' ', NumResult );
+	if( str.ine( NumResult, simodq2 )) then
+	
+		stdout.put
+		( 
+			"imodq(b) did not produce the correct result" nl
+			"Expected: ",
+			simodq2,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	math.imodl( limodl2, rimodl2, dimodl2 );
+	conv.i128ToStr( dimodl2, 1, ' ', NumResult );
+	if( str.ine( NumResult, simodl2 )) then
+	
+		stdout.put
+		( 
+			"imodl(b) did not produce the correct result" nl
+			"Expected: ",
+			simodl2,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	math.mulq( lmulq, rmulq, dmulq );
+	conv.u64ToStr( dmulq, 1, ' ', NumResult );
+	if( str.ine( NumResult, smulq )) then
+	
+		stdout.put
+		( 
+			"mulq(a) did not produce the correct result" nl
+			"Expected: ",
+			smulq,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	math.mull( lmull, rmull, dmull );
+	conv.u128ToStr( dmull, 1, ' ', NumResult );
+	if( str.ine( NumResult, smull )) then
+	
+		stdout.put
+		( 
+			"mull(a) did not produce the correct result" nl
+			"Expected: ",
+			smull,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	
+	
+	math.imulq( limulq, rimulq, dimulq );
+	conv.i64ToStr( dimulq, 1, ' ', NumResult );
+	if( str.ine( NumResult, simulq )) then
+	
+		stdout.put
+		( 
+			"imulq(b) did not produce the correct result" nl
+			"Expected: ",
+			simulq,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	math.imull( limull, rimull, dimull );
+	conv.i128ToStr( dimull, 1, ' ', NumResult );
+	if( str.ine( NumResult, simull )) then
+	
+		stdout.put
+		( 
+			"imull(b) did not produce the correct result" nl
+			"Expected: ",
+			simull,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	
+	
+	
+	
+	
+	
+	
+	math.negq( lnegq, dnegq );
+	conv.i64ToStr( dnegq, 1, ' ', NumResult );
+	if( str.ine( NumResult, snegq )) then
+	
+		stdout.put
+		( 
+			"negq(a) did neg produce the correct result" nl
+			"Expected: ",
+			snegq,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	math.negl( lnegl, dnegl );
+	conv.i128ToStr( dnegl, 1, ' ', NumResult );
+	if( str.ine( NumResult, snegl )) then
+	
+		stdout.put
+		( 
+			"negl(a) did neg produce the correct result" nl
+			"Expected: ",
+			snegl,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	
+	
+	
+	
+	
+	
+	
+	conv.setUnderscores( true );
+	math.notq( lnotq, dnotq );
+	conv.h64ToStr( dnotq, 1, ' ', NumResult );
+	if( str.ine( NumResult, snotq )) then
+	
+		stdout.put
+		( 
+			"notq(a) did not produce the correct result" nl
+			"Expected: ",
+			snotq,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	math.notl( lnotl, dnotl );
+	conv.h128ToStr( dnotl, 1, ' ', NumResult );
+	if( str.ine( NumResult, snotl )) then
+	
+		stdout.put
+		( 
+			"notl(a) did not produce the correct result" nl
+			"Expected: ",
+			snotl,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	
+	
+	
+	
+	
+	conv.setUnderscores( true );
+	math.orq( lorq, rorq, dorq );
+	conv.h64ToStr( dorq, 1, ' ', NumResult );
+	if( str.ine( NumResult, sorq )) then
+	
+		stdout.put
+		( 
+			"orq did not produce the correct result" nl
+			"Expected: ",
+			sorq,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	math.orl( lorl, rorl, dorl );
+	conv.h128ToStr( dorl, 1, ' ', NumResult );
+	if( str.ine( NumResult, sorl )) then
+	
+		stdout.put
+		( 
+			"orl did not produce the correct result" nl
+			"Expected: ",
+			sorl,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	
+	
+	
+
+
+
+	math.shlq( lshlq, rshlq, dshlq );
+	conv.h64ToStr( dshlq, 1, ' ', NumResult );
+	if( str.ine( NumResult, sshlq )) then
+	
+		stdout.put
+		( 
+			"shlq did not produce the correct result" nl
+			"Expected: ",
+			sshlq,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	math.shll( lshll, rshll, dshll );
+	conv.h128ToStr( dshll, 1, ' ', NumResult );
+	if( str.ine( NumResult, sshll )) then
+	
+		stdout.put
+		( 
+			"shll did not produce the correct result" nl
+			"Expected: ",
+			sshll,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	
+	
+	
+
+
+
+
+	conv.setUnderscores( false );
+	math.subq( lsubq, rsubq, dsubq );
+	conv.u64ToStr( dsubq, 1, ' ', NumResult );
+	if( str.ne( NumResult, ssubq )) then
+	
+		stdout.put
+		( 
+			"subq did not produce the correct result" nl
+			"Expected: ",
+			ssubq,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	math.subl( lsubl, rsubl, dsubl );
+	conv.u128ToStr( dsubl, 1, ' ', NumResult );
+	if( str.ne( NumResult, ssubl )) then
+	
+		stdout.put
+		( 
+			"subl did not produce the correct result" nl
+			"Expected: ",
+			ssubl,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+
+
+	
+	
+	
+	
+	
+	
+	conv.setUnderscores( true );
+	math.xorq( lxorq, rxorq, dxorq );
+	conv.h64ToStr( dxorq, 1, ' ', NumResult );
+	if( str.ine( NumResult, sxorq )) then
+	
+		stdout.put
+		( 
+			"xorq did not produce the cxorrect result" nl
+			"Expected: ",
+			sxorq,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+	math.xorl( lxorl, rxorl, dxorl );
+	conv.h128ToStr( dxorl, 1, ' ', NumResult );
+	if( str.ine( NumResult, sxorl )) then
+	
+		stdout.put
+		( 
+			"xorl did not produce the cxorrect result" nl
+			"Expected: ",
+			sxorl,
+			" Got: ",
+			NumResult,
+			nl
+		);
+		
+	endif;
+	
+end BigArith; 

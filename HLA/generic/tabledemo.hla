@@ -1,0 +1,163 @@
+
+/***********************************/
+/*                                 */
+/* This is a simple program that   */
+/* demonstrates HLA tables and     */
+/* patterns.  It reads a file      */
+/* (this source file, to be exact) */
+/* and isolates all the "words".   */
+/* A word is any sequence of       */
+/* alphanumeric and underscore     */
+/* characters.  It inserts each    */
+/* word into a table and counts    */
+/* the number of occurrences of    */
+/* each word.  When the program    */
+/* hits the end of the file, it    */
+/* will display each unique word   */
+/* in the file along with its      */
+/* frequency (i.e., the number     */
+/* of times the word appeared      */
+/* in the file).                   */
+/*                                 */
+/***********************************/
+
+
+program tableDemo;
+
+#include( "stdlib.hhf" );
+
+static
+	s:				string;
+	StartOfWord:	dword;
+	tbl:			table;
+	f:				file;
+	
+	
+	// PrintIt gets called by the table destructor
+	// for each node in the table that it is about
+	// to free.  On entry, EBX points at a
+	// "tableNode" record.  This routine displays
+	// the frequency and the word.
+	
+	procedure PrintIt;
+	begin PrintIt;
+	
+		stdout.put
+		( 
+			"Frequency: ", 
+			(type uns32 (type tableNode [ebx]).Value):4, 
+			"     Word='",		
+			(type tableNode [ebx]).id,
+			"'"	nl 
+		);
+		
+	end PrintIt;
+	
+	
+	// The following iterator yields each successive word
+	// in the string passed as a parameter.  When the string
+	// contains no more words, this iterator returns failure.
+	
+	iterator WordInString( s:string );
+	var
+		theWord:	string;
+		
+	begin WordInString;
+	
+		forever
+
+			pat.match( s );
+			
+				// Skip all non-alphanumeric/underscore characters.
+				
+				pat.l_arb();
+				
+				// Match the alphanumeric/underscore characters
+				// that form the next word.
+				
+				pat.oneOrMoreCset( {'a'..'z', 'A'..'Z', '0'..'9', '_'} );
+				
+				// Extract the word we just matched from the string.
+				
+				pat.a_extract( theWord );
+				push( esi );
+				
+				// Return the word to the foreach loop invoking this
+				// iterator.
+				
+				mov( theWord, eax );
+				yield();
+				strfree( theWord );
+
+				// Delete all the characters up to the end of the
+				// word we just matched from the string.
+				
+				pop( esi );
+				sub( s, esi );
+				str.delete( s, 0, esi );
+				
+			  pat.if_failure;
+			  
+			  	// If we didn't find a word in this string,
+				// free the storage associated with the string
+				// and return failure.
+				
+			  	strfree( s );
+				break;
+			  
+			pat.endmatch;
+			 
+		endfor;
+		
+	end WordInString;
+	
+	
+begin tableDemo;
+
+	// Create the table and its corresponding hash
+	// table.  The "100" parameter suggests that
+	// there are probably about 100 unique words
+	// in this file (the exact count isn't important,
+	// if this value is too small, the program
+	// runs a little slower; if this value is too
+	// large, the program wastes a little memory).
+	
+	tbl.create( 100 );
+
+	// Open this source file.
+	
+	f.create();
+	f.open( "tabledemo.hla", fileio.r );
+	
+	// Until we hit the end of the source file,
+	// pick off each word and add it to the table.
+	
+	while( f.eof() <> true ) do
+	
+		f.a_gets();
+		mov( eax, s );
+		
+		
+		foreach WordInString( s ) do
+		
+			// for each word in the string, enter the
+			// word into the table.
+			
+			tbl.getNode( (type string eax) );
+			
+			// Bump up the frequency of this word by one:
+			
+			inc( (type tableNode [eax]).Value );
+
+		endfor;		 
+		
+	endwhile; 
+	f.close();
+	
+	// The destructor calls PrintIt for each node it frees.
+	// This displays the frequency and text associated with
+	// each word entered into the table.
+	
+	tbl.destroy( &PrintIt );
+
+end tableDemo;

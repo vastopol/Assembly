@@ -1,0 +1,959 @@
+// Assembler Benchmark Generator
+
+program asmBenchGen;
+#include( "stdlib.hhf" )
+
+const
+	maxObjects		:= 1_000_000;
+	hlaFN			:= "hlaBM.hla";
+	masmFN			:= "masmBM.asm";
+	fasmFN			:= "fasmBM.asm";
+	nasmFN			:= "nasmBM.asm";
+	rosAsmFN		:= "rosAsmBM.asm";
+	gasFM			:= "gasBM.asm";
+
+
+static
+	curArg		:string;
+	numEquates	:uns32;
+	numDwords	:uns32;
+	numMacros1	:uns32;
+	numMacros2	:uns32;
+	numHLLs		:uns32;
+	argc		:uns32;
+	names		:pointer to string;
+	equateVals	:pointer to dword;
+	randomIndex	:pointer to dword;
+	outputHex	:pointer to boolean;
+	NamesInUse	:table;
+	tempName	:str.strvar( 256 );
+	randomOnly	:boolean;
+
+readonly
+	idChars		:byte; @nostorage;
+				byte "_abcdefghijklmnopqrstuvwxyz0123456789";
+
+	procedure randomID( s:string );
+	const
+		strEBX	:text := "(type str.strRec [ebx])";
+	begin randomID;
+
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+
+		// Get pointer to string data:
+
+		mov( s, ebx );
+
+		// Create a random length for this identifier:
+
+		rand.urange( 2,16 );
+		mov( eax, strEBX.length );
+
+		mov( eax, ecx );	// Save length for use in generating chars
+
+		// All ids must have at least one underscore in them to
+		// avoid conflicts with reserved words. We want to randomly
+		// select the position of that underscore:
+			 
+		rand.urange( 0, dec( eax ) );
+		mov( eax, edx );
+
+		// Okay, generate the string:
+
+		while( ecx > 0 ) do
+
+			dec( ecx );
+			if( ecx = edx ) then
+
+				mov( '_', strEBX.strData[ecx] );
+
+			else
+
+				rand.urange( 0, 36 );
+				mov( idChars[eax], al );
+				mov( al, strEBX.strData[ecx] );
+
+			endif;
+
+		endwhile;
+
+		// The first character in the string must be alphabetic or "_"
+
+		if( edx = 0 ) then
+
+			mov( '_', strEBX.strData );
+
+		else
+
+			rand.urange( 0,26 );
+			mov( idChars[eax], al );
+			mov( al, strEBX.strData );
+
+		endif;
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+
+	end randomID;
+
+
+
+	// genBench - generates a benchmark file for a specific assembler.
+
+	procedure genBench
+	(
+		filename		:string;
+
+		hexPrefix		:string;
+		hexSuffix		:string;
+		decPrefix		:string;
+		decSuffix		:string;
+
+		startFileTxt	:string;
+
+		startEquates	:string;
+		startEQLine		:string;
+		midEQLine		:string;
+		endEQLine		:string;
+		endEquates		:string;
+
+		startDcls		:string;
+		idPrefix		:string;
+		idSuffix		:string;
+		startDclLine	:string;
+		midDclLine		:string;
+		endDclLine		:string;
+		endDcls			:string;
+
+		endFileTxt		:string;
+
+		emptyMacro		:string;
+		emptyInv		:string;
+		parmMacro		:string;
+		parmInv			:string;
+
+		startCode		:string;
+		endCode			:string;
+
+		HLLmacros		:string;
+		HLLcode			:string
+	);
+	var
+		hFile	:dword;
+
+	begin genBench;
+
+		push( eax );
+		push( ebx );
+		push( ecx );
+		push( edx );
+		push( esi );
+
+		fileio.openNew( filename );
+		mov( eax, hFile );
+		fileio.put
+		( 
+			eax, 
+			startFileTxt,
+			startEquates 
+		);
+		for( mov( 0, ecx ); ecx < numEquates; inc( ecx )) do
+
+			mov( names, esi );
+			fileio.put
+			( 
+				hFile, 
+				startEQLine, 
+				(type string [esi+ecx*4]),
+				midEQLine
+			);
+			mov( outputHex, eax );
+			if( (type boolean [eax+ecx])) then
+
+				mov( equateVals, esi );
+				fileio.put
+				(
+					hFile,
+					hexPrefix,
+					(type dword [esi+ecx*4]),
+					hexSuffix
+				);
+
+			else
+
+				mov( equateVals, esi );
+				fileio.put
+				(
+					hFile,
+					decPrefix,
+					(type uns32 [esi+ecx*4]),
+					decSuffix
+				);
+
+			endif;
+			fileio.puts( hFile, endEQLine );
+			
+		endfor;
+		fileio.put
+		( 
+			hFile, 
+			endEquates,
+			startDcls
+		);
+
+
+		for( mov( 0, ecx ); ecx < numDwords; inc( ecx )) do
+
+			mov( names, esi );
+			fileio.put
+			(
+				hFile,
+				startDclLine,
+				"sv_",
+				(type string [esi+ecx*4]),
+				midDclLine
+			);
+			if( !randomOnly ) then
+
+				// Emit a reference to the nth equate:
+
+				mov( names, esi );
+				fileio.put
+				(
+					hFile,
+					idPrefix,
+					(type string [esi+ecx*4]),
+					idSuffix,
+					"-"
+				);
+				mov( outputHex, eax );
+				if( (type boolean [eax+ecx])) then
+
+					// Note: this is backwards compared to
+					// the equates!
+
+					mov( equateVals, esi );
+					fileio.put
+					(
+						hFile,
+						decPrefix,
+						(type uns32 [esi+ecx*4]),
+						decSuffix
+					);
+
+				else
+
+					mov( equateVals, esi );
+					fileio.put
+					(
+						hFile,
+						hexPrefix,
+						(type dword [esi+ecx*4]),
+						hexSuffix
+					);
+
+				endif;
+
+				// Emit a reference to the numNames-nth equate:
+
+				mov( numEquates, edx );
+				dec( edx );
+				sub( ecx, edx );
+				mov( names, esi );
+				fileio.put
+				(
+					hFile,
+					"+",
+					idPrefix,
+					(type string [esi+edx*4]),
+					idSuffix,
+					"-"
+				);
+				mov( equateVals, esi );
+				mov( outputHex, eax );
+				if( (type boolean [eax+edx])) then
+
+					// Note: this is backwards compared to
+					// the equates!
+
+					fileio.put
+					(
+						hFile,
+						decPrefix,
+						(type uns32 [esi+edx*4]),
+						decSuffix
+					);
+
+				else
+
+					fileio.put
+					(
+						hFile,
+						hexPrefix,
+						(type dword [esi+edx*4]),
+						hexSuffix
+					);
+
+				endif;
+				fileio.putc( hFile, '+' );
+
+			endif;
+
+			// Emit a reference to a random equate:
+
+			mov( randomIndex, esi );
+			mov( [esi+ecx*4], edx );
+			mov( names, esi );
+			fileio.put
+			(
+				hFile,
+				idPrefix,
+				(type string [esi+edx*4]),
+				idSuffix,
+				endDclLine
+			);			   
+
+		endfor;
+
+		// Emit the macro declarations here:
+
+		fileio.put
+		(
+			hFile,
+			nl,
+			emptyMacro,
+			parmMacro,
+			nl
+		);
+
+		// Emit the empty macro invocations here:
+
+		for( mov( 0, ecx ); ecx < numMacros1; inc( ecx )) do
+
+			fileio.put( hFile, emptyInv );
+
+		endfor;
+
+		// emit the macro invocations with parameters here:
+
+
+		for( mov( 0, ecx ); ecx < numMacros1; inc( ecx )) do
+
+			fileio.put( hFile, parmInv );
+
+		endfor;
+
+		fileio.put
+		(
+			hFile,
+			endDcls,
+			startCode,
+			nl
+		);
+
+		// Emit the HLL code sequence here:
+
+		fileio.put
+		(
+			hFile,
+			HLLmacros,
+			nl
+		);
+		for( mov( 0, ecx ); ecx < numHLLs; inc( ecx )) do
+
+			fileio.put
+			(
+				hFile,
+				HLLcode,
+				nl
+			);
+
+		endfor;
+
+		fileio.put
+		(
+			hFile,
+			endCode,
+			endFileTxt
+		);
+		fileio.close( hFile );
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		pop( eax );
+
+	end genBench;
+
+
+	procedure usage; @noframe;
+	begin usage;
+
+		stdout.put
+		(
+			"Usage:" nl
+			" bm {e####} {d####} {m####} {p####} {h####} {n###}" nl
+			"   e: number of equates to generate" nl
+			"	d: number of dword declarations to generate" nl
+			"   m: number of macro invocations w/o parameters" nl
+			"   p: number of macro invocations w/parameters" nl
+			"	h: number of HLL-like statements to emit" nl
+			"	n: number of objects to generate (overrides other parameters)" nl
+			"   Note: e's value must be greater or equal to d's value" nl
+			nl
+		);
+		exit asmBenchGen;
+
+	end usage;
+
+
+begin asmBenchGen;
+
+	// Default to 50,000 entries:
+	
+	mov( 50_000, eax );
+	mov( eax, numEquates );
+	mov( eax, numDwords );
+	mov( eax, numMacros1 );
+	mov( eax, numMacros2 );
+	mov( eax, numHLLs );
+
+	mov( false, randomOnly );
+
+	// Grab the command line parameters:
+
+	mov( arg.c(), argc );
+	if( argc > 1 ) then
+
+		for( mov( 1, ecx ); ecx < argc; inc( ecx )) do
+
+			arg.v( ecx );
+			mov( eax, curArg );
+			movzx( (type char [eax]), edx );
+			switch( edx )
+
+				// "e####" command line parameter specifies the
+				// number of equates to generate:
+
+				case( 'e' )
+
+					try
+
+						conv.strTou32( eax, 1 );
+						bound( eax, 0, maxObjects );
+						mov( eax, numEquates );
+
+					  anyexception
+
+						stdout.put( "'", curArg, "' is too large or invalid" nl);
+						usage();
+
+					endtry;
+
+
+				// "d####" command line parameter specifies the
+				// number of dword declarations to generate:
+
+				case( 'd' )
+
+					try
+
+						conv.strTou32( eax, 1 );
+						bound( eax, 0, maxObjects );
+						mov( eax, numDwords );
+
+					  anyexception
+
+						stdout.put( "'", curArg, "' is too large or invalid" nl);
+						usage();
+
+					endtry;
+
+
+				// "m####" command line parameter specifies the
+				// number of macro invocations to generate:
+
+				case( 'm' )
+
+					try
+
+						conv.strTou32( eax, 1 );
+						bound( eax, 0, maxObjects );
+						mov( eax, numMacros1 );
+
+					  anyexception
+
+						stdout.put( "'", curArg, "' is too large or invalid" nl);
+						usage();
+
+					endtry;
+
+
+				// "p####" command line parameter specifies the
+				// number of macro invocations w/parameters to generate:
+
+				case( 'p' )
+
+					try
+
+						conv.strTou32( eax, 1 );
+						bound( eax, 0, maxObjects );
+						mov( eax, numMacros2 );
+
+					  anyexception
+
+						stdout.put( "'", curArg, "' is too large or invalid" nl);
+						usage();
+
+					endtry;
+
+
+				// "h####" command line parameter specifies the
+				// number of high-level sequences to generate:
+
+				case( 'h' )
+
+					try
+
+						conv.strTou32( eax, 1 );
+						bound( eax, 0, maxObjects );
+						mov( eax, numHLLs );
+
+					  anyexception
+
+						stdout.put( "'", curArg, "' is too large or invalid" nl);
+						usage();
+
+					endtry;
+
+
+
+				// "n####" command line parameter specifies the
+				// number of all things to generate (overrides the
+				// other values):
+
+				case( 'n' )
+
+					try
+
+						conv.strTou32( eax, 1 );
+						bound( eax, 0, maxObjects );
+						mov( eax, numDwords );
+						mov( eax, numEquates );
+						mov( eax, numMacros1 );
+						mov( eax, numMacros2 );
+						mov( eax, numHLLs );
+
+					  anyexception
+
+						stdout.put( "'", curArg, "' is too large or invalid" nl);
+						usage();
+
+					endtry;
+
+				// The 'r' command line parameter tells the generator to
+				// create dword declarations using only the random entry,
+				// not using the complex expression.
+
+				case( 'r' )
+
+					mov( true, randomOnly );
+
+				default
+
+					stdout.put
+					( 
+						"Illegal command line parameter: ", 
+						curArg, 
+						nl 
+					);
+					usage();
+
+
+			endswitch;
+			strfree( curArg );
+
+		endfor;
+
+	endif;
+
+	mov( numDwords, eax );
+	if( eax > numEquates ) then
+
+		stdout.put
+		(
+			"Error: d### value must be >= e#### value" nl
+		);
+		usage();
+
+	endif;
+
+	// Create arrays for all the objects we're going to output:
+
+	mov( numEquates, edx );
+	malloc( edx );
+	mov( eax, outputHex );
+
+	shl( 2, edx );
+	malloc( edx );
+	mov( eax, names );
+
+	malloc( edx );
+	mov( eax, equateVals );
+
+	malloc( edx );
+	mov( eax, randomIndex );
+
+	// Create a hash table so we can avoid duplicate names:
+
+	NamesInUse.create( 16384 );
+
+
+	mov( 0, ecx ); 
+	while( ecx < numEquates ) do
+
+		randomID( tempName );
+
+		// See if this is a duplicate name:
+
+		NamesInUse.lookup( tempName );
+		if( eax = NULL ) then
+
+			// Okay, this is a unique name. Let's use it:
+
+			str.a_cpy( tempName );
+			mov( names, esi );
+			mov( eax, [ esi+ecx*4 ] );
+
+			// Enter it into the table so we don't reuse it in the future:
+
+			NamesInUse.getNode( eax );
+
+			// Generate a random value for this symbol:
+
+			rand.uniform();
+			mov( equateVals, esi );
+			mov( eax, [ esi+ecx*4 ] );
+
+			// Select a random index into the array:
+
+			mov( numEquates, edx );
+			dec( edx );
+			rand.urange( 0, edx );
+			mov( randomIndex, esi );
+			mov( eax, [esi+ecx*4] );
+
+			// Determine whether we will output the data in hex or decimal
+			// format:
+
+			and( 1, al );
+			mov( outputHex, esi );
+			mov( al, [esi+ecx] );
+
+			inc( ecx );
+
+		endif;
+
+	endwhile;
+
+
+	// No underscore output in the middle of hex numbers:
+
+	conv.setUnderscores( false );
+
+	// Okay, we've generated all the names, now generate the output files:
+
+	// HLA:
+
+	genBench
+	(
+		hlaFN,
+
+		"$",				// Hex prefix
+		"",					// Hex suffix
+		"",					// Decimal prefix
+		"",					// Decimal suffix
+		
+		"program benchmark;"// Text at start of file
+		nl,
+
+		// Start of equates
+
+		"namespace h;"
+		nl
+		"const" nl,
+
+		"",					// Text at start of line
+		
+		" := ",				// Text between label and value
+
+		";" nl,				// Text at end of line
+		
+		"end h;" nl,		// Text at end of equates
+
+		// Text at start of dcls
+
+		"namespace h;" nl
+		"static" nl,
+				
+		"",					// ID Prefix
+		"",					// ID Suffix
+		"",					// Start of dcl line
+		" :dword:= ",		// Middle of dcl line
+		";" nl,				// End of dcl line
+
+		"end h;" nl,		// End of declarations
+
+		// Text at end of file
+
+		""	
+		nl,
+
+		// Empty macro declaration
+
+		"#macro empty;" nl	
+		"#endmacro" nl,
+
+		// Empty Macro Invocation:
+
+		"empty" nl,
+
+		// Macro declaration with five parameters:
+
+		"#macro parms( a, b, c, d, e );" nl
+		"  byte a, b, c, d, e;" nl
+		"#endmacro" nl,
+
+		// Macro invocation with five parameters:
+
+		"parms( 0,1,2,3,4 )" nl,
+
+		// Start of code section:
+
+		"begin benchmark;" nl,
+
+		// End of code section:
+
+		"end benchmark;" nl,
+
+		// Macros to implement HLL statements:
+
+		"" nl,
+
+		// HLL code sequence:
+
+		"if( eax = ebx ) then" nl
+		"elseif( ecx = 1 ) then" nl
+		"else" nl
+		"endif;" nl
+		"while( eax < 10 ) do" nl
+		"  inc( eax );" nl
+		"endwhile;" nl
+		 
+	);
+
+
+
+	// MASM:
+
+	genBench
+	(
+		masmFN,
+
+		"0",				// Hex prefix
+		"h",					// Hex suffix
+		"",					// Decimal prefix
+		"",					// Decimal suffix
+		
+		".386" nl
+		".model	flat, syscall" nl,
+
+
+		"",					// Start of equates
+
+		"",					// Text at start of line
+		
+		" equ ",				// Text between label and value
+
+		"" nl,				// Text at end of line
+		
+		"" nl,				// Text at end of equates
+
+		" .data" nl,		// Text at start of dcls
+		"",					// ID Prefix
+		"",					// ID Suffix
+		"",					// Start of dcl line
+		" dword ",			// middle of dcl line
+		"" nl,				// End of dcl line
+		"",					// End of declarations
+
+		"end "				// Text at end of file
+		nl,
+
+		// Empty macro declaration
+
+		"empty macro" nl	
+		"endm" nl,
+
+		// Empty Macro Invocation:
+
+		"empty" nl,
+
+		// Macro declaration with five parameters:
+
+		"parms macro a, b, c, d, e" nl
+		"  byte a, b, c, d, e" nl
+		"  endm" nl,
+
+		// Macro invocation with five parameters:
+
+		"parms  0,1,2,3,4" nl,
+
+		// Start of code section:
+
+		".code" nl,
+
+		// End of code section:
+
+		"" nl,
+
+
+		// Macros to implement HLL statements:
+
+		"" nl,
+
+		// HLL code sequence:
+
+		".if eax == ebx" nl
+		".elseif ecx == 1" nl
+		".else" nl
+		".endif" nl
+		".while eax < 10" nl
+		"  inc eax" nl
+		".endw;" nl
+
+
+	);
+
+
+
+
+
+	// FASM:
+
+	genBench
+	(
+		fasmFN,
+
+		"0",				// Hex prefix
+		"h",					// Hex suffix
+		"",					// Decimal prefix
+		"",					// Decimal suffix
+		
+		
+		" format	MS COFF " nl,
+
+
+		"",					// Start of equates
+
+		"",					// Text at start of line
+		
+		" equ ",				// Text between label and value
+
+		"" nl,				// Text at end of line
+		
+		"" nl,				// Text at end of equates
+
+		" section	'.data' data readable writeable align 16" nl,		// Text at start of dcls
+		"",					// ID Prefix
+		"",					// ID Suffix
+		"",					// Start of dcl line
+		" dd ",				// middle of dcl line
+		"" nl,				// End of dcl line
+		"",					// End of declarations
+
+		""					// Text at end of file
+		nl,
+
+		// Empty macro declaration
+
+		"macro empty" nl	
+		"{" nl
+		"}" nl,
+
+		// Empty Macro Invocation:
+
+		"empty" nl,
+
+		// Macro declaration with five parameters:
+
+		"macro parms a, b, c, d, e" nl
+		"{" nl
+		"  db a, b, c, d, e" nl
+		"}" nl,
+
+		// Macro invocation with five parameters:
+
+		"parms  0,1,2,3,4" nl,
+
+		// Start of code section:
+
+		" section	'.text' code readable executable align 16" nl,
+
+		// End of code section:
+
+		"" nl,
+
+
+		// Macros to implement HLL statements:
+
+		"macro _if r1, r2" nl
+		"{" nl
+		" cmp r1, r2" nl
+		" jne @f" nl
+		"}" nl
+		nl
+		"macro _elseif r1, r2" nl
+		"{" nl
+		"@@: cmp r1, r2" nl
+		" jne @f" nl
+		"}" nl
+		"macro _else" nl
+		"{" nl
+		"@@:" nl
+		"}" nl
+		"macro _endif" nl
+		"{" nl
+		"@@:" nl
+		"}" nl
+		"macro _while r1, r2" nl
+		"{" nl
+		"@@:" nl
+		" cmp r1, r2" nl
+		" jnb @f" nl
+		"}" nl
+		"macro _endw" nl
+		"{" nl
+		" jmp @b" nl
+		"@@:" nl
+		"}" nl, 
+
+
+		// HLL code sequence:
+
+		"_if eax, ebx" nl
+		"_elseif ecx, 1" nl
+		"_else" nl
+		"_endif" nl
+		"_while eax, 10" nl
+		" inc eax" nl
+		"_endw" nl
+
+
+	);
+
+
+end asmBenchGen;

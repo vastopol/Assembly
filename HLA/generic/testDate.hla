@@ -1,0 +1,744 @@
+program testDates;
+#include( "stdlib.hhf" );
+#include( "datetime.hhf" );
+
+static
+	ThirdM:		date.daterec := date.daterec:[ 1,  1,  2001 ];
+	End2ndM:	date.daterec := date.daterec:[ 31, 12, 2000 ];
+	Y2K:		date.daterec := date.daterec:[ 1,  1,  2000 ];
+
+	BadDateY:	date.daterec := date.daterec:[ 1,  1,  1    ];
+	BadDateM:	date.daterec := date.daterec:[ 1,  0,  2000 ];
+	BadDateM2:	date.daterec := date.daterec:[ 1,  13, 2000 ];
+	BadDateD:	date.daterec := date.daterec:[ 0,  1,  2000 ];	
+	BadDateD2:	date.daterec := date.daterec:[ 32, 1,  2000 ];
+	BadDateD3:	date.daterec := date.daterec:[ 30, 2,  2000 ];
+	BadDateD4:	date.daterec := date.daterec:[ 29, 2,  1999 ];
+	
+	nLY1900:	date.daterec := date.daterec:[ 1,  1,  1900 ];
+	nLY1999:	date.daterec := date.daterec:[ 1,  1,  1999 ];
+	nLY2100:	date.daterec := date.daterec:[ 1,  1,  2100 ];
+	LY1996:		date.daterec := date.daterec:[ 1,  1,  1996 ];
+	LY1600:		date.daterec := date.daterec:[ 1,  1,  1600 ];
+	
+	
+	Jan1:		date.daterec := date.daterec:[ 1,  1,  2000 ];
+	Feb1:		date.daterec := date.daterec:[ 1,  2,  2000 ];
+	Mar1:		date.daterec := date.daterec:[ 1,  3,  2000 ];
+	Apr1:		date.daterec := date.daterec:[ 1,  4,  2000 ];
+	May1:		date.daterec := date.daterec:[ 1,  5,  2000 ];
+	Jun1:		date.daterec := date.daterec:[ 1,  6,  2000 ];
+	Jul1:		date.daterec := date.daterec:[ 1,  7,  2000 ];
+	Aug1:		date.daterec := date.daterec:[ 1,  8,  2000 ];
+	Sep1:		date.daterec := date.daterec:[ 1,  9,  2000 ];
+	Oct1:		date.daterec := date.daterec:[ 1, 10,  2000 ];
+	Nov1:		date.daterec := date.daterec:[ 1, 11,  2000 ];
+	Dec1:		date.daterec := date.daterec:[ 1, 12,  2000 ];
+	
+	
+var
+	newDate: date.daterec;	
+	
+	
+	
+readonly
+
+	dayNames:	string[7] :=
+					[
+						"Sunday",
+						"Mondy",
+						"Tuesday",
+						"Wednesday",
+						"Thursday",
+						"Friday",
+						"Saturday"
+					];
+					
+					
+	
+	
+	#macro invalid( _d_ );
+	
+		try
+		
+			date.validate( _d_ );
+			stdout.put( "Date validatation on " );
+			date_print( _d_ );
+			stdout.put( " failed" nl );
+			
+		  exception( ex.InvalidDate )
+		  
+		endtry;
+		
+	#endmacro;
+	
+	#macro TLY( _d_ );
+	
+		if( !date.isLeapYear( _d_ ) ) then
+		
+			stdout.put( "IsLeapYear failed on " );
+			#if( @IsConst( _d_ ))
+			
+				stdout.put( _d_ );
+				
+			#elseif( @typename( _d_ ) == "daterec" )
+			
+				date_print( _d_ );
+				
+			#else
+			
+				stdout.put( _d_ );
+				
+			#endif
+			stdout.newln();
+			
+		endif;
+		
+	#endmacro;
+	
+	
+	#macro nTLY( _d_ );
+	
+		if( date.isLeapYear( _d_ ) ) then
+		
+			stdout.put( "IsLeapYear failed on " );
+			#if( @IsConst( _d_ ))
+			
+				stdout.put( _d_ );
+				
+			#elseif( @typename( _d_ ) == "daterec" )
+			
+				date_print( _d_ );
+				
+			#else
+			
+				stdout.put( _d_ );
+				
+			#endif
+			stdout.newln();
+			
+		endif;
+		
+	#endmacro;
+	
+	
+	procedure _date_print( d:date.daterec );
+	begin _date_print;
+	
+		push( eax );
+		date.a_toString( d );
+		stdout.put( (type string eax ) );
+		str.free( eax );
+		pop( eax );
+		
+	end _date_print;
+
+
+	#macro date_print( _m_, _dy_[] );
+
+		#if( @elements( _dy_ ) = 0 )
+
+			// y had better be a daterec object
+			// if we had only one parameter.
+
+			#if( @global:date._isDateRec_( _m_ ) )
+
+				_date_print( _m_ )
+
+			#else
+
+				#error
+				( 
+					"print expected a daterec type "
+					"as the parameter" 
+				)
+
+			#endif
+
+		#elseif( @elements( _dy_ ) = 2 )
+
+			#if( date._isMDY_( _m_, @text( _dy_[0] ), @text( _dy_[1])) )
+
+				_date_print
+				(
+					#{
+						pushw( @text(_dy_[1]) );
+						push( ax );
+						push( eax );
+						mov( @text(_dy_[0]), al );
+						mov( _m_, ah );
+						mov( ax, [esp+4] );
+						pop( eax );
+					}#
+				)
+
+			#else
+
+				#error( "Syntax error in print parameter list" );
+
+			#endif
+
+		#else
+
+			#error
+			( 
+				"Error in print parameter list" nl
+				"Usage: print( dr:daterec ) or " nl
+				"       print( m:word; d:word; y:word )"
+			)
+
+		#endif
+
+	#endmacro
+
+
+begin testDates;
+
+	stdout.put( "Testing date (in) validation:" nl );
+	invalid( BadDateY );
+	invalid( BadDateM );
+	invalid( BadDateM2 );
+	invalid( BadDateD );
+	invalid( BadDateD2 );
+	invalid( BadDateD3 );
+	invalid( BadDateD4 );
+
+	stdout.put( "Testing date (in) validation on individual parameters:" nl );
+	
+	invalid( #( BadDateY.month,  BadDateY.day,  BadDateY.year  )# );
+	invalid( #( BadDateM.month,  BadDateM.day,  BadDateM.year  )# );
+	invalid( #( BadDateM2.month, BadDateM2.day, BadDateM2.year )# );
+	invalid( #( BadDateD.month,  BadDateD.day,  BadDateD.year  )# );
+	invalid( #( BadDateD2.month, BadDateD2.day, BadDateD2.year )# );
+	invalid( #( BadDateD3.month, BadDateD3.day, BadDateD3.year )# );
+	invalid( #( BadDateD4.month, BadDateD4.day, BadDateD4.year )# );
+
+	stdout.put( "Testing date (in) validation on immediate data:" nl );
+	
+	invalid( #( 1,  1,  1    )# );
+	invalid( #( 0,  1,  2000 )# );
+	invalid( #( 13, 1,  2000 )# );
+	invalid( #( 1,  0,  2000 )# );
+	invalid( #( 1,  32, 2000 )# );
+	invalid( #( 2,  30, 2000 )# );
+	invalid( #( 2,  29, 1999 )# );
+	stdout.put( "Invalid date test complete" nl nl );
+	
+	
+	
+	
+	
+	/*************************************************************/
+	
+	
+
+	
+	stdout.put( "Testing IsValid:" nl );
+	
+	if( !date.isValid( ThirdM )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( ThirdM );
+		stdout.newln();
+		
+	endif;
+
+	if( !date.isValid( End2ndM )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( End2ndM );
+		stdout.newln();
+		
+	endif;
+
+	if( !date.isValid( Y2K )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( Y2K );
+		stdout.newln();
+		
+	endif;
+
+
+
+
+	if( date.isValid( BadDateY )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateY );
+		stdout.newln();
+		
+	endif;
+	
+	if( date.isValid( BadDateM )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateM );
+		stdout.newln();
+		
+	endif;
+	
+	if( date.isValid( BadDateM2 )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateM2 );
+		stdout.newln();
+		
+	endif;
+	
+	if( date.isValid( BadDateD )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateD );
+		stdout.newln();
+		
+	endif;
+	
+	if( date.isValid( BadDateD2 )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateD2 );
+		stdout.newln();
+		
+	endif;
+	
+	if( date.isValid( BadDateD3 )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateD3 );
+		stdout.newln();
+		
+	endif;
+	
+	if( date.isValid( BadDateD4 )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateD4 );
+		stdout.newln();
+		
+	endif;
+
+
+	stdout.put( "Testing IsValid on individual parameters:" nl );
+	
+	
+	if( !date.isValid( ThirdM.month,  ThirdM.day,  ThirdM.year )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( ThirdM );
+		stdout.newln();
+		
+	endif;
+
+	if( !date.isValid( End2ndM.month,  End2ndM.day,  End2ndM.year )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( End2ndM );
+		stdout.newln();
+		
+	endif;
+
+	if( !date.isValid( Y2K.month,  Y2K.day,  Y2K.year )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( Y2K );
+		stdout.newln();
+		
+	endif;
+
+
+
+
+	if( date.isValid(  BadDateY.month,  BadDateY.day,  BadDateY.year )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateY );
+		stdout.newln();
+		
+	endif;
+	
+	if( date.isValid(  BadDateM.month,  BadDateM.day,  BadDateM.year )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateM );
+		stdout.newln();
+		
+	endif;
+	
+	if( date.isValid( BadDateM2.month, BadDateM2.day, BadDateM2.year )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateM2 );
+		stdout.newln();
+		
+	endif;
+	
+	if( date.isValid( BadDateD.month,  BadDateD.day,  BadDateD.year )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateD );
+		stdout.newln();
+		
+	endif;
+	
+	if( date.isValid( BadDateD2.month, BadDateD2.day, BadDateD2.year )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateD2 );
+		stdout.newln();
+		
+	endif;
+	
+	if( date.isValid( BadDateD3.month, BadDateD3.day, BadDateD3.year )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateD3 );
+		stdout.newln();
+		
+	endif;
+	
+	if( date.isValid( BadDateD4.month, BadDateD4.day, BadDateD4.year )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateD4 );
+		stdout.newln();
+		
+	endif;
+
+
+
+	stdout.put( "Testing IsValide on immediate data:" nl );
+	
+	if( !date.isValid( 1,  1,  2001 )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( ThirdM );
+		stdout.newln();
+		
+	endif;
+
+	if( !date.isValid( 12,  31,  2000 )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( End2ndM );
+		stdout.newln();
+		
+	endif;
+
+	if( !date.isValid( 1,  1,  2000 )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( Y2K );
+		stdout.newln();
+		
+	endif;
+
+
+
+
+	if( date.isValid(  1,1,1 )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateY );
+		stdout.newln();
+		
+	endif;
+	
+	if( date.isValid(  0,1,2000 )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateM );
+		stdout.newln();
+		
+	endif;
+	
+	if( date.isValid( 13,1,2000 )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateM2 );
+		stdout.newln();
+		
+	endif;
+	
+	if( date.isValid( 1,0,2000 )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateD );
+		stdout.newln();
+		
+	endif;
+	
+	if( date.isValid( 1,32,2000 )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateD2 );
+		stdout.newln();
+		
+	endif;
+	
+	if( date.isValid( 2,30,2000 )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateD3 );
+		stdout.newln();
+		
+	endif;
+	
+	if( date.isValid( 2,29,1999 )) then
+	
+		stdout.put( "IsValid failed on " );
+		date_print( BadDateD4 );
+		stdout.newln();
+		
+	endif;
+	
+	
+	stdout.put( "IsValid date test complete" nl nl );
+	
+	
+	
+	
+	
+	
+	/*************************************************************/
+	
+	
+	
+	
+	
+	stdout.put( "Testing leap year logic" nl );
+	
+	nTLY( nLY1900 );
+	nTLY( nLY1999 );
+	nTLY( nLY2100 );
+	TLY ( LY1996  );
+	TLY ( LY1600  );
+	
+	stdout.put( "Testing leap year logic on individual parameters" nl );
+
+	nTLY( nLY1900.year  );
+	nTLY( nLY1999.year  );
+	nTLY( nLY2100.year  );
+	TLY ( LY1996.year   );
+	TLY ( LY1600.year   );
+	
+		   
+	stdout.put( "Testing leap year logic on immediate data" nl );
+	
+	nTLY( 1900  );
+	nTLY( 1999  );
+	nTLY( 2100  );
+	TLY ( 1996  );
+	TLY ( 1600  );
+		   
+	stdout.put( "Leap year test complete" nl nl );
+	
+	
+	
+	
+	
+	
+	
+	/*************************************************************/
+	
+	
+	
+	stdout.put( "Testing dayNumber and daysLeft functions:" nl );
+	
+	date_print( Jan1 );
+	date.dayNumber( Jan1 );
+	stdout.put( " is ", (type uns32 eax), ", " );
+	date.daysLeft( Jan1 );
+	stdout.put( (type uns32 eax), nl );
+	
+	date_print( Feb1 );
+	date.dayNumber( Feb1 );
+	stdout.put( " is ", (type uns32 eax), ", " );
+	date.daysLeft( Feb1 );
+	stdout.put( (type uns32 eax), nl );
+	
+	date_print( Mar1 );
+	date.dayNumber( Mar1 );
+	stdout.put( " is ", (type uns32 eax), ", " );
+	date.daysLeft( Mar1 );
+	stdout.put( (type uns32 eax), nl );
+	
+	date_print( Apr1 );
+	date.dayNumber( Apr1 );
+	stdout.put( " is ", (type uns32 eax), ", " );
+	date.daysLeft( Apr1 );
+	stdout.put( (type uns32 eax), nl );
+	
+	date_print( May1 );
+	date.dayNumber( May1 );
+	stdout.put( " is ", (type uns32 eax), ", " );
+	date.daysLeft( May1 );
+	stdout.put( (type uns32 eax), nl );
+	
+	date_print( Jun1 );
+	date.dayNumber( Jun1 );
+	stdout.put( " is ", (type uns32 eax), ", " );
+	date.daysLeft( Jun1 );
+	stdout.put( (type uns32 eax), nl );
+	
+	date_print( Jul1 );
+	date.dayNumber( Jul1 );
+	stdout.put( " is ", (type uns32 eax), ", " );
+	date.daysLeft( Jul1 );
+	stdout.put( (type uns32 eax), nl );
+	
+	date_print( Aug1 );
+	date.dayNumber( Aug1 );
+	stdout.put( " is ", (type uns32 eax), ", " );
+	date.daysLeft( Aug1 );
+	stdout.put( (type uns32 eax), nl );
+	
+	date_print( Sep1 );
+	date.dayNumber( Sep1 );
+	stdout.put( " is ", (type uns32 eax), ", " );
+	date.daysLeft( Sep1 );
+	stdout.put( (type uns32 eax), nl );
+	
+	date_print( Oct1 );
+	date.dayNumber( Oct1 );
+	stdout.put( " is ", (type uns32 eax), ", " );
+	date.daysLeft( Oct1 );
+	stdout.put( (type uns32 eax), nl );
+	
+	date_print( Nov1 );
+	date.dayNumber( Nov1 );
+	stdout.put( " is ", (type uns32 eax), ", " );
+	date.daysLeft( Nov1 );
+	stdout.put( (type uns32 eax), nl );
+	
+	date_print( Dec1 );
+	date.dayNumber( Dec1 );
+	stdout.put( " is ", (type uns32 eax), ", " );
+	date.daysLeft( Dec1 );
+	stdout.put( (type uns32 eax), nl );
+	
+	date_print( 12, 31, 2000 );
+	date.dayNumber( 12, 31, 2000 );
+	stdout.put( " is ", (type uns32 eax), ", " );
+	date.daysLeft(  12, 31, 2000  );
+	stdout.put( (type uns32 eax), nl );
+	
+	
+	/*************************************************************/
+	
+	
+	
+	stdout.put( nl nl "Testing daysBetween function:" nl );
+	
+	stdout.put( "Daysbetween " );
+	date_print(	 1,1,2000 );
+	stdout.put( " and " );
+	date_print( 1,1,2001 );
+	stdout.put( " = " );
+	date.daysBetween( 1,1,2000, 1,1,2001 );
+	stdout.put( (type uns32 eax), nl );
+	
+	stdout.put( "Daysbetween " );
+	date_print(	 Y2K );
+	stdout.put( " and " );
+	date_print( 1,31,2001 );
+	stdout.put( " = " );
+	date.daysBetween( 1,1,2000, 1,31,2001 );
+	stdout.put( (type uns32 eax), nl );
+	
+	
+	stdout.put( "Daysbetween " );
+	date_print(	 Y2K );
+	stdout.put( " and " );
+	date_print( 1,1,2002 );
+	stdout.put( " = " );
+	date.daysBetween( 1,1,2000, 1,1,2002 );
+	stdout.put( (type uns32 eax), nl );
+	
+	
+	
+	/*************************************************************/
+	
+	
+	
+	stdout.put( nl nl "Testing addDays function:" nl );
+	
+	date_print( Y2K );
+	stdout.put( " + 366 is " );
+	date.addDays( 366, Y2K );
+	date_print( Y2K );
+	stdout.newln();
+	
+	date_print( Y2K );
+	stdout.put( " + 365 is " );
+	date.addDays( 365, Y2K );
+	date_print( Y2K );
+	stdout.newln();
+	
+	date_print( Y2K );
+	stdout.put( " + 34 is " );
+	date.addDays( 34, Y2K );
+	date_print( Y2K );
+	stdout.newln();
+	
+	
+	
+	
+	
+	/*************************************************************/
+	
+	
+	
+	stdout.put( nl nl "Testing toJulian function:" nl );
+
+	date.setFormat( date.MONdyyyy );	
+	
+	stdout.put( "Gregorian date " );
+	date_print( 10, 9, 1995 );
+	date.toJulian( 10, 9, 1995 );
+	stdout.put( " is ", (type uns32 eax), nl );
+	
+	stdout.put( "Gregorian date " );
+	date_print( 11, 16, 1858 );
+	date.toJulian( 11, 16, 1858 );
+	stdout.put( " is ", (type uns32 eax), nl );
+	
+	stdout.put( nl nl "Testing fromJulian [ via fromJulian(Julian(d)) ]" nl );
+	
+	stdout.put( "Gregorian date " );
+	date_print( 11, 16, 1858 );
+	date.toJulian( 11, 16, 1858 );
+	stdout.put( " better be " );
+	date.fromJulian( eax, newDate );
+	date_print( newDate );
+	stdout.newln();	
+	
+	stdout.put( "Gregorian date " );
+	date_print( 10, 9, 1995 );
+	date.toJulian( 10, 9, 1995 );
+	stdout.put( " better be " );
+	date.fromJulian( eax, newDate );
+	date_print( newDate );
+	stdout.newln();	
+	
+	stdout.put( nl nl "Today's date is " );
+	date.today( newDate );
+	date.dayOfWeek( newDate );
+	stdout.put( dayNames[ eax*4 ], ", " );
+	date_print( newDate );
+	stdout.put( nl "Converted to Julian day it is " );
+	date.toJulian( newDate );
+	stdout.put
+	( 
+		(type uns32 eax), 
+		nl
+		"Converted back to Gregorian it is "
+	);
+	date.fromJulian( eax, newDate );
+	date.setFormat( date.mmddyyyy );
+	date_print( newDate );
+	stdout.newln();
+	
+	
+
+end testDates;

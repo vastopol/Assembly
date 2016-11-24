@@ -1,0 +1,26 @@
+program testtimer;
+#include( "timer.hhf" );
+#include( "stdlib.hhf" );
+
+var
+	alarm:timer;
+
+begin testtimer;
+
+	alarm.create();
+	alarm.start();
+	for( mov( 0, ebx ); ebx < 10_000_000; inc( ebx )) do
+
+		nop();
+		nop();
+		nop();
+
+	endfor;
+	alarm.stop();
+	stdout.put( "edx=", edx, " eax=", eax, nl );
+	stdout.put( "started=", alarm.msStarted, " stopped=", alarm.msStopped, nl );
+	stdout.put( "ms=", (type dword alarm.Accumulated), nl );
+	
+
+end testtimer;
+	

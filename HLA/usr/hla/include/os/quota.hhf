@@ -1,0 +1,37 @@
+#if( !@defined( quota_hhf ))
+?quota_hhf := true;
+
+namespace linux; @fast;
+
+const
+
+	
+	// quotactl constants:
+	
+	max_iq_time	:= 7*24*60*60;	// 1 week;
+	max_dq_time	:= 7*24*60*60;
+	
+	maxquotas	:= 2;
+	usrquota	:= 0;
+	grpquota	:= 1;
+	
+	subcmdmask	:= $ff;
+	subcmdshift	:= 8;
+	
+	q_quotaon	:= $100;
+	q_quotaoff	:= $200;
+	q_getquota	:= $300;
+	q_setquota	:= $400;
+	q_setuse	:= $500;
+	q_sync		:= $600;
+	q_setqlim	:= $700;
+	q_getstats	:= $800;
+	q_rsquash	:= $1000;
+	
+	
+	#macro qcmd( cmd, typ );
+		(((cmd) << linux.subcmdshift ) | ((typ) & linux.sumcmdmask))
+	#endmacro
+
+end linux;
+#endif //quota_hhf

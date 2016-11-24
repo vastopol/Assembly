@@ -1,0 +1,779 @@
+program  NumericConvDemo;
+#include( "stdlib.hhf" )
+
+const
+	NumIterations := 1_000_000;
+	
+	
+// The way most instructors probably expect you to do it:
+
+procedure NumConv_1( number:dword; theString:string );
+	@nodisplay;
+	@noalignstack;
+
+var
+	charbuf	:char[ 16 ];
+	
+begin NumConv_1;
+
+	push( eax );
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( edi );
+	push( esi );
+	pushfd();
+	cld();
+	
+	// Determine if the destination string is large enough (max
+	// string length possible is 10 digits, so just make sure the
+	// string can hold at least 10 characters).
+	
+	mov( theString, edi );
+	if( (type str.strRec [edi]).MaxStrLen < 10 ) then
+	
+		raise( ex.StringOverflow );
+		
+	endif;
+	
+	// Convert the number to a sequence of digits:
+	
+	mov( 0, charbuf[15] );		// Zero terminate the string.
+	mov( '0', charbuf[14] );	// Just in case we have a zero result.
+	mov( 14, esi );				// Store away L.O. digits at end of string.
+	mov( 10, ebx );				// Divide by 10 on each loop iteration.
+	mov( number, eax );
+	test( eax, eax );
+	jz StringIsDone;		
+	inc( esi );
+	WhileEAXne0:
+
+		dec( esi );
+		xor( edx, edx );			// Zero extend EAX into EDX:EAX.
+		div( ebx );					// EAX/10 -> EAX, EAX % 10 -> EDX.
+		or( '0', dl );				// Convert number to character.
+		mov( dl, charbuf[ esi ] );	// Save away current char.
+		test( eax, eax );
+		jne WhileEAXne0;
+		
+	StringIsDone:			
+		
+	// Compute the length of the string into ECX:
+	
+	mov( 15, ecx );
+	sub( esi, ecx );
+	mov( ecx, (type str.strRec [edi]).length );
+	
+	inc( ecx );			// Include zero byte in the copy below:
+	
+	// Get the address of the start of the string into ESI:
+	
+	lea( esi, charbuf[esi] );
+	
+	
+	// Copy the result to an HLA string:
+	
+	rep.movsb();
+	
+	popfd();
+	pop( esi );
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	pop( eax );
+		 
+end NumConv_1;
+
+
+
+// Recursive version of the above algorithm that's a little
+// bit cleaner (and a little faster).
+
+
+procedure NumConv_2( number:dword; theString:string );
+	@nodisplay;
+	@noalignstack;
+	
+	// RecNC-	Actual recursive code.
+	//			EAX contains number to convert.
+	//			EDI contains address of char position (to store digit).
+	//			ECX holds the current length of the string.
+	
+	procedure recNC;
+		@nodisplay;
+		@noframe;
+		
+	begin recNC;
+	
+		xor( edx, edx );
+		div( 10, edx:eax );
+		if( eax <> 0 ) then
+			
+			push( edx );
+			call recNC;
+			pop( edx );
+			
+ 		endif;
+		or( '0', dl );
+		inc( ecx );
+		mov( dl, [edi] );
+		inc( edi );
+		ret();		
+	
+	end recNC;
+	
+begin NumConv_2;
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	push( edi );
+	
+	// Determine if the destination string is large enough (max
+	// string length possible is 10 digits, so just make sure the
+	// string can hold at least 10 characters).
+	
+	mov( theString, edi );
+	if( (type str.strRec [edi]).MaxStrLen < 10 ) then
+	
+		raise( ex.StringOverflow );
+		
+	endif;
+	
+	mov( number, eax );
+	mov( 0, ecx );
+	call recNC;				
+	
+	// Must zero-terminate the string and set the length:
+					   
+	mov( 0, (type byte [edi]));
+	mov( theString, edi );
+	mov( ecx, (type str.strRec [edi]).length );
+		
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+		 
+end NumConv_2;
+
+
+
+
+
+
+
+
+
+// NumConv_3-	DIV-free version conversion algorithm (does
+//				division by repeated subtraction.
+
+
+procedure NumConv_3( number:dword; theString:string );
+	@nodisplay;
+	@noalignstack;
+	
+// potTable- Power of ten table.
+//			 Each entry into this table contains ten raised to the
+//			 power specified by the entry's index.
+	
+static
+	potTable: dword[10] :=
+				[
+					?v := 1;
+					#for( i:= 0 to 8 )
+					
+						v,
+						?v := v * 10;
+						
+					#endfor
+					1_000_000_000
+				];
+				
+	
+begin NumConv_3;
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	push( edi );
+	
+	// Determine if the destination string is large enough (max
+	// string length possible is 10 digits, so just make sure the
+	// string can hold at least 10 characters).
+	
+	mov( theString, edi );
+	if( (type str.strRec [edi]).MaxStrLen < 10 ) then
+	
+		raise( ex.StringOverflow );
+		
+	endif;
+	
+	mov( number, eax );
+	if( eax = 0 ) then
+	
+		// Do a special case for zero:
+		
+		mov( '0', (type byte [edi]));
+		inc( edi );
+		
+	else
+		
+		// Find the magnitude of the number:
+		
+		mov( &potTable[ 9*4 ], ecx );
+		while( eax < (type dword [ecx])) do
+		
+			sub( 4, ecx );
+			
+		endwhile;
+		
+		// Okay, compute the current digit by repeated subtraction:
+		
+		repeat
+
+			mov( @byte('0')-1, dl );
+			whileGTDigit:
+				inc( dl );
+				sub( (type dword [ecx]), eax );
+				jae whileGTDigit;
+				
+			add( (type dword [ecx]), eax );	// Correct for last addition.
+			mov( dl, [edi] );
+			inc( edi );
+			sub( 4, ecx );
+			
+		until( ecx < &potTable );
+
+	endif;
+		
+	// Must zero-terminate the string and set the length:
+					   
+	mov( 0, (type byte [edi]));
+	mov( edi, eax );
+	sub( theString, eax );
+	mov( theString, edi );
+	mov( eax, (type str.strRec [edi]).length );
+		
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+		 
+end NumConv_3;
+
+
+
+
+
+
+
+// NumConv_4-	Numeric->string conversion using the FPU.
+
+
+procedure NumConv_4( number:dword; theString:string );
+	@nodisplay;
+	@noalignstack;
+	
+var
+	num64		:int64;
+	tbResult	:tbyte;
+		
+begin NumConv_4;
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	push( edi );
+	
+	// Determine if the destination string is large enough (max
+	// string length possible is 10 digits, so just make sure the
+	// string can hold at least 10 characters).
+	
+	mov( theString, edi );
+	if( (type str.strRec [edi]).MaxStrLen < 10 ) then
+	
+		raise( ex.StringOverflow );
+		
+	endif;
+	
+	mov( number, eax );
+	if( eax = 0 ) then
+	
+		// Do a special case for zero:
+		
+		mov( '0', (type byte [edi]));
+		inc( edi );
+		
+	else
+		
+		// Convert 32-bit number to a 64-bit value and then
+		// let the FPU do the hard work:
+		
+		mov( eax, (type dword num64));
+		mov( 0, (type dword num64)[4] );
+		fild( num64 );
+		fbstp( tbResult );
+		
+		// Okay, tbResult contains a 10-digit BCD value (possibly with
+		// leading zeros).  Convert it to an ASCII string.
+		//
+		// Put the first non-zero digit into the H.O. four bits of DL:
+		
+		mov( (type dword tbResult), eax );
+		mov( (type dword tbResult[4]), edx );
+		mov( 10, ecx );
+		while( dl < $10 ) do
+
+			shld( 4, eax, edx );
+			shl( 4, eax );
+			dec( ecx );
+			
+		endwhile;
+		
+		// Process all the digits:
+		
+		repeat
+		
+			and( $FF, edx );
+			shld( 4, eax, edx );
+			shl( 4, eax );
+			or( '0', dh );
+			mov( dh, [edi] );
+			inc( edi );
+			dec( ecx );
+			
+		until( ecx = 0 );
+		
+	endif;
+		
+	// Must zero-terminate the string and set the length:
+					   
+	mov( 0, (type byte [edi]));
+	mov( edi, eax );
+	sub( theString, eax );
+	mov( theString, edi );
+	mov( eax, (type str.strRec [edi]).length );
+		
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+		 
+end NumConv_4;
+
+
+
+
+
+
+
+// NumConv_5-	Numeric->string conversion.
+//				Variant of NumConv_4 that uses an undocumented
+//				feature of the AAM instruction to unpack BCD values.
+
+
+procedure NumConv_5( number:dword; theString:string );
+	@nodisplay;
+	@noalignstack;
+	
+	
+var
+	num64		:int64;
+	tbResult	:tbyte;
+	unpacked	:char[16];
+
+#macro aam16;
+
+	byte $d4, $10;  // AAM that divides by 16 rather than 10.
+	
+#endmacro;
+
+		
+begin NumConv_5;
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	push( edi );
+	
+	// Determine if the destination string is large enough (max
+	// string length possible is 10 digits, so just make sure the
+	// string can hold at least 10 characters).
+	
+	mov( theString, edi );
+	if( (type str.strRec [edi]).MaxStrLen < 10 ) then
+	
+		raise( ex.StringOverflow );
+		
+	endif;
+	
+	mov( number, eax );
+	if( eax = 0 ) then
+	
+		// Do a special case for zero:
+		
+		mov( '0', (type byte [edi]));
+		inc( edi );
+		
+	else
+		
+		// Convert 32-bit number to a 64-bit value and then
+		// let the FPU do the hard work:
+		
+		mov( eax, (type dword num64));
+		mov( 0, (type dword num64)[4] );
+		fild( num64 );
+		fbstp( tbResult );
+		
+		// Unpack the (max) 10 digit value using the funny
+		// version of the AAM instruction.
+		
+		mov( 0, unpacked[10] );
+		mov( (type byte tbResult[4]), al );
+		aam16;
+		or( $3030, ax );
+		xchg( al, ah );
+		mov( ax, (type word unpacked));
+		
+		mov( (type byte tbResult[3]), al );
+		aam16;
+		or( $3030, ax );
+		xchg( al, ah );
+		mov( ax, (type word unpacked[2]));
+		
+		mov( (type byte tbResult[2]), al );
+		aam16;
+		or( $3030, ax );
+		xchg( al, ah );
+		mov( ax, (type word unpacked[4]));
+		
+		mov( (type byte tbResult[1]), al );
+		aam16;
+		or( $3030, ax );
+		xchg( al, ah );
+		mov( ax, (type word unpacked[6]));
+		
+		mov( (type byte tbResult), al );
+		aam16;
+		or( $3030, ax );
+		xchg( al, ah );
+		mov( ax, (type word unpacked[8]));
+		
+		lea( edx, unpacked[-1] );
+		while0:
+			inc( edx );
+			cmp( (type byte [edx]), '0' );
+			je while0;
+
+		dec( edi );
+		dec( edx );
+		whileNot0:
+			inc( edi );
+			inc( edx );
+			mov( [edx], al );
+			mov( al, [edi] );
+			cmp( al, 0 );
+			jne whileNot0;
+		
+	endif;
+	
+	// Must zero-terminate the string and set the length:
+					   
+	mov( 0, (type byte [edi]));
+	mov( edi, eax );
+	sub( theString, eax );
+	mov( theString, edi );
+	mov( eax, (type str.strRec [edi]).length );
+		
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+		 
+end NumConv_5;
+
+
+
+
+// NumConv_6-	DIV-free version of NumConv_2 (uses multiplication by a
+// 				reciprocol to simulate division).
+
+
+procedure NumConv_6( number:dword; theString:string );
+	@nodisplay;
+	@noalignstack;
+	
+	// RecNC-	Actual recursive code.
+	//			EAX contains number to convert.
+	//			EDI contains address of char position (to store digit).
+	//			ECX holds the current length of the string.
+	
+	procedure recNC;
+		@nodisplay;
+		@noframe;
+		
+	begin recNC;
+	
+		
+		// If the value is 30 bits or less, then
+		// compute EAX div 10 by multiply EAX
+		// by 429,496,730 (which is 4,294,967,296/10).
+		// This leaves eax/10 in edx.
+		
+		mul( 429_496_730, eax );
+		
+		// Now compute the remainder by multiplying the
+		// value in EAX by 10 (leaves remainder in EDX).
+		
+		push( edx );				// Save quotient
+		mul( 10, eax );				// Compute remainder
+		pop( eax );					// Restore quotient
+		
+		if( eax <> 0 ) then
+			
+			push( edx );
+			call recNC;
+			pop( edx );
+			
+ 		endif;
+		or( '0', dl );
+		inc( ecx );
+		mov( dl, [edi] );
+		inc( edi );
+		ret();		
+	
+	end recNC;
+	
+begin NumConv_6;
+
+	push( eax );
+	push( ecx );
+	push( edx );
+	push( edi );
+	
+	// Determine if the destination string is large enough (max
+	// string length possible is 10 digits, so just make sure the
+	// string can hold at least 10 characters).
+	
+	mov( theString, edi );
+	if( (type str.strRec [edi]).MaxStrLen < 10 ) then
+	
+		raise( ex.StringOverflow );
+		
+	endif;
+	
+	mov( number, eax );
+	mov( 0, ecx );
+	
+	// The reciprocol multiplication gets inaccurate after 30 bits,
+	// so handle values greater than 1 billion manually:
+	
+	if( eax >= 1_000_000_000 ) then
+	
+		mov( '0', edx );
+		while( eax >= 1_000_000_000 ) do
+		
+			inc( edx );
+			sub( 1_000_000_000, eax );
+			
+		endwhile;
+		mov( dl, [edi] );
+		inc( edi );
+		inc( ecx );
+	
+	endif;
+	
+	// Convert the L.O. 30 bits:
+	
+	call recNC;				
+	
+	// Must zero-terminate the string and set the length:
+					   
+	mov( 0, (type byte [edi]));
+	mov( theString, edi );
+	mov( ecx, (type str.strRec [edi]).length );
+		
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( eax );
+		 
+end NumConv_6;
+
+
+
+
+
+
+
+
+
+static
+	res	:string;
+	tval:uns64;
+	t	:timer;
+
+begin NumericConvDemo;
+
+	t.create();			// Initialize the timer.
+	stralloc( 128 );	// Allocate storage to hold the result.
+	mov( eax, res );
+	
+	stdout.put( "Beginning timing of the conversion routines:" nl nl );
+	
+	t.start();
+	for( mov( NumIterations, ecx ); ecx > 0; dec( ecx )) do
+
+	endfor;
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );	
+	stdout.put
+	( 
+		"# iterations: ", 
+		NumIterations, 
+		" Empty loop time=", 
+		tval, 
+		" milliseconds" nl 
+	);
+	
+	t.start();
+	for( mov( NumIterations, ecx ); ecx > 0; dec( ecx )) do
+
+		NumConv_1( 0, res );
+		NumConv_1( 1, res );
+		NumConv_1( 12, res );
+		NumConv_1( 123, res );
+		NumConv_1( 1234, res );
+		NumConv_1( 12345, res );
+		NumConv_1( 123456, res );
+		NumConv_1( 1234567, res );
+		NumConv_1( 12345678, res );
+		NumConv_1( 123456789, res );
+		NumConv_1( 1234567890, res );
+
+	endfor;
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );	
+	stdout.put( "NumConv_1 = '", res, "', time=", tval, " milliseconds" nl );
+	
+	
+	t.start();
+	for( mov( NumIterations, ecx ); ecx > 0; dec( ecx )) do
+		
+		NumConv_2( 0, res );
+		NumConv_2( 1, res );
+		NumConv_2( 12, res );
+		NumConv_2( 123, res );
+		NumConv_2( 1234, res );
+		NumConv_2( 12345, res );
+		NumConv_2( 123456, res );
+		NumConv_2( 1234567, res );
+		NumConv_2( 12345678, res );
+		NumConv_2( 123456789, res );
+		NumConv_2( 1234567890, res );
+
+	endfor;
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );	
+	stdout.put( "NumConv_2 = '", res, "', time=", tval, " milliseconds" nl );
+	
+	
+	t.start();
+	for( mov( NumIterations, ecx ); ecx > 0; dec( ecx )) do
+		
+		NumConv_3( 0, res );
+		NumConv_3( 1, res );
+		NumConv_3( 12, res );
+		NumConv_3( 123, res );
+		NumConv_3( 1234, res );
+		NumConv_3( 12345, res );
+		NumConv_3( 123456, res );
+		NumConv_3( 1234567, res );
+		NumConv_3( 12345678, res );
+		NumConv_3( 123456789, res );
+		NumConv_3( 1234567890, res );
+
+	endfor;
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );	
+	stdout.put( "NumConv_3 = '", res, "', time=", tval, " milliseconds" nl );
+	
+	
+	
+	t.start();
+	for( mov( NumIterations, ecx ); ecx > 0; dec( ecx )) do
+		
+		NumConv_4( 0, res );
+		NumConv_4( 1, res );
+		NumConv_4( 12, res );
+		NumConv_4( 123, res );
+		NumConv_4( 1234, res );
+		NumConv_4( 12345, res );
+		NumConv_4( 123456, res );
+		NumConv_4( 1234567, res );
+		NumConv_4( 12345678, res );
+		NumConv_4( 123456789, res );
+		NumConv_4( 1234567890, res );
+
+	endfor;
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );	
+	stdout.put( "NumConv_4 = '", res, "', time=", tval, " milliseconds" nl );
+	
+	
+	
+	
+	t.start();
+	for( mov( NumIterations, ecx ); ecx > 0; dec( ecx )) do
+		
+		NumConv_5( 0, res );
+		NumConv_5( 1, res );
+		NumConv_5( 12, res );
+		NumConv_5( 123, res );
+		NumConv_5( 1234, res );
+		NumConv_5( 12345, res );
+		NumConv_5( 123456, res );
+		NumConv_5( 1234567, res );
+		NumConv_5( 12345678, res );
+		NumConv_5( 123456789, res );
+		NumConv_5( 1234567890, res );
+
+	endfor;
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );	
+	stdout.put( "NumConv_5 = '", res, "', time=", tval, " milliseconds" nl );
+	
+	
+	
+	
+	t.start();
+	for( mov( NumIterations, ecx ); ecx > 0; dec( ecx )) do
+		
+		NumConv_6( 0, res );
+		NumConv_6( 1, res );
+		NumConv_6( 12, res );
+		NumConv_6( 123, res );
+		NumConv_6( 1234, res );
+		NumConv_6( 12345, res );
+		NumConv_6( 123456, res );
+		NumConv_6( 1234567, res );
+		NumConv_6( 12345678, res );
+		NumConv_6( 123456789, res );
+		NumConv_6( 1234567890, res );
+
+	endfor;
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );	
+	stdout.put( "NumConv_6 = '", res, "', time=", tval, " milliseconds" nl );
+	
+
+end NumericConvDemo; 

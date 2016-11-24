@@ -1,0 +1,179 @@
+/*
+** This program generates a CRC16/CCITT CRC table
+** suitable for including in a CRC module (see the
+** accompanying CRCDEMO program).
+**
+**	This code generates a CRC-16 table with the following
+** attributes:
+**
+**	CRC-16 bits
+**	CCCITT polynomial $1021
+**	Bits are *not* reversed
+*/
+
+program crcDemo;
+#include ("stdlib.hhf")
+
+const
+	GenPoly_c	:= $1021;
+
+static
+	A256	:char[256] := [ 256 dup ['A']];
+
+
+/*
+** This compile-time program generates a CRC16/CCITT CRC table
+**
+** This code generates a CRC-16 table with the following
+** attributes:
+**
+**	CRC-16 bits
+**	CCITT polynomial $1021
+**	Initial value: $FFFF
+**	Bits are *not* reversed
+*/
+
+readonly
+	crcTable	:word[256] :=
+	[
+		#for( tableIndex := 0 to 255 )
+
+			?acc := 0;
+			?curData := tableIndex << 8;
+			#for( bitPosn := 0 to 7 )
+
+				?accHO := (acc & $ff00) ^ curData;
+				?acc := acc << 1;
+				#if( (accHO & $8000) <> 0 )
+
+					?acc := acc ^ GenPoly_c;
+
+				#endif
+				?curData := (curData << 1) & $ff00;
+
+			#endfor
+
+			// Emit the current table entry
+
+			acc & $ffff
+			
+			// If not the last entry, follow it with a comma:
+
+			#if( tableIndex <> 255 )
+				,
+			#endif
+
+		#endfor
+	];
+	
+
+/*
+** crcBuf-
+**
+**	Computes the CRC for a stream of bytes found in a buffer.
+**
+** This function computes the CRC/CCITT CRC-16 value.
+** This computation uses the following table-driven algorithm:
+**
+**	1. Initialize CRC value with $ffff
+**	2. For each byte in the buffer:
+**		3.	Use the H.O. byte of the CRC as an index into the table
+**			and XOR the word found there with the new character
+**			and the old L.O. CRC byte shifted into the H.O. byte position.
+**	4. After processing each of the bytes in the buffer, process a pair of
+**	   zero bytes to complete shifting all the data to the CRC calculation.
+**
+** The CRC lookup table contains all the precomputed polynomial division
+** values.  The compile-time program above fills in this table as appropriate
+** for the CRC-16/CCITT algorithm.
+*/
+
+procedure crcBuf( var buf:var; length:dword ); @nodisplay; @noalignstack;
+begin crcBuf;
+
+	push( ebx );
+	push( ecx );
+	push( esi );
+	
+	xor( ebx, ebx );	// Need H.O. three bytes to contain zero
+	mov( $FFFF, eax );	// CRC/CCITT requires initialization to all ones.
+	mov( buf, esi );	// Start of the buffer to process.
+	mov( length, ecx );	// # of chars to process.
+	if( ecx <> 0 ) then
+
+		repeat
+
+			mov( ah, bl );
+			mov( al, ah );
+			mov( [esi], al );
+			inc( esi );
+			xor( crcTable[ ebx*2 ], ax );
+			dec( ecx );
+
+		until( @z );
+
+	endif;
+
+	// Must push the last two bytes through to finish the CRC calculation.
+
+	mov( ah, bl );
+	mov( al, ah );
+	mov( 0, al );
+	xor( crcTable[ ebx*2 ], ax );
+
+	mov( ah, bl );
+	mov( al, ah );
+	mov( 0, al );
+	xor( crcTable[ ebx*2 ], ax );
+
+	pop( esi );
+	pop( ecx );
+	pop( ebx );
+
+end crcBuf;
+
+
+/*
+** crcStr- computes the CRC for the data in an HLA string.
+*/
+
+procedure crcStr( s:string ); @nodisplay; @noalignstack;
+begin crcStr;
+
+	mov( s, eax );
+	crcBuf( [eax], (type str.strRec [eax]).length );
+
+end crcStr;
+	
+begin crcDemo;
+
+	// Some standard test cases.
+	// (http://www.efplus.com/techref/method/math/crcguide.html)
+	//
+	// Empty string should return a CRC of $1D0F:
+
+	crcStr( "" );
+	stdout.put( "CRC("""") = ", eax, nl );
+	
+	// The standard test string "123456789" should
+	// return a CRC of $E5CC:
+
+	crcStr( "123456789" );
+	stdout.put( "CRC(""123456789"") = ", eax, nl );
+	
+	// The standard test string "A" should return the CRC $9479:
+
+	crcBuf( A256, 1 );
+	stdout.put( "CRC(""A"") = ", eax, nl );
+	
+	// The standard test string consisting of 256 'A' characters
+	// should return the CRC $E938:
+
+	crcBuf( A256, 256 );
+	stdout.put( "CRC(""AAA...AA"") = ", eax, nl );
+
+	
+end crcDemo;
+
+
+       

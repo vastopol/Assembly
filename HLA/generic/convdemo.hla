@@ -1,0 +1,419 @@
+ 
+program convDemo;
+
+#include( "stdio.hhf" )
+#include( "stdout.hhf" )
+#include( "memory.hhf" )
+#include( "conv.hhf" )
+#include( "strings.hhf" )
+
+
+var
+	buffer:				string;
+	intInput:			int32;
+	Delimiters:			cset;
+	ByteBuf:			byte[255];
+	SaveUnderscores:	boolean;
+
+
+static
+	r80:	real80	:= 1.2345678901234567890;
+	r64:	real64	:= 1.2345678901234567890;
+	r32:	real32	:= 1.2345678901234567890;
+	
+	intStr:	string	:= "-1 -1_000 -100_000  -1_000_000_000_000";
+	unsStr: string	:= "10  1_000  100_000 ";
+	hexStr:	string	:= "FF  EEEE   DD_DDDD  C_CCCC_CCCC ";
+	fltStr: string	:= "-1.234567890e-12";
+	
+	
+	
+static
+	z_Str:byte; @nostorage;
+		byte "Hello World", #0;
+		
+	qWordVal: qword; @nostorage;
+		dword $FFFF_FFFF, $7fff_ffff ;
+		
+	tByteVal: tbyte; @nostorage;
+		dword $9012_3456, $1234_5678;
+		word $7890;
+
+	atouText: byte; @nostorage;
+		byte "12345", 0;
+
+	atoiText: byte; @nostorage;
+		byte "-12345", 0;
+
+	atohText: byte; @nostorage;
+		byte "F12345", 0;
+
+	atofText: byte; @nostorage;
+		byte "123.4567890123456", 0;
+			
+
+begin convDemo;
+
+	// Make room for a nice big string so we have
+	// a string to work with.
+
+	stralloc( 256 );
+	mov( eax, buffer );
+
+
+	// Use the GetUnderscores() function to preserve the
+	// current Underscores value while we mess with it.
+	
+	conv.getUnderscores();
+	mov( al, SaveUnderscores );
+	
+	conv.setUnderscores( true );
+	conv.h32ToStr( $12345678, 0, ' ', buffer );
+	stdout.put( "$12345678 w/underscores= $", buffer, nl );
+	conv.setUnderscores( false );
+	conv.h32ToStr( $12345678, 0, ' ', buffer );
+	stdout.put( "$12345678 w/o underscores= $", buffer, nl, nl );
+	
+	// Restore the original underscores value:
+	
+	conv.setUnderscores( SaveUnderscores );
+	
+	
+	// Save the current delimiters set:
+	
+	conv.getDelimiters( Delimiters );
+	
+	// Change the current delimiters set:
+	
+	conv.setDelimiters( -{ '0'..'9' } );
+	
+	// Test the new delimiters (this should *not* cause
+	// an exception!):
+	
+	conv.strToi32( "abc12345def", 0 );
+	stdout.put( "strToi32 of abc12345def = ", (type int32 eax), nl, nl );
+	
+	// Restore the original delimiter set:
+	
+	conv.setDelimiters( Delimiters );
+	
+	
+	
+	
+	
+	
+	
+	// Demonstration of the h8ToStr, h16ToStr, h32ToStr, h64ToStr, and h80ToStr
+	// routines:
+	
+	conv.h8ToStr( $12, 0, ' ', buffer );
+	stdout.put( "h8ToStr( $12, buffer ) = <<", buffer, ">>", nl );
+	
+	conv.h16ToStr( $3456, 0, ' ', buffer );
+	stdout.put( "h16ToStr( $3456, buffer ) = <<", buffer, ">>", nl );
+	
+	conv.h32ToStr( $7890_1234, 0, ' ', buffer );
+	stdout.put( "h32ToStr( $7890_1234, buffer ) = <<", buffer, ">>", nl );
+	
+	conv.h64ToStr( qWordVal, 0, ' ', buffer );
+	stdout.put( "h64ToStr( qWordVal, buffer ) = <<", buffer, ">>", nl );
+	
+	conv.h80ToStr( tByteVal, 0, ' ', buffer );
+	stdout.put( "h80ToStr( tByteVal, buffer ) = <<", buffer, ">>", nl, nl );
+	
+	
+	// Demo the iXSize and uXSize routines here:
+	
+
+	conv.i64Size( qWordVal );
+	stdout.put( "i64Size( qWordVal ) = ", (type uns32 eax), nl,nl );
+
+	conv.u64Size( qWordVal );
+	stdout.put( "u64Size( qWordVal ) = ", (type uns32 eax), nl,nl );
+
+
+
+	// Demonstrate the use of the iXToBuf and uXToBuf routines:
+	
+	lea( edi, ByteBuf );				// Start storing converted chars here.
+	mov( -1, al );
+	conv.i8ToBuf( al, [edi] );			// Output $12.
+	mov( -1_000, ax );
+	conv.i16ToBuf( ax, [edi] );			// Append 3456.
+	mov( -100_000, eax );
+	conv.i32ToBuf( eax, [edi] );		// Append 7890_1234.
+	mov( ' ', (type char [edi]) );
+	inc( edi );
+	conv.i64ToBuf( qWordVal, [edi] );
+	
+	mov( 0, (type byte [edi]) );
+
+	lea( eax, ByteBuf );
+	str.a_cpyz( (type zstring eax) );
+	stdout.put
+	( 
+		"i8ToBuf+i16ToBuf+i32ToBuf+i64ToBuf = <<", 
+		(type string eax), 
+		">>", 
+		nl 
+	);
+	strfree( eax );	 
+	
+
+	
+	lea( edi, ByteBuf );				// Start storing converted chars here.
+	mov( 1, al );
+	conv.u8ToBuf( al, [edi] );			// Output $12.
+	mov( 1_000, ax );
+	conv.u16ToBuf( ax, [edi] );			// Append 3456.
+	mov( 100_000, eax );
+	conv.u32ToBuf( eax, [edi] );		// Append 7890_1234.
+	mov( ' ', (type char [edi]) );
+	inc( edi );
+	conv.u64ToBuf( qWordVal, [edi] );
+	
+	mov( 0, (type byte [edi]) );
+
+	lea( eax, ByteBuf );
+	str.a_cpyz( (type zstring eax) );
+	stdout.put
+	( 
+		"u8ToBuf+u16ToBuf+u32ToBuf+u64ToBuf = <<", 
+		(type string eax), 
+		">>", 
+		nl 
+	);
+	strfree( eax );	
+	
+
+
+
+	// Demonstration of the iXToStr and uXToStr routines:
+	
+	conv.i8ToStr( 127, 4, '*', buffer );
+	stdout.put( "i8ToStr( 127, buffer ) = <<", buffer, ">>", nl );
+	
+	conv.i8ToStr( -127, 4, '*', buffer );
+	stdout.put( "i8ToStr( -127, buffer ) = <<", buffer, ">>", nl,nl );
+	
+	
+	conv.i16ToStr( 32767, 10, '*', buffer );
+	stdout.put( "i16ToStr( 32767, buffer ) = <<", buffer, ">>", nl );
+	
+	conv.i16ToStr( -32767, 10, '*', buffer );
+	stdout.put( "i16ToStr( -32767,, buffer ) = <<", buffer, ">>", nl, nl );
+	
+	
+	
+	conv.i32ToStr( 1_000_000_000, -15, '*', buffer );
+	stdout.put( "i32ToStr( 1_000_000_000, buffer ) = <<", buffer, ">>", nl );
+	
+	conv.i32ToStr( -1_000_000_000, -15, '*', buffer );
+	stdout.put
+	( 
+		"i32ToStr( -1_000_000_000, -15, '*', buffer ) = <<", 
+		buffer, 
+		">>", 
+		nl, 
+		nl 
+	);
+	
+	
+	
+	conv.i64ToStr( qWordVal, 25, '*', buffer );
+	stdout.put
+	( 
+		"i64ToStr( qWordVal, 25, '*' buffer ) = <<", 
+		buffer, 
+		">>", 
+		nl,
+		nl 
+	);
+	
+	
+	
+
+
+	conv.u8ToStr( 127, 4, '*', buffer );
+	stdout.put( "u8ToStr( 127, buffer ) = <<", buffer, ">>", nl );
+	
+	conv.u16ToStr( 32767, 10, '*', buffer );
+	stdout.put( "u16ToStr( 32767, buffer ) = <<", buffer, ">>", nl );
+	
+	conv.u32ToStr( 1_000_000_000, -15, '*', buffer );
+	stdout.put( "u32ToStr( 1_000_000_000, buffer ) = <<", buffer, ">>", nl );
+	
+	conv.u64ToStr( qWordVal, 25, '*', buffer );
+	stdout.put
+	( 
+		"u64ToStr( qWordVal, 25, '*' buffer ) = <<", 
+		buffer, 
+		">>", 
+		nl,
+		nl 
+	);
+	
+	
+	
+	
+	// Demonstrate the rXXToStr routines:
+	
+	conv.r80ToStr( r80, 24, 20, '*', buffer );
+	stdout.put
+	( 
+		"r80ToStr( r80, 24, 20, '*', buffer ) = <<", 
+		buffer, 
+		">>", 
+		nl 
+	);
+	
+	
+	conv.r64ToStr( r64, 24, 20, '*', buffer );
+	stdout.put
+	( 
+		"r64ToStr( r64, 24, 20, '*', buffer ) = <<", 
+		buffer, 
+		">>", 
+		nl 
+	);
+	
+	
+	conv.r32ToStr( r32, 24, 20, '*', buffer );
+	stdout.put
+	( 
+		"r32ToStr( r32, 24, 20, '*', buffer ) = <<", 
+		buffer, 
+		">>", 
+		nl,
+		nl 
+	);
+	
+	
+	
+	
+	
+	// Demonstrate the eXXToStr routines:
+	
+	conv.e80ToStr( r80, 24, buffer );
+	stdout.put
+	( 
+		"e80ToStr( r80, 24, buffer ) = <<", 
+		buffer, 
+		">>", 
+		nl 
+	);
+	
+	
+	conv.e64ToStr( r64, 24, buffer );
+	stdout.put
+	( 
+		"e64ToStr( r64, 24, buffer ) = <<", 
+		buffer, 
+		">>", 
+		nl 
+	);
+	
+	
+	conv.e32ToStr( r32, 24, buffer );
+	stdout.put
+	( 
+		"e32ToStr( r32, 24, buffer ) = <<", 
+		buffer, 
+		">>", 
+		nl,
+		nl 
+	);
+	
+	
+	
+	// Demonstrate the atoX routines here:
+	
+	lea( esi, atouText );
+	conv.atou32( [esi] );
+	stdout.put( "atou32( atouText ) = ", (type uns32 eax ), nl );
+	
+	lea( esi, atoiText );
+	conv.atoi32( [esi] );
+	stdout.put( "atoi32( atoiText ) = ", (type int32 eax ), nl );
+	
+	lea( esi, atohText );
+	conv.atoh32( [esi] );
+	stdout.put( "atoh32( atohText ) = ", (type dword eax ), nl );
+	
+	lea( esi, atofText );
+	conv.atof();
+	fstp( r80 );
+	stdout.put( "atof( atofText ) = ", r80:20:16, nl, nl );
+	
+
+
+
+	// Demonstrate the StrToiX routines here:
+	
+	conv.strToi8( intStr, 0 );
+	stdout.put( "StrToi8( intStr, 0 ) = ", (type int32 eax ), nl );
+		
+	conv.strToi16( intStr, 3 );
+	stdout.put( "StrToi16( intStr, 3 ) = ", (type int32 eax ), nl );
+		
+	conv.strToi32( intStr, 10 );
+	stdout.put( "StrToi32( intStr, 10 ) = ", (type int32 eax ), nl );
+		
+	conv.strToi64( intStr, 20 );
+	stdout.put( "StrToi64( intStr, 10 ) = " );
+	push( edx );
+	push( eax );
+	call stdout.puti64;
+	stdout.newln();
+	stdout.newln();
+		
+
+
+	// Demonstrate the StrTouX routines:
+	
+	conv.strTou8( unsStr, 0 );
+	stdout.put( "StrTou8( unsStr, 0 ) = ", (type uns32 eax ), nl );
+		
+	conv.strTou16( unsStr, 3 );
+	stdout.put( "StrTou16( unsStr, 3 ) = ", (type uns32 eax ), nl );
+		
+	conv.strTou32( unsStr, 10 );
+	stdout.put( "StrTou32( unsStr, 10 ) = ", (type uns32 eax ), nl, nl );
+		
+		
+	// Demonstrate the StrTo$ routines:
+	
+	
+	conv.strToh8( hexStr, 0 );
+	stdout.put( "StrTob( hexStr, 0 ) = ", al, nl );
+		
+	conv.strToh16( hexStr, 3 );
+	stdout.put( "StrTow( hexStr, 4 ) = ", ax, nl );
+		
+	conv.strToh32( hexStr, 10 );
+	stdout.put( "StrTod( hexStr, 10 ) = ", eax, nl );
+		
+	conv.strToh64( hexStr, 20, qWordVal );
+	mov( qWordVal, edx:eax );
+	stdout.put( "StrToq( hexStr, 20 ) = ", edx, "_", eax, nl, nl );
+		
+	
+	// Demonstration of the StrToFlt routine:
+	
+	conv.strToFlt( fltStr, 0 );
+	fstp( r80 );
+	stdout.put( "StrToFlt( fltStr, 0 ) = ", r80:16, nl, nl );
+	
+	
+	
+	// Demonstration of the cStrToStr and a_cStrToStr routines:
+	
+	lea( eax, z_Str );
+	str.cpyz( (type zstring eax), buffer );
+	stdout.put( "str.cpyz( z_Str, buffer ) = """, buffer, """", nl );
+	lea( eax, z_Str );
+	str.a_cpyz( (type zstring eax) );
+	stdout.put( "str.a_zpyz( z_Str ) = """, (type string eax), """" nl nl );
+		
+end convDemo;
+                        

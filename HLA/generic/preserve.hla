@@ -1,0 +1,166 @@
+
+program t;
+?@nodisplay := true;
+?@noalignstack := true;
+
+// preserve-
+//
+// Use this macro as a "procedure option" to specify which
+// 32-bit registers you'd like HLA to preserve across the
+// procedure call. This macro will set up the _initialize_
+// and _finalize_ strings to emit the appropriate set of
+// pushes and pops to preserve those registers across the
+// call.
+
+#macro preserve( _reglist_[] ):_pushes_, _pops_, _curreg_, _numRegs_;
+
+	const
+	#if( @elements( _reglist_ ) > 0 )
+	
+		// Check to see if the user has specified a non-register
+		// value or has specified the same register twice:
+		
+		#for( _i_ := 0 to @elements( _reglist_ ) - 1 )
+		
+			#if( !@reg32( _reglist_[_i_] ))
+			
+				#error
+				(
+					"Argument ",
+					_reglist_[_i_],
+					" must be a 32-bit register"
+				)
+			
+			#endif
+		
+			#for( _j_ := 0 to @elements( _reglist_ ) - 2 )
+			
+				#if( _i_ <> _j_ )
+				
+					#if( _reglist_[_i_] = _reglist_[_j_] )
+					
+						#error
+						( 
+							"Argument ", 
+							_reglist_[_i_], 
+							" appears twice in the 'preserve' list"
+						)
+					
+					#endif
+					
+				#endif
+				
+			#endfor
+		
+		#endfor
+		 
+		// Okay, generate the _initialize_ and _finalize_
+		// strings that will preserve the register values
+		// across this procedure call:
+		
+		
+		?_pushes_ := "";
+		?_pops_ := "";
+		#for( _curreg_ in _reglist_ )
+		
+			?_pushes_ += "push(" + _curreg_ + ");";
+			?_pops_ := "pop(" + _curreg_ + ");" + _pops_;
+			
+		#endfor
+		?_initialize_ += _pushes_;
+		?_finalize_ := _pops_ + _finalize_;
+		
+	#endif
+				
+#endmacro
+
+
+
+// Demonstration of the use of the preserve macro.
+
+procedure hasPreserve
+( 
+	a:int32; 
+	b:int32; 
+	c:int32 
+); preserve( eax, ebx, ecx, edx )
+begin hasPreserve;
+
+	mov( a, eax );
+	mov( b, ebx );
+	exit hasPreserve;
+	mov( c, ecx );
+		
+end hasPreserve;
+
+// Sample MASM code that HLA emits for the above procedure:
+// 
+// L806_hasPreserve__hla_ proc	near32
+// 		push	ebp
+// 		mov	ebp, esp
+// 		push	eax
+// 		push	ebx
+// 		push	ecx
+// 		push	edx
+// 		aaa
+// 		jmp	xL806_hasPreserve__hla___hla_	;/* hasPreserve*/
+// 		aaa
+// xL806_hasPreserve__hla___hla_:
+// 		pop	edx
+// 		pop	ecx
+// 		pop	ebx
+// 		pop	eax
+// 		mov	esp, ebp
+// 		pop	ebp
+// 		ret
+// L806_hasPreserve__hla_ endp
+
+
+procedure noPreserve;
+begin noPreserve;
+
+	nop;
+	exit noPreserve;
+	nop;
+	
+end noPreserve;
+
+// Sample MASM code that HLA emits for the above procedure:
+// 
+// L811_noPreserve__hla_ proc	near32
+// 		push	ebp
+// 		mov	ebp, esp
+// 		nop
+// 		jmp	xL811_noPreserve__hla___hla_	;/* noPreserve*/
+// 		nop
+// xL811_noPreserve__hla___hla_:
+// 		mov	esp, ebp
+// 		pop	ebp
+// 		ret
+// L811_noPreserve__hla_ endp
+
+
+
+begin t;
+
+	hasPreserve( 1, 2, 3 );
+	
+end t;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+									

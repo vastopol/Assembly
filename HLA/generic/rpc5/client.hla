@@ -1,0 +1,202 @@
+
+program t; 
+?@nodisplay := true; 
+?@noalignstack := true; 
+
+#include( "stdlib.hhf" )
+#include( "sleep.hhf" )
+
+#include( "sc.hhf" ) 
+#include( "rpc_client_implementation.hhf" )
+
+////////////////////////////////////////////////////////////////////////
+//
+// Here is the client-side code:
+
+
+
+static
+	startTime	:qword;
+	endTime		:qword;
+	elapsedTime	:uns64;
+	elapsedMsec	:uns32;
+	msPerCall	:real32;
+	
+	ipAdrs		:dword;
+	ipAdrsStr	:string;
+	s			:string;
+	timr		:timer_t;
+	
+	
+	
+begin t;
+
+	sock.socketInit();
+
+	arg.c();
+	if( eax <> 2 ) then
+	
+		stdout.put( "usage: client <<ipaddress>>" nl );
+		exit t;
+		
+	endif;
+	arg.a_v( 1 );
+	mov( eax, ipAdrsStr );
+	sock.strToIP( eax );
+	mov( eax, ipAdrs );
+	
+	mov( eax, ebx );
+	bswap( ebx );
+	stdout.put
+	( 
+		"Server address:", 
+		(type uns8 bl), 
+		'.', 
+		(type uns8 bh),
+		'.',
+		(type uns8 ah),
+		'.',
+		(type uns8 al), 
+		nl 
+	);
+	
+	timr.create();
+	
+	// Create the client (and its message handling thread):
+	
+	profileRPC_client.create( ipAdrs, $9998 );
+	stdout.put( "Client connected to server" nl );
+	
+	stdout.put( "Timing synchronous calls" nl );
+	timr.start();	
+	rdtsc();
+	mov( edx:eax, startTime );
+	for( mov( 0, ecx ); ecx < 1000; inc( ecx )) do
+	
+		rpc_sync();
+		
+	endfor;
+	rdtsc();
+	mov( edx:eax, endTime );
+	sub( (type dword startTime), eax );
+	sbb( (type dword startTime[4]), edx );
+	mov( edx:eax, elapsedTime );
+	timr.stop();
+	
+	time.secsBetweenTimes( timr.TimeStarted, timr.TimeStopped );
+	intmul( 1000, eax );
+	add( timr.msStopped, eax );
+	sub( timr.msStarted, eax );
+	mov( eax, elapsedMsec  );
+	fild( elapsedMsec );
+	fld( 1000.0 );
+	fdivp();
+	fstp( msPerCall );
+	
+			
+	stdout.put
+	( 
+		"sync: elapsed time = ", 
+		elapsedMsec, 
+		"ms, cycles: ", 
+		elapsedTime,
+		", msec/call:", 
+		msPerCall:8:2, 
+		nl 
+	);
+	
+	
+	
+	
+		
+	
+	stdout.put( "Timing asynchronous calls" nl );
+	timr.restart();
+	timr.start();	
+	rdtsc();
+	mov( edx:eax, startTime );
+	for( mov( 0, ecx ); ecx < 1000; inc( ecx )) do
+	
+		rpc_async();
+		
+	endfor;
+	rdtsc();
+	mov( edx:eax, endTime );
+	sub( (type dword startTime), eax );
+	sbb( (type dword startTime[4]), edx );
+	mov( edx:eax, elapsedTime );
+	timr.stop();
+	
+	time.secsBetweenTimes( timr.TimeStarted, timr.TimeStopped );
+	intmul( 1000, eax );
+	add( timr.msStopped, eax );
+	sub( timr.msStarted, eax );
+	mov( eax, elapsedMsec  );
+	fild( elapsedMsec );
+	fld( 1000.0 );
+	fdivp();
+	fstp( msPerCall );
+	
+			
+	stdout.put
+	( 
+		"async: elapsed time = ", 
+		elapsedMsec, 
+		"ms, cycles: ", 
+		elapsedTime,
+		", msec/call:", 
+		msPerCall:8:2, 
+		nl 
+	);
+		
+	
+	stdout.put( "Timing bisynchronous calls" nl );	
+	timr.restart();
+	timr.start();	
+	rdtsc();
+	mov( edx:eax, startTime );
+	for( mov( 0, ecx ); ecx < 1000; inc( ecx )) do
+	
+		rpc_bisync();
+		rpc_bisync_waitForReturn();
+		
+	endfor;
+	rdtsc();
+	mov( edx:eax, endTime );
+	sub( (type dword startTime), eax );
+	sbb( (type dword startTime[4]), edx );
+	mov( edx:eax, elapsedTime );
+	timr.stop();
+	
+	time.secsBetweenTimes( timr.TimeStarted, timr.TimeStopped );
+	intmul( 1000, eax );
+	add( timr.msStopped, eax );
+	sub( timr.msStarted, eax );
+	mov( eax, elapsedMsec  );
+	fild( elapsedMsec );
+	fld( 1000.0 );
+	fdivp();
+	fstp( msPerCall );
+	
+			
+	stdout.put
+	( 
+		"bisync: elapsed time = ", 
+		elapsedMsec, 
+		"ms, cycles: ", 
+		elapsedTime,
+		", msec/call:", 
+		msPerCall:8:2, 
+		nl 
+	);
+		
+	// Clean up and leave.
+	// Always wait a brief amount of time before destroying the
+	// client object so that all network communications complete.
+	
+	os.sleep( 2 );
+
+	profileRPC_client.destroy();
+	stdout.put( "Done" nl );	
+
+end t;

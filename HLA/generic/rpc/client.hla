@@ -1,0 +1,91 @@
+
+program t; 
+?@nodisplay := true; 
+?@noalignstack := true; 
+
+#include( "stdlib.hhf" )
+#include( "sleep.hhf" )
+
+#include( "sc.hhf" ) 
+#include( "rpc_client_implementation.hhf" )
+
+
+////////////////////////////////////////////////////////////////////////
+//
+// Here is the client-side code:
+
+
+
+var
+	timeout	:thunk;
+	ipAdrs	:dword;
+	s		:string;
+	offs	:dword;
+	i		:dword;
+	success	:boolean;
+	
+begin t;
+
+	sock.socketInit();
+	sock.hostAdrs(); 
+	mov( eax, ipAdrs );
+	mov( eax, ebx );
+	bswap( ebx );
+	stdout.put
+	( 
+		"Client address:", 
+		(type uns8 bl), 
+		'.', 
+		(type uns8 bh),
+		'.',
+		(type uns8 ah),
+		'.',
+		(type uns8 al), 
+		nl 
+	);
+	
+	// Create the client (and its message handling thread):
+	
+	my_client.create( ipAdrs, $9998 );
+	stdout.put( "Client connected to server" nl );
+				
+	os.sleep(2);
+	
+	
+	
+	// Make the remote procedure calls:
+	
+	proc1( 0, 1, 2, "Hello World" );
+	proc2();
+	proc3( $00, 'c', true, -5, 5 );
+	proc4( $0000, -500, 500 );
+	proc5( $0000_0000, -500_000, 500_000, 5.000 );
+	proc6( $0, -64, 64, 64.000 );
+	proc7( $80, 80.000 );
+	proc8( $128, -128, 128, {'1', '2', '8'} );
+	
+	aproc1( 0, 1, 2, "Hello World" );
+	
+	bproc1( 0, 1, 2, "Hello World" );
+	bproc1_waitForReturn( s );
+	stdout.put( "bproc1 eturn result = ", s, nl );
+	str.free( s );
+	
+	bproc2();
+	bproc2_waitForReturn();
+	stdout.put( "bproc2 returned" nl );
+	
+	bproc3();
+	bproc3_waitForReturn( i );
+	stdout.put( "bproc3 return result = ", (type uns32 i), nl );
+	
+	// Clean up and leave.
+	// Always wait a brief amount of time before destroying the
+	// client object so that all network communications complete.
+	
+	os.sleep( 2 );
+
+	my_client.destroy();
+	stdout.put( "Done" nl );	
+
+end t;

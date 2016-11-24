@@ -1,0 +1,94 @@
+program coroutines;
+#include( "stdlib.hhf" );
+	
+
+
+static
+	corot1: coroutine;
+	corot2: coroutine;
+	
+	 
+	
+	procedure proc1;
+	begin proc1;
+	
+		stdout.put( "Proc1 Called by Main" nl );	
+		coret();
+		
+		forever
+		
+			try
+			
+				stdout.put( "In proc1, enter an integer: " );
+				stdin.geti8();
+				stdout.put( "You entered: ", (type int8 al), nl );
+				
+			  exception( ex.ConversionError )
+			  
+			  	stdout.put( "Conversion error in proc1" nl );
+				raise( ex.ValueOutOfRange );
+				
+			endtry;
+			corot2.cocall();
+			
+		endfor;
+		
+	end proc1;
+	
+	
+	
+	
+	
+	procedure proc2;
+	begin proc2;
+	
+
+		try
+		
+			stdout.put( "In proc2, enter an integer: " );
+			stdin.geti8();
+			stdout.put( "You entered: ", (type int8 al), nl );
+			
+		  exception( ex.ConversionError )
+		  
+		  	stdout.put( "Conversion error in proc2" nl );
+			
+		endtry;
+		mainPgm_coroutine.cocall();
+		
+		
+	end proc2;
+
+
+	
+
+begin coroutines;
+
+
+	try
+
+		corot1.create( $100, &proc1 );
+		corot2.create( $100, &proc2 );
+
+		corot1.cocall();
+		stdout.put( "Returned from corot1, calling it again" nl );
+		corot1.cocall();
+
+		stdout.put( "Input an integer in main: " );
+		stdin.geti8();
+		stdout.put( "You entered: ", (type int8 al), nl );
+		
+		corot2.cocall();
+		
+		stdout.put( "Finishing up in main" nl );
+		
+	  exception( ex.ConversionError )
+	  
+	  	stdout.put( "Conversion error in main" nl );
+		
+	endtry;
+	corot1.cofree();
+	corot2.cofree();
+		
+	
+end coroutines;

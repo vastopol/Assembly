@@ -1,0 +1,338 @@
+program HLA_Basic_Shell;
+?@nodisplay := true;
+?@noalignstack := true;
+
+#include( "stdlib.hhf" )
+#include( "basic.hhf" )
+
+type
+	myRTPgmClass: class inherits( rtPgmClass );
+	
+		override procedure create;
+		
+	endclass;
+	
+readonly
+	align( 4 );
+	vmt( myRTPgmClass );
+
+storage
+	align( 4 );
+	
+	
+	// Application globals:
+	
+	fileExt				:string;
+	filename			:string;
+	sourceFile			:string;
+	byteCodeFile		:string;
+	cmdline				:string;
+	pgm					:myRTPgmClass;
+	
+	
+	fileExtBuf			:byte[1024];
+	byteCodeBuf			:byte[1024];
+	cmdLnBuf			:byte[1024];
+	sourceFileBuf		:byte[1024];
+
+
+readonly
+
+	align( 4 );
+	BasicTitle	:string := "HLA Basic Interpreter V2.1";
+
+
+procedure usage;
+begin usage;
+
+	stdout.put( "Usage: be <byte-code-filename>" nl );
+	os.exitProcess( 1 );
+	
+end usage;
+
+
+
+
+/*****************************************/
+/*                                       */
+/* AtLineNumber-                         */
+/*                                       */
+/* A little utility routine that prints  */
+/* " at line number xx" where xx is the  */
+/* current source file line number (this */
+/* code assumes that EBX is pointing at  */
+/* the start of the current line).       */
+/*                                       */
+/*****************************************/
+
+procedure AtLineNumber( ip:dword in ebx ); @nodisplay; @noframe;
+begin AtLineNumber;
+
+	stdout.put( "at line number ", (type StmtRec [ebx]).lineNum, nl );
+	ret();
+	
+end AtLineNumber;
+
+
+
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// myRTPgmClass.create-
+//
+//	Overrides the rtPgmClass create function so we can properly set up
+// the VMT pointer.
+
+procedure myRTPgmClass.create( filename:string; pgmData:dword ); 
+begin create;
+
+	if( esi = NULL ) then
+	
+		rtPgmClass.create( filename, pgmData );
+		
+	else
+	
+		(type rtPgmClass [esi]).create( filename, pgmData );
+		
+	endif;
+	mov( &myRTPgmClass._VMT_, this._pVMT_ );
+
+end create;
+
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////
+
+	
+begin HLA_Basic_Shell;
+
+	str.init( fileExtBuf, 1024 );
+	mov( eax, fileExt );
+	
+	str.init( byteCodeBuf, 1024 );
+	mov( eax, byteCodeFile );
+	
+	str.init( cmdLnBuf, 1024 );
+	mov( eax, cmdline );
+	
+	str.init( sourceFileBuf, 1024 );
+	mov( eax, sourceFile );
+	
+	
+	
+	
+	 
+	
+	// Start it off running.
+	
+	stdout.put( BasicTitle, nl );
+	
+	// Get the bytecode filename from the command line
+	
+	arg.c();
+	if( eax <> 2 ) then
+	
+		usage();
+		os.exitProcess( 1 );
+		
+	endif;
+	arg.a_v( 1 );
+	mov( eax, filename );
+	
+	// See if the filename has an extension attached to it:
+	
+	filesys.extractExt( filename, fileExt );
+	
+	// If the extension is ".bas" then we need to first compile the file:
+	 
+	if( str.eq( fileExt, HLABasicSourceCodeExt_c )) then
+	
+		// If it's a ".bas" source file, then compile it to
+		// a byte code file.
+		
+		str.put( cmdline, "bc ", filename );
+		os.system( cmdline );
+		if( eax <> 0 ) then
+		
+			os.exitProcess( 1 );
+			
+		endif;
+		
+		filesys.deleteExt( filename, byteCodeFile );
+		str.cat2( "." HLABasicByteCodeExt_c , byteCodeFile );
+		 
+	// If the extension is a byte code extension (e.g., "hbbc") then
+	// we can just execute the file:
+	
+	elseif( str.eq( fileExt, HLABasicByteCodeExt_c )) then
+	
+		str.cpy( filename, byteCodeFile );
+		
+	else
+	
+		// If the extension is not ".bas" or ".hbbc" / ".tbbc" then
+		// we need to see (in this order):
+		//
+		//	1)	Does <filename>.hbbc (<filename>.tbbs) exist? If so,
+		//		execute that file.
+		//
+		//	2)	Does <filename>.bas exist? If so, compile and execute
+		//		that file.
+		
+		str.cat3( filename, "." HLABasicByteCodeExt_c, byteCodeFile );
+		if( !filesys.exists( byteCodeFile )) then
+		
+			
+			// Check to see if a ".bas" file exists:
+			
+			str.cat3( filename, "." HLABasicSourceCodeExt_c, sourceFile );
+			if( filesys.exists( sourceFile )) then
+			
+				// Okay, ".bas" file exists, compile it:
+			
+				str.put( cmdline, "bc ", sourceFile );
+				os.system( cmdline );
+				if( eax <> 0 ) then
+				
+					os.exitProcess( 1 );
+					
+				endif;
+				
+				// Note that the "byteCodeFile" string contains the
+				// full bytecode filename (plus extension) at this point.
+				
+			else
+			
+				stdout.put( "Could not compile or run ", filename, nl );
+				os.exitProcess( 1 );
+				
+			endif;
+			
+		// else  -- We're in business, just use the byte code file.
+			
+		endif;			 
+	
+	endif;
+	if( !filesys.exists( byteCodeFile )) then
+	
+		stdout.put( "No such bytecode file: ", byteCodeFile, nl );
+		os.exitProcess( 1 );
+		
+	endif;
+	stdout.put( "Running '", byteCodeFile, "'" nl nl );
+	
+	pgm.create( byteCodeFile, NULL );
+	try
+	
+		pgm.run();
+		forever
+		
+			if( eax = 0 ) then
+			
+				stdout.put
+				( 
+					"Program 'ran off the end', press enter to restart: "
+				);
+				stdin.readLn();
+				stdin.flushInput();
+				pgm.reset();
+				
+			else // EAX must equal 1
+			
+				stdout.put
+				(
+					"Program suspended, press enter to resume: "
+				);
+				stdin.readLn();
+				stdin.flushInput();
+				pgm.resume();
+				
+			endif;
+			
+		endfor;
+		
+		
+		
+	  exception( PgmStopException )
+	  
+		stdout.put( nl "Executed STOP " );
+		AtLineNumber( pgm.ip );
+		
+	  exception( BasicError )
+
+		stdout.put( nl "Program stopped because of BASIC run-time error " );
+		AtLineNumber( pgm.ip );
+		
+	  exception( BasicErrorWithMsg )
+
+		stdout.put( nl "Program stopped because of BASIC run-time error " );
+		AtLineNumber( pgm.ip );
+		stdout.put( pgm.exceptionMsg, nl );
+		
+	  exception( typeMismatch )
+	  
+		stdout.put( nl "Type mismatch in expression " );
+		AtLineNumber( pgm.ip );
+		
+	  exception( typeMismatchIntOpStr )
+	  
+		stdout.put( nl "Type mismatch in expression (int op str) " );
+		AtLineNumber( pgm.ip );
+		
+	  exception( typeMismatchStrOpInt )
+	  
+		stdout.put( nl "Type mismatch in expression (str op int) " );
+		AtLineNumber( pgm.ip );
+		
+	  exception( typeMismatchRealOpStr )
+	  
+		stdout.put( nl "Type mismatch in expression (real op str) " );
+		AtLineNumber( pgm.ip );
+		
+	  exception( typeMismatchStrOpReal )
+	  
+	  	stdout.put( nl "Type mismatch in expression (str op real) " );
+		AtLineNumber( pgm.ip );
+		
+	  exception( BadPgmDataException )
+	  
+	  	stdout.put( nl "Program stopped because of byte code file corruption " );
+		AtLineNumber( pgm.ip );
+		
+	  exception( StrToNumberError )
+	  
+	  	stdout.put( nl "Unknown error in StrToNumber function " );
+		AtLineNumber( pgm.ip );
+		
+	  exception( NumToStrError )
+		
+	  	stdout.put( nl "Illegal parameter data type in NumberToStr function " );
+		AtLineNumber( pgm.ip );
+		
+	  exception( AttemptToDeallocateLabel )
+		
+	  	stdout.put( nl "Attempted to overwrite a label object " );
+		AtLineNumber( pgm.ip );
+		
+		
+	  anyexception
+	  	
+		ex.exceptionMsg( eax, pgm.exceptionMsg );
+		stdout.put
+		( 
+			nl 
+			"Exception: ", 
+			pgm.exceptionMsg,
+			nl
+			"Occurred during program execution " 
+		);
+		AtLineNumber( pgm.ip );
+		
+	endtry;	   
+	stdout.put( nl nl, BasicTitle, nl "Execution stopped" nl );
+
+
+end HLA_Basic_Shell;

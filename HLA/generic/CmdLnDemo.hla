@@ -1,0 +1,90 @@
+program cmdline;
+
+#include( "stdio.hhf" )
+#include( "stdout.hhf" )
+#include( "args.hhf" )
+
+static
+	s:string;
+	
+begin cmdline;
+
+	// Grab the whole command line and print it:
+	
+	arg.cmdLn();
+	stdout.put( "Command line = '", (type string eax), "'" nl );
+	
+	
+	// Display the number of command line parameters:
+	
+	arg.c();
+	stdout.put( "argc=", (type int32 eax ), nl );
+	
+	
+	// Print each of the individual command line parmeters:
+	
+	mov( eax, ecx );
+	xor( ebx, ebx );
+	while( ebx < ecx ) do 
+	
+		arg.v( ebx );
+		stdout.put
+		( 
+			"argv[", 
+			(type uns32 ebx), 
+			"]='", 
+			(type string eax), 
+			"'" nl 
+		);
+		inc( ebx );
+		
+	endwhile;
+	
+	// Display all of the command line options that
+	// begin with an alphabetic character:
+	
+	stdout.put( nl "Global options:" nl nl );
+	foreach arg.globalOptions( {'a'..'z', 'A'..'Z'} ) do
+	
+		stdout.put( (type string eax), nl );
+		
+	endfor;
+	
+	// Display the command line options for the first
+	// parameters (those that begin with an alphabetic char).
+	
+	stdout.put( nl nl "Local options at index 1:" nl nl );
+	foreach arg.localOptions( 1, {'a'..'z', 'A'..'Z'} ) do
+	
+		stdout.put( (type string eax), nl );
+		
+	endfor;
+	
+	
+	// Delete the first command line parameter and display
+	// the remaining set of parameters:
+	
+	stdout.put( nl nl "After deleting argument one:" nl );
+	arg.delete( 1 );
+	
+	arg.c();
+	stdout.put( "argc=", (type int32 eax ), nl );
+	mov( eax, ecx );
+	xor( ebx, ebx );
+	while( ebx < ecx ) do 
+	
+		arg.v( ebx );
+		stdout.put
+		( 
+			"argv[", 
+			(type uns32 ebx), 
+			"]='", 
+			(type string eax), 
+			"'" nl 
+		);
+		inc( ebx );
+		
+	endwhile;
+		
+		
+end cmdline;

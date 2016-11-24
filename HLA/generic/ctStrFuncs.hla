@@ -1,0 +1,1326 @@
+program HLLDemo;
+
+const
+	s:string 		:= "Hhello there";
+	HandE:	cset	:= { 'H', 'h', 'e', 'E'};
+	LandO:	cset	:= { 'L', 'l', 'o', 'O' };
+	
+	#print( "s = """, s, """" )
+	#print( "HandE = {", string( HandE ), "}" )
+	#print( "LandO = {", string( LandO ), "}" )
+	#print( "" );
+	
+
+
+val
+
+	// Quick demo/test of the peekCset function:
+	
+	pcss:string;
+	pcsx:string;
+	pcs:boolean :=	@peekCset( s, HandE, pcss, pcsx ) & 
+					@oneChar( pcss, 'H', pcss );
+					
+	#print
+	( 
+		"peekCset = ", #9 #9, pcs, 
+		#9 #9 "pcss='", pcss, "'", 
+		#9 "pcsx='", pcsx, "'" 
+	);
+		
+	pcs:boolean :=	@peekCset( s, LandO, pcss, pcsx ) & 
+					@oneChar( pcss, 'H', pcss );
+					
+	#print
+	( 
+		"peekCset = ", #9 #9 #9, pcs, 
+		#9 "pcss='", pcss, "'", 
+		#9 "pcsx='", pcsx, "'" 
+	);
+		
+		
+		
+		
+		
+		
+	//////////// Quick demo/test of the oneCset function:
+			 
+	ocss:string;
+	ocsx:string;
+	ocs:boolean :=	@oneCset( s, HandE, ocss, ocsx ) & 
+					@oneChar( ocss, 'h', ocss );
+					
+	#print
+	( 
+		"oneCset = ", #9 #9, ocs, 
+		#9 #9 "ocss='", ocss, "'", 
+		#9 "ocsx='", ocsx, "'" 
+	);
+	
+	ocs:boolean :=	@oneCset( s, LandO, ocss, ocsx ) & 
+					@oneChar( ocss, 'h', ocss );
+					
+	#print
+	( 
+		"oneCset = ", #9 #9 #9, ocs, 
+		#9 "ocss='", ocss, "'", 
+		#9 "ocsx='", ocsx, "'" 
+	);
+	
+	
+	
+			 
+	//////////// Quick demo/test of the uptoCset function:
+			 
+	ucss:string;
+	ucsx:string;
+	ucs:boolean :=	@uptoCset( s, LandO, ucss, ucsx ) & 
+					@oneChar( ucss, 'l', ucss );
+	#print
+	( 
+		"uptoCset = ", #9 #9, ucs, 
+		#9 #9 "ucss='", ucss, "'",
+		#9 #9 "ucsx='", ucsx, "'" 
+	);
+	
+	?ucsx := "";		 
+	ucs:boolean :=	@uptoCset( s, {'x'}, ucss, ucsx ) & 
+					@oneChar( ucss, 'l', ucss );
+	#print
+	( 
+		"uptoCset = ", #9 #9 #9, ucs, 
+		#9 "ucss='", ucss, "'",
+		#9 #9 #9 "ucsx='", ucsx, "'" 
+	);
+			 
+
+
+
+
+	//////////// Quick demo/test of the zeroOrOneCset function:
+			 
+	zocss:string;
+	zocsx:string;
+	zocs:boolean :=	@zeroOrOneCset( s, HandE, zocss, zocsx ) & 
+					@oneChar( zocss, 'h', zocss );
+					
+	#print
+	( 
+		"zeroOrOneCset = " #9, zocs, 
+		#9 #9 "zocss='", zocss, "'",
+		#9 "zocsx='", zocsx, "'" 
+	);
+			 
+	zocs:boolean :=	@zeroOrOneCset( s, LandO, zocss, zocsx ) & 
+					@oneChar( zocss, 'h', zocss );
+					
+	#print
+	( 
+		"zeroOrOneCset = " #9 #9, zocs, 
+		#9 "zocss='", zocss, "'",
+		#9 "zocsx='", zocsx, "'" 
+	);
+			 
+
+
+
+
+	//////////// zeroOrMoreCset function test/demo:
+			 
+	zmcss:string;
+	zmcsx:string;
+	zmcs:boolean :=	@zeroOrMoreCset( s, HandE, zmcss, zmcsx ) & 
+					@oneChar( zmcss, 'l', zmcss );
+					
+	#print
+	( 
+		"zeroOrMoreCset =" #9, zmcs, 
+		#9 #9 "zmcss='", zmcss, "'",
+		#9 "zmcsx='", zmcsx, "'" 
+	);
+			 
+	zmcs:boolean :=	@zeroOrMoreCset( s, LandO, zmcss, zmcsx ) & 
+					@oneChar( zmcss, 'H', zmcss );
+					
+	#print
+	( 
+		"zeroOrMoreCset =" #9, zmcs, 
+		#9 #9 "zmcss='", zmcss, "'",
+		#9 "zmcsx='", zmcsx, "'" 
+	);
+			 
+
+
+
+
+	//////////// oneOrMoreCset function test/demo:
+			 
+	omcss:string;
+	omcsx:string;
+	omcs:boolean := @oneOrMoreCset( s, HandE, omcss, omcsx ) & 
+					@oneChar( omcss, 'l', omcss );
+					
+	#print
+	( 
+		"oneOrMoreCset = " #9, omcs, 
+		#9 #9 "omcss='", omcss, "'",
+		#9 "omcsx='", omcsx, "'"
+		 
+	);
+			 
+	omcs:boolean := @oneOrMoreCset( s, LandO, omcss, omcsx ) & 
+					@oneChar( omcss, 'l', omcss );
+					
+	#print
+	( 
+		"oneOrMoreCset = " #9 #9, omcs, 
+		#9 "omcss='", omcss, "'",
+		#9 "omcsx='", omcsx, "'"
+		 
+	);
+			 
+
+
+
+
+	//////////// Demo/test of the exactlynCset function:
+			 
+	encss:string;
+	encsx:string;
+	encs:boolean :=	@exactlynCset( s, HandE, 3, encss, encsx ) & 
+					@oneChar( encss, 'l', encss );
+					
+	#print
+	( 
+		"exactlynCset = " #9 #9, encs, 
+		#9 #9 "encss='", encss, "'",
+		#9 "encsx='", encsx, "'" 
+	);
+	
+	encs:boolean :=	@exactlynCset( s, HandE, 2, encss, encsx ) & 
+					@oneChar( encss, 'l', encss );
+					
+	#print
+	( 
+		"exactlynCset = " #9 #9 #9, encs, 
+		#9 "encss='", encss, "'",
+		#9 "encsx='", encsx, "'" 
+	);
+	
+	
+	
+	
+			 
+	//////////// Quick demo/test of the firstnCset function:
+			 
+	fncss:string;
+	fncsx:string;
+	fncs:boolean := @firstnCset( s, HandE, 2, fncss, fncsx ) & 
+					@oneChar( fncss, 'e', fncss );
+					
+	#print
+	( 
+		"firstnCset = " #9 #9, fncs, 
+		#9 #9 "fncss='", fncss, "'",
+		#9 "fncsx='", fncsx, "'" 
+	);
+			 
+	fncs:boolean := @firstnCset( s, HandE, 4, fncss, fncsx ) & 
+					@oneChar( fncss, 'e', fncss );
+					
+	#print
+	( 
+		"firstnCset = " #9 #9 #9, fncs, 
+		#9 "fncss='", fncss, "'",
+		#9 "fncsx='", fncsx, "'" 
+	);
+			 
+
+
+
+
+	//////////// Quick demo/test of the nOrLessCset function:
+			 
+	nlcss:string;
+	nlcsx:string;
+	nlcs:boolean := @norLessCset( s, HandE, 4, nlcss, nlcsx ) & 
+					@oneChar( nlcss, 'l', nlcss );
+					
+	#print
+	( 
+		"norLessCset = " #9 #9, nlcs, 
+		#9 #9 "nlcss='", nlcss, "'",
+		#9 "nlcsx='", nlcsx, "'" 
+	);
+			 
+	nlcs:boolean := @norLessCset( s, HandE, 2, nlcss, nlcsx ) & 
+					@oneChar( nlcss, 'l', nlcss );
+					
+	#print
+	( 
+		"norLessCset = " #9 #9 #9, nlcs, 
+		#9 "nlcss='", nlcss, "'",
+		#9 "nlcsx='", nlcsx, "'" 
+	);
+			 
+
+
+
+
+	//////////// Demo/test of the nOrMoreCset function:
+			 
+	nmcss:string;
+	nmcsx:string;
+	nmcs:boolean := @norMoreCset( s, HandE, 1, nmcss, nmcsx ) & 
+					@oneChar( nmcss, 'l', nmcss );
+					
+	#print
+	( 
+		"norMoreCset = " #9 #9, nmcs, 
+		#9 #9 "nmcss='", nmcss, "'",
+		#9 "nmcsx='", nmcsx, "'" 
+	);
+			 
+	nmcs:boolean := @norMoreCset( s, HandE, 4, nmcss, nmcsx ) & 
+					@oneChar( nmcss, 'l', nmcss );
+					
+	#print
+	( 
+		"norMoreCset = " #9 #9 #9, nmcs, 
+		#9 "nmcss='", nmcss, "'",
+		#9 "nmcsx='", nmcsx, "'" 
+	);
+			 
+
+
+
+
+	//////////// ntomCset function demo/test:
+			 
+	n2mcss:string;
+	n2mcsx:string;
+	n2mcs:boolean :=	@ntomCset( s, HandE, 1, 2, n2mcss, n2mcsx ) & 
+						@oneChar( n2mcss, 'e', n2mcss );
+	#print
+	( 
+		"ntomCset = " #9 #9, n2mcs, 
+		#9 #9 "n2mcss='", n2mcss, "'",
+		#9 "n2mcsx='", n2mcsx, "'" 
+	);
+			 
+	n2mcs:boolean :=	@ntomCset( s, HandE, 1, 4, n2mcss, n2mcsx ) & 
+						@oneChar( n2mcss, 'e', n2mcss );
+	#print
+	( 
+		"ntomCset = " #9 #9 #9, n2mcs, 
+		#9 "n2mcss='", n2mcss, "'",
+		#9 "n2mcsx='", n2mcsx, "'" 
+	);
+			 
+
+
+
+
+	//////////// exactlyntomCset function test/demo:
+			 
+	xnmcss:string;
+	xnmcsx:string;
+	xnmcs:boolean :=	@exactlyntomCset( s, HandE, 1, 3, xnmcss, xnmcsx ) & 
+						@oneChar( xnmcss, 'l', xnmcss );
+						
+	#print
+	( 
+		"exactlyntomCset = " #9, xnmcs, 
+		#9 #9 "xnmcss='", xnmcss, "'",
+		#9 "xnmcsx='", xnmcsx, "'" 
+	);
+		
+	
+	xnmcs:boolean :=	@exactlyntomCset( s, HandE, 1, 2, xnmcss, xnmcsx ) & 
+						@oneChar( xnmcss, 'l', xnmcss );
+						
+	#print
+	( 
+		"exactlyntomCset = " #9 #9, xnmcs, 
+		#9 "xnmcss='", xnmcss, "'",
+		#9 "xnmcsx='", xnmcsx, "'" 
+	);
+		
+	
+
+
+
+
+	////////////
+			 
+	#print( " " )
+	
+	////////////
+	
+	
+		
+			 
+	//////////// Test/demo of the peekChar function:
+			 
+	pchs:string;
+	pchx:string;
+	pch:boolean :=	@peekChar( s, 'H', pchs, pchx ) & 
+					@oneChar( pchs, 'H', pchs );
+					
+	#print
+	( 
+		"peekChar = " #9 #9, pch, 
+		#9 #9 "pchs='", pchs, "'",
+		#9 "pchx='", pchx, "'" 
+	);
+			 
+	pch:boolean :=	@peekChar( s, 'h', pchs, pchx ) & 
+					@oneChar( pchs, 'H', pchs );
+					
+	#print
+	( 
+		"peekChar = " #9 #9 #9, pch, 
+		#9 "pchs='", pchs, "'",
+		#9 "pchx='", pchx, "'" 
+	);
+			 
+
+
+
+
+	//////////// peekiChar test/demo:
+			 
+	pichs:string;
+	pichx:string;
+	pich:boolean :=	@peekiChar( s, 'h', pichs, pichx ) & 
+					@oneChar( pichs, 'H', pichs );
+					
+	#print
+	( 
+		"peekiChar = " #9 #9, pich, 
+		#9 #9 "pichs='", pichs, "'",
+		#9 "pichx='", pichx, "'" 
+	);
+			 
+	pich:boolean :=	@peekiChar( s, 'e', pichs, pichx ) & 
+					@oneChar( pichs, 'H', pichs );
+					
+	#print
+	( 
+		"peekiChar = " #9 #9 #9, pich, 
+		#9 "pichs='", pichs, "'",
+		#9 "pichx='", pichx, "'" 
+	);
+			 
+
+
+
+
+	//////////// Demo/test of the oneChar function:
+			 
+	ochs:string;
+	ochx:string;
+	och:boolean :=	@oneChar( s, 'H', ochs, ochx ) & 
+					@oneChar( ochs, 'h', ochs );
+					
+	#print
+	( 
+		"oneChar = " #9 #9, och, 
+		#9 #9 "ochs='", ochs, "'",
+		#9 "ochx='", ochx, "'"  
+	);
+			 
+	och:boolean :=	@oneChar( s, 'h', ochs, ochx ) & 
+					@oneChar( ochs, 'h', ochs );
+					
+	#print
+	( 
+		"oneChar = " #9 #9 #9, och, 
+		#9 "ochs='", ochs, "'",
+		#9 "ochx='", ochx, "'"  
+	);
+			 
+			 
+			 
+			 
+			 
+	//////////// Demo/test of the oneiChar function:
+			 
+	oichs:string;
+	oichx:string;
+	oich:boolean :=	@oneiChar( s, 'h', oichs, oichx ) & 
+					@oneChar( oichs, 'h', oichs );
+					
+	#print
+	( 
+		"oneiChar = " #9 #9, oich, 
+		#9 #9 "oichs='", oichs, "'",
+		#9 "oichx='", oichx, "'" 
+	);
+			 
+	oich:boolean :=	@oneiChar( s, 'e', oichs, oichx ) & 
+					@oneChar( oichs, 'h', oichs );
+					
+	#print
+	( 
+		"oneiChar = " #9 #9 #9, oich, 
+		#9 "oichs='", oichs, "'",
+		#9 "oichx='", oichx, "'" 
+	);
+			 
+
+
+
+
+	//////////// This code demonstrates/tests the uptoChar function:
+			 
+	u2chs:string;
+	u2chx:string;
+	u2ch:boolean :=	@uptoChar( s, 'e', u2chs, u2chx ) & 
+					@oneChar( u2chs, 'e', u2chs );
+					
+	#print
+	( 
+		"uptoChar = " #9 #9, u2ch, 
+		#9 #9 "u2chs='", u2chs, "'",
+		#9 "u2chx='", u2chx, "'"
+	);
+			 
+	u2ch:boolean :=	@uptoChar( s, 'x', u2chs, u2chx ) & 
+					@oneChar( u2chs, 'e', u2chs );
+					
+	#print
+	( 
+		"uptoChar = " #9 #9 #9, u2ch, 
+		#9 "u2chs='", u2chs, "'",
+		#9 #9 "u2chx='", u2chx, "'"
+	);
+	
+	
+	
+	
+			 
+	//////////// This is the test/demo code for uptoiChar:
+			 
+	u2ichs:string;
+	u2ichx:string;
+	u2ich:boolean := 	@uptoiChar( s, 'l', u2ichs, u2ichx ) 
+					& 	@oneChar( u2ichs, 'l', u2ichs );
+					
+	#print
+	( 
+		"uptoiChar = " #9 #9, u2ich, 
+		#9 #9 "u2ichs='", u2ichs, "'",
+		#9 "u2ichx='", u2ichx, "'"
+	);
+			 
+	u2ich:boolean :=	@uptoiChar( s, 'x', u2ichs, u2ichx ) & 
+						@oneChar( u2ichs, 'e', u2ichs );
+					
+	#print
+	( 
+		"uptoiChar = " #9 #9 #9, u2ich, 
+		#9 "u2ichs='", u2ichs, "'",
+		#9 #9 "u2ichx='", u2ichx, "'"
+	);
+	
+
+
+
+
+			 
+	//////////// Test/demo code for zeroOrOneChar:
+			 
+	zochs:string;
+	zochx:string;
+	zoch:boolean := @zeroOrOneChar( s, 'H', zochs, zochx ) & 
+					@zeroOrOneChar( zochs, 'H', zochs );
+					
+	#print
+	( 
+		"zeroOrOneChar = " #9, zoch, 
+		#9 #9 "zochs='", zochs, "'",
+		#9 "zochx='", zochx, "'"
+	);
+
+	zoch:boolean := @zeroOrOneChar( s, 'e', zochs, zochx ) & 
+					@zeroOrOneChar( zochs, 'H', zochs );
+					
+	#print
+	( 
+		"zeroOrOneChar = " #9, zoch, 
+		#9 #9 "zochs='", zochs, "'",
+		#9 "zochx='", zochx, "'"
+	);
+
+
+
+
+
+	//////////// Test/Demo of the zeroOrOneiChar function:
+			 
+	zoichs:string;
+	zoichx:string;
+	zoich:boolean :=	@zeroOrOneiChar( s, 'H', zoichs, zoichx ) & 
+						@zeroOrOneiChar( zochs, 'H', zoichs );
+						
+	#print
+	( 
+		"zeroOrOneiChar = " #9, zoich, 
+		#9 #9 "zoichs='", zoichs, "'",
+		#9 "zoichx='", zoichx, "'"
+	);
+
+	zoich:boolean :=	@zeroOrOneiChar( s, 'e', zoichs, zoichx ) & 
+						@zeroOrOneiChar( zochs, 'H', zoichs );
+						
+	#print
+	( 
+		"zeroOrOneiChar = " #9, zoich, 
+		#9 #9 "zoichs='", zoichs, "'",
+		#9 "zoichx='", zoichx, "'"
+	);
+
+
+
+
+
+			
+	//////////// Test/Demo of zeroOrMoreChar function:
+			 
+	zmchs:string;
+	zmchx:string;
+	zmch:boolean := @zeroOrMoreChar( s, 'H', zmchs, zmchx ) & 
+					@zeroOrMoreChar( zmchs, 'H', zmchs );
+					
+	#print
+	( 
+		"zeroOrMoreChar = " #9, zmch, 
+		#9 #9 "zmchs='", zmchs, "'",
+		#9 "zmchx='", zmchx, "'"
+	);
+
+	zmch:boolean := @zeroOrMoreChar( s, 'h', zmchs, zmchx ) & 
+					@zeroOrMoreChar( zmchs, 'H', zmchs );
+					
+	#print
+	( 
+		"zeroOrMoreChar = " #9, zmch, 
+		#9 #9 "zmchs='", zmchs, "'",
+		#9 "zmchx='", zmchx, "'"
+	);
+	
+	
+	
+	
+
+	//////////// zeroOrMoreiChar test/demo:
+			 
+	zmichs:string;
+	zmichx:string;
+	zmich:boolean :=	@zeroOrMoreiChar( s, 'H', zmichs, zmichx ) & 
+					 	@zeroOrMoreiChar( zmichs, 'H', zmichs );
+						
+	#print
+	( 
+		"zeroOrMoreiChar = " #9, zmich, 
+		#9 #9 "zmichs='", zmichs, "'",
+		#9 "zmichx='", zmichx, "'"
+	);
+
+	zmich:boolean :=	@zeroOrMoreiChar( s, 'e', zmichs, zmichx ) & 
+					 	@zeroOrMoreiChar( zmichs, 'H', zmichs );
+						
+	#print
+	( 
+		"zeroOrMoreiChar = " #9, zmich, 
+		#9 #9 "zmichs='", zmichs, "'",
+		#9 "zmichx='", zmichx, "'"
+	);
+
+
+
+
+
+			
+	//////////// Test/demo for oneOrMoreChar:
+			 
+	omchs:string;
+	omchx:string;
+	omch:boolean :=	@oneOrMoreChar( s, 'H', omchs, omchx ) & 
+					@oneOrMoreChar( omchs, 'h', omchs );
+					
+	#print
+	( 
+		"oneOrMoreChar = " #9, omch,  
+		#9 #9 "omchs='", omchs, "'",
+		#9 "omchx='", omchx, "'" 
+	);
+
+	omch:boolean :=	@oneOrMoreChar( s, 'h', omchs, omchx ) & 
+					@oneOrMoreChar( omchs, 'h', omchs );
+					
+	#print
+	( 
+		"oneOrMoreChar = " #9 #9, omch,  
+		#9 "omchs='", omchs, "'",
+		#9 "omchx='", omchx, "'" 
+	);
+	
+	
+	
+	
+
+	//////////// oneOrMoreiChar function test/demo:
+			 
+	omichs:string;
+	omichx:string;
+	omich:boolean := @oneOrMoreiChar( s, 'H', omichs, omichx ) & 
+					 @oneOrMoreiChar( omichs, 'E', omichs );
+					 
+	#print
+	( 
+		"oneOrMoreiChar = " #9, omich, 
+		#9 #9 "omichs='", omichs, "'",
+		#9 "omichx='", omichx, "'"
+	);
+
+	omich:boolean := @oneOrMoreiChar( s, 'e', omichs, omichx ) & 
+					 @oneOrMoreiChar( omichs, 'E', omichs );
+					 
+	#print
+	( 
+		"oneOrMoreiChar = " #9 #9, omich, 
+		#9 "omichs='", omichs, "'",
+		#9 "omichx='", omichx, "'"
+	);
+
+
+
+
+
+	////////////  exactlynChar test/demo:
+			 
+	enchs:string;
+	enchx:string;
+	ench:boolean := @exactlynchar( s, 'H', 1, enchs, enchx ) & 
+					@oneChar( enchs, 'h', enchs );
+					
+	#print
+	( 
+		"exactlynchar = " #9 #9, ench, 
+		#9 #9 "enchs='", enchs, "'",
+		#9 "enchx='", enchx, "'"
+	);
+
+	ench:boolean := @exactlynchar( s, 'H', 2, enchs, enchx ) & 
+					@oneChar( enchs, 'h', enchs );
+					
+	#print
+	( 
+		"exactlynchar = " #9 #9 #9, ench, 
+		#9 "enchs='", enchs, "'",
+		#9 "enchx='", enchx, "'"
+	);
+
+
+
+
+
+	//////////// Test/Demo for exactlyniChar function:
+			 
+	enichs:string;
+	enichx:string;
+	enich:boolean :=	@exactlynichar( s, 'H', 2, enichs, enichx ) & 
+						@oneChar( enichs, 'e', enichs );
+						
+	#print
+	( 
+		"exactlynichar = " #9, enich, 
+		#9 #9 "enichs='", enichs, "'",
+		#9 "enichx='", enichx, "'"
+	);
+			 
+
+	enich:boolean :=	@exactlynichar( s, 'H', 1, enichs, enichx ) & 
+						@oneChar( enichs, 'e', enichs );
+						
+	#print
+	( 
+		"exactlynichar = " #9 #9, enich, 
+		#9 "enichs='", enichs, "'",
+		#9 "enichx='", enichx, "'"
+	);
+			 
+
+
+
+
+
+	//////////// firstnChar test/demo:
+			 
+	fnchs:string;
+	fnchx:string;
+	fnch:boolean :=	@firstnchar( s, 'H', 1, fnchs, fnchx ) & 
+					@oneChar( fnchs, 'h', fnchs );
+					
+	#print
+	( 
+		"firstnchar = " #9 #9, fnch, 
+		#9 #9 "fnchs='", fnchs, "'",
+		#9 "fnchx='", fnchx, "'"
+	);
+
+	fnch:boolean :=	@firstnchar( s, 'H', 2, fnchs, fnchx ) & 
+					@oneChar( fnchs, 'h', fnchs );
+					
+	#print
+	( 
+		"firstnchar = " #9 #9 #9, fnch, 
+		#9 "fnchs='", fnchs, "'",
+		#9 "fnchx='", fnchx, "'"
+	);
+
+
+
+
+
+	//////////// firstniChar test/demo:
+			 
+	fnichs:string;
+	fnichx:string;
+	fnich:boolean :=	@firstnichar( s, 'H', 2, fnichs, fnichx ) & 
+						@oneChar( fnichs, 'e', fnichs );
+						
+	#print
+	( 
+		"firstnichar = " #9 #9, fnich, 
+		#9 #9 "fnichs='", fnichs, "'",
+		#9 "fnichx='", fnichx, "'"
+	);
+			 
+	fnich:boolean :=	@firstnichar( s, 'e', 2, fnichs, fnichx ) & 
+						@oneChar( fnichs, 'e', fnichs );
+						
+	#print
+	( 
+		"firstnichar = " #9 #9 #9, fnich, 
+		#9 "fnichs='", fnichs, "'",
+		#9 "fnichx='", fnichx, "'"
+	);
+			 
+
+
+
+
+
+	//////////// nOrLessChar function test/demo:
+			 
+	nlchs:string;
+	nlchx:string;
+	nlch:boolean := @norlesschar( s, 'H', 1, nlchs, nlchx ) & 
+					@oneChar( nlchs, 'h', nlchs );
+					
+	#print
+	( 
+		"norlesschar = " #9 #9, nlch, 
+		#9 #9 "nlchs='", nlchs, "'",
+		#9 "nlchx='", nlchx, "'"
+	);
+
+	nlch:boolean := @norlesschar( s, 'H', 0, nlchs, nlchx ) & 
+					@oneChar( nlchs, 'h', nlchs );
+					
+	#print
+	( 
+		"norlesschar = " #9 #9 #9, nlch, 
+		#9 "nlchs='", nlchs, "'",
+		#9 "nlchx='", nlchx, "'"
+	);
+	
+	
+	
+	
+
+	//////////// nOrLessiChar test/demo:
+			 
+	nlichs:string;
+	nlichx:string;
+	nlich:boolean :=	@norlessichar( s, 'H', 4, nlichs, nlichx ) & 
+						@oneChar( nlichs, 'e', nlichs );
+						
+	#print
+	( 
+		"norlessichar = " #9 #9, nlich, 
+		#9 #9 "nlichs='", nlichs, "'",
+		#9 "nlichx='", nlichx, "'"
+	);
+			 
+	nlich:boolean :=	@norlessichar( s, 'H', 0, nlichs, nlichx ) & 
+						@oneChar( nlichs, 'e', nlichs );
+						
+	#print
+	( 
+		"norlessichar = " #9 #9 #9, nlich, 
+		#9 "nlichs='", nlichs, "'",
+		#9 "nlichx='", nlichx, "'"
+	);
+			 
+
+
+
+
+			 
+
+	//////////// nOrMoreChar test/demo:
+			 
+	nmchs:string;
+	nmchx:string;
+	nmch:boolean := @normorechar( s, 'H', 1, nmchs, nmchx ) & 
+					@oneChar( nmchs, 'h', nmchs );
+					
+	#print
+	( 
+		"normorechar = " #9 #9, nmch, 
+		#9 #9 "nmchs='", nmchs, "'",
+		#9 "nmchx='", nmchx, "'"
+	);
+
+	nmch:boolean := @normorechar( s, 'H', 3, nmchs, nmchx ) & 
+					@oneChar( nmchs, 'h', nmchs );
+					
+	#print
+	( 
+		"normorechar = " #9 #9 #9, nmch, 
+		#9 "nmchs='", nmchs, "'",
+		#9 "nmchx='", nmchx, "'"
+	);
+	
+	
+	
+	
+
+	//////////// nOrMoreiChar test/demo:
+			 
+	nmichs:string;
+	nmichx:string;
+	nmich:boolean :=	@normoreichar( s, 'H', 1, nmichs, nmichx ) & 
+						@oneChar( nmichs, 'e', nmichs );
+						
+	#print
+	( 
+		"normoreichar = " #9 #9, nmich, 
+		#9 #9 "nmichs='", nmichs, "'",
+		#9 "nmichx='", nmichx, "'"
+	);
+			 
+	nmich:boolean :=	@normoreichar( s, 'H', 3, nmichs, nmichx ) & 
+						@oneChar( nmichs, 'e', nmichs );
+						
+	#print
+	( 
+		"normoreichar = " #9 #9 #9, nmich, 
+		#9 "nmichs='", nmichs, "'",
+		#9 "nmichx='", nmichx, "'"
+	);
+			 
+
+
+
+
+			 
+	
+	//////////// ntomChar test/demo:
+			 
+	n2mchs:string;
+	n2mchx:string;
+	n2mch:boolean :=	@ntomchar( s, 'H', 1, 1, n2mchs, n2mchx ) & 
+						@oneChar( n2mchs, 'h', n2mchs );
+						
+	#print
+	( 
+		"ntomchar = " #9 #9, n2mch, 
+		#9 #9 "n2mchs='", n2mchs, "'",
+		#9 "n2mchx='", n2mchx, "'"
+	);
+
+	n2mch:boolean :=	@ntomchar( s, 'H', 2, 3, n2mchs, n2mchx ) & 
+						@oneChar( n2mchs, 'h', n2mchs );
+						
+	#print
+	( 
+		"ntomchar = " #9 #9 #9, n2mch, 
+		#9 "n2mchs='", n2mchs, "'",
+		#9 "n2mchx='", n2mchx, "'"
+	);
+
+
+
+
+
+	//////////// ntomiChar test/demo:
+			 
+	n2michs:string;
+	n2michx:string;
+	n2mich:boolean :=	@ntomichar( s, 'H', 1, 2, n2michs, n2michx ) & 
+						@oneChar( n2michs, 'e', n2michs );
+						
+	#print
+	( 
+		"ntomichar = " #9 #9, n2mich, 
+		#9 #9 "n2michs='", n2michs, "'",
+		#9 "n2michx='", n2michx, "'"
+	);
+			 
+	n2mich:boolean :=	@ntomichar( s, 'H', 3, 4, n2michs, n2michx ) & 
+						@oneChar( n2michs, 'e', n2michs );
+						
+	#print
+	( 
+		"ntomichar = " #9 #9 #9, n2mich, 
+		#9 "n2michs='", n2michs, "'",
+		#9 "n2michx='", n2michx, "'"
+	);
+			 
+
+
+
+
+			 
+	
+	//////////// Test/demo code for exactlyNtoMiChar:
+			 
+	xn2mchs:string;
+	xn2mchx:string;
+	xn2mch:boolean :=	@exactlyntomchar( s, 'H', 1, 1, xn2mchs, xn2mchx ) & 
+						@oneChar( xn2mchs, 'h', xn2mchs );
+						
+	#print
+	( 
+		"exactlyntomchar = " #9, xn2mch, 
+		#9 #9 "xn2mchs='", xn2mchs, "'",
+		#9 "xn2mchx='", xn2mchx, "'"
+	);
+
+	xn2mch:boolean :=	@exactlyntomchar( s, 'H', 2, 3, xn2mchs, xn2mchx ) & 
+						@oneChar( xn2mchs, 'h', xn2mchs );
+						
+	#print
+	( 
+		"exactlyntomchar = " #9 #9, xn2mch, 
+		#9 "xn2mchs='", xn2mchs, "'",
+		#9 "xn2mchx='", xn2mchx, "'"
+	);
+
+
+
+
+
+	//////////// exactlyntomiChar demo/test:
+			 
+	xn2michs:string;
+	xn2michx:string;
+	xn2mich:boolean :=	@exactlyntomichar( s, 'H', 1, 2, xn2michs, xn2michx ) &
+						@oneChar( xn2michs, 'e', xn2michs );
+						
+	#print
+	( 
+		"exactlyntomichar = " #9, xn2mich, 
+		#9 #9 "xn2michs='", xn2michs, "'",
+		#9 "xn2michx='", xn2michx, "'" 
+	);
+	
+	xn2mich:boolean :=	@exactlyntomichar( s, 'H', 3, 4, xn2michs, xn2michx ) &
+						@oneChar( xn2michs, 'e', xn2michs );
+						
+	#print
+	( 
+		"exactlyntomichar = " #9 #9, xn2mich, 
+		#9 "xn2michs='", xn2michs, "'",
+		#9 "xn2michx='", xn2michx, "'" 
+	);
+	
+	
+	
+	////////////
+
+
+
+	#print( "" )
+
+	
+	
+	//////////// matchStr test/demo:
+			 
+	mss:string;
+	msx:string;
+	ms:boolean :=	@matchStr( s, "Hhello", mss, msx ) & 
+					@oneChar( mss, ' ', mss );
+					
+	#print
+	( 
+		"matchStr = " #9 #9, ms, 
+		#9 #9 "mss='", mss, "'",
+		#9 #9 "msx='", msx, "'"
+	)
+	
+	ms:boolean :=	@matchStr( s, "hHello", mss, msx ) & 
+					@oneChar( mss, ' ', mss );
+					
+	#print
+	( 
+		"matchStr = " #9 #9 #9, ms, 
+		#9 "mss='", mss, "'",
+		#9 #9 "msx='", msx, "'"
+	)
+	
+
+
+
+
+	
+	//////////// matchiStr test/demo:
+			 
+	miss:string;
+	misx:string;
+	mis:boolean :=	@matchiStr( s, "hHello", miss, misx ) & 
+					@oneChar( miss, ' ', miss );
+					
+	#print
+	( 
+		"matchiStr = " #9 #9, mis, 
+		#9 #9 "miss='", miss, "'",
+		#9 #9 "misx='", misx, "'"
+	)
+	
+	mis:boolean :=	@matchiStr( s, "hHhllo", miss, misx ) & 
+					@oneChar( miss, ' ', miss );
+					
+	#print
+	( 
+		"matchiStr = " #9 #9 #9, mis, 
+		#9 "miss='", miss, "'",
+		#9 #9 "misx='", misx, "'"
+	)
+	
+
+
+
+			 
+	
+	
+	//////////// uptoStr test/demo:
+			 
+	u2ss:string;
+	u2sx:string;
+	u2s:boolean := @uptoStr( s, "o t", u2ss, u2sx );
+	#print
+	( 
+		"uptoStr = " #9 #9, u2s, 
+		#9 #9 "u2ss='", u2ss, "'",
+		#9 #9 "u2sx='", u2sx, "'"
+	)
+	
+	
+	u2s:boolean := @uptoStr( s, "xx", u2ss, u2sx );
+	#print
+	( 
+		"uptoStr = " #9 #9 #9, u2s, 
+		#9 "u2ss='", u2ss, "'",
+		#9 "u2sx='", u2sx, "'"
+	)
+	
+	
+	
+	
+	
+	
+	//////////// uptoiStr test/demo:
+			 
+	u2iss:string;
+	u2isx:string;
+	u2is:boolean := @uptoiStr( s, "O T", u2iss, u2isx );
+	#print
+	( 
+		"uptoiStr = " #9 #9, u2is, 
+		#9 #9 "u2iss='", u2iss, "'",
+		#9 #9 "u2isx='", u2isx, "'" 
+	)
+	
+			 
+	u2is:boolean := @uptoiStr( s, "x T", u2iss, u2isx );
+	#print
+	( 
+		"uptoiStr = " #9 #9 #9, u2is, 
+		#9 "u2iss='", u2iss, "'",
+		#9 "u2isx='", u2isx, "'" 
+	)
+	
+			 
+
+
+
+
+	
+	
+	//////////// matchToStr test/demo:
+			 
+	m2ss:string;
+	m2sx:string;
+	m2s:boolean := @matchtoStr( s, "o t", m2ss, m2sx );
+	#print
+	( 
+		"matchtoStr = " #9 #9, m2s, 
+		#9 #9 "m2ss='", m2ss, "'",
+		#9 #9 "m2sx='", m2sx, "'" 
+	)
+	
+	m2s:boolean := @matchtoStr( s, "x t", m2ss, m2sx );
+	#print
+	( 
+		"matchtoStr = " #9 #9 #9, m2s, 
+		#9 "m2ss='", m2ss, "'",
+		#9 "m2sx='", m2sx, "'" 
+	)
+	
+
+
+
+
+	
+	//////////// matchToiStr test/demo:
+			 
+	m2iss:string;
+	m2isx:string;
+	m2is:boolean := @matchtoiStr( s, "O T", m2iss, m2isx );
+	#print
+	( 
+		"matchtoiStr = " #9 #9, m2is, 
+		#9 #9 "m2iss='", m2iss, "'",
+		#9 #9 "m2isx='", m2isx, "'" 
+	)
+	
+			 
+	m2is:boolean := @matchtoiStr( s, "x T", m2iss, m2isx );
+	#print
+	( 
+		"matchtoiStr = " #9 #9 #9, m2is, 
+		#9 "m2iss='", m2iss, "'",
+		#9 "m2isx='", m2isx, "'" 
+	)
+	
+			 
+	
+	
+	
+	#print( "" );
+	
+	
+	//////////// matchID test/demo"
+	
+	mids:string;
+	midx:string;
+	mis: boolean := @matchID( "_AnID2_ + 5", mids, midx );
+	#print
+	( 
+		"matchID = " #9 #9, mis,
+		#9 #9 "mids='", mids, "'",
+		#9 #9 "midx='", midx, "'"
+	)
+	
+	mis: boolean := @matchID( "2notID_ + 5", mids, midx );
+	#print
+	( 
+		"matchID = " #9 #9 #9, mis,
+		#9 "mids='", mids, "'",
+		#9 #9 "midx='", midx, "'"
+	)
+	
+
+
+
+
+			 
+	
+	
+	
+	//////////// matchIntConst test/demo"
+	
+	mics:string;
+	micx:int32;
+	mic: boolean := @matchIntConst( "12345 + 6", mics, micx );
+	#print
+	( 
+		"matchIntConst = " #9, mic,
+		#9 #9 "mics='", mics, "'",
+		#9 #9 "micx=", micx
+	)
+	
+
+	
+	mrcs:string;
+	mrcx:real80;
+	mrc: boolean := @matchRealConst( "12345.6e-4 + 7", mrcs, mrcx );
+	#print
+	( 
+		"matchRealConst = " #9, mrc,
+		#9 #9 "mrcs='", mrcs, "'",
+		#9 #9 "mrcx=", mrcx
+	)
+	
+
+	mic: boolean := @matchNumericConst( "12345 + 6", mics, micx );
+	#print
+	( 
+		"matchNumericConst = " #9, mic,
+		#9 #9 "mics='", mics, "'",
+		#9 #9 "micx=", micx
+	)
+	
+	mrc: boolean := @matchNumericConst( "12345.6e-4 + 7", mrcs, mrcx );
+	#print
+	( 
+		"matchNumericConst = " #9, mrc,
+		#9 #9 "mrcs='", mrcs, "'",
+		#9 #9 "mrcx=", mrcx
+	)
+
+
+	mscs:string;
+	mscx:string;
+	msc: boolean := @matchStrConst( """Hello"" #%10_0001 World", mscs, mscx );
+	#print
+	( 
+		"matchStrConst = " #9, msc,
+		#9 #9 "mscs='", mscs, "'",
+		#9 #9 "mscx='", mscx, "'"
+	)
+	
+
+	
+
+			 
+	
+	////////////
+			 
+	wss:string;
+	ws:boolean :=	@zeroOrMoreWS( s, wss ) & 
+					@matchiStr( wss, "hhello", wss ) & 
+					@zeroOrMoreWS( wss, wss );
+	#print( "zeroOrMoreWS = " #9 #9, ws, #9 #9 "wss = ", wss )
+	
+	
+	////////////
+			 
+	omwss:string;
+	omws:boolean :=	@matchiStr( s, "hhello", omwss ) & 
+					@oneOrMoreWS( omwss, omwss );
+	#print( "oneOrMoreWS = " #9 #9, omws, #9 #9 "omwss = ", omwss )
+	
+	
+			
+	#print( "" )
+	#print( "" )
+		    
+begin HLLDemo;
+end HLLDemo;

@@ -1,0 +1,143 @@
+// This program translates user RPN input into an
+// equivalent sequence of assembly language instrs (HLA fmt).
+
+program RPNtoASM;
+
+#include( "stdlib.hhf" );
+
+static
+
+    s:              string;
+    operand:        string;
+    StartOperand:   dword;
+    
+    
+#macro mark;
+
+    mov( esi, StartOperand );
+    
+#endmacro;
+
+#macro delete;
+
+    mov( StartOperand, eax );
+    sub( eax, esi );
+    inc( esi );
+    sub( s, eax );
+    str.delete( s, eax, esi );
+    
+#endmacro;
+
+procedure length( s:string ); @returns( "eax" ); @nodisplay;
+begin length;
+
+    push( ebx );
+    mov( s, ebx );
+    mov( (type str.strRec [ebx]).length, eax );
+    pop( ebx );
+    
+end length;
+    
+    
+begin RPNtoASM;
+
+    stdout.put( "-- RPN to assembly --" nl );
+    forever
+    
+        stdout.put( nl nl "Enter RPN sequence (empty line to quit): " );
+        stdin.a_gets();
+        mov( eax, s );
+        breakif( length( s ) = 0 );
+        while( length( s ) <> 0 ) do 
+        
+            pat.match( s );
+            
+				// Match identifiers and numeric constants
+				
+                mark;
+                pat.zeroOrMoreWS();
+                pat.oneOrMoreCset( {'a'..'z', 'A'..'Z', '0'..'9', '_'} );
+                pat.a_extract( operand );
+                stdout.put( "   pushd( ", operand, " );" nl );
+                strfree( operand );
+                delete;
+                
+              pat.alternate;
+              
+			  	// Handle the "+" operator.
+				
+                mark;
+                pat.zeroOrMoreWS();
+                pat.oneChar( '+' );
+                stdout.put
+                ( 
+                    "   pop( eax );" nl
+                    "   add( eax, [esp] );" nl
+                );
+                delete;
+                
+              pat.alternate;
+              
+			  	// Handle the '-' operator.
+				
+                mark;
+                pat.zeroOrMoreWS();
+                pat.oneChar( '-' );
+                stdout.put
+                ( 
+                    "   pop( eax );" nl
+                    "   pop( ebx );" nl
+                    "   sub( eax, ebx );" nl
+                    "   push( ebx );" nl
+                );
+                delete;
+                
+              pat.alternate;
+              
+			  	// Handle the '*' operator.
+				
+                mark;
+                pat.zeroOrMoreWS();
+                pat.oneChar( '*' );
+                stdout.put
+                ( 
+                    "   pop( eax );" nl
+                    "   imul( eax, [esp] );" nl
+                );
+                delete;
+                
+              pat.alternate;
+              
+			  	// handle the '/' operator.
+				
+                mark;
+                pat.zeroOrMoreWS();
+                pat.oneChar( '/' );
+                stdout.put
+                ( 
+                    "   pop( ebx );" nl
+                    "   pop( eax );" nl
+                    "   cdq(); " nl
+                    "   idiv( ebx, edx:eax );" nl
+                    "   push( ebx );" nl
+                );
+                delete;
+                
+              pat.if_failure
+              
+                // If none of the above, it must be an error.
+				
+				stdout.put( nl "Illegal RPN Expression" nl );
+                mov( s, ebx );
+                mov( 0, (type str.strRec [ebx]).length );
+                
+            pat.endmatch;
+        
+        endwhile;
+        
+    endfor; 
+
+end RPNtoASM;
+
+
+ 

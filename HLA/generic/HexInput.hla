@@ -1,0 +1,86 @@
+/*
+Pleaseeeeeeeeeeeee anyone give and hand on this project:
+
+Create a program that will satisfy the following requirements. Hint: this
+program must be designed to read each of the 3 lines independently,
+providing a symbolic memory address to the program for the start of each
+line. A CR and a LF must be provided to ensure separation of print lines.
+
+
+
+a.        Read through the following 3 strings of hexidecimal data that are
+separated by a
+
+'$':
+
+Line 1 = 54 6F 20 45 72 72 20 49 73 20 48 75 6D 61 6E 24
+
+Line 2 = 54 6F 20 46 6F 72 67 69 76 65 20 2D 20 44 69 76 69 6E 65 24
+
+Line 3 = 47 6F 6F 64 20 54 68 69 6E 67 73 20 43 6F 6D 65 20 54 6F 20 54 68
+6F 73 65 20 57 68 6F 20 57 61 69 74 24
+
+b.   Print each of the 3 strings on a separate line.
+
+
+
+
+*/
+
+
+program HexInput;
+#include( "stdlib.hhf" )
+static
+	theData: string :=
+		"54 6F 20 45 72 72 20 49 73 20 48 75 6D 61 6E 24 "
+		"54 6F 20 46 6F 72 67 69 76 65 20 2D 20 44 69 76 69 6E 65 24 "
+		"47 6F 6F 64 20 54 68 69 6E 67 73 20 43 6F 6D 65 20 54 6F 20 54"
+		     " 68 6F 73 65 20 57 68 6F 20 57 61 69 74 24";
+		
+
+	procedure SkipBlanks; @nodisplay; @noframe;
+	begin SkipBlanks;
+	
+		dec( esi );
+		repeat
+		
+			inc( esi );
+			
+		until( (type char [esi]) <> ' ' );
+		ret();
+		
+	end SkipBlanks;
+
+begin HexInput;
+
+	// Process the characters in the string until we encounter
+	// the end of the string (marked with a zero byte).
+	
+	mov( theData, esi );
+	forever
+	
+		// Skip over any leading spaces at the current "cursor"
+		// position.
+		
+		SkipBlanks();
+		breakif( (type byte [esi]) = 0 );
+		
+		// Each line of hex chars is delimited with a "$", print
+		// a newline if we encounter this symbol, convert the character
+		// from a Hex string to its ASCII code and print it if it's
+		// not the "$" symbol.
+		
+		conv.atoh8( [esi] );		// Convert hex chars to integer in AL.
+		if( al = '$' ) then
+		
+			stdout.newln();	// If it was a "$" then print a new line.
+			
+		else
+			
+			stdout.putc( al );	// Print the converted character.
+			
+		endif;
+		
+	endfor;
+
+end HexInput;

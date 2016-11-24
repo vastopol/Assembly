@@ -1,0 +1,17 @@
+
+#if( !@defined( sc_hhf ))
+?sc_hhf := true;
+
+#include( "rpc.hhf" ) 
+
+
+type
+	array_t	:uns32[16];		  
+
+remoteProcedures( debugRPC )
+
+	async( rpcputs( s:string ))
+	
+endRemoteProcedures
+
+#endif

@@ -1,0 +1,155 @@
+/*
+Here's some C++ code I want to write in assembly:
+
+DWORD* pSI, *pDI;
+DWORD dwTotal;
+
+// ...
+
+ for (DWORD dwCount = 0; dwCount < dwTotal; dwCount++)
+ {
+  *pDI = *pDI ^ *pSI;
+  pSI++;
+  pDI++;
+ }
+
+Easy, huh?!
+
+Here's my first ever attempt at writing assembly language:
+
+  _asm
+  {
+   pusha
+
+   mov edx, dwTotal
+   mov ecx, 0
+   mov esi, pSI
+   mov edi, pDI
+Label1:
+   cmp ecx, edx
+   je Label2
+   mov eax, [edi]
+   mov ebx, [esi]
+   xor eax, ebx
+   mov [edi], eax
+   add esi, 4
+   add edi, 4
+   inc ecx
+   jmp Label1
+Label2:
+   popa
+  }
+
+It works! But it looks a bit clunky. Can anyone suggest improvements?
+Thanks.
+
+--
+Toby
+
+*/
+
+program EncryptDemo;
+#include( "stdlib.hhf" );
+
+	procedure Encrypt
+	( 
+		var src:dword; 
+		var dest:dword; 
+			count:uns32
+			 
+	); @nodisplay;
+	begin Encrypt;
+
+		pushad();
+		mov( src, esi );
+		mov( dest, edi );
+		mov( count, ecx );
+		while( ecx > 0 ) do
+
+			mov( [esi], eax );
+			xor( eax, [edi] );
+			add( 4, esi );
+			add( 4, edi );
+			dec( ecx );
+
+		endwhile;
+		popad();
+
+	end Encrypt;
+
+static
+
+	Source: dword[10] := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+	Dest:	dword[10] := [10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
+
+begin EncryptDemo;
+
+
+	stdout.put( "Before:" nl nl );
+
+	// Dump the source data:
+
+	xor( ecx, ecx );
+	while( ecx < 10 ) do
+
+		stdout.put
+		( 
+			"Source[", 
+			(type int32 ecx), 
+			"]= $", 
+			Source[ecx*4], 
+			nl
+		);
+		inc( ecx );
+
+	endwhile;
+	stdout.newln();
+
+	// Dump the dest data:
+
+	xor( ecx, ecx );
+	while( ecx < 10 ) do
+
+		stdout.put
+		( 
+			"Dest[", 
+			(type int32 ecx), 
+			"]= $", 
+			Dest[ecx*4], 
+			nl
+		);
+		inc( ecx );
+
+	endwhile;
+	stdout.newln();
+
+	// Encrypt it:
+
+	Encrypt( Source, Dest, 10 );
+
+	// Display Encrypted Data:
+
+	// Dump the dest data:
+
+	xor( ecx, ecx );
+	while( ecx < 10 ) do
+
+		stdout.put
+		( 
+			"Dest[", 
+			(type int32 ecx), 
+			"] XOR Source[",
+			(type int32 ecx),
+			"]= $", 
+			Dest[ecx*4], 
+			nl
+		);
+		inc( ecx );
+
+	endwhile;
+
+end EncryptDemo;
+
+
+
+

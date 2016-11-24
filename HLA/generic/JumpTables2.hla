@@ -1,0 +1,373 @@
+program main; 
+#include( "stdlib.hhf" )
+#include( "w.hhf" )
+
+// mwjmp-
+//
+// A multi-way jump (via a jump table)
+//
+// Usage:
+//
+//	mwjmp( const:label, const:label, const:label, ... );
+//
+
+namespace mwjmp_ns;
+
+	// Constants you may want to change to control warnings emitted by
+	// the mwjmp macro:
+	
+	val
+		rangeCheck	:= @global:true;	// If true, emit code to check the 
+										// range of the jump table index.
+										
+		maxCases	:= 4096;	// Maximum # of cases we will allow
+								
+		largeTable	:= 256;		// A "large" table has at least 256 entries
+		
+		sparseTable	:= 3;		// A "sparse" table is one that has 3x as
+								// many (or more) unused entries as it has
+								// actual entries.
+
+	type
+		caseRecord:
+			record
+
+				value	:dword;
+				clabel	:string;
+
+			endrecord;
+			
+	val
+		cases	:caseRecord[ maxCases ] := maxCases dup [caseRecord:[0,""]];
+		
+			
+	// _SortCases_
+	//
+	//	This routine does a bubble sort on an array
+	// of caseRecord objects.  It sorts in ascending
+	// order using the "value" field as the key.
+	//
+	// This is a good old fashioned bubble sort which
+	// turns out to be very efficient because:
+	//
+	//	(1) The list of cases is usually quite small, and
+	//	(2) The data is usually already sorted (or mostly sorted).
+
+	#macro _SortCases_( _sort_size_ ):
+		_sort_i_, 
+		_sort_bnd_, 
+		_sort_didswap_, 
+		_sort_temp_;
+
+		?_sort_bnd_ := _sort_size_ - 1;
+		?_sort_didswap_ := true;
+		#while( _sort_didswap_ )
+		
+			?_sort_didswap_ := false;
+			?_sort_i_ := 0;
+			#while( _sort_i_ < _sort_bnd_ )
+
+				#if
+				( 
+					mwjmp_ns.cases[_sort_i_].value > 
+						mwjmp_ns.cases[_sort_i_+1].value 
+				)
+				
+					?_sort_temp_ := mwjmp_ns.cases[_sort_i_];
+					?mwjmp_ns.cases[_sort_i_] := mwjmp_ns.cases[_sort_i_+1];
+					?mwjmp_ns.cases[_sort_i_+1] := _sort_temp_;
+					?_sort_didswap_ := true;
+
+				#elseif
+				( 
+					mwjmp_ns.cases[_sort_i_].value = 
+						mwjmp_ns.cases[_sort_i_+1].value 
+				)
+					
+					#error
+					( 
+						"Two cases have the same value: (",
+						string( sort_array[sort_i].value ),
+						"): ",
+						sort_array[sort_i].clabel,
+						" & ",
+						sort_array[sort_i+1].clabel						 
+					)
+					
+				#endif
+				?_sort_i_ := _sort_i_ + 1;
+				
+			#endwhile
+			?_sort_bnd_ := _sort_bnd_ - 1;
+			
+		#endwhile;
+			
+		
+	#endmacro;
+			
+
+end mwjmp_ns;
+
+
+#macro mwjmp( _reg_, _entries_[] ):
+	_numEntries_, 
+	_curCase_,
+	_curIndex_, 
+	_i_,
+	_j_,
+	_slots_,
+	_defaultCase_,
+	_jmpTable_;
+
+	#if( !@reg32( @string(_reg_) ))
+	
+		#error( "Expected a 32-bit register as first mwjmp parameter" );
+		?@tostring:_reg_ :text := "eax";
+		
+	#endif
+	?_numEntries_ := @elements( _entries_ );
+	#if( _numEntries_ > mwjmp_ns.maxCases )
+	
+		#error( "Too many cases in mwjmp (max=", mwjmp_ns.maxCases, ")" )
+		_numEntries := mwjmp_ns.maxCases;
+		
+	#endif
+
+	
+	// Okay, parse each of the cases and extract the constant
+	// and label components, and insert them into the mwjmp_ns.cases 
+	// array:
+	
+	?_i_ := 0;
+	#for( _curCase_ in _entries_ )
+	
+		?_endConst_ := @index( _curCase_, 0, ':' );
+		#if( _endConst_ > 0 )
+		
+			#if( _i_ < mwjmp_ns.maxCases )
+			
+				?mwjmp_ns.cases[_i_].value := 
+					@text( @substr( _curCase_, 0, _endConst_ ));
+					
+				?mwjmp_ns.cases[_i_].clabel := 
+					@substr( _curCase_, _endConst_ + 1, 10000 );
+				
+			#endif
+			#if( !@matchID( mwjmp_ns.cases[_i_].clabel ))
+			
+				#error
+				( 
+					"Error, illegal target label: ", 
+					mwjmp_ns.cases[_i_].clabel 
+				)
+			
+			#else
+			
+				?_i_ := _i_ + 1;
+				
+			#endif
+		
+		#else
+		
+			#error( "Error, mal-formed case entry: '", _endConst_ )
+			
+		#endif
+	
+	#endfor
+
+	#if( _i_ > 0 )
+	
+		// Okay, now sort the case entries in ascending order:
+		
+		mwjmp_ns._SortCases_( _i_ );
+		
+		
+		// A quick sanity check on the jump table we're about to create.
+		// If the difference between the minimum and maximum values is
+		// quite large, and the table is sparse, we should warn the user
+		// about this situation. For the purposes of "large" we'll assume
+		// a distance of at least 1,024 items (see the constant in the
+		// mwjmp_ns namespace). For the purposes of "sparse", we'll assume
+		// that at least 75% of the entries are unused (again see the
+		// constant declarations in mwjmp_ns).
+		//
+		//
+		// Begin by computing the number of "slots" (entries) in the jump
+		// table:
+		
+		?_slots_ := 
+				mwjmp_ns.cases[ _numEntries_ - 1 ].value	// Maximum case value 
+			-	mwjmp_ns.cases[ 0 ].value					// Minimum case value
+			+	1;
+			
+		#if( _slots_ >= mwjmp_ns.largeTable )
+		
+			#if( (real32( _numEntries_ ) / real32( _slots_ )) < 0.25 )
+			
+				#print
+				( 
+					"Warning: jump table created by mwjmp macro is LARGE" 
+				)
+				#print
+				( 
+					"and sparse (", 
+					uns32( _numEntries_ ), 
+					" cases and ",
+					uns32( _slots_ ),
+					" entries)"
+				)
+				#print( "You might want to consider whether you really")
+				#print( "want to use a jump table here." )	
+			
+			#endif
+			
+		#endif
+		
+		// Okay, emit the entries for the jmp table:
+		
+		readonly
+		
+			align(4);
+			_jmpTable_ : dword[ _slots_ ] :=
+			[ 	
+				// Always emit the first entry into the table:
+				
+				&@text( mwjmp_ns.cases[0].clabel )
+				
+				// Emit the remaining entries (if any):
+				
+				?_curIndex_ := mwjmp_ns.cases[0].value+1;
+				#for( _j_ := 1 to _i_-1 )
+					
+					// Fill in any "holes" in the jump table with
+					// the address of the default case label:
+					
+					#while( _curIndex_ < mwjmp_ns.cases[_j_].value )
+					
+						,&_defaultCase_
+						?_curIndex_ := _curIndex_ + 1;
+						
+					#endwhile
+					
+					// Emit the next user-specified entry in the
+					// jump table:
+					
+					,&@text( mwjmp_ns.cases[_j_].clabel )
+					?_curIndex_ := _curIndex_ + 1;
+					
+				#endfor 
+			
+			];
+			
+		endreadonly;
+		
+		// Emit the indirect jump though the jump table:
+		
+		#if( mwjmp_ns.rangeCheck )
+		
+			// Emit a test for the lower bound only if
+			// the lower bound is not zero:
+			
+			#if( mwjmp_ns.cases[0].value <> 0 ) 
+			
+				cmp( _reg_, mwjmp_ns.cases[ 0 ].value );
+				jb _defaultCase_;
+				
+			#endif
+				
+			// Emit a test for the upper bound:
+			
+			cmp( _reg_, mwjmp_ns.cases[ _i_ - 1 ].value );
+			ja _defaultCase_;
+		
+		#endif
+		jmp( _jmpTable_[ _reg_*4 - mwjmp_ns.cases[0].value*4 ]);
+		_defaultCase_:
+		
+		
+	#else
+	
+		#error( "mwjmp must have at least one valid case entry" )
+		
+	#endif	
+    
+#endmacro
+
+		
+begin main;
+
+
+	// An example demonstrating the use of a jump table to process
+	// Windows WM_* message values (assume that the WM_.... value
+	// is sitting in EAX at the start of this code):
+	
+	mwjmp
+	(
+		eax,
+		w.WM_CREATE		:Create,         
+		w.WM_DESTROY	:Destroy,      
+		w.WM_MOVE       :Move,    
+		w.WM_SIZE       :Size,
+		w.WM_ACTIVATE	:Activate,       
+		w.WM_SETFOCUS   :SetFocus,
+		w.WM_ENABLE     :Enable,    
+		w.WM_GETTEXT    :GetText,
+		w.WM_PAINT      :Paint,
+		w.WM_CLOSE      :Close,
+		w.WM_QUIT       :Quit,
+		w.WM_SHOWWINDOW :ShowWindow
+	);
+	
+	
+Create:    	
+Destroy:    	
+Move:    	
+Size:	
+Activate:  	
+SetFocus:	
+Enable:    	
+GetText:	
+Paint:	
+Close:	
+Quit:	
+ShowWindow:	
+	
+		
+
+	// An example for Chuck demonstrating the efficiency of this
+	// approach.
+	
+	?mwjmp_ns.rangeCheck := false; // Assume EAX is always within range
+	
+	mwjmp
+	(
+		eax,
+		0	:buildx,
+		1	:vocab, 
+		5	:motion,
+		8	:osetup,
+		9	:actdef,
+		10	:brmatr,
+		12	:oadj,
+		14	:rdmsg, 
+		15	:rdmsg, 
+		16	:ovride
+	);
+	
+_text: //(this is the default case, if EAX is not one of the above values:
+  // Do whatever needs to be done for cases 2, 3, 4, 6, 7, 11, and 13:
+  
+
+// Do the other cases here:
+
+buildx:
+vocab: 
+motion:
+osetup:
+actdef:
+brmatr:
+oadj:
+rdmsg: 
+ovride:
+  
+end main;

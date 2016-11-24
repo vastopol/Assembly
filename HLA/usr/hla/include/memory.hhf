@@ -1,0 +1,274 @@
+// memory.hhf
+//
+//	Interface to memory management functions:
+
+#if( ! @defined( memory_hhf ))
+?memory_hhf := 1;
+
+#if( @thread )
+
+	#includeOnce( "cstdlib.hhf" )
+	
+#endif
+#includeOnce( "_hla.hhf" )
+
+
+const
+	nil :text := "NULL";
+	
+	proc
+
+		malloc:
+			procedure( size:dword ) {@returns( "eax" )}; 
+			_hla._ext( "MEM_ALLOC1" );
+
+		free:
+			procedure( memptr:dword );
+			_hla._ext( "MEM_FREE" );
+
+		realloc:
+			procedure( memptr:dword; newsize:dword ) {@returns( "eax" )}; 
+			_hla._ext( "MEM_REALLOC1" );
+
+		realloc2:
+			procedure( memptr:dword; newsize:dword; copycallback:thunk ) {@returns( "eax" )}; 
+			_hla._ext( "MEM_REALLOC2" );
+
+		isInHeap:
+			procedure( memPtr:dword ) {@returns( "eax" )};
+			_hla._ext( "MEM_ISINHEAP" );
+
+		#macro talloc( size );
+
+			mov( and( $FFFF_FFFC, sub( size, esp )), eax )
+
+		#endmacro
+		
+
+		stralloc:
+			procedure( size:dword ) {@returns( "eax" )}; 
+			_hla._ext( "STR_ALLOC1" );
+
+		strrealloc:
+			procedure( theStr:dword; size:dword ) {@returns( "eax" )}; 
+			_hla._ext( "STR_REALLOC1" );
+
+		strfree:
+			procedure( memptr:dword );
+			_hla._ext( "STR_FREE" );
+
+		strIsInHeap:
+			procedure( memptr:dword ) {@returns( "eax" )};
+			_hla._ext( "STR_ISINHEAP" );
+
+
+
+		#macro tstralloc( size );
+
+			returns
+			(
+				{
+					#if( @IsConst( size ))
+
+						sub( size+9, esp );
+
+					#else
+
+						mov( size, eax );
+						add( 9, eax );
+						sub( eax, esp );
+
+					#endif
+					and( $FFFF_FFFC, esp );
+					lea( eax, [esp+8] );
+					mov( size, (type dword [esp]));
+					mov( 0, (type dword [esp+4]));
+					mov( 0, (type byte [eax]));
+				},
+				"eax"
+			)
+
+		#endmacro
+
+namespace mem; @fast;
+
+	proc
+		alloc1:
+			procedure( size:dword ) {@returns( "eax" )}; 
+			@global:_hla._ext( "MEM_ALLOC1" );
+			
+		alloc2:
+			procedure( size:dword; callback:thunk ) {@returns( "eax" )}; 
+			@global:_hla._ext( "MEM_ALLOC2" );
+			
+		alloc	:overloads alloc1( "@global:mem.alloc1" );
+		alloc	:overloads alloc2( "@global:mem.alloc2" );
+			
+		zalloc:
+			procedure( size:dword ) {@returns( "eax" )}; 
+			@global:_hla._ext( "MEM_ZALLOC" );
+
+			
+
+		free:
+			procedure( memptr:dword );
+			@global:_hla._ext( "MEM_FREE" );
+
+
+		freePtr:
+			procedure( var memptr:dword );
+			@global:_hla._ext( "MEM_FREEPTR" );
+
+			
+		safeFree:
+			procedure( var memptr:dword );
+			@global:_hla._ext( "MEM_SAFEFREE" );
+
+			
+
+		realloc1:
+			procedure( memptr:dword; newsize:dword ) {@returns( "eax" )}; 
+			@global:_hla._ext( "MEM_REALLOC1" );
+
+		realloc2:
+			procedure( memptr:dword; newsize:dword; copycallback:thunk ) 
+				{@returns( "eax" )}; 
+			@global:_hla._ext( "MEM_REALLOC2" );
+
+
+			
+		realloc	:overloads realloc1( "@global:mem.realloc1" );
+		realloc	:overloads realloc2( "@global:mem.realloc2" );
+
+
+		isInHeap:
+			procedure( memptr:dword ) {@returns( "eax" )};
+			@global:_hla._ext( "MEM_ISINHEAP" );
+
+		size:
+			procedure( memptr:dword ) {@returns( "eax" )};
+			@global:_hla._ext( "MEM_SIZE" );
+
+		stat:
+			procedure {@returns( "eax" )};
+			@global:_hla._ext( "MEM_STAT" );
+
+		newref:
+			procedure( memptr:dword );
+			@global:_hla._ext( "MEM_NEWREF" );
+
+		getref:
+			procedure( memptr:dword );
+			@global:_hla._ext( "MEM_GETREF" );
+			
+		blockInHeap:
+			iterator;
+			@global:_hla._ext( "MEM_BLOCKINHEAP" );
+			
+		allocBlockInHeap:
+			iterator;
+			@global:_hla._ext( "MEM_ALLOCBLOCKINHEAP" );
+			
+		freeBlockInHeap:
+			iterator;
+			@global:_hla._ext( "MEM_FREEBLOCKINHEAP" );
+
+
+		#macro talloc( size );
+
+			mov( and( $FFFF_FFF0, sub( size, esp )), eax )
+
+		#endmacro
+
+
+
+		// Functions still to write:
+		
+		alignedAlloc:
+			procedure( size:dword; alignment:dword ) {@returns( "eax" )}; 
+			@global:_hla._ext( "MEM_ALIGNEDALLOC" );		
+
+		alignedZalloc:
+			procedure( size:dword; alignment:dword ) {@returns( "eax" )}; 
+			@global:_hla._ext( "MEM_ALIGNEDZALLOC" );
+	
+
+end mem;
+
+
+namespace str;
+
+	proc
+		alloc1:
+			procedure( size:dword ) {@returns( "eax" )}; 
+			@global:_hla._ext( "STR_ALLOC1" );
+
+		alloc2:
+			procedure( size:dword; callback:thunk ) {@returns( "eax" )}; 
+			@global:_hla._ext( "STR_ALLOC2" );
+			
+		alloc	:overloads alloc1( "@global:str.alloc1" );
+		alloc	:overloads alloc2( "@global:str.alloc2" );
+
+		realloc:
+			procedure( theStr:dword; size:dword ) {@returns( "eax" )}; 
+			@global:_hla._ext( "STR_REALLOC" );
+
+		free:
+			procedure( memptr:dword );
+			@global:_hla._ext( "STR_FREE" );
+
+		freePtr:
+			procedure( var memptr:dword );
+			@global:_hla._ext( "STR_FREEPTR" );
+
+		safeFree:
+			procedure( var memptr:dword );
+			@global:_hla._ext( "STR_SAFEFREE" );
+
+		isInHeap:
+			procedure( memptr:dword ) {@returns( "eax" )};
+			@global:_hla._ext( "STR_ISINHEAP" );
+
+		newref:
+			procedure( memptr:dword );
+			@global:_hla._ext( "STR_NEWREF" );
+
+		getref:
+			procedure( memptr:dword );
+			@global:_hla._ext( "STR_GETREF" );
+
+
+		#macro talloc( size );
+
+			returns
+			(
+				{
+					#if( @IsConst( size ))
+
+						sub( size+9, esp );
+
+					#else
+
+						mov( size, eax );
+						add( 9, eax );
+						sub( eax, esp );
+
+					#endif
+					and( $FFFF_FFFC, esp );
+					lea( eax, [esp+8] );
+					mov( size, (type dword [esp]));
+					mov( 0, (type dword [esp+4]));
+					mov( 0, (type byte [eax]));
+				},
+				"eax"
+			)
+
+		#endmacro
+	
+	
+end str;
+	
+				 
+#endif
+

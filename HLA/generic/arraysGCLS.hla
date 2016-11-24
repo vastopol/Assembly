@@ -1,0 +1,157 @@
+// Arrays
+//
+//	This program demonstrates simple dynamic array access in
+// assembly language. It is a straight-forward conversion of
+// the "arrays.c" program that is part of "The Great Computer
+// Language Shoot-out" found at
+//
+//		http://www.bagley.org/~doug/shootout/
+//
+// The purpose of that web page is to demonstrate several
+// applications written in various languages. Although one
+// of the primary purposes of that web site is to demonstrate
+// the different run-time efficiencies of various languages,
+// this HLA implementation was not created to demonstrate
+// that assembly code is faster or smaller (everyone pretty
+// much accepts the fact that the fastest and/or smallest
+// example of a program will be written in assembly language).
+// Instead, this example demonstrates that with the use of
+// a high level assembler (e.g., HLA), it's also possible to
+// write code almost as easily as in a high level language
+// like C. As such, this example freely sacrifices efficiency
+// for readability.
+
+#if( false )
+
+	/* -*- mode: c -*-
+	 * $Id: ary3.gcc,v 1.1 2001/05/31 02:27:48 doug Exp $
+	 * http://www.bagley.org/~doug/shootout/
+	 *
+	 * this program is modified from:
+	 *   http://cm.bell-labs.com/cm/cs/who/bwk/interps/pap.html
+	 * Timing Trials, or, the Trials of Timing: Experiments with Scripting
+	 * and User-Interface Languages</a> by Brian W. Kernighan and
+	 * Christopher J. Van Wyk.
+	 *
+	 * I added free() to deallocate memory.
+	 */
+
+	#include <stdio.h>
+	#include <stdlib.h>
+
+	int
+	main(int argc, char *argv[]) 
+	{
+	    int n;
+	    int i;
+	    int	k;
+	    int *x;
+	    int	*y;
+		
+		n = ((argc == 2) ? atoi(argv[1]) : 1);
+	    x = (int *) calloc(n, sizeof(int));
+	    y = (int *) calloc(n, sizeof(int));
+
+	    for (i = 0; i < n; i++) 
+	    {
+			x[i] = i + 1;
+	    }
+	    for (k=0; k<1000; k++) 
+	    {
+			for (i = n-1; i >= 0; i--) 
+			{
+			    y[i] += x[i];
+			}
+	    }
+
+	    fprintf(stdout, "%d %d\n", y[0], y[n-1]);
+
+	    free(x);
+	    free(y);
+
+	    return(0);
+	}
+
+#endif
+
+
+// Conversion of the "arrays" program in "The Great Computer
+// Language Shootout" from C to HLA. This conversion was done
+// to demonstrate that writing assembly code isn't a whole lot
+// more work that writing C; no attempt was made to optimize
+// this code to make it smaller or faster than the corresponding
+// C program - this program was written with "ease of writing/reading"
+// in mind. 
+
+program t;
+#include( "stdlib.hhf" )
+
+const
+	i	:text := "(type int32 ecx)";
+	k	:text := "(type int32 edx)";
+	x	:text := "(type int32 esi)";
+	y	:text := "(type int32 edi)";
+	px	:text := "(type int32 [esi])";
+	py	:text := "(type int32 [edi])";
+	n	:text := "(type int32 ebx)";
+
+begin t;
+
+	// Allocate storage for two arrays based on the
+	// number passed on the command line parameter.
+	// Program aborts with an exception if there is
+	// a command line parameter present but it is not
+	// a valid number.
+
+	if( arg.c() <> 2 ) then
+	
+		mov( 1, eax );
+		
+	else
+	
+		conv.strToi32( arg.v(1), 0 );
+		
+	endif;
+
+	lea( n, [eax*4] );			// Multiply value by four
+	mov( malloc( n ), x );		//  as malloc allocates bytes
+	mov( malloc( n ), y );		//  and we want int32 objects.
+
+	// Zero out each element of y (py) and set
+	// each element of x to the values 0, 1, 2, 3, ..., n-1:
+
+	mov( 0, eax );
+	for( mov( 0, i ); i < n; add( 4, i )) do
+
+		inc( eax );
+		mov( eax, px[i] );
+		mov( 0, py[i] );	// Note: malloc doesn't zero out arrays!
+
+	endfor;
+
+	// Sum up the elements of x 1,000 times and place the
+	// sums in each corresponding element of y:
+
+	for( mov( 0, k ); k<1000; inc( k ))do
+
+		for( lea( i, [n-4]); i >= 0; sub( 4, i )) do
+
+			mov( px[i], eax );
+			add( eax, py[i] );
+
+		endfor;
+
+	endfor;
+
+	// Print the first and last elements of y:
+
+	mov( py[0], i );
+	mov( py[n-4], k );
+	stdout.put( i, ' ', k, nl );
+	
+	// Deallocate storage allocated earlier:
+
+	free( x );
+	free( y );
+
+end t;

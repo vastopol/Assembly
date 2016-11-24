@@ -1,0 +1,141 @@
+program main; 
+
+// f(lbl) --
+//	Used as an operand in an instruction requiring
+//	a forward statement label (e.g., a jmp instruction
+//	operand). References the *next* occurrence of
+//	"l(lbl)" that exists in the source file.
+
+#macro f( _symbol_ ):_f_, _lbl_;
+
+	// Generate a string that represents the
+	// name of the symbol with a prepended "f_".
+	//
+	//	E.g., f(lbl) generates "f_lbl" here.
+	
+	?_lbl_ := "f_" + @string( _symbol_ );
+
+	// If this is the first occurrence of a forward
+	// reference, then create a brand new variable
+	// to hold the unique ID we'll use to reference
+	// this symbol:
+	
+	#if( !@defined( @text( _lbl_ ) ) )
+	 
+		?@text( "f_" + @string(_symbol_)) := @string( _f_ );
+		
+		
+	// If this is the first reference *after* some usage
+	// of the "l(xxx)" macro, then overwrite the old
+	// variable with the name of the new label:
+	
+	#elseif( @text( _lbl_ ) = "" )
+
+		?@text( "f_" + @string(_symbol_)) := @string( _f_ );
+		
+	#endif
+	
+	// Return the unique label we've created in one of the
+	// branches above (or in a previous f(xxx) invocation)
+	// as this macro's result. Note that we have to use
+	// @text twice because one returns the "f_xxx" string
+	// and twice returns whatever "f_xxx" expands into.
+	
+	@text( @text( _lbl_ )) 
+	
+#endmacro
+	
+
+
+// b(lbl) --
+//	Used as an operand in an instruction requiring
+//	a backward statement label (e.g., a jmp instruction
+//	operand). References the *previous* occurrence of
+//	"l(lbl)" that exists in the source file.
+        
+#macro b( _symbol_ ):_lbl_;
+
+
+	// Generate a string that represents the
+	// name of the symbol with a prepended "b_".
+	//
+	//	E.g., b(lbl) generates "b_lbl" here.
+
+	?_lbl_ :text := "b_" + @string(_symbol_);
+	
+	// If the symbol does not exist, generate
+	// an error.
+	
+	#if( !@defined(@text( _lbl_ )))
+	 
+		#error( "Symbol b(" + @string( _symbol_ ) + ") does not exist" )
+		
+	#endif
+	
+	// You'll note that _lbl_ is a TEXT object, not
+	// a string object. This is why we don't need
+	// the two @text's here. We get away with this
+	// because we don't have to change the value of
+	// "b_xxx" later on (as we have to do for "f_xxx").
+	
+	@text( _lbl_ )
+
+#endmacro
+	
+        
+// l(lbl) --
+//	Defines a relative local symbol for use by
+//	the b(xxx) and f(xxx) macros.
+
+#macro l( _symbol_ ):_here_,_lbl_,_purge_, _defined_;
+
+	?_lbl_ := "f_" + @string( _symbol_ );
+	?_purge_ :text := _lbl_;
+	
+	// If there was a forward reference, emit
+	// the label for that forward symbol.
+	
+	?_defined_ := @defined( @text( _lbl_ ));
+	#if( _defined_ )
+	
+		// If there was a previous l(xxx) invocation
+		// of this label and no f(xxx) reference
+		// since then, don't emit the forward label.
+		
+		#if( @text( _lbl_ ) <> "" ) 
+		
+			@text( @text( _lbl_ )):
+			
+		#endif
+		
+	#endif
+	
+	// Erase the current "f_xxx" symbol so that the
+	// next invocation of the f(xxx) macro will generate
+	// a new one:
+	
+	?_purge_ := "";
+	
+	// Emit a label that the b(xxx) macro
+	// can reference:
+	
+	?@text( "b_" + @string( _symbol_ )) := @string( _here_ );
+	_here_
+		
+#endmacro
+	
+        
+begin main;
+
+
+	jmp f(lbl);
+l(lbl):
+ 	jmp b(lbl);
+	
+l(lbl):
+	jmp	b(lbl);
+	
+	jmp f(lbl);
+l(lbl):
+	
+end main;

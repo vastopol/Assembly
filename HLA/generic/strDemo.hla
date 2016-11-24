@@ -1,0 +1,960 @@
+ 
+program stringDemo;
+#include( "stdlib.hhf" );
+
+static
+	
+	HelloWorld: string	:= "Hello World";
+	Hello:		string	:= "Hello";
+	World:		string	:= "World";
+	
+	dest:		string;
+	a_dest:		string;
+	src:		string;
+	
+	Tokens:		string[4];
+        
+begin stringDemo;
+	
+	// Allocated storage for string demo purposes.
+	
+	stralloc( 1024 );
+	mov( eax, a_dest );
+	
+	// Demonstrate access to length fields using str.strRec:
+	
+	mov( HelloWorld, esi );
+	mov( (type str.strRec [esi]).MaxStrLen, ebx );
+	mov( (type str.strRec [esi]).length, eax );
+	
+	stdout.put
+	( 
+		"str= """, 
+		HelloWorld, 
+		""", maxlength= ", 
+		(type int32 ebx),
+		", current length = ",
+		(type int32 eax ),
+		nl,
+		nl
+	);
+	
+	
+	// Demonstrate str.cpy:
+	
+	str.cpy( HelloWorld, a_dest );
+	stdout.put
+	( 
+		"HelloWorld = """, 
+		HelloWorld, 
+		""" a_dest=""", 
+		a_dest, 
+		"""", 
+		nl,
+		nl
+	);
+
+		        
+	// Demonstrate str.a_cpy:
+	
+	str.a_cpy( HelloWorld );
+	stdout.put
+	( 
+		"HelloWorld = """, 
+		HelloWorld, 
+		""" duplicate=""", 
+		(type string eax), 
+		"""", 
+		nl,
+		nl
+	);
+	strfree( eax );
+
+		        
+	// Demonstrate str.strset:
+	
+	str.setstr( '*', 8, a_dest );
+	stdout.put
+	( 
+		"str.setstr( '*', 8, a_dest ) = """, 
+		a_dest,
+		"""", 
+		nl,
+		nl
+	);
+
+		        
+
+		        
+	// Demonstrate str.a_strset:
+	
+	str.a_setstr( '*', 8 );
+	stdout.put
+	( 
+		"str.a_setstr( '*', 8 ) = """, 
+		(type string eax), 
+		"""", 
+		nl,
+		nl
+	);
+	strfree( eax );
+
+		        
+
+	// Demonstrate str.cat:
+	str.cpy( Hello, a_dest );
+	str.cat( " ", a_dest );
+	str.cat( World, a_dest );
+	stdout.put
+	( 
+		"str.cat( Hello+" "+World, a_dest ) = """, 
+		a_dest, 
+		"""", 
+		nl,
+		nl
+	);
+	
+	
+	// Demonstrate str.a_cat:
+	
+	str.a_cat( a_dest, "!" );
+	stdout.put
+	( 
+		"str.a_cat( a_dest, ""!"" ) = """, 
+		(type string eax ), 
+		"""", 
+		nl,
+		nl
+	);
+	strfree( eax );
+	
+	
+	// Demonstrate str.index:
+	
+	str.index( HelloWorld, "lo" );
+	stdout.put
+	(
+		"str.index( HelloWorld, ""lo"" ) = ",
+		(type int32 eax ),
+		nl
+	);
+	
+	str.index( HelloWorld, "He" );
+	stdout.put
+	(
+		"str.index( HelloWorld, ""He"" ) = ",
+		(type int32 eax ),
+		nl
+	);
+	
+	str.index( HelloWorld, "l" );
+	stdout.put
+	(
+		"str.index( HelloWorld, ""l"" ) = ",
+		(type int32 eax ),
+		nl
+	);
+	
+	str.index( HelloWorld, "xx" );
+	stdout.put
+	(
+		"str.index( HelloWorld, ""xx"" ) = ",
+		(type int32 eax ),
+		nl,
+		nl
+	);
+	
+	
+	// Demonstrate str.rindex:
+	
+	str.rindex( HelloWorld, "lo" );
+	stdout.put
+	(
+		"str.rindex( HelloWorld, ""lo"" ) = ",
+		(type int32 eax ),
+		nl
+	);
+	
+	str.rindex( HelloWorld, "He" );
+	stdout.put
+	(
+		"str.index( HelloWorld, ""He"" ) = ",
+		(type int32 eax ),
+		nl
+	);
+	
+	str.rindex( HelloWorld, "l" );
+	stdout.put
+	(
+		"str.index( HelloWorld, ""l"" ) = ",
+		(type int32 eax ),
+		nl
+	);
+	
+	str.rindex( HelloWorld, "xx" );
+	stdout.put
+	(
+		"str.index( HelloWorld, ""xx"" ) = ",
+		(type int32 eax ),
+		nl,
+		nl
+	);
+	
+	
+
+	
+	// Demonstrate str.chpos:
+	
+	str.chpos( HelloWorld, 'l' );
+	stdout.put
+	(
+		"str.chpos( HelloWorld, 'l' ) = ",
+		(type int32 eax ),
+		nl
+	);
+	
+	str.chpos( HelloWorld, 'H' );
+	stdout.put
+	(
+		"str.chpos( HelloWorld, 'H' ) = ",
+		(type int32 eax ),
+		nl
+	);
+	
+	str.chpos( HelloWorld, 'o' );
+	stdout.put
+	(
+		"str.chpos( HelloWorld, 'o' ) = ",
+		(type int32 eax ),
+		nl
+	);
+	
+	str.chpos( HelloWorld, 'x' );
+	stdout.put
+	(
+		"str.chpos( HelloWorld, 'x' ) = ",
+		(type int32 eax ),
+		nl,
+		nl
+	);
+	
+	
+	
+	// Demonstrate str.rchpos:
+	
+	str.rchpos( HelloWorld, 'l' );
+	stdout.put
+	(
+		"str.rchpos( HelloWorld, 'l' ) = ",
+		(type int32 eax ),
+		nl
+	);
+	
+	str.rchpos( HelloWorld, 'H' );
+	stdout.put
+	(
+		"str.rchpos( HelloWorld, 'H' ) = ",
+		(type int32 eax ),
+		nl
+	);
+	
+	str.rchpos( HelloWorld, 'o' );
+	stdout.put
+	(
+		"str.rchpos( HelloWorld, 'o' ) = ",
+		(type int32 eax ),
+		nl
+	);
+	
+	str.rchpos( HelloWorld, 'x' );
+	stdout.put
+	(
+		"str.rchpos( HelloWorld, 'x' ) = ",
+		(type int32 eax ),
+		nl,
+		nl
+	);
+	
+	
+
+		        
+	
+	// Demonstrate str.span and str.span2:
+	
+	str.cpy( "abcdEFG", a_dest );
+	stdout.put( "a_dest = """, a_dest, """", nl );
+	
+	str.span( a_dest, {'a'..'z'} );
+	stdout.put
+	(
+		"str.span( a_dest, {'a'..'z'} ) = ",
+		(type int32 eax ),
+		nl
+	);
+	
+	str.span( a_dest, 2, {'a'..'z'} );
+	stdout.put
+	(
+		"str.span( a_dest, 2, {'a'..'z'} ) = ",
+		(type int32 eax ),
+		nl
+	);
+	
+	str.span( a_dest, 4, {'A'..'Z'} );
+	stdout.put
+	(
+		"str.span( a_dest, 4, {'A'..'Z'} ) = ",
+		(type int32 eax ),
+		nl,
+		nl
+	);
+	
+	
+	
+	
+	// Demonstrate str.rspan and str.rspan2:
+	
+	str.cpy( "abcdEFG", a_dest );
+	stdout.put( "a_dest = """, a_dest, """", nl );
+	
+	str.rspan( a_dest, {'A'..'Z'} );
+	stdout.put
+	(
+		"str.rspan( a_dest, {'A'..'Z'} ) = ",
+		(type int32 eax ),
+		nl
+	);
+	
+	str.rspan( a_dest, 3, {'a'..'z'} );
+	stdout.put
+	(
+		"str.rspan( a_dest, 3, {'a'..'z'} ) = ",
+		(type int32 eax ),
+		nl,
+		nl
+	);
+	
+	
+
+		        
+	
+	// Demonstrate str.brk and str.brk2:
+	
+	str.cpy( "abcdEFG", a_dest );
+	stdout.put( "a_dest = """, a_dest, """", nl );
+	
+	str.brk( a_dest, {'A'..'Z'} );
+	stdout.put
+	(
+		"str.brk( a_dest, {'A'..'Z'} ) = ",
+		(type int32 eax ),
+		nl
+	);
+	
+	str.brk( a_dest, 2, {'A'..'Z'} );
+	stdout.put
+	(
+		"str.brk( a_dest, 2, {'A'..'Z'} ) = ",
+		(type int32 eax ),
+		nl
+	);
+	
+	str.brk( a_dest, 4, {'a'..'z'} );
+	stdout.put
+	(
+		"str.brk( a_dest, 4, {'a'..'z'} ) = ",
+		(type int32 eax ),
+		nl,
+		nl
+	);
+	
+	
+	
+	
+	// Demonstrate str.rbrk and str.rbrk2:
+	
+	str.cpy( "abcdEFG", a_dest );
+	stdout.put( "a_dest = """, a_dest, """", nl );
+	
+	str.rbrk( a_dest, {'a'..'z'} );
+	stdout.put
+	(
+		"str.rbrk( a_dest, {'a'..'z'} ) = ",
+		(type int32 eax ),
+		nl
+	);
+	
+	str.rbrk( a_dest, 3, {'A'..'Z'} );
+	stdout.put
+	(
+		"str.rbrk( a_dest, 3, {'A'..'Z'} ) = ",
+		(type int32 eax ),
+		nl,
+		nl
+	);
+	
+	
+	// Demonstration of the string comparisons
+	
+	stdout.put( nl, "Case sensitive comparisons:", nl, nl );
+	str.eq( HelloWorld, "Hello World" );
+	stdout.put
+	(
+		"HelloWorld == ""Hello World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.eq( HelloWorld, "Hi World" );
+	stdout.put
+	(
+		"HelloWorld == ""Hi World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	
+	str.ne( HelloWorld, "Hello World" );
+	stdout.put
+	(
+		"HelloWorld <> ""Hello World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.ne( HelloWorld, "Hi World" );
+	stdout.put
+	(
+		"HelloWorld <> ""Hi World"" = ",
+		(type boolean al),
+		nl,
+		nl
+	);
+	
+	
+	str.lt( HelloWorld, "Hello World" );
+	stdout.put
+	(
+		"HelloWorld < ""Hello World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.lt( HelloWorld, "Hi World" );
+	stdout.put
+	(
+		"HelloWorld < ""Hi World"" = ",
+		(type boolean al),
+		nl,
+		nl
+	);
+	
+	
+	str.le( HelloWorld, "Hello World" );
+	stdout.put
+	(
+		"HelloWorld <= ""Hello World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.le( HelloWorld, "Hi World" );
+	stdout.put
+	(
+		"HelloWorld <= ""Hi World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.le( HelloWorld, "Ha World" );
+	stdout.put
+	(
+		"HelloWorld <= ""Ha World"" = ",
+		(type boolean al),
+		nl,
+		nl
+	);
+	
+	
+	
+	
+	str.gt( HelloWorld, "Hello World" );
+	stdout.put
+	(
+		"HelloWorld > ""Hello World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.gt( HelloWorld, "Ha World" );
+	stdout.put
+	(
+		"HelloWorld > ""Ha World"" = ",
+		(type boolean al),
+		nl,
+		nl
+	);
+	
+	
+	str.ge( HelloWorld, "Hello World" );
+	stdout.put
+	(
+		"HelloWorld >= ""Hello World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.ge( HelloWorld, "Hi World" );
+	stdout.put
+	(
+		"HelloWorld >= ""Hi World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.ge( HelloWorld, "Ha World" );
+	stdout.put
+	(
+		"HelloWorld >= ""Ha World"" = ",
+		(type boolean al),
+		nl,
+		nl
+	);
+	
+	
+	
+	
+
+	
+	stdout.put( nl, "Case insensitive comparisons:", nl, nl );
+	str.ieq( HelloWorld, "Hello World" );
+	stdout.put
+	(
+		"HelloWorld == ""Hello World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.ieq( HelloWorld, "hello world" );
+	stdout.put
+	(
+		"HelloWorld == ""hello world"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.ieq( HelloWorld, "Hi World" );
+	stdout.put
+	(
+		"HelloWorld == ""Hi World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	
+	
+	
+	str.ine( HelloWorld, "Hello World" );
+	stdout.put
+	(
+		"HelloWorld <> ""Hello World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.ine( HelloWorld, "hello world" );
+	stdout.put
+	(
+		"HelloWorld <> ""hello world"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.ine( HelloWorld, "Hi World" );
+	stdout.put
+	(
+		"HelloWorld <> ""Hi World"" = ",
+		(type boolean al),
+		nl,
+		nl
+	);
+	
+	
+	str.ilt( HelloWorld, "Hello World" );
+	stdout.put
+	(
+		"HelloWorld < ""Hello World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.ilt( HelloWorld, "hello world" );
+	stdout.put
+	(
+		"HelloWorld < ""hello world"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.ilt( HelloWorld, "Hi World" );
+	stdout.put
+	(
+		"HelloWorld < ""Hi World"" = ",
+		(type boolean al),
+		nl,
+		nl
+	);
+	
+	
+	str.ile( HelloWorld, "Hello World" );
+	stdout.put
+	(
+		"HelloWorld <= ""Hello World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.ile( HelloWorld, "hello world" );
+	stdout.put
+	(
+		"HelloWorld <= ""hello world"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.ile( HelloWorld, "Hi World" );
+	stdout.put
+	(
+		"HelloWorld <= ""Hi World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.ile( HelloWorld, "Ha World" );
+	stdout.put
+	(
+		"HelloWorld <= ""Ha World"" = ",
+		(type boolean al),
+		nl,
+		nl
+	);
+	
+	
+	
+	
+	str.igt( HelloWorld, "Hello World" );
+	stdout.put
+	(
+		"HelloWorld > ""Hello World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.igt( HelloWorld, "hello world" );
+	stdout.put
+	(
+		"HelloWorld > ""hello world"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.igt( HelloWorld, "Ha World" );
+	stdout.put
+	(
+		"HelloWorld > ""Ha World"" = ",
+		(type boolean al),
+		nl,
+		nl
+	);
+	
+	
+	str.ige( HelloWorld, "Hello World" );
+	stdout.put
+	(
+		"HelloWorld >= ""Hello World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.ige( HelloWorld, "hello world" );
+	stdout.put
+	(
+		"HelloWorld >= ""Hello World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.ige( HelloWorld, "Hi World" );
+	stdout.put
+	(
+		"HelloWorld >= ""Hi World"" = ",
+		(type boolean al),
+		nl
+	);
+	
+	str.ige( HelloWorld, "Ha World" );
+	stdout.put
+	(
+		"HelloWorld >= ""Ha World"" = ",
+		(type boolean al),
+		nl,
+		nl
+	);
+	
+	
+	
+	// Demonstration of the str.substr function:
+	
+	str.substr( HelloWorld, 0, 5, a_dest );
+	stdout.put
+	(
+		"substr( HelloWorld, 0, 5, a_dest ) = """,
+		a_dest,
+		"""",
+		nl,
+		nl
+	);
+	
+	
+	
+	
+	// Demonstration of the str.a_substr function:
+	
+	str.a_substr( HelloWorld, 6, 5 );
+	stdout.put
+	(
+		"a_substr( HelloWorld, 6, 5 ) = """,
+		(type string eax ),
+		"""",
+		nl,
+		nl
+	);
+	strfree( eax );
+	
+	
+	
+	// Demonstration of the str.insert function:
+	
+	str.cpy( World, a_dest );
+	str.insert( Hello, 0, a_dest );
+	stdout.put( "a_dest=""", a_dest, """" nl);
+	str.insert( " ", 5, a_dest );
+	stdout.put
+	(
+		"insert( "" "", 5, a_dest ) = """,
+		a_dest,
+		"""",
+		nl,
+		nl
+	);
+	
+	
+	
+	
+	// Demonstration of the str.a_insert function:
+	
+	str.cpy( World, a_dest );
+	str.insert( Hello, 0, a_dest );
+	stdout.put( "a_dest=""", a_dest, """" nl);
+	str.a_insert( " ", 5, a_dest );
+	stdout.put
+	(
+		"a_insert( "" "", 5, a_dest ) = """,
+		(type string eax ),
+		"""",
+		nl,
+		nl
+	);
+	strfree( eax );
+	
+	
+	
+	// Demonstration of the str.delete function:
+	
+	str.cpy( World, a_dest );
+	str.insert( Hello, 0, a_dest );
+	str.insert( " ", 5, a_dest );
+	stdout.put( "a_dest=""", a_dest, """" nl);
+	str.delete( a_dest, 2, 3 );
+	stdout.put
+	(
+		"delete( a_dest, 2, 3 ) = """,
+		a_dest,
+		"""",
+		nl,
+		nl
+	);
+	
+	
+	
+
+	
+	// Demonstration of the str.a_delete function:
+	
+	str.cpy( World, a_dest );
+	str.insert( Hello, 0, a_dest );
+	str.insert( " ", 5, a_dest );
+	stdout.put( "a_dest=""", a_dest, """" nl);
+	str.a_delete( a_dest, 2, 3 );
+	stdout.put
+	(
+		"a_delete( a_dest, 2, 3 ) = """,
+		(type string eax),
+		"""",
+		nl,
+		nl
+	);
+	strfree( eax );
+	
+	
+	// Demonstration of str.tokenize:
+	
+	stdout.put( "tokenize( HelloWorld, Tokens) = ",nl );
+	
+	str.tokenize( HelloWorld, Tokens, 4 );
+	xor( ebx, ebx );
+	while( ebx < eax ) do
+	
+		stdout.put( "Tokens[", (type int32 ebx), "]=", Tokens[ebx*4], nl );
+		inc( ebx );
+		
+	endwhile;
+	
+	
+	
+	// Demonstration of str.tokenize4:
+	
+	stdout.put( "tokenize4( HelloWorld, {'H', 'W', ' '}, Tokens, 4 ) = ",nl );
+	
+	str.tokenize4( HelloWorld, {'H', 'W', ' '}, Tokens, 4 );
+	xor( ebx, ebx );
+	while( ebx < eax ) do
+	
+		stdout.put( "Tokens[", (type int32 ebx), "]=", Tokens[ebx*4], nl );
+		inc( ebx );
+		
+	endwhile;
+	stdout.newln();
+	
+	
+	
+	// Demonstration of str.upper and str.a_upper:
+	
+	str.cpy( HelloWorld, a_dest );
+	str.upper( a_dest );
+	stdout.put
+	(
+		"upper( HelloWorld ) = """, 
+		a_dest, 
+		"""",
+		nl
+	);
+	
+	str.a_upper( HelloWorld );
+	stdout.put
+	(
+		"a_upper( HelloWorld ) = """, 
+		(type string eax), 
+		"""",
+		nl
+	);
+	strfree( eax );
+	
+	
+	
+	
+	// Demonstration of str.lower and str.a_lower:
+	
+	str.cpy( HelloWorld, a_dest );
+	str.lower( a_dest );
+	stdout.put
+	(
+		"lower( HelloWorld ) = """, 
+		a_dest, 
+		"""",
+		nl
+	);
+	
+	str.a_lower( HelloWorld );
+	stdout.put
+	(
+		"a_lower( HelloWorld ) = """, 
+		(type string eax), 
+		"""",
+		nl,
+		nl
+	);
+	strfree( eax );
+	
+	
+	// Demonstration of str.delspace and str.trim:
+	
+	str.insert( "   ", 0, a_dest );
+	str.cat( "   ", a_dest );
+	str.a_delLeadingSpaces( a_dest );
+	stdout.put
+	(
+		"a_delLeadingSpaces( """, 
+		a_dest, 
+		""" ) = """, 
+		(type string eax), 
+		"""", 
+		nl 
+	);
+	strfree( eax );
+	
+	str.a_trim( a_dest );
+	stdout.put
+	(
+		"a_trim( """, 
+		a_dest, 
+		""" ) = """, 
+		(type string eax), 
+		"""", 
+		nl 
+	);
+	strfree( eax );
+	
+	
+	
+	stdout.put
+	(
+		"delLeadingSpaces( """, 
+		a_dest, 
+		""" ) = """
+	);
+	str.delLeadingSpaces( a_dest );
+	stdout.put( 
+		a_dest, 
+		"""", 
+		nl 
+	);
+	
+	
+	
+	
+	
+	stdout.put
+	(
+		"trim( """, 
+		a_dest, 
+		""" ) = """
+	);
+	str.trim( a_dest );
+	stdout.put( 
+		a_dest, 
+		"""", 
+		nl 
+	);
+	
+	
+	
+	
+	
+	
+
+		        
+
+
+end stringDemo;
+                        

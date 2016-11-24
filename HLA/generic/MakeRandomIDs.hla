@@ -1,0 +1,53 @@
+program t;
+#include( "stdlib.hhf" )
+
+static
+	i		:int32;
+	len		:dword;
+	last	:str.strvar(256);
+	s		:str.strvar(256);
+	idset	:byte; @nostorage;
+		 	 byte  "abcdefghijklmnopqrstuvwxyz_0123456789";
+
+	tbl		:table;
+
+begin t;
+
+	tbl.create( 8192 );
+	str.cpy( "a", last );
+	stdout.put
+	(
+		"unit u;" nl 
+		"const" nl 
+		stdio.tab, "a := 0;", nl 
+	);
+	tbl.getNode( "a" );
+	for( mov( 0, ecx ); ecx < 25000; inc( ecx )) do
+
+		mov( s, edi );
+		mov( rand.range( 1,16 ), edx );
+		mov( edx, (type str.strRec [edi]).length );
+		mov( 0, (type char [edi+edx]) );
+		while( edx > 1 ) do
+
+			dec( edx );
+			rand.range( 0,36 );
+			mov( idset[eax], al );
+			mov( al, [edi+edx] );
+
+		endwhile;
+		mov( '_', (type byte [edi]) );
+		tbl.lookup( s );
+		if( eax = NULL ) then
+
+			tbl.getNode( s );
+			stdout.put( stdio.tab, s, ":= a + 1 + ", last, ";" nl );
+			str.cpy( s, last );
+
+		endif;
+
+	endfor;
+	stdout.put( nl "end u;" nl );
+
+
+end t;

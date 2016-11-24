@@ -1,0 +1,511 @@
+
+// Note: this file isn't included by stdlib.hhf because the switch statement is
+// now an official part of the HLA language and is processed by the compiler.
+//
+// If you want to use this macro (because the semantics can be slightly different)
+// then you must explicitly include this header file.
+
+#if( ! @defined( hll_hhf ))
+?hll_hhf := true;
+
+
+#includeonce( "hla.hhf" )
+
+namespace hll; @fast;
+
+	val
+		cswitch			:boolean	:= boolean(0);
+		useBubbleSort	:boolean 	:= boolean(0);
+		_TotalCases_	:uns32		:=	0;
+
+	const
+		_maxCases_ := 2048;
+		_hugeNumber_ := 512;
+
+	type
+		_caseRecord_:
+			record
+
+				value:uns32;
+				clabel:uns32;
+
+			endrecord;
+			
+	val
+		leftItem	:_caseRecord_ := _caseRecord_:[0,0];
+		rightItem	:_caseRecord_ := _caseRecord_:[0,0];
+		
+	#macro lessThan;
+		(@global:hll.leftItem.value < @global:hll.rightItem.value)
+	#endmacro
+
+
+	// _SortCases_
+	//
+	//	This routine does a bubble sort on an array
+	// of _caseRecord_ objects.  It sorts in ascending
+	// order using the "value" field as the key.
+	//
+	// The switch macro only uses this sorting function
+	// if the hll.useBubbleSort variable is set to true.
+	// The caller must set hll.useBubbleSort to true after
+	// the "switch" macro invocation and before the "endswitch"
+	// macro invocation.
+	//
+	// This is a good old fashioned bubble sort which
+	// turns out to be very efficient because:
+	//
+	//	(1) The list of cases is usually quite small, and
+	//	(2) The data is usually already sorted (or mostly sorted).
+
+	val
+		_sort_i_		:string;
+		_sort_bnd_		:string;
+		_sort_didswap_	:string;
+		_sort_temp_		:string;
+		
+	#macro _SortCases_( _sort_array_, _sort_size_ );
+
+		?@global:hll._sort_bnd_ := _sort_size_ - 1;
+		?@global:hll._sort_didswap_ := true;
+		#while( @global:hll._sort_didswap_ )
+		
+			?@global:hll._sort_didswap_ := false;
+			?@global:hll._sort_i_ := 0;
+			#while( @global:hll._sort_i_ < @global:hll._sort_bnd_ )
+			
+				#if
+				( 
+					_sort_array_[@global:hll._sort_i_].value > 
+						_sort_array_[@global:hll._sort_i_+1].value 
+				)
+				
+					?@global:hll._sort_temp_ := _sort_array_[@global:hll._sort_i_];
+					?_sort_array_[@global:hll._sort_i_] := _sort_array_[@global:hll._sort_i_+1];
+					?_sort_array_[@global:hll._sort_i_+1] := @global:hll._sort_temp_;
+					?@global:hll._sort_didswap_ := true;
+
+				#endif
+				?@global:hll._sort_i_ := @global:hll._sort_i_ + 1;
+				
+			#endwhile
+			?@global:hll._sort_bnd_ := @global:hll._sort_bnd_ - 1;
+			
+		#endwhile;
+			
+		
+	#endmacro
+
+end hll;
+
+
+
+
+	
+
+
+
+/*******************************************************************/
+/* R U N   T I M E   L A N G U A G E   H L L   S T A T E M E N T S */
+/*******************************************************************/
+
+
+
+
+#id( switch )
+#id( case )
+#id( default )
+#id( endswitch )
+
+
+// HLA Macro to implement a C/C++ Switch Statement.
+// Note that the switch parameter must be a register.
+
+#macro switch( _switch_reg_ ): 
+	_switch_minval_, 
+	_switch_maxval_, 
+	_switch_otherwise_,
+	_switch_endcase_, 
+	_switch_jmptbl_,
+	_switch_cases_,
+	_switch_caseIndex_,
+	_switch_doCase_,
+	_switch_hasOtherwise_,
+	_switch_caseCntr_;
+
+	// Generate a unique ID for this case statement
+	// (for use by the labels it produces).
+
+	?_switch_caseCntr_: uns32 := hll._TotalCases_;
+	?hll._TotalCases_ := hll._TotalCases_ + 1;
+
+	// Default to using the built-in quicksort algorithm.
+	// Users may want to specify the bubble sort algorithm
+	// if they've got a lot of cases and they're already
+	// sorted (or mostly sorted).
+
+	?hll.useBubbleSort := false;
+
+	// Verify that we have a register operand.
+	
+	#if( !@isReg32( _switch_reg_ ) )
+	
+		#error( "Switch operand must be a register" )
+		
+	#endif
+	
+	// Create the _switch_cases_ array.  Allow, at most, _maxCases_ cases.
+	
+	?_switch_cases_:hll._caseRecord_[ hll._maxCases_ ] :=
+		[hll._maxCases_ dup [ hll._caseRecord_:[0,0]]];
+	
+	// General initialization for processing cases.
+	
+	?_switch_caseIndex_ := 0;		// Index into _switch_cases_ array.
+	?_switch_minval_ := $FFFF_FFFF;	// Minimum case value.
+	?_switch_maxval_ := 0;			// Maximum case value.
+	?_switch_hasOtherwise_ := false;// Determines if DEFAULT section present.
+
+
+	// If the user wants strict C/C++ syntax, they need to set the
+	// symbol "hll.cswitch" to true before using this macro.
+	//
+	//	If they have selected C/C++ syntax, then emit a forever
+	// loop around the code associated with this switch statement.
+	// This is to allow the user to specify the BREAK statement
+	// to exit a case.  Note that even though this code emits for..endfor,
+	// it never loops because a BREAK is always emitted.
+
+	#if( hll.cswitch )
+
+		forever
+
+	#endif
+			
+	// We need to process the cases to collect information like
+	// _switch_minval_ prior to emitting the indirect jump.  So move the
+	// indirect jump to the bottom of the case statement.
+	
+	jmp _switch_doCase_;
+
+
+	// "case" keyword macro handles each of the cases in the
+	// case statement.
+	
+#keyword case( _switch_parms_[] ):
+	_switch_parmIndex_, 
+	_switch_parmCount_, 
+	_switch_constant_;
+	
+	?_switch_parmCount_:uns32;
+	?_switch_parmCount_ := @elements( _switch_parms_ );
+
+	#if( _switch_parmCount_ <= 0 )
+
+		#error( "Must have at least one case value" );
+		?_switch_parms_:uns32[1] := [0];
+
+	#endif
+
+	// If we have at least one case already, terminate
+	// the previous case by transfering control to the
+	// first statement after the endcase macro.  Note
+	// that the semantics here differs from C/C++
+	// (C/C++ falls through to the next case).
+	//
+	// Of course, if this is a C/C++ syntax switch
+	// statement, don't emit the jump because it is
+	// the programmer's responsibility to specify the
+	// BREAK statement.
+	
+	#if( (!hll.cswitch) & (_switch_caseIndex_ <> 0) )
+
+		jmp _switch_endcase_;
+
+	#endif
+
+	?_switch_parmIndex_:uns32;
+	?_switch_parmIndex_ := 0;
+	#while( _switch_parmIndex_ < _switch_parmCount_ )
+	
+		?_switch_constant_: uns32;
+		?_switch_constant_: uns32 := 
+			uns32( @text( _switch_parms_[ _switch_parmIndex_ ]));
+
+		// Update minimum and maximum values based on the
+		// current case value.
+		
+		#if( _switch_constant_ < _switch_minval_ )
+
+			?_switch_minval_ := _switch_constant_;
+
+		#endif
+		#if( _switch_constant_ > _switch_maxval_ )
+
+			?_switch_maxval_ := _switch_constant_;
+
+		#endif
+
+		// Emit a unique label to the source code for this case:
+		
+		@text
+		( 
+				"_case" 
+			+	string( _switch_caseCntr_ ) 
+			+	"_" 
+			+	string( _switch_caseIndex_ ) 
+			+	"_" 
+		):
+		
+		// Save away the case label and the case value so we
+		// can build the jump table later on.
+		
+		?_switch_cases_[ _switch_caseIndex_ ].value := _switch_constant_;
+		?_switch_cases_[ _switch_caseIndex_ ].clabel := _switch_caseIndex_;
+		
+		// Bump _switch_caseIndex_ value because we've just processed
+		// another case.
+		
+		?_switch_caseIndex_ := _switch_caseIndex_ + 1;
+		#if( _switch_caseIndex_ >= hll._maxCases_ )
+
+			#error( "Too many cases in statement" );
+
+		#endif
+
+		?_switch_parmIndex_ := _switch_parmIndex_ + 1;
+
+	#endwhile
+
+
+	
+	// Handle the default keyword/macro here.
+	
+#keyword default;
+
+	// If there was not a preceding case, this is an error.
+	// If so, emit a jmp instruction to skip over the
+	// default case.
+	//
+	// Of course, if this is a C/C++ syntax switch
+	// statement, don't emit the jump because it is
+	// the programmer's responsibility to specify the
+	// BREAK statement (or fall off the bottom of the
+	// switch statement).
+	
+	#if( _switch_caseIndex_ < 1 )
+
+		#error( "Must have at least one case" );
+
+	#endif
+	#if( !hll.cswitch )
+
+		jmp _switch_endcase_;
+
+	#endif
+	
+	// Emit the label for this default case and set the
+	// _switch_hasOtherwise_ flag to true.
+	
+	_switch_otherwise_:
+	?_switch_hasOtherwise_ := true;
+
+
+	// The endswitch terminator/macro checks to see if
+	// this is a reasonable switch statement and emits
+	// the jump table code if it is.
+	
+#terminator endswitch:
+	_switch_i_, 
+	_switch_j_, 
+	_switch_curCase_,
+	_switch_string_;
+
+	#if( (_switch_maxval_ - _switch_minval_) > hll._hugeNumber_ )
+
+		#if( (_switch_maxval_ - _switch_minval_) > hll._maxCases_ )
+
+			// Perhaps in the future, this macro could
+			// switch to generating an if..elseif..elseif...
+			// chain if the range between the values is
+			// too great.
+			
+			#error( "Range of cases is too great" );
+
+		#else
+
+			#print( "Warning: Range of cases is large" );
+
+		#endif
+
+	#endif
+	
+	// Table emission algorithm requires that the _switch_cases_
+	// array be sorted by the case values.
+	
+	
+	#if( hll.useBubbleSort )
+	
+		hll._SortCases_( _switch_cases_, _switch_caseIndex_ );
+
+	#else
+
+		?_switch_cases_ := 
+			@sort
+			( 
+				_switch_cases_, 
+				_switch_caseIndex_,
+				hll.leftItem,
+				hll.rightItem,
+				"hll.lessThan"
+			);
+
+
+	#endif
+	
+	// Build a string of the form:
+	//
+	//		_switch_jmptbl_:dword[ xx ] := [&case1, &case2, &case3...&casen];
+	//
+	// so we can output the jump table.
+	
+	readonly
+	
+		_switch_jmptbl_:dword[ _switch_maxval_ - _switch_minval_ + 2] := [
+
+		?_switch_i_ := 0;
+ 		#while( _switch_i_ < _switch_caseIndex_ )
+
+			?_switch_curCase_ := _switch_cases_[ _switch_i_ ].value;
+			#if( _switch_curCase_ = _switch_cases_[ _switch_i_ + 1 ].value )
+
+				#error
+				(
+					"The same CASE constant (" + 
+					string( _switch_curCase_ ) + 
+					") appears two or more times in SWITCH statement"
+				)
+
+			#endif
+
+			// Emit the label associated with the current case:
+
+			@text
+			( 
+					"&" 
+				+	"_case"
+				+	string( _switch_caseCntr_ )
+				+	"_" 
+				+	string( _switch_cases_[ _switch_i_ ].clabel ) 
+				+ 	"_,"
+			)
+			
+			
+			// Emit "&_switch_otherwise_" table entries for any gaps present
+			// in the table:
+				
+			?_switch_j_ := _switch_cases_[ _switch_i_ + 1 ].value;
+			?_switch_curCase_ := _switch_curCase_ + 1;
+
+			#while( _switch_curCase_ < _switch_j_ )
+
+				&_switch_otherwise_,
+				?_switch_curCase_ := _switch_curCase_ + 1;
+
+			#endwhile
+			?_switch_i_ := _switch_i_ + 1;
+
+		#endwhile
+		
+		// Emit a dummy entry to terminate the table:
+		
+		&_switch_otherwise_];
+
+
+	endreadonly;
+	
+	#if( _switch_caseIndex_ < 1 )
+
+		#error( "Must have at least one case" );
+
+	#endif
+
+		// After the default case, or after the last
+		// case entry, jump over the code that does
+		// the conditional jump.
+		//
+		// Note that we do this even if the cswitch
+		// syntax is specified, because we've hit the
+		// endswitch at this point and we need to skip
+		// over the table jump.
+
+		jmp _switch_endcase_;
+
+	// Okay, here's the code that does the conditional jump.
+		
+	_switch_doCase_:
+	
+		#if( _switch_minval_ <> 0 )
+		
+			cmp( _switch_reg_, _switch_minval_ );
+			jb _switch_otherwise_;
+			
+		#endif
+		cmp( _switch_reg_, _switch_maxval_ );
+		ja _switch_otherwise_;
+		jmp( _switch_jmptbl_[ _switch_reg_*4 - _switch_minval_*4 ] );
+
+
+	// If cswitch is true (and, therefore, the user
+	// wants a C/C++ compatible switch statement),
+	// then we need to emit an endfor here to balance
+	// the for emitted earlier.
+	//
+	// In general, this extra jump never executes, however,
+	// it is possible for this code to execute if the user
+	// specifies a "continue" or "continueif" statement in
+	// their switch statement.  This, of course, would cause
+	// the whole switch statement to repeat (might even be useful
+	// on occasion, who knows?).
+
+	#if( hll.cswitch )
+
+		endfor;
+
+	#endif
+
+	// If there was no default case, transfer control
+	// to the first statement after the "endcase" clause.
+	
+	#if( !_switch_hasOtherwise_ )
+	
+		_switch_otherwise_:
+		
+	#endif
+	
+	// When each of the cases complete execution,
+	// transfer control down here.
+	
+	_switch_endcase_:
+	
+	// The following statement deallocates the storage
+	// assocated with the _switch_cases_ array.
+	
+	?_switch_cases_ := 0;
+
+
+	// The following forces a semicolon after
+	// the SWITCH invocation.
+
+	static
+		;
+	endstatic;
+
+
+#endmacro
+
+
+
+
+#endif
+

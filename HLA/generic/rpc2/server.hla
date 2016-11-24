@@ -1,0 +1,133 @@
+
+program rpcServer; 
+?@nodisplay := true; 
+?@noalignstack := true; 
+
+#include( "stdlib.hhf" )
+#include( "sleep.hhf" )
+
+#include( "sc.hhf" ) 
+#include( "rpc_server_implementation.hhf" )
+
+	
+
+////////////////////////////////////////////////////
+//
+// Here is the server-side code:
+
+procedure passBig( size:uns32 );
+var
+	anArray	:array_t;
+	
+begin passBig;
+
+	assert( size = @size( array_t ));
+	lea( esi, myRPC_server.server );
+	(type server_t [esi]).read( anArray, @size( array_t ));
+	stdout.put( "Received anArray:" nl );
+	for( mov( 0, ecx ); ecx < @elements( array_t ); inc( ecx )) do
+	
+		stdout.put( "anArray[", (type uns32 ecx), "]=", anArray[ecx*4], nl );
+		
+	endfor;
+	passBig_return();
+	
+end passBig;
+
+procedure passBigb( b:blob_t );
+var
+	bArray	:array_t;
+	
+begin passBigb;
+
+	blob.length( b );
+	assert( eax = @size(array_t) );
+	
+	lea( eax, bArray);
+	blob.read( b, [eax], @size( array_t ));
+	stdout.put( nl "Received bArray:" nl );
+	for( mov( 0, ecx ); ecx < @elements( array_t ); inc( ecx )) do
+	
+		stdout.put( "bArray[", (type uns32 ecx), "]=", bArray[ecx*4], nl );
+		
+	endfor;
+	blob.free( b );
+	
+end passBigb;
+
+procedure rtnBig;
+var
+	b:blob_t;
+	a:array_t;
+	
+begin rtnBig;
+
+	mov( @elements( array_t ), eax );
+	for( mov( 0, ecx ); ecx < @elements( array_t ); inc( ecx )) do
+	
+		mov( eax, a[ecx*4] );
+		dec( eax );
+		
+	endfor;
+	blob.alloc( @size( array_t ));
+	mov( eax, b );
+	blob.write( b, a, @size( array_t ));
+	rtnBig_return( b );
+	blob.free( b );
+	
+end rtnBig;
+
+
+static
+	ipAdrs		:dword;
+	quitServer	:boolean := false;
+	
+
+procedure serverConnected;
+begin serverConnected;
+
+	stdout.put( "Client connected with server" nl );
+
+	// Start the real server code:
+	
+	myRPC_server.connected( 0 );
+	
+	stdout.put( "Client disconnected from server" nl );
+	mov( true, quitServer );
+	
+end serverConnected;
+
+
+begin rpcServer;
+
+	mov( false, quitServer );
+	myRPC_server.create
+	( 
+		$9998, 
+		&serverConnected,
+		thunk
+		#{			
+			// On entry to thunk, EAX contains the address of the timeout
+			// variable. Set this as desired for the timeout (1 second,
+			// in this case).
+			
+			if( eax <> NULL ) then
+			
+				// Timeout is 0.1 seconds while waiting for
+				// connection:
+				
+					mov( 100_000, (type hla.timeval [eax]).tv_usec ); 
+				
+			endif;
+	        movzx( quitServer, eax );
+				
+		}#
+	);
+	
+	// Short delay to allow all transmissions to complete before we bail:
+	
+	os.sleep( 2 );
+	
+	myRPC_server.destroy();
+				
+end rpcServer;

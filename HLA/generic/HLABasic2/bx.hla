@@ -1,0 +1,6500 @@
+
+// HLABasic-
+//
+//	An interpreter for the HLA BASIC byte code stream.
+// Executes the code produced by the "bc" (HLA BASIC) compiler.
+
+
+unit HLABasic;
+?@nodisplay := true;
+?@noalignstack := true;
+
+#include( "stdlib.hhf" )
+#include( "sleep.hhf" )
+#include( "basic.hhf" )
+
+const
+	DEBUG := true;
+	
+	
+
+static
+
+	// Pseudo-variables / global variables:
+	
+	#for( _i_ := 0 to @elements( pseudoVars )-1 )	// Skips TimeZone
+	
+		align( 4 );
+		@text( pseudoVars[_i_].identifier ) :
+			@text( pseudoVars[_i_].runTimeType )
+				#if( pseudoVars[_i_].elements > 1 )
+					[ pseudoVars[_i_].elements ]
+				#endif
+			;
+			
+				
+	#endfor
+	
+	PVStrs	:string[ @elements( pseudoVars ) ] :=
+	[
+		#for( _i_ := 0 to  @elements( pseudoVars )-1 )
+		
+			PVStrs_c[_i_],
+			
+		#endfor
+	];
+		
+
+readonly
+	align( 4 );
+	vmt( pgmClass );
+	vmt( rtPgmClass );
+	
+	RWTypes			:tokenClass_t[ @elements( RWTypes_c ) ] := RWTypes_c;
+	
+	
+	
+
+
+
+
+/******************************************************************************	
+
+Tokenized line format:
+
+Each line of text in the PgmSpace buffer takes the following form:
+
+
+|   1 byte  |   2 bytes   |  n bytes  | 1 byte |
+| Line_Size | Line_Number | Line_Text |   0    |
+
+n = LineSize - 3
+
+Line_Size is the number of bytes for the entire statement, including
+the overhead bytes (Line_Size, Leading_Spaces, Line_Number, and
+zero terminating byte).  Note that Line_Text is limited to 250
+characters in length (this isn't necessarily 250 characters of
+source because tokenization can actually expand certain lines).
+
+Line_Number is the uns16 binary equivalent of the line number associated
+with this statement.
+
+Line_Text is a tokenized form of the source line.  Token descriptions
+appear a little later.  Statements always begin with a statement token.
+
+All source lines end with a zero terminating (sentinel) byte to help
+make determining the end of a statement more efficient. Note that zero
+is the value of StmtEndtkn.
+
+	
+
+/******************************************************************************/
+
+
+
+
+// destroyVar-
+//
+//	Deallocates and uninitializes a single variable object.
+
+procedure destroyVar( var v:Variant in ebx );
+begin destroyVar;
+
+	mov( (type Variant [ebx]).DataType, al );
+	if( al = String_c ) then
+	
+		// If it's a string, then deallocate the storage associated
+		// with the string data:
+	
+		str.free( (type Variant [ebx]).s );
+		
+	elseif( al = Array_c ) then
+	
+		// If it's an array, recursively destroy all the variant
+		// objects that are members of the array:
+		
+		push( ecx );
+		push( ebx );
+		
+		mov( (type Variant [ebx]).a.elements, ecx );
+		mov( (type Variant [ebx]).a.array, ebx );
+		if( ecx <> 0 ) then
+		
+			repeat
+			
+				destroyVar( [ebx] );
+				add( @size( Variant ), ebx );
+				sub( 1, ecx );
+				
+			until( @z );
+			
+		endif;
+		pop( ebx );
+		pop( ecx );
+	
+	endif;
+	
+	// If the variable is not a Label_c object, then
+	// we need to set the variable to Undefined_c.
+	// (Labels we need to leave alone because they were
+	// created by the run method's compilation pass.)
+	
+	if( (type Variant [ebx]).DataType <> Label_c ) then
+	
+		mov( Undefined_c, (type Variant [ebx]).DataType );
+		
+		// Just for fun, clear out the data area. This code assumes that
+		// the data area of the variable is eight bytes long. It must be
+		// modified if the data area grows any larger.
+		
+		mov( 0, (type dword (type Variant [ebx]).a) );
+		mov( 0, (type dword (type Variant [ebx]).a[4]) );
+		
+	endif;
+	
+end destroyVar;
+
+
+/***************************************************************/
+/*                                                             */
+/* RealToStr-                                                  */
+/*                                                             */
+/* Generic Real64 to String conversion routine.                */
+/* If number is in the range 0.01 .. 1e10, then this           */
+/* function converts it to the decimal representation with     */
+/* two positions to the right of the decimal point.            */
+/* If the number is outside this range, then this routine      */
+/* converts it to exponential form.                            */
+/*                                                             */
+/* This routine allocates storage for the string on the heap.  */
+/* It is the caller's responsibility to free this storage when */
+/* the caller is through with the string.                      */
+/*                                                             */
+/***************************************************************/
+
+procedure RealToStr( r:real64 ); @nodisplay; 
+	
+var
+	tempr	:real80;
+	
+begin RealToStr;
+
+	fld( r );
+	fabs();
+	ftst();
+	fstp( tempr );
+	fstsw( ax );
+	sahf();
+	jz Decimal;
+	
+	fld( 0.01 );
+	fld( tempr );
+	fcompp();
+	fstsw( ax );
+	sahf();
+	jb Exponential;
+	
+	fld( 1.0e10 );
+	fld( tempr );
+	fcompp();
+	fstsw( ax );
+	sahf();
+	ja Exponential;
+
+  Decimal:
+	stralloc( 16 );
+	conv.r64ToStr( r, 14, 2, ' ', eax );
+	str.trim( eax );
+	exit RealToStr;
+	
+  Exponential:
+  	stralloc( 24 );
+	conv.e64ToStr( r, 20, eax );
+
+end RealToStr;
+
+
+
+
+
+
+/*********************************************************/
+/*                                                       */
+/* StrToNumber-                                          */
+/*                                                       */
+/* The top of the evaluation stack contains a string.    */
+/* Attempt to convert this string to the integer or real */
+/* value that it represents.  If successful, return the  */
+/* converted value in the TOS element.  If unsuccessful, */
+/* raise an appropriate exception.                       */
+/*                                                       */
+/* Input-                                                */
+/*                                                       */
+/* 	EDI points at the ExprStack element just above       */
+/* 	the TOS.                                             */
+/* 	                                                     */
+/* Must preserve EBX, ECX, and ESI.                      */
+/*														 */
+/* Returns new TOS data type in AL.						 */
+/*                                                       */
+/*********************************************************/
+
+
+
+procedure StrToNumber( ExprSP:dword in edi ); 
+	@noframe;
+	
+begin StrToNumber;
+
+	// Okay, now try converting it to an integer:
+	
+	push( edx );
+	push( esi );
+	push( edi );
+	push( ecx );
+	push( ebx ); 
+	try
+	
+		conv.strToi32( tosEDI.s, 0 );
+		
+		// If success, return an integer value:
+		
+		str.free( tosEDI.s );
+		mov( eax, tosEDI.i );
+		mov( Integer_c, al );
+		mov( al, tosEDI.DataType );
+		
+	  unprotected
+	  
+		pop( ebx );
+		pop( ecx );
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		ret();
+		
+	  anyexception
+	  
+	  	if( eax <> ex.ConversionError ) then
+		
+			reraise( eax );
+			
+		endif;
+		
+	endtry;
+	mov( [esp], ebx );
+	mov( [esp+4], ecx );
+	mov( [esp+8], edi );
+
+	// Okay, integer conversion failed.  See if it's a real value:
+	
+	try
+	
+		conv.strToFlt( tosEDI.s, 0 );
+		
+		// If success, return a real64 value:
+		
+		str.free( tosEDI.s );
+		fstp( tosEDI.r );
+		mov( Real_c, al );
+		mov( al, tosEDI.DataType );
+		
+	  unprotected
+	  
+		pop( ebx );
+		pop( ecx );
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		ret();
+		
+	  anyexception
+	  
+		reraise( eax );
+						
+	endtry;
+	
+	// Shouldn't ever get here, but just in case:
+	
+	raise( StrToNumberError );
+
+end StrToNumber;
+
+
+
+/*******************************************************************/
+/*                                                                 */
+/* NumberToStr-                                                    */
+/*                                                                 */
+/* The top of stack contains some object.                          */
+/* Convert it to a string if it's an integer or a real value.      */
+/* Note that real values always consume exactly 20 print positions */
+/* (since we don't have the information to format the value).      */
+/*                                                                 */
+/* Input:                                                          */
+/* 	ESI - points just above the ExprStack item on TOS.             */
+/* 	                                                               */
+/* Output-                                                         */
+/* 	AL contains String_c and the TOS contains the                  */
+/* 	string representation of the original TOS.                     */
+/* 	                                                               */
+/* Note: This code leaves string operands untouched and            */
+/* raises an exception for non-string/numeric data types.          */
+/* 	                                                               */
+/*******************************************************************/
+
+
+procedure NumberToStr( EvalStack:dword in edi ); @nodisplay; @noframe;
+begin NumberToStr;
+
+	mov( tosEDI.DataType, al );
+	if( al <> String_c ) then
+	
+		if( al = Integer_c ) then
+		
+			// Convert integer value to a string:
+			
+			stralloc( 24 );
+			conv.i32ToStr
+			(
+				tosEDI.i,
+				0,
+				' ',
+				eax
+			);
+			
+		elseif( al = Real_c ) then
+		
+			// Convert the real value to a string:
+			
+			conv.e64ToStr
+			(
+				tosEDI.r,
+				20,
+				eax
+			);
+			
+		elseif( al <> String_c ) then
+		
+							
+			raise( NumToStrError );
+							
+		endif;
+		mov( eax, tosEDI.s );
+		mov( String_c, al );
+		mov( al, tosEDI.DataType );
+		
+	endif;
+	ret();
+
+
+end NumberToStr;
+
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//
+// Procedures to support built-in HLA Basic functions.
+//
+// On entry to these functions:
+//
+//	1)	ECX points at the token stream (and directly at the 2nd byte of the
+//		function token sequence).
+//
+//	2)	EDI points at the evaluation stack (top of stack).
+//
+//	3)	You can assume the function call is syntactically correct (this was
+//		checked by the compiler) but you have to do any operand type checking.
+//
+//	On exit, must remove any parameters and push the function result onto
+//	the evaluation stack.
+
+
+
+// get1Real-
+//
+//	Utility function that gets a single operand, checks that it's real
+// (converting if necessary/possible), and leaving the value of that
+// operand on the top of the evaluation stack.
+//
+// Leaves ECX pointing beyond the ')' that must come at the end of the
+// expression.
+
+procedure get1Real( msg:string );
+begin get1Real;
+
+  	add( 2, ecx );				// Skip the ACOS and '(' tokens.
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Evaluate the expression.
+	
+	// Is this necessary?
+	
+	if( (type byte [ecx]) <> RPARENtkn ) then	
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Too many parameters in ",
+			msg,
+			" function call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	
+	if( al = String_c ) then
+	
+		StrToNumber( edi );
+		
+	endif;
+	if( al = Integer_c ) then
+	
+		// Convert integer value to float:
+		
+		fild( tosEDI.i );
+		fstp( tosEDI.r );
+		mov( Real_c, al );
+		mov( al, tosEDI.DataType );
+		
+	elseif( al <> Real_c ) then
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Illegal parameter data type in ",
+			msg,
+			" function" 
+		);
+		raise( BasicErrorWithMsg );
+						
+	endif;
+	inc( ecx ); 		// Skip the ')'.
+
+end get1Real;
+
+
+// getDateStr-
+//
+//	Creates a string holding the current data and returns a pointer
+// to the string (allocated on the heap) in EAX:
+
+procedure getDateStr;
+var
+	ebxSave		:dword;
+	edxSave		:dword;
+	unixTime	:qword;
+	theDate		:date.daterec;
+	theTime		:time.timerec;
+	
+begin getDateStr;
+
+	mov( ebx, ebxSave );
+	mov( edx, edxSave );
+	
+	lea( eax, theDate );
+	date.utc( [eax] );
+	
+	// The date comes back in UTC form. To get the
+	// correct date, we have to determine the local
+	// time to determine whether we need to add or
+	// subtract one day from the UTC day:
+	
+	lea( eax, theTime );
+	time.utcTime( [eax] );
+	time.toUnixTime( theDate, theTime );
+	
+	// Convert timeZone value to seconds and
+	// add it to the current UNIX time:
+	
+	intmul( 3600, timeZone, ebx );
+	if( (type int32 ebx) < 0 ) then
+	
+		neg( ebx );
+		sub( ebx, eax );
+		sbb( 0, edx );
+		
+	else
+	
+		add( ebx, eax );
+		adc( 0, edx );
+		
+	endif;
+	mov( edx:eax, unixTime );
+	
+	// Convert UNIX time back to date/time:
+	
+	time.fromUnixTime( unixTime, theTime, theDate );
+	
+	// Now convert the date to a string and return
+	// a pointer to that string in EAX: 
+	
+	date.setFormat( date.MONdyyyy );
+	date.a_toString( theDate );
+	
+	mov( ebxSave, ebx );
+	mov( edxSave, edx );
+	
+end getDateStr;
+
+
+// getTimeStr-
+//
+//	Creates a string holding the current time and returns a pointer
+// to the string (allocated on the heap) in EAX:
+
+procedure getTimeStr;
+var
+	ebxSave		:dword;
+	edxSave		:dword;
+	ediSave		:dword;
+	unixTime	:qword;
+	theDate		:date.daterec;
+	theTime		:time.timerec;
+	
+begin getTimeStr;
+
+	mov( ebx, ebxSave );
+	mov( edx, edxSave );
+	mov( edi, ediSave );
+	
+	// The date/time comes back in UTC form. To get the
+	// correct date, we have to determine the local
+	// time to determine whether we need to add or
+	// subtract one day from the UTC day:
+	
+	lea( eax, theDate );
+	date.utc( [eax] );
+	lea( eax, theTime );
+	time.utcTime( [eax] );
+	time.toUnixTime( theDate, theTime );
+	
+	// Convert timeZone value to seconds and
+	// add it to the current UNIX time:
+	
+	intmul( 3600, timeZone, ebx );
+	if( (type int32 ebx) < 0 ) then
+	
+		neg( ebx );
+		sub( ebx, eax );
+		sbb( 0, edx );
+		
+	else
+	
+		add( ebx, eax );
+		adc( 0, edx );
+		
+	endif;
+	mov( edx:eax, unixTime );
+	
+	// Convert UNIX time back to date/time:
+	
+	time.fromUnixTime( unixTime, theTime, theDate );
+	
+	// Now convert the date to a string and return
+	// a pointer to that string in EAX: 
+	
+	time.setFormat( time.hhmmss24 );
+	time.a_toString( theTime );
+	
+	mov( ebxSave, ebx );
+	mov( edxSave, edx );
+	mov( ediSave, edi );
+	
+end getTimeStr;
+
+
+// getUnixTime-
+//
+//	Computes the Unix time and returns the (32-bit) value in EAX:
+
+procedure getUnixTime;
+var
+	ebxSave		:dword;
+	edxSave		:dword;
+	ediSave		:dword;
+	unixTime	:qword;
+	theDate		:date.daterec;
+	theTime		:time.timerec;
+	
+begin getUnixTime;
+
+	mov( ebx, ebxSave );
+	mov( edx, edxSave );
+	mov( edi, ediSave );
+	
+	// The date/time comes back in UTC form. To get the
+	// correct date, we have to determine the local
+	// time to determine whether we need to add or
+	// subtract one day from the UTC day:
+	
+	lea( eax, theDate );
+	date.utc( [eax] );
+	lea( eax, theTime );
+	time.utcTime( [eax] );
+	time.toUnixTime( theDate, theTime );
+	
+	// Convert timeZone value to seconds and
+	// add it to the current UNIX time:
+	
+	intmul( 3600, timeZone, ebx );
+	if( (type int32 ebx) < 0 ) then
+	
+		neg( ebx );
+		sub( ebx, eax );
+		sbb( 0, edx );
+		
+	else
+	
+		add( ebx, eax );
+		adc( 0, edx );
+		
+	endif;
+	
+	mov( ebxSave, ebx );
+	mov( edxSave, edx );
+	mov( ediSave, edi );
+	
+end getUnixTime;
+
+
+
+
+
+// ABS(x) -- absolute value of real or integer operand.
+
+procedure abs_f; @noframe;
+begin abs_f;
+
+  	add( 2, ecx );				// Skip the ABS and '(' tokens.
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Evaluate the expression.
+	
+	// Is the following really necessary?
+	
+	if( (type byte [ecx]) <> RPARENtkn ) then	
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Too many parameters in ABS function call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	
+	if( al = String_c ) then
+	
+		StrToNumber( edi );
+		
+	endif;
+	if( al = Integer_c ) then
+	
+		// Compute integer abs value:
+		
+		if( (type int32 tosEDI.i) < 0 ) then
+		
+			neg( tosEDI.i );
+			
+		endif;
+		mov( Integer_c, al );
+	
+	elseif( al = Real_c ) then
+	
+		fld( tosEDI.r );
+		fabs();
+		fstp( tosEDI.r );
+		mov( Real_c, al );
+		
+	else
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Illegal parameter data type in ABS function" 
+		);
+		raise( BasicErrorWithMsg );
+						
+	endif;
+	inc( ecx ); 		// Skip the ')'.
+	ret();
+
+end abs_f;
+
+
+
+// ACOS(x)	-- arc cosine
+//
+// ACOS- computes the arc cosine of the angle supplied in radians.
+
+procedure acos_f; @noframe;
+begin acos_f;
+
+	get1Real( "ACOS" );
+		
+	// Compute the trignometric arc cosine and return:
+	
+	math.acos( tosEDI.r );
+	fstp( tosEDI.r );
+	ret();
+
+end acos_f;
+
+
+
+// ASC( s ) -- ASCII function.
+//
+// ASC function returns the ASCII code of the first
+// character of its string parameter (zero if the
+// string is empty).
+
+procedure asc_f; @noframe;
+begin asc_f;
+
+  	add( 2, ecx );				// Skip the ASC and '(' tokens.
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Evaluate the expression.
+	
+	// Is this really necessary?
+	
+	if( (type byte [ecx]) <> RPARENtkn ) then	
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Too many parameters in ASC function call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	if( al <> String_c ) then
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Expected a string expression in ASC call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	inc( ecx ); 		// Skip the ')'.
+	xor( edx, edx );
+	mov( tosEDI.s, eax );
+	mov( [eax], dl );	// Get character code for first character.
+	str.free( eax );
+	mov( edx, tosEDI.i );
+	mov( Integer_c, al );
+	mov( al, tosEDI.DataType );
+	ret();
+	
+end asc_f;
+
+
+
+// ASIN(x) -- arc sine
+//
+// ASIN- computes the arc sine of the angle supplied in radians.
+
+
+procedure asin_f; @noframe;
+begin asin_f;
+		  
+	get1Real( "ASIN" );
+			
+	// Compute the trignometric arc sine and return:
+	
+	math.asin( tosEDI.r );
+	fstp( tosEDI.r );
+	ret();
+	
+end asin_f;
+
+
+
+// ATAN(x) -- arc tangent function
+//
+// ATAN- computes the arc tangent of the angle supplied in radians.
+
+procedure atan_f; @noframe;
+begin atan_f;
+		  
+	get1Real( "ATAN" );
+		
+	// Compute the trignometric arc tangent and return:
+	
+	fld( tosEDI.r );
+	fld1();
+	fpatan();
+	fstp( tosEDI.r );
+	ret();
+	
+end atan_f;
+
+
+
+// CHR(n) -- ASCII to character function
+// CHR- converts the single integer parameter into a single
+// character string whose character has the specified ASCII code.
+
+procedure chr_f; @noframe;
+begin chr_f;
+		  
+  	add( 2, ecx );				// Skip the CHR and '(' tokens.
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Evaluate the expression.
+	
+	// Is this necessary?
+	
+	if( (type byte [ecx]) <> RPARENtkn ) then	
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Too many parameters in CHR function call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	if( al <> Integer_c ) then
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Expected an integer expression in CHR call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	inc( ecx ); 		// Skip the ')'.
+	
+	stralloc( 2 );		// Allocate storage for the string
+	
+	// Build the one-character string using the integer as
+	// the ASCII code:
+	
+	mov( tosEDI.i, edx );
+	mov( eax, tosEDI.s ); 
+	mov( dl, [eax] );
+	mov( 1, (type str.strRec [eax]).length );
+	
+	mov( String_c, al );
+	mov( al, tosEDI.DataType );
+	ret();
+	
+end chr_f;
+
+
+
+// COS(x)- cosine function
+//
+// COS- computes the sine of the angle supplied in radians.
+
+
+procedure cos_f; @noframe;
+begin cos_f;
+
+	get1Real( "COS" );
+
+	// Compute the trignometric cosine and return:
+	
+	fld( tosEDI.r );
+	fcos();
+	fstp( tosEDI.r );
+	ret();
+			
+end cos_f;
+
+
+
+// DATE-	Returns the current date as a string
+//			(after adjusting for time zone).
+
+procedure date_f; @noframe;
+begin date_f;
+
+  	add( 1, ecx );				// Skip the DATE token.
+	getDateStr();				// Get date and convert to string.
+	
+	// Return string result on evaluation stack.
+	
+	add( @size( Variant ), edi );	// Make room for new item.
+	mov( eax, tosEDI.s );
+	mov( String_c, al );
+	mov( al, tosEDI.DataType );
+	ret();
+
+end date_f;
+
+
+// DIM(n)	-- Dimension array
+//
+// DIM- Creates an array of the specified size
+
+procedure dim_f; @noframe;
+begin dim_f;
+
+	add( 2, ecx );		// Skip DIM and "(" tokens.
+	
+	// Make room for the array object return location on
+	// the evaluation stack:
+	
+	add( @size( Variant ), edi );
+	
+	// Evaluate the expression that specifies the
+	// size of the array:
+	
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );
+	
+	// If the expression was a string expression, convert
+	// it to a number (if possible).
+	
+	if( al = String_c ) then
+	
+		StrToNumber( edi );
+		mov
+		(
+			tosEDI.DataType,
+			al 
+		);
+		
+	endif;
+	
+	if( al <> Integer_c ) then
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg,  
+			"Dimension size must be an integer" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	
+	// Get the pointer to the array object on the evaluation
+	// stack so we can fill in the fields
+	
+	lea( edx, nosEDI );
+	mov( Array_c, varEDX.DataType );
+	
+	// Get the number of elements:
+	
+	mov( tosEDI.i, eax );
+	if( (type int32 eax ) not in 0..(MaxArraySize-1) ) then
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Dimension size must be greater than zero "
+			nl
+			"and less than ", MaxArraySize 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	
+	push( ecx );
+	mov( eax, varEDX.a.elements );
+	mov( eax, ecx );
+	
+	// Compute the number of bytes we will need and
+	// allocate storage for the array.
+	
+	intmul( @size( Variant ), eax ); 
+	malloc( eax );
+	mov( eax, varEDX.a.array );
+	
+	// Step through the array and set each element to
+	// "uninitialized".
+	
+	xor( edx, edx );
+	repeat
+	
+		mov( Undefined_c, (type Variant [eax]).DataType );
+		add( @size( Variant ), eax );
+		dec( ecx );
+		
+	until( @z );
+	
+	// Skip over the ')' token at the end:
+	
+	pop( ecx );
+	add( 1, ecx );
+	
+	// Remove the array index from the evaluation stack so
+	// that we simply return the array object:
+	
+	sub( @size( Variant ), edi );
+	ret();
+  
+end dim_f;
+
+
+
+// EXP(x) -- computes e**x
+
+procedure exp_f; @noframe;
+begin exp_f;
+
+	get1Real( "EXP" );
+			
+	// Compute e**x return:
+	
+	math.exp( tosEDI.r );
+	fstp( tosEDI.r );
+	ret();
+
+end exp_f;
+
+
+
+// INT(x) - Truncates a real expression.
+
+procedure int_f; @noframe;
+begin int_f;
+
+  	add( 2, ecx );				// Skip INT and '(' tokens.
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Evaluate the expression.
+	
+	if( (type byte [ecx]) <> RPARENtkn ) then	
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Too many parameters in INT function call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	inc( ecx );		// Skip the ")".
+	
+	if( al = String_c ) then
+	
+		StrToNumber( edi );
+		
+	endif;
+	if( al = Real_c ) then
+	
+		// Convert real value to integer via truncation:
+		
+		fld( tosEDI.r );
+		
+		sub( 4, esp );				// Space for ctrl word.
+		fstcw( (type word [esp]) );	// Get FPU ctrl word.
+		
+		// Bits 10 & 11 control the FPU rounding mode.
+		// %11 means "truncate".
+		
+		mov( [esp], ax );
+		or( %0110_0000_0000, ax );	
+		mov( ax, [esp] );
+		fldcw( (type word [esp]) );
+		
+		// Convert to a truncated integer:
+		
+		fistp( tosEDI.i );
+		
+		// Restore rounding mode to "round to nearest even".
+		
+		and( %1111_1001_1111_1111, ax );
+		mov( ax, [esp] );
+		fldcw( (type word [esp]) );
+		add( 4, esp );
+		
+		mov( Integer_c, al );
+		mov( al, tosEDI.DataType );
+		ret();
+		
+	elseif( al <> Integer_c ) then
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Illegal parameter data type in INT function" 
+		);
+		raise( BasicErrorWithMsg );
+						
+	endif;
+	ret();			
+	
+end int_f;
+
+
+
+// LEFT( s, n) - Left substring
+// LEFT- computes a substring based at position zero.
+
+procedure left_f; @noframe;
+begin left_f;
+
+  	add( 2, ecx );				// Skip the LEFT and '(' tokens.
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Evaluate the expression.
+	
+	if( (type byte [ecx]) <> COMMAtkn ) then 
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Too few parameters in LEFT function call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	inc( ecx );					// Skip the "," token
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Extract the second parameter.
+	
+	if( (type byte [ecx]) <> RPARENtkn ) then	
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Too many parameters in LEFT function call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	inc( ecx ); 		// Skip the ')'.
+	
+	// Second parameter must be an integer, verify this:
+	
+	if( al <> Integer_c ) then
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Second LEFT parameter must be an integer" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	
+	push( ecx );
+	mov( tosEDI.i, ecx );	// Save Length
+	sub( @size(Variant), edi );							// Pop stack.
+	
+	// The first parameter should be a string.  If not, see if
+	// we can convert it to a string.
+	
+	NumberToStr( edi );
+
+	// Now take the zero-based substring, with the length
+	// specified in ecx, of the string on the TOS.
+	
+	mov( tosEDI.s, edx );
+	mov( (type str.strRec [edx]).length, eax );
+	
+	// If the user specified a length longer than the current
+	// length of the string, then simply return the current
+	// string.  If the string's length is greater than the
+	// length specified by the second parameter, then do a
+	// substring operation.
+	
+	if( eax > ecx ) then
+	
+		str.a_substr( edx, 0, ecx );
+		str.free( edx );
+		mov( eax, tosEDI.s );
+						
+	endif;
+	mov( String_c, al );
+	mov( al, tosEDI.DataType );
+	pop( ecx );
+	ret();			
+	
+end left_f;
+
+
+
+// LEN(s) -- Computes the length of a string
+
+procedure len_f; @noframe;
+begin len_f;
+
+  	add( 2, ecx );				// Skip the LEN and '(' tokens.
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Evaluate the expression.
+	
+	if( (type byte [ecx]) <> RPARENtkn ) then	
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Too many parameters in LEN function call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	
+	// NumberToStr actually checks to see if TOS is a string,
+	// however, a string operand is the most likely case, so
+	// we'll optimize this a bit and do the test here rather
+	// than having to make an excess function call most of
+	// the time.
+	
+	if( al <> String_c ) then
+	
+		NumberToStr( edi );
+		
+	endif;
+	inc( ecx ); 		// Skip the ')'.
+	
+	// Compute the length of the string:
+	
+	push( edx );
+	mov( tosEDI.s, edx );
+	mov( (type str.strRec [edx]).length, eax );
+	mov( eax, tosEDI.i );
+	mov( Integer_c, al );
+	mov( al, tosEDI.DataType );
+	str.free( edx );
+	pop( edx );
+	ret();
+	
+end len_f;
+
+
+
+// LOG(x) -- computes ln(x) (base-e log of x).
+
+procedure log_f; @noframe;
+begin log_f;
+
+	get1Real( "LOG" );
+			
+	// Compute the base-e log and return:
+	
+	math.ln( tosEDI.r );
+	fstp( tosEDI.r );
+	ret();
+
+end log_f;
+
+
+
+// MID( s, n, n ) -- Computes the substring of a string.
+
+procedure mid_f; @noframe;
+begin mid_f;
+
+  	add( 2, ecx );				// Skip the LEFT and '(' tokens.
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Evaluate the expression.
+	
+	if( (type byte [ecx]) <> COMMAtkn ) then 
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Too few parameters in MID function call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	inc( ecx );					// Skip the "," token
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Extract the second parameter.
+	
+	if( (type byte [ecx]) <> COMMAtkn ) then 
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Too few parameters in MID function call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	
+	// Second parameter must be an integer, verify this:
+	
+	if( al <> Integer_c ) then
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Second MID parameter must be an integer" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	inc( ecx );			   		// Skip the "," token
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Extract the third parameter.
+	
+	if( (type byte [ecx]) <> RPARENtkn ) then	
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Too many parameters in MID function call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	
+	// Third parameter must also be an integer, verify this:
+	
+	if( al <> Integer_c ) then
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Third MID parameter must be an integer" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	inc( ecx ); 		// Skip the ')'.
+
+	push( ecx );
+	mov( tosEDI.i, ecx );	// Save Length
+	sub( @size(Variant), edi );							// Pop stack.
+	
+	mov( tosEDI.i, edx );	// Save start
+	sub( @size(Variant), edi );							// Pop stack.
+	
+	
+	// The first parameter should be a string.  If not, see if
+	// we can convert it to a string.
+	
+	NumberToStr( edi );
+
+	// Now take the edx-based substring, with the length
+	// specified in ecx, of the string on the TOS.
+	
+	mov( tosEDI.s, eax );
+	
+	// If the user-specified starting position is greater than
+	// the current string length, return the empty string:
+	
+	if( edx > (type str.strRec [eax]).length ) then
+	
+		mov( 0, (type str.strRec [eax]).length );
+		mov( 0, (type byte [eax]));
+		ret();
+		
+	endif;
+		 
+	// Rely upon HLA's substr function to handle all the
+	// other issues (e.g., desired string length is greater
+	// than the number of available chars, etc).
+	
+	str.a_substr( eax, edx, ecx );
+	str.free( tosEDI.s );
+	mov( eax, tosEDI.s );
+	mov( String_c, al );
+	mov( al, tosEDI.DataType );
+	pop( ecx );
+	ret();						
+	
+end mid_f;
+
+
+
+// PWR10(x) -- computes 10**x
+
+procedure pwr10_f; @noframe;
+begin pwr10_f;
+
+  	add( 2, ecx );				// Skip PWR10 and '(' tokens.
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Evaluate the expression.
+	
+	if( (type byte [ecx]) <> RPARENtkn ) then	
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Too many parameters in PWR10 function call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	
+	if( al = String_c ) then
+	
+		StrToNumber( edi );
+		
+	endif;
+	if( al = Integer_c ) then
+	
+		// Convert integer value to float:
+		
+		fild( tosEDI.i );
+		fstp( tosEDI.r );
+		mov( Real_c, al );
+		mov( al, tosEDI.DataType );
+		
+	elseif( al <> Real_c ) then
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Illegal parameter data type in PWR10 function" 
+		);
+		raise( BasicErrorWithMsg );
+						
+	endif;
+	inc( ecx ); 		// Skip the ')'.
+	
+	// Compute 10**x and return:
+	
+	math.tenToX( tosEDI.r );
+	fstp( tosEDI.r );
+	ret();
+	
+end pwr10_f;
+
+
+// RANDOMIZE -- Randomize the random number generator.
+
+procedure randomize_f; @noframe;
+begin randomize_f;
+
+  	inc( ecx );			// Skip RANDOMIZE  token.
+	rand.randomize();	// Note: Requires Pentium processor.
+	rand.uniform();
+	mov( eax, varEDI.i );
+	mov( Integer_c, al );
+	mov( al, varEDI.DataType );
+	add( @size(Variant), edi );
+	ret();
+			
+end randomize_f;
+
+
+// RIGHT( s, n ) -- Computes rightmost substring
+
+procedure right_f; @noframe;
+begin right_f;
+
+  	add( 2, ecx );				// Skip the RIGHT and '(' tokens.
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Evaluate the expression.
+	
+	if( (type byte [ecx]) <> COMMAtkn ) then 
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Too few parameters in RIGHT function call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	inc( ecx );					// Skip the "," token
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Extract the second parameter.
+	
+	if( (type byte [ecx]) <> RPARENtkn ) then	
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Too many parameters in RIGHT function call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	inc( ecx ); 		// Skip the ')'.
+	
+	// Second parameter must be an integer, verify this:
+	
+	if( al <> Integer_c ) then
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Second RIGHT parameter must be an integer" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	
+	push( ecx );
+	mov( tosEDI.i, ecx );			// Save Length
+	sub( @size(Variant), edi );		// Pop stack.
+	
+	// The first parameter should be a string.  If not, see if
+	// we can convert it to a string.
+	
+	NumberToStr( edi );
+
+	// Now take the zero-based substring, with the length
+	// specified in ecx, of the string on the TOS.
+	
+	mov( tosEDI.s, edx );
+	mov( (type str.strRec [edx]).length, eax );
+	
+	// If the user specified a length longer than the current
+	// length of the string, then simply return the current
+	// string.  If the string's length is greater than the
+	// length specified by the second parameter, then do a
+	// substring operation.
+	
+	if( eax > ecx ) then
+	
+		// Okay, we have to compute the starting position,
+		// which is the length of the string minus the
+		// new length:
+		
+		sub( ecx, eax );
+		str.a_substr( edx, eax, ecx );
+		str.free( edx );
+		mov( eax, tosEDI.s );
+						
+	endif;
+	mov( String_c, al );
+	mov( al, tosEDI.DataType );
+	pop( ecx );
+	ret();			
+
+end right_f;
+
+
+// RND - returns a random number
+
+procedure rnd_f; @noframe;
+begin rnd_f;
+
+  	inc( ecx );			// Skip RND  token.
+	rand.uniform();
+	shr( 1, eax );		// Make sure it's always positive.
+	mov( eax, varEDI.i );
+	mov( Integer_c, al );
+	mov( al, varEDI.DataType );
+	add( @size(Variant), edi );
+	ret();			
+
+end rnd_f;
+
+
+// ROUND(x) -- Rounds a real expression to the nearest even integer.
+
+procedure round_f; @noframe;
+begin round_f;
+
+  	add( 2, ecx );				// Skip ROUND and '(' tokens.
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Evaluate the expression.
+	
+	if( (type byte [ecx]) <> RPARENtkn ) then	
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Too many parameters in ROUND function call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	inc( ecx );		// Skip the ")".
+	
+	if( al = String_c ) then
+	
+		StrToNumber( edi );
+		
+	endif;
+	if( al = Real_c ) then
+	
+		// Convert real value to integer via rounding.
+		// Note that this code assumes that the FPU is
+		// in the "Round to the nearest even integer" mode.
+		
+		fld( tosEDI.r );
+		fistp( tosEDI.i );
+		mov( Integer_c, al );
+		mov( al, tosEDI.DataType );
+		ret();
+		
+	elseif( al <> Integer_c ) then
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg,  
+			"Illegal parameter data type in ROUND function" 
+		);
+		raise( BasicErrorWithMsg );
+						
+	endif;
+	ret();			
+
+end round_f;
+
+
+// SIN(x) -- Computes the sine of the angle supplied in radians.
+
+procedure sin_f; @noframe;
+begin sin_f;
+
+	get1Real( "SIN" );
+			
+	// Compute the trignometric sine and return:
+	
+	fld( tosEDI.r );
+	fsin();
+	fstp( tosEDI.r );
+	ret();
+			
+end sin_f;
+
+
+// SQRT(x) -- Computes the square root of the supplied parameter.
+
+procedure sqrt_f; @noframe;
+begin sqrt_f;
+
+	get1Real( "SQRT" );
+			
+	// Compute the trignometric sine and return:
+	
+	fld( tosEDI.r );
+	fsqrt();
+	fstp( tosEDI.r );
+	ret();
+	
+end sqrt_f;
+
+
+// STR( z )			-- Converts numeric value to a string (real or integer)
+// STR( z, n )		-- Conversion with a minimum print position.
+// STR( z, n, n )	-- Real conversion specifying width and # of decimal positions
+
+procedure str_f; @noframe;
+begin str_f;
+
+  	push( ebx );
+  	add( 2, ecx );				// Skip the STR and '(' tokens.
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Evaluate the expression.
+	
+	// If there is a comma, then we've got a field width
+	// value.  Grab that and put it in EDX.
+	 
+	if( (type byte [ecx]) = COMMAtkn ) then
+	
+		inc( ecx );					// Skip the comma.
+		(type rtPgmClass [esi]).evalRPN( ecx, edi ); 	// Get the field width.
+		if( al <> Integer_c ) then
+		
+			pop( ebx );
+			str.put
+			(
+				(type rtPgmClass [esi]).exceptionMsg, 
+				"Expected an integer as second STR parameter"
+			);
+			raise( BasicErrorWithMsg );
+			
+		endif;
+		sub( @size( Variant ), edi );
+		mov( varEDI.i, edx );
+		
+		// Check for a third parameter.  This specifies
+		// the decimal positions.
+		
+		push( edx );
+		if( (type byte [ecx]) = COMMAtkn ) then
+		
+			inc( ecx );					// Skip the comma.
+			(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Get the decimal positions.
+			if( al <> Integer_c ) then
+			
+				pop( edx );
+				pop( ebx );
+				str.put
+				(
+					(type rtPgmClass [esi]).exceptionMsg, 
+					"Expected an integer as third STR parameter"
+				);
+				raise( BasicErrorWithMsg );
+				
+			endif;
+			sub( @size( Variant ), edi );
+			mov( varEDI.i, ebx );
+			if( (type int32 ebx) < 0 ) then
+			
+				str.put
+				(
+					(type rtPgmClass [esi]).exceptionMsg, 
+					"Third STR argument must be a non-negative integer"
+				);
+				raise( BasicErrorWithMsg );
+				
+			endif;
+		
+		else
+		
+			mov( -1, ebx );	// No decimal positions field.
+			
+		endif;
+		pop( edx );
+		
+	else
+	
+		// No field width (and no decimal places, either).
+		// Default to zero.
+		
+		xor( edx, edx );
+		mov( -1, ebx );
+		
+	endif;
+	if( (type byte [ecx]) <> RPARENtkn ) then	
+	
+		pop( ebx );
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Too many parameters in STR function call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	inc( ecx ); 		// Skip the ')'.
+
+
+	// Okay, figure out the type of data we're supposed to
+	// convert and do the conversion.
+	
+	mov( tosEDI.DataType, al );
+	if( al = Integer_c ) then
+	
+		// Just ignore ebx's value for integers.
+		
+		mov( edx, eax );
+		test( edx, edx );
+		if( @s ) then
+		
+			neg( eax );
+			
+		endif;
+		if( eax < 24 ) then
+		
+			mov( 24, eax );
+			
+		endif;
+		stralloc( eax );
+		conv.i32ToStr
+		(
+			tosEDI.i,
+			edx,
+			' ',
+			eax
+		);
+		mov( eax, tosEDI.s );
+		mov( String_c, al );
+		mov( al, tosEDI.DataType );
+		pop( ebx );
+		ret();
+		 
+	
+	elseif( al = Real_c ) then
+
+		mov( 26, eax );
+		test( edx, edx );
+		if( @s ) then
+		
+			str.put
+			(
+				(type rtPgmClass [esi]).exceptionMsg, 
+				"Second STR argument must be a non-negative integer"
+			);
+			raise( BasicErrorWithMsg );
+			
+		endif;
+		if( eax < edx ) then
+		
+			mov( edx, eax );
+			
+		endif;
+		if( eax > 64 || eax < 1 ) then
+		
+			str.put
+			(
+				(type rtPgmClass [esi]).exceptionMsg, 
+				"Second STR argument must be an integer in the "
+				"range 1..64"
+			);
+			raise( BasicErrorWithMsg );
+		
+		endif;
+		stralloc( eax );
+		test( edx, edx );
+		if( @z ) then
+			
+			RealToStr( tosEDI.r );
+			
+		elseif( (type int32 ebx) < 0 ) then
+
+			// Use exponential form if ebx < 0.
+			
+			conv.e64ToStr
+			(
+				tosEDI.r,
+				edx,
+				eax
+			);
+			
+		else
+		
+			conv.r64ToStr
+			(
+				tosEDI.r,
+				edx,
+				ebx,
+				' ',
+				eax
+			);
+		
+		endif;
+		mov( eax, tosEDI.s );
+		mov( String_c, al );
+		mov( al, tosEDI.DataType );
+		pop( ebx );
+		ret();
+	
+	
+	elseif( al = String_c ) then
+	
+		// This may seem weird, allowing a string parameter
+		// to the STR function, but it's actually quite useful
+		// for reformatting strings.
+		// 
+		// EDX (field width) specifies the new size of the
+		// string.
+		//
+		// ebx (which must be less than EDX and the length of
+		// the current string) specifies the number of chars
+		// to copy from the original string (copy all characters
+		// if ebx is zero).
+		
+		mov( tosEDI.s, eax );
+		mov( (type str.strRec [eax]).length, eax );
+
+		// If the number of characters to copy is greater than
+		// the length of the string, then just use the string's
+		// length.  If the user didn't specify the number of
+		// characters to copy (and, hence, ebx contains -1 or
+		// $FFFF_FFFF, then we must also use the current
+		// string's length.
+		
+		if( ebx >= eax ) then // Note that $FFFF_FFFF is always >= eax.
+		
+			mov( eax, ebx );
+			
+		endif;
+		
+		// If the number of characters to copy (after the adjustment
+		// above) is greater than the destination length, then
+		// expand the destination length (to make the string short,
+		// specify a smaller 3rd parameter rather than a smaller
+		// second parameter).
+		
+		if( ebx > edx ) then
+		
+			mov( ebx, edx );
+			
+		endif;
+		
+		// Okay, all that junk's out of the way.  Let's create
+		// the new string and pad it with a sufficient number
+		// of spaces:
+		
+		str.alloc( edx );
+		
+		str.substr
+		( 
+			tosEDI.s,  
+			0,
+			ebx, 
+			eax
+		);
+
+		while( ebx < edx ) do
+		
+			mov( ' ', (type char [eax+ebx]) );
+			inc( ebx );
+			
+		endwhile;
+		
+		// Fix the length of the new string.
+		
+		mov( edx, (type str.strRec [eax]).length );
+		
+		// Deallocate the storage for the old string:
+		
+		str.free( tosEDI.s );
+		
+		// Set this to the new string:
+		
+		mov( eax, tosEDI.s );
+		mov( String_c, al );
+		pop( ebx );
+		ret();
+		
+	endif;
+	
+	str.put
+	( 
+		(type rtPgmClass [esi]).exceptionMsg, 
+		"Unsupported data type (1st parameter, STR)" 
+	);
+	raise( BasicErrorWithMsg );
+		
+
+end str_f;
+
+
+// TAN(x) -- Computes the tangent of the angle supplied in radians.
+
+procedure tan_f; @noframe;
+begin tan_f;
+
+	get1Real( "TAN" );
+
+	// Compute the trignometric tangent and return:
+	
+	fld( tosEDI.r );
+	fsincos();
+	fdiv();
+	fstp( tosEDI.r );
+	ret();
+
+end tan_f;
+
+
+
+// TIME- Returns the current time (after adjusting for time zone).
+
+procedure time_f; @noframe;
+begin time_f;
+
+  	add( 1, ecx );				// Skip the TIME token.
+
+	getTimeStr();				// Get time and convert to string.
+	
+	// Return string result on evaluation stack.
+	
+	mov( eax, varEDI.s );
+	mov( String_c, al );
+	mov( al, varEDI.DataType );
+	add( @size( Variant ), edi );	// Make room for new item.
+	ret();
+						 
+end time_f;
+
+
+
+
+
+
+// TRIM(s) -- Removes leading and trailing spaces from a string
+
+procedure trim_f; @noframe;
+begin trim_f;
+
+  	add( 2, ecx );									// Skip the TRIM and '(' tokens.
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Evaluate the expression.
+	
+	if( (type byte [ecx]) <> RPARENtkn ) then	
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Too many parameters in TRIM function call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	
+	// NumberToStr actually checks to see if TOS is a string,
+	// however, a string operand is the most likely case, so
+	// we'll optimize this a bit and do the test here rather
+	// than having to make an excess function call most of
+	// the time.
+	
+	if( al <> String_c ) then
+	
+		NumberToStr( edi );
+		
+	endif;
+	inc( ecx ); 		// Skip the ')'.
+	
+	//Trim the string:
+	
+	push( edx );
+	mov( tosEDI.s, edx );
+	str.trim( tosEDI.s ); 
+	pop( edx );
+	ret();
+	
+end trim_f;
+
+
+
+
+// UNIXTIME- Returns the current UNIX time (after adjusting for time zone).
+
+procedure unixTime_f; @noframe;
+begin unixTime_f;
+
+  	add( 1, ecx );				// Skip the UNIXTIME token.
+
+	getUnixTime();				// Get UNIX time as a 32-bit integer.
+	
+	// Return integer result on evaluation stack.
+	
+	mov( eax, varEDI.i );
+	mov( Integer_c, al );
+	mov( al, varEDI.DataType );
+	add( @size( Variant ), edi );	// Make room for new item.
+	ret();
+						 
+end unixTime_f;
+
+
+// VAL(s) -- Converts a string to a value.
+//
+// The single operand is a string.
+// Convert it to an integer (if possible) or a real (if not
+// an integer).  Raises an exception if it isn't a real or
+// integer string.
+
+procedure val_f; @noframe;
+begin val_f;
+
+  	add( 2, ecx );				// Skip the VAL and '(' tokens.
+	(type rtPgmClass [esi]).evalRPN( ecx, edi );	// Evaluate the expression.
+	
+	if( (type byte [ecx]) <> RPARENtkn ) then	
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Too many parameters in VAL function call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	if( al <> String_c ) then
+	
+		str.put
+		( 
+			(type rtPgmClass [esi]).exceptionMsg, 
+			"Expected a string expression in VAL call" 
+		);
+		raise( BasicErrorWithMsg );
+		
+	endif;
+	inc( ecx ); 		// Skip the ')'.
+	StrToNumber( edi );
+	ret();
+
+end val_f;
+
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//
+// rtPgmClass methods and procedures:
+//
+//
+// rtPgmClass.create-
+// Create a run-time program object.
+//
+//	filename-	specifies the filename of the file containing the HLA Basic
+//				byte code.
+//
+// -or-
+//
+//	pgmData-	specifies the start of the HLA Basic byte code data
+//				structure in memory
+//
+// Note: if filename is non-NULL, then pgmData is ignored.
+//		 if filename is NULL, then pgmData must be a valid pointer.
+
+procedure rtPgmClass.create( filename:string; pgmData:dword );
+var
+	pgmSize	:dword;
+	handle	:dword;
+	eaxSave	:dword;
+	ebxSave	:dword;
+	
+begin create;
+
+	assert( filename != NULL || pgmData != NULL );
+	mov( ebx, ebxSave );
+	mov( eax, eaxSave );	
+	
+	if( esi = NULL ) then
+	
+		mem.alloc( @size( rtPgmClass ) );
+		mov( eax, esi );
+		mov( true, this.objAllocated );
+		
+	else
+	
+		mov( false, this.objAllocated );
+		
+	endif;
+	mov( &rtPgmClass._VMT_, this._pVMT_ );
+	
+	mov( false, this.pgmAllocated );	// Assume pgmData specifies code.
+	
+	str.init( this.exceptionMsgBuf, @elements( this.exceptionMsgBuf ));
+	mov( eax, this.exceptionMsg );
+	
+	// If filename is non-null, then allocate storage for the byte code
+	// data and read that data from the specified file.
+	
+	if( filename != NULL ) then
+	
+		// Open the byte code file:
+		
+		fileio.open( filename, fileio.r );
+		mov( eax, handle );
+		
+		// Read the number of bytes in the token stream into pgmSize:
+		
+		mov( 0, pgmSize );
+		fileio.read( handle, pgmSize, 2 );
+		
+		// Allocate storage to hold all the tokens:
+		
+		mem.alloc( pgmSize );
+		mov( eax, this.TxtStart );
+		mov( eax, this.ip );
+		add( pgmSize, eax );
+		mov( eax, this.TxtEnd );
+		mov( true, this.pgmAllocated );	// Pgm data allocated on heap.
+		
+		// Read the tokens into the storage just allocated:
+		
+		fileio.read( handle, val this.TxtStart, pgmSize );
+		
+		// Read the number of symbols in the file:
+		
+		fileio.geti32( handle ); 
+		mov( eax, this.symCnt );
+		fileio.readLn( handle );
+		fileio.readLn( handle );
+		
+		// Read in the symbol strings:
+		
+		shl( 2, eax );		// 4 bytes for each string pointer.
+		mem.alloc( eax );	// Allocate storage for the string array.
+		mov( eax, this.symbols );
+		mov( eax, ebx );
+		for( mov( 0, ecx ); ecx < this.symCnt; inc( ecx )) do
+		
+			fileio.a_gets( handle );
+			mov( eax, [ebx+ecx*4] );
+			str.delete3( eax, 0, 7 );
+			
+		endfor;
+		
+		
+		// Ignore the symbol string data:
+		
+		fileio.close( handle );
+		
+		// Allocate storage for all the symbols in the program (assume
+		// they're all variable objects).  Note the call to mem.zalloc.
+		// This ensures that all the objects are of type "Undefined_c".
+		
+		mov( this.symCnt, eax );
+		intmul( @size( Variant ), eax );
+		mem.zalloc( eax );
+		mov( eax, this.varData );
+		
+		// Save the filename in case there is an error:
+		
+		filesys.a_toNativePath( filename );
+		mov( eax, this.pgmFileName );
+		
+			
+	else	// filename was NULL
+	
+		// If the filename was NULL, then assume that the pgmStart and pgmEnd
+		// arguments point at the HLA Basic byte code sitting in memory.
+		
+		stderr.put( "Need to write support for execute from memory" nl );
+		assert( eax <> eax );
+		
+		
+	endif;
+	mov( false, this.debugFlag );	
+	mov( ebxSave, ebx );
+	mov( eaxSave, eax );	
+		
+end create;
+
+
+
+
+// rtPgmClass.destroy-
+//
+//	Deallocates storage for an rtPgmClass object.
+
+method rtPgmClass.destroy;
+var
+	eaxSave	:dword;
+	ebxSave	:dword;
+	ecxSave	:dword;
+
+begin destroy;
+
+	mov( ecx, ecxSave );
+	mov( ebx, ebxSave );
+	mov( eax, eaxSave );
+	
+	// Free the filename we created during create:
+	
+	str.free( this.pgmFileName );
+	
+	// Have to go through all the symbols and deallocate them, if necessary.
+	
+	mov( this.varData, ebx );
+	for( mov( 0, ecx ); ecx < this.symCnt; inc( ecx )) do
+	
+		destroyVar( [ebx] );
+		add( @size( Variant ), ebx );
+	
+	endfor;
+	
+	// Free the storage associated with the variant object array:
+	
+	mem.free( this.varData );
+	
+	// Free the storage associated with the symbol table:
+	// 1) Free each string in the symbol table array.
+	// 2) Free the storage for the symbol table array.
+	
+	mov( this.symbols, ebx );
+	for( mov( 0, ecx ); ecx < this.symCnt; inc( ecx )) do
+	
+		str.free( [ebx+ecx*4] );
+		
+	endfor;
+	mem.free( this.symbols );
+	
+	
+	// Free the storage associated with the byte code data, but only if
+	// it was allocated on the heap:
+	
+	if( this.pgmAllocated ) then
+	
+		mem.free( this.TxtStart );
+		
+	endif;
+	
+	// If the storage associated with the object itself, if it was allocated
+	// on the heap:
+	
+	if( this.objAllocated ) then
+	
+		mem.free( esi );
+		
+		// No object references after this point!
+		
+	endif;
+	
+	mov( ecxSave, ecx );
+	mov( ebxSave, ebx );
+	mov( eaxSave, eax );
+	
+end destroy;
+
+
+
+
+/******************************************************************/
+/*                                                                */
+/* DoDebug-                                                       */
+/*                                                                */
+/* This procedure gets called whenever the interpreter begins the */
+/* execution of a new line of statements and DEBUG (trace) mode   */
+/* is active.                                                     */
+/*                                                                */
+/******************************************************************/
+
+procedure DoDebug( lineNumber:uns16 in ax ); @nodisplay; @noframe;
+begin DoDebug;
+
+	stdout.put( '#', (type uns16 ax), nl );
+	ret();
+	
+end DoDebug;
+
+
+/////////////////////////////////////////////////////////////////
+//
+//	byteCodeExtensions-
+//
+//	Dummy routine to handle non-HLA-BASIC byte codes. This code
+// always returns zero in EAX to denote failure (no such bytecode).
+// Specific implementations should override this method and add the
+// code to handle their specific byte code extensions.
+
+method rtPgmClass.byteCodeExtensions; @noframe;
+begin byteCodeExtensions;
+
+	xor( eax, eax );
+	ret();
+	
+end byteCodeExtensions;
+
+
+
+/////////////////////////////////////////////////////////////////
+//
+//	n-
+//
+//	Dummy routine to handle non-HLA-BASIC byte codes for functions. 
+// This code always returns zero in EAX to denote failure (no such 
+// function).
+//
+// Specific implementations should override this method and add the
+// code to handle their specific byte code extensions.
+
+method rtPgmClass.functionExtensions( ExprStackPtr:dword ); @noframe;
+begin functionExtensions;
+
+	xor( eax, eax );
+	ret();
+	
+end functionExtensions;
+
+
+
+/////////////////////////////////////////////////////////////////
+//
+//	pseudoVarExtensions-
+//
+//	Dummy routine to handle non-HLA-BASIC byte codes for pseudo-Vars. 
+// This code always returns raises an exception. Actual HLA Basic pseudo-vars
+// (not extensions) are handled in the PseudoVars function (that calls this
+// code if it fails to match anything).
+//
+// Specific implementations should override this method and add the
+// code to handle their specific byte code extensions.
+
+method rtPgmClass.pseudoVarExtensions
+( 
+	isRead:boolean;
+	ExprStackPtr:dword
+);	@noframe;
+begin pseudoVarExtensions;
+
+	str.cpy( "Unknown pseudo-variable token", this.exceptionMsg );
+	raise( BasicErrorWithMsg );
+	
+end pseudoVarExtensions;
+
+
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// rtPgmClass.intRange-
+//
+//	Checks an integer value to ensure that it falls within a specific range.
+
+method rtPgmClass.intRange( value:int32; low:int32; high:int32; msg:string );
+begin intRange;
+
+	push( eax );
+	mov( value, eax );
+	if( eax < low || eax > high ) then 
+	
+		str.put
+		( 
+			this.exceptionMsg,
+			msg, 
+			" -- Expected a value in the range ",
+			low,
+			"..",
+			high
+		);
+		raise( BasicErrorWithMsg );
+						
+	endif;
+	pop( eax );
+
+end intRange;
+
+
+/*************************************************************/
+/*                                                           */
+/* MakeInt-                                                  */
+/*                                                           */
+/* Many calls to EvalExpr require an integer result.         */
+/* This function attempts to convert the result returned     */
+/* by EvalExpr to an integer.  If not possible, this code    */
+/* aborts the program with an error.  If possible, this code */
+/* returns the value in the EAX register.                    */
+/*                                                           */
+/* Returns: integer value in eax.                            */
+/*                                                           */
+/*************************************************************/
+
+
+method rtPgmClass.makeInt( CurType:vTypes in al; msg:string ); 
+begin makeInt;
+
+	if( al = String_c ) then
+	
+		lea( edi, this.ExprStack[ @size( Variant ) ]); 
+		StrToNumber( edi );
+		
+	endif;
+	if( al = Real_c ) then
+	
+		// Convert real value to integer via truncation:
+		
+		fld( this.ExprStack.r );
+		fisttp( this.ExprStack.i );
+		
+	elseif( al <> Integer_c ) then
+	
+		str.cpy( msg, this.exceptionMsg );
+		raise( BasicErrorWithMsg );
+						
+	endif;
+	mov( this.ExprStack.i, eax );
+
+
+end makeInt;
+
+
+// tosInt-
+//
+//	Just like makeInt, except this function operates on the
+// current top of stack rather than assuming that there is
+// only one value sitting on the TOS.
+
+method rtPgmClass.tosInt
+( 
+	CurType:vTypes in al; 
+	ExprStackPtr:dword; 
+	msg:string 
+); 
+begin tosInt;
+
+	mov( ExprStackPtr, edi );
+	if( al = String_c ) then
+	
+		StrToNumber( edi );
+		
+	endif;
+	if( al = Real_c ) then
+	
+		// Convert real value to integer via truncation:
+		
+		fld( tosEDI.r );
+		
+		sub( 4, esp );				// Space for ctrl word.
+		fstcw( (type word [esp]) );	// Get FPU ctrl word.
+		
+		// Bits 10 & 11 control the FPU rounding mode.
+		// %11 means "truncate".
+		
+		mov( [esp], ax );
+		or( %0110_0000_0000, ax );	
+		mov( ax, [esp] );
+		fldcw( (type word [esp]) );
+		
+		// Convert to a truncated integer:
+		
+		fistp( tosEDI.i );
+		
+		// Restore rounding mode to "round to nearest even".
+		
+		and( %1111_1001_1111_1111, ax );
+		mov( ax, [esp] );
+		fldcw( (type word [esp]) );
+		add( 4, esp );
+		
+		
+	elseif( al <> Integer_c ) then
+	
+		str.cpy( msg, this.exceptionMsg );
+		raise( BasicErrorWithMsg );
+						
+	endif;
+	mov( tosEDI.i, eax );
+
+
+end tosInt;
+
+
+/*************************************************************/
+/*                                                           */
+/* makeReal-                                                 */
+/*                                                           */
+/* Converts the value returned by ExprEval to a real         */
+/*                                                           */
+/* Returns: Integer_c in AL.                                 */
+/*          Real result in ST0                               */
+/*                                                           */
+/*************************************************************/
+
+
+method rtPgmClass.makeReal( CurType:vTypes in al; msg:string ); 
+begin makeReal;
+
+	if( al = String_c ) then
+		lea( edi, this.ExprStack[ @size( Variant ) ]); 
+		StrToNumber( edi );
+		
+	endif;
+	if( al = Integer_c ) then
+	
+		fild( this.ExprStack.i );
+		fstp( this.ExprStack.r );		
+		
+	elseif( al <> Real_c ) then
+	
+		str.cpy( msg, this.exceptionMsg );
+		raise( BasicErrorWithMsg );
+						
+	endif;
+	fld( this.ExprStack.r );
+
+end makeReal;
+
+
+
+/**********************************************************************/
+/* Expr-                                                              */
+/*                                                                    */
+/* Expression evaluator.                                              */
+/*                                                                    */
+/* Here's the grammar for hlaBASIC expressions:                       */
+/*                                                                    */
+/* 	expr-> ORx { relop ORx }*                                         */
+/* 	relop -> < | <= | = | <> | >= | >                                 */
+/* 	                                                                  */
+/* 	ORx -> ANDx { or ANDx }*                                          */
+/* 	                                                                  */
+/* 	ANDx -> ADDx { and ADDx }*                                        */
+/* 	                                                                  */
+/* 	ADDx -> MULx { addop MULx }*                                      */
+/* 	addop -> + | -                                                    */
+/* 	                                                                  */
+/* 	MULx -> Factor { mulop Factor }*                                  */
+/* 	mulop -> * | / | %                                                */
+/* 	                                                                  */
+/* 	Factor ->	not Factor                                            */
+/* 			|	- Factor                                              */
+/* 			|	FuncID ( exprList )                                   */
+/* 			|	ID [ expr ]                                           */
+/* 			|	ID                                                    */
+/* 			|	strConst                                              */
+/* 			|	intConst                                              */
+/* 			|	realConst                                             */
+/* 			|	( expr )                                              */
+/* 			                                                          */
+/* 	FuncID ->                                                         */
+/* 			|	ASC                                                   */
+/* 			|	CHR                                                   */
+/* 			|	STR                                                   */
+/* 			|	VAL                                                   */
+/* 			|	SIN                                                   */
+/* 			|	COS                                                   */
+/* 			|	TAN                                                   */
+/* 			|	ASIN                                                  */
+/* 			|	ACOS                                                  */
+/* 			|	ATAN                                                  */
+/* 			|	LOG                                                   */
+/* 			|	EXP                                                   */
+/* 			|	SQRT                                                  */
+/* 			|	LEN                                                   */
+/* 			|	LEFT                                                  */
+/* 			|	MID                                                   */
+/* 			|	RIGHT                                                 */
+/* 	 		                                                          */
+/* 			                                                          */
+/* 	exprList -> expr { , expr }*                                      */
+/* 	                                                                  */
+/*                                                                    */
+/* Each Non-terminal in this grammar has a "Variant" attribute        */
+/* associated with it (that holds the value associated with           */
+/* that non-terminal).  Mixed type expressions are legal and          */
+/* subject to the following semantics:                                */
+/*                                                                    */
+/* note: r=real, i=integer, s=string                                  */
+/*                                                                    */
+/* i op i- produces i                                                 */
+/*                                                                    */
+/* r op r-	produces r                                                */
+/*                                                                    */
+/* s op s- returns s.                                                 */
+/*                                                                    */
+/* i op r-	promotes the integer to a real and then                   */
+/* r op i	returns a real result (r op r semantics).                 */
+/*                                                                    */
+/* i op s- attempts to convert string to an integer,                  */
+/* s op i	if successful, then does i op i.  If unsuccessful,        */
+/* 		attempts to convert s to real.  If successful,                */
+/* 		then computes i op r or r op i.  If unsuccessful,             */
+/* 		then raises an exception.                                     */            
+/* 		                                                              */
+/* r op s-	Attempts to convert s to a real.  If successful,          */
+/* s op r	computes r op r.  If unsuccessful, raises an exception.   */                                
+/* 		                                                              */
+/* Notes:                                                             */
+/*                                                                    */
+/* If i, r, or s is an array ID, then the code defaults               */
+/* to the first element (i[0], r[0], or s[0]).                        */
+/*                                                                    */
+/* If i, r, or s is an ID and the value is undefined,                 */
+/* the system raises an exception.                                    */
+/*                                                                    */
+/* Each of the following expression evaluation functions update       */
+/* ECX to point at the next available token in the source.            */
+/*                                                                    */
+/* They also leave their result on the expression evaluation stack.   */
+/* The call to EvalExpr should leave a single value at location       */
+/* "ExprStack[0]" containing the result of the expression.            */
+/*                                                                    */
+/* This functions return the type of the expression in AL.            */
+/* This is one of the following:                                      */
+/*                                                                    */
+/* 	Integer_c,                                                        */
+/* 	Real_c                                                            */
+/* 	String_c                                                          */
+/*                                                                    */
+/**********************************************************************/
+
+
+	
+procedure rtPgmClass.evalRPN( ip:dword in ecx; ExprStackPtr:dword in edi ); 		
+		
+		
+
+	////////////////////////////////////////////////////////////////////
+	//
+	// MakeCompatible-
+	//
+	//	ESI points just above two Variant items on the evaluation
+	// stack.  This function coerces and converts those values so
+	// that they have the same type (this function raises an
+	// appropriate exception if conversion is not possible).
+	
+		
+	procedure MakeCompatible( ExprStackPtr:dword in edi	);
+		@noframe; 
+		@returns( "al" );
+		
+	begin MakeCompatible;
+	
+		// If the two types are equal (the most common case), then
+		// get out of here as quickly as possible.
+		
+		mov( nosEDI.DataType, al );
+		mov( tosEDI.DataType, ah );
+		if( al = ah ) then
+		
+			ret();
+			
+		endif;
+		
+		// Okay, the types are not equal.  Let's coerce them as best
+		// we can (see the semantic rules above ).
+		//
+		// Handle i op r here:
+		
+		if( al = Integer_c && ah = Real_c ) then
+		
+			fild( nosEDI.i );
+			fstp( nosEDI.r );
+			mov( Real_c, al );
+			mov( al, nosEDI.DataType );
+			ret();
+			
+		endif;
+		
+		// Handle r op i here:
+		
+		if( al = Real_c && ah = Integer_c ) then
+		
+			fild( tosEDI.i );
+			fstp( tosEDI.r );
+			mov( Real_c, al );
+			mov( al, tosEDI.DataType );
+			ret();
+			
+		endif;
+		
+		
+		// Handle i op s here:
+		
+		if( al = Integer_c && ah = String_c ) then
+		
+			// First, try to convert the string to an integer:
+			
+			push( esi );
+			push( edi );	// Note: exceptions leave registers undefined!
+			push( ecx );
+			push( ebx );
+			try
+			
+				conv.strToi32
+				(
+					tosEDI.s,
+					0
+				);
+				
+				
+				// If successful, then convert the string to an integer:
+				
+				push( eax );
+				str.free( tosEDI.s );
+				pop( eax );
+				mov( eax, tosEDI.i );
+				mov( Integer_c, al );
+				mov( al, tosEDI.DataType );
+				
+		      unprotected
+			  	pop( ebx );
+			  	pop( ecx );
+				pop( edi );
+				pop( esi );
+			  	ret();
+				
+			  anyexception
+			  
+			  	if( eax <> ex.ConversionError ) then
+				
+					reraise( eax );
+					
+				endif;
+				
+			endtry;
+			mov( [esp], ebx );
+			mov( [esp+4], ecx );
+			mov( [esp+8], edi );
+
+			  
+		  	// Okay, it wasn't a valid integer.  Let's see if it
+			// is a real value:
+			
+			try
+			
+				conv.strToFlt
+				(
+					tosEDI.s,
+					0
+				);
+				
+				// If successful, then convert the string to a real
+				// and the integer operand to a real:
+				
+				str.free( tosEDI.s );
+				fstp( tosEDI.r );
+				mov
+				( 
+					Real_c, 
+					tosEDI.DataType 
+				);
+			
+				fild( nosEDI.i );
+				fstp( nosEDI.r );
+				mov( Real_c, al );
+				mov( al, nosEDI.DataType );
+				
+			  unprotected
+			  
+			  	pop( ebx );
+			  	pop( ecx );
+				pop( edi );
+				pop( esi );
+				ret();
+
+			  anyexception
+			  
+			  	if( eax <> ex.ConversionError ) then
+				
+					reraise( eax );
+					
+				endif;
+				
+			endtry;
+			pop( ebx );
+
+			// If we couldn't convert the string to an integer or real
+			// value, then raise an exception.
+			
+			raise( typeMismatchIntOpStr );
+			
+		endif;
+		
+		
+		// Handle s op i here:
+		
+		if( al = String_c && ah = Integer_c ) then
+		
+			// First, try to convert the string to an integer:
+			
+			push( esi );
+			push( edi );	// Exceptions scramble the registers!
+			push( ecx );
+			push( ebx );
+			try
+			
+				conv.strToi32
+				(
+					nosEDI.s,
+					0
+				);
+				
+				// If successful, then convert the string to an integer:
+				
+				push( eax );
+				str.free( nosEDI.s );
+				pop( eax );
+				mov( eax, nosEDI.i );
+				mov( Integer_c, al );
+				mov( al, nosEDI.DataType );
+				
+			  unprotected
+			  	pop( ebx );
+			  	pop( ecx );
+				pop( edi );
+				pop( esi );
+			  	ret();
+
+			  anyexception
+			  
+			  	if( eax <> ex.ConversionError ) then
+				
+					reraise( eax );
+					
+				endif;
+				
+			endtry;
+			mov( [esp], ebx );
+			mov( [esp+4], ecx );
+			mov( [esp+8], edi );
+			
+				
+		  	// Okay, it wasn't a valid integer.  Let's see if it
+			// is a real value:
+			
+			try
+			
+				conv.strToFlt
+				(
+					nosEDI.s,
+					0
+				);
+				
+				// If successful, then convert the string to a real
+				// and the integer operand to a real:
+				
+				str.free( nosEDI.s );
+				fstp( nosEDI.r );
+				mov
+				( 
+					Real_c, 
+					nosEDI.DataType 
+				);
+			
+				fild( tosEDI.i );
+				fstp( tosEDI.r );
+				mov( Real_c, al );
+				mov( al, tosEDI.DataType );
+			  
+			  unprotected
+			  	pop( ebx );
+			  	pop( ecx );
+				pop( edi );
+				pop( esi );
+				ret();
+				
+			  anyexception
+			  
+			  	if( eax <> ex.ConversionError ) then
+				
+					reraise( eax );
+					
+				endif;
+				
+			endtry;
+			pop( ebx );
+			  
+		  	// Well, if it wasn't an integer and it wasn't a real,
+			// raise an exception.
+			
+			raise( typeMismatchStrOpInt );
+			
+		endif;
+		
+		
+		
+		
+		// Handle r op s here:
+		
+		if( al = Real_c && ah = String_c ) then
+		
+			// First, try to convert the string to a real:
+			
+			push( esi );
+			push( edi );	// If an exception occurs, it will mess up
+			push( ecx );	// the registers!
+			push( ebx );
+			try
+			
+				conv.strToFlt
+				(
+					tosEDI.s,
+					0
+				);
+				
+				// If successful, then convert the string to a real64:
+				
+				str.free( tosEDI.s );
+				fstp( tosEDI.r );
+				mov( Real_c, al );
+				mov( al, tosEDI.DataType );
+			  
+			  unprotected
+			  	pop( ebx );
+			  	pop( ecx );
+				pop( edi );
+				pop( esi );
+			  	ret();
+				
+			  anyexception
+			  
+			  	if( eax <> ex.ConversionError ) then
+				
+					reraise( eax );
+					
+				endif;
+				
+			endtry;
+			mov( [esp], ebx );
+			mov( [esp+4], ecx );
+			mov( [esp+8], edi );
+			  
+		  	// Okay, it wasn't a valid real value.  Raise an exception.
+			
+			raise( typeMismatchRealOpStr );
+					
+		endif;
+		
+		
+		// Handle s op r here:
+		
+		if( al = String_c && ah = Real_c ) then
+		
+			// First, try to convert the string to an integer:
+			
+			push( esi );
+			push( edi );	// Exceptions mess up the registers!
+			push( ecx );
+			push( ebx );
+			try
+			
+				conv.strToFlt
+				(
+					nosEDI.s,
+					0
+				);
+				
+				// If successful, then convert the string to a real64:
+				
+				str.free( nosEDI.s );
+				fstp( nosEDI.r );
+				mov( Real_c, al );
+				mov( al, nosEDI.DataType );
+				
+			  unprotected
+			    pop( ebx );
+			  	pop( ecx );
+				pop( edi );
+				pop( esi );
+			  	ret();
+				
+			  anyexception
+			  
+			  	if( eax <> ex.ConversionError ) then
+				
+					reraise( eax );
+					
+				endif;
+				
+			endtry;
+			pop( ebx );
+			  
+		  	// Okay, it wasn't a valid real value.  Raise an exception:
+			
+			raise( typeMismatchStrOpReal );
+					
+		endif;
+		
+		// If we get down here, we cannot handle the types on the stack.
+		
+		raise( typeMismatch );
+		
+	end MakeCompatible;
+	
+	
+	
+	
+	
+	procedure twoInts( xStkPtr:dword in edi; msg:string );
+	begin twoInts;
+
+		// Verify that the two operand types are compatible (or coerce them
+		// if they're not.
+		
+		MakeCompatible( edi );
+		
+		// The operands must both be integers at this point, or else
+		// we've got a type conflict.  Note that both types are the
+		// same here (MakeCompatible made them that way):
+		
+		mov( tosEDI.DataType, al );
+		if( al <> Integer_c ) then
+		
+			if( al = String_c ) then
+			
+				str.free( tosEDI.s );
+				str.free( nosEDI.s );
+			
+			endif;
+			str.put( this.exceptionMsg, msg, " requires integer operands" );
+			raise( BasicErrorWithMsg );
+			
+		endif;
+
+	end twoInts;
+	
+	
+	
+	// Relational operator functions.
+	//
+	//	eq_i	: i < i
+	//	eq_r	: r < r
+	//	eq_s	: s < s
+	//
+	//	ne_i	: i <> i
+	//	ne_r	: r <> r
+	//	ne_s	: s <> s
+	//
+	//
+	//	lt_i	: i < i
+	//	lt_r	: r < r
+	//	lt_s	: s < s
+	//
+	//	le_i	: i <= i
+	//	le_r	: r <= r
+	//	le_s	: s <= s
+	//
+	//	gt_i	: i > i
+	//	gt_r	: r > r
+	//	gt_s	: s > s
+	//
+	//	ge_i	: i >= i
+	//	ge_r	: r >= r
+	//	ge_s	: s >= s
+	//
+	
+	procedure eq_i; @noframe;
+	begin eq_i;
+	
+		xor( edx, edx );
+		mov( nosEDI.i, eax );
+		cmp( eax, tosEDI.i );
+		sete( dl );
+		mov( edx, nosEDI.i );
+		ret();
+		
+	end eq_i;
+	
+	procedure eq_r; @noframe;
+	begin eq_r;
+	
+		xor( edx, edx );
+		fld( tosEDI.r );
+		fld( nosEDI.r );
+		fcompp();
+		fstsw( ax );
+		sahf();
+		sete( dl );
+		ret();
+		
+	end eq_r;
+	
+	procedure eq_s; @noframe;
+	begin eq_s;
+	
+		xor( edx, edx );
+		str.eq
+		(
+			nosEDI.s,
+			tosEDI.s
+		);
+		adc( 0, edx );
+		ret();
+				
+	end eq_s;
+	
+	
+	
+	
+	procedure ne_i; @noframe;
+	begin ne_i;
+	
+		xor( edx, edx );
+		mov( nosEDI.i, eax );
+		cmp( eax, tosEDI.i );
+		setne( dl );
+		mov( edx, nosEDI.i );
+		ret();
+		
+	end ne_i;
+	
+	procedure ne_r; @noframe;
+	begin ne_r;
+	
+		xor( edx, edx );
+		fld( tosEDI.r );
+		fld( nosEDI.r );
+		fcompp();
+		fstsw( ax );
+		sahf();
+		setne( dl );
+		ret();
+		
+	end ne_r;
+	
+	procedure ne_s; @noframe;
+	begin ne_s;
+	
+		xor( edx, edx );
+		str.ne
+		(
+			nosEDI.s,
+			tosEDI.s
+		);
+		adc( 0, edx );
+		ret();
+				
+	end ne_s;
+	
+	
+	
+	
+	
+	procedure lt_i; @noframe;
+	begin lt_i;
+	
+		xor( edx, edx );
+		mov( nosEDI.i, eax );
+		cmp( eax, tosEDI.i );
+		setl( dl );
+		mov( edx, nosEDI.i );
+		ret();
+		
+	end lt_i;
+	
+	procedure lt_r; @noframe;
+	begin lt_r;
+	
+		xor( edx, edx );
+		fld( tosEDI.r );
+		fld( nosEDI.r );
+		fcompp();
+		fstsw( ax );
+		sahf();
+		setb( dl );
+		ret();
+		
+	end lt_r;
+	
+	procedure lt_s; @noframe;
+	begin lt_s;
+	
+		xor( edx, edx );
+		str.lt
+		(
+			nosEDI.s,
+			tosEDI.s
+		);
+		adc( 0, edx );
+		ret();
+				
+	end lt_s;
+	
+	
+	
+	
+	procedure le_i; @noframe;
+	begin le_i;
+	
+		xor( edx, edx );
+		mov( nosEDI.i, eax );
+		cmp( eax, tosEDI.i );
+		setle( dl );
+		mov( edx, nosEDI.i );
+		ret();
+		
+	end le_i;
+	
+	procedure le_r; @noframe;
+	begin le_r;
+	
+		xor( edx, edx );
+		fld( tosEDI.r );
+		fld( nosEDI.r );
+		fcompp();
+		fstsw( ax );
+		sahf();
+		setbe( dl );
+		ret();
+		
+	end le_r;
+	
+	procedure le_s; @noframe;
+	begin le_s;
+	
+		xor( edx, edx );
+		str.le
+		(
+			nosEDI.s,
+			tosEDI.s
+		);
+		adc( 0, edx );
+		ret();
+				
+	end le_s;
+	
+	
+	
+	
+	procedure gt_i; @noframe;
+	begin gt_i;
+	
+		xor( edx, edx );
+		mov( nosEDI.i, eax );
+		cmp( eax, tosEDI.i );
+		setg( dl );
+		mov( edx, nosEDI.i );
+		ret();
+		
+	end gt_i;
+	
+	procedure gt_r; @noframe;
+	begin gt_r;
+	
+		xor( edx, edx );
+		fld( tosEDI.r );
+		fld( nosEDI.r );
+		fcompp();
+		fstsw( ax );
+		sahf();
+		seta( dl );
+		ret();
+		
+	end gt_r;
+	
+	procedure gt_s; @noframe;
+	begin gt_s;
+	
+		xor( edx, edx );
+		str.gt
+		(
+			nosEDI.s,
+			tosEDI.s
+		);
+		adc( 0, edx );
+		ret();
+				
+	end gt_s;
+	
+	
+	
+	
+	procedure ge_i; @noframe;
+	begin ge_i;
+	
+		xor( edx, edx );
+		mov( nosEDI.i, eax );
+		cmp( eax, tosEDI.i );
+		setge( dl );
+		mov( edx, nosEDI.i );
+		ret();
+		
+	end ge_i;
+	
+	procedure ge_r; @noframe;
+	begin ge_r;
+	
+		xor( edx, edx );
+		fld( tosEDI.r );
+		fld( nosEDI.r );
+		fcompp();
+		fstsw( ax );
+		sahf();
+		setae( dl );
+		ret();
+		
+	end ge_r;
+	
+	procedure ge_s; @noframe;
+	begin ge_s;
+	
+		xor( edx, edx );
+		str.ge
+		(
+			nosEDI.s,
+			tosEDI.s
+		);
+		adc( 0, edx );
+		ret();
+				
+	end ge_s;
+	
+	
+	
+	type
+		RelAdrs	:record
+			iFunc	:procedure;
+			rFunc	:procedure;
+			sFunc	:procedure;
+		endrecord;
+		
+	readonly
+		eqFuncs	:RelAdrs := RelAdrs:[&eq_i, &eq_r, &eq_s];
+		neFuncs	:RelAdrs := RelAdrs:[&ne_i, &ne_r, &ne_s];
+		ltFuncs	:RelAdrs := RelAdrs:[&lt_i, &lt_r, &lt_s];
+		leFuncs	:RelAdrs := RelAdrs:[&le_i, &le_r, &le_s];
+		gtFuncs	:RelAdrs := RelAdrs:[&gt_i, &gt_r, &gt_s];
+		geFuncs	:RelAdrs := RelAdrs:[&ge_i, &ge_r, &ge_s];
+		
+		
+		
+	procedure RelOperators( var cmpFuncs:RelAdrs );
+	begin RelOperators;
+	
+
+		// Verify that the two operand types are compatible (or coerce them
+		// if they're not.
+		
+		MakeCompatible( edi );
+		
+		// Okay, compare the two operands, pop the second one, and store
+		// true (1) or false (0) over the top of the first one:
+		
+		if( al = Integer_c ) then
+		
+			// Compare two integers on the evaluation stack:
+			
+			mov( cmpFuncs, edx );
+			call( (type RelAdrs [edx]).iFunc );
+			mov( edx, nosEDI.i );
+			
+			// Pop the second item from the stack:
+			
+			sub( @size( Variant ), edi );
+			
+		elseif( al = Real_c ) then
+		
+			// Compare two reals on the evaluation stack:
+			
+			mov( cmpFuncs, edx );
+			call( (type RelAdrs [edx]).rFunc );
+			mov( edx, nosEDI.i );
+			mov
+			( 
+				Integer_c, 
+				nosEDI.DataType 
+			);
+			
+			// Remove the second value from the stack:
+			
+			sub( @size( Variant ), edi );
+			
+		elseif( al = String_c ) then
+		
+			// Compare two strings on the evaluation stack:
+			
+			mov( cmpFuncs, edx );
+			call( (type RelAdrs [edx]).sFunc );
+			mov( nosEDI.s, eax );		// Save this so we can free it.
+			mov( edx, nosEDI.i );
+			mov
+			( 
+				Integer_c, 
+				nosEDI.DataType 
+			);
+			
+			// Free up string storage:
+			
+			str.free( eax );
+			str.free( tosEDI.s );
+			
+			// Pop the second item from the stack:
+			
+			sub( @size( Variant ), edi );
+
+		elseif( al = Array_c ) then
+		
+			str.put( this.exceptionMsg, "'<' does not support array operands" );
+			raise( BasicErrorWithMsg );
+			
+		else
+		
+			str.put
+			( 
+				this.exceptionMsg,
+				"Internal BASIC error (memory corruption)" nl 
+			);
+			raise( BasicErrorWithMsg );
+
+		endif;
+			
+		
+	end RelOperators;
+	
+	
+	
+	
+	// AddOperators -
+	//	Handle the '+' and '-' operators here
+	
+	procedure AddOperators( operator: ReservedWords );
+	begin AddOperators;
+	
+		// Verify that the two operand types are compatible (or coerce them
+		// if they're not.
+		
+		MakeCompatible( edi );
+		
+		// At this point, the types of the two operands are identical.
+		// So addition (or concatentation) is pretty easy.
+		
+		if( al = Integer_c ) then
+
+			mov( nosEDI.i, eax );
+			if( operator = PLUStkn ) then
+			
+				add( tosEDI.i, eax );
+				
+			else
+			
+				sub( tosEDI.i, eax );
+				
+			endif;
+			mov( eax, nosEDI.i );
+			if( @o ) then
+			
+				str.put( this.exceptionMsg, "Integer overflow" );
+				raise( BasicErrorWithMsg );
+				
+			endif;
+			sub( @size( Variant ), edi );
+			
+		elseif( al = Real_c ) then
+		
+			fld( nosEDI.r );
+			if( operator = PLUStkn ) then
+			
+				fadd( tosEDI.r );
+				
+			else
+			
+				fsub( tosEDI.r );
+				
+			endif;
+			fstp( nosEDI.r );
+			sub( @size( Variant ), edi );
+			
+		elseif( al = String_c ) then
+		
+			if( operator = PLUStkn ) then
+			
+				str.a_cat
+				(
+					nosEDI.s,
+					tosEDI.s
+				);
+				str.free( nosEDI.s );
+				str.free( tosEDI.s ); 
+				mov( eax, nosEDI.s );
+				sub( @size( Variant ), edi );
+
+			else
+			
+				str.free( nosEDI.s ); 
+				str.free( tosEDI.s ); 
+				str.put( this.exceptionMsg, "'-' operand type mismatch"	);
+				raise( BasicErrorWithMsg );
+				
+			endif;
+						
+		elseif( al = Array_c ) then
+		
+			str.put
+			( 
+				this.exceptionMsg, 
+				"'+' and '-' do not support array operands" 
+			);
+			raise( BasicErrorWithMsg );
+			
+		endif;
+	
+	end AddOperators;
+	
+	
+	
+	
+	
+	
+	
+	// MulOperators -
+	//	Handle the '*', '/', and 'mod' operators here
+	
+	procedure MulOperators( operator: ReservedWords );
+	begin MulOperators;
+			
+		// Verify that the two operand types are compatible (or coerce them
+		// if they're not.
+		
+		MakeCompatible( edi );
+		
+		// At this point, the types of the two operands are identical.
+		// So multiplication is pretty easy.
+		
+		if( al = Integer_c ) then
+
+			mov( nosEDI.i, eax );
+			if( operator = MULtkn ) then
+			
+				intmul( tosEDI.i, eax );
+				mov( eax, nosEDI.i );
+				if( @o ) then
+				
+					str.put( this.exceptionMsg, "Integer overflow" );
+					raise( BasicErrorWithMsg );
+					
+				endif;
+				
+			else	// DIVtkn or MODtkn
+			
+				cdq();
+				if( tosEDI.i = 0 ) then
+				
+					str.put( this.exceptionMsg, "Divide by zero" );
+					raise( BasicErrorWithMsg );
+					
+				endif;
+				push( ebx );
+				push( ecx );
+				push( esi );
+				push( edi );
+				try
+				
+					idiv( tosEDI.i, edx:eax );
+					
+				  anyexception
+				  
+				  	add( 16, esp );		// Pop ebx, ecx, esi, edi push above
+				  	if( eax <> ex.DivideError ) then
+					
+						reraise( eax );
+						
+					endif;
+					str.put( this.exceptionMsg, "Division error" );
+					raise( BasicErrorWithMsg );
+					
+				endtry;
+				pop( edi );
+				pop( esi );
+				pop( ecx );
+				pop( ebx );
+				if( operator = DIVtkn ) then
+				
+					mov( eax, nosEDI.i );
+					
+				else
+				
+					mov( edx, nosEDI.i );
+					
+				endif;
+			
+			endif;
+			sub( @size( Variant ), edi );
+			
+		elseif( al = Real_c && operator <> MODtkn ) then
+		
+			fld( nosEDI.r );
+			if( operator = MULtkn ) then
+			
+				fmul( tosEDI.r );
+				
+			else
+			
+				fdiv( tosEDI.r );
+				
+			endif;
+			fstp( nosEDI.r );
+			sub( @size( Variant ), edi );
+			
+		else
+		
+			str.put
+			( 
+				this.exceptionMsg, 
+				"'*', '/', or 'mod' operand type mismatch"	
+			);
+			raise( BasicErrorWithMsg );
+			
+		endif;
+
+	end MulOperators;
+	
+	
+	
+	/////////////////////////////////////////////////////////////////////////
+	//
+	// Factor-
+	// 
+	// Handles IDs, constants, parenthetical expressions, and the 
+	// unary operators.
+	
+	
+	
+	procedure Factor( ip:dword in ecx; ExprStackPtr:dword in edi );
+		@noframe;
+		@returns( "al" );
+		
+	begin Factor;
+
+	  ZeroOrMoreFactors:
+	  
+		movzx( (type ReservedWords [ecx]), eax );
+		switch( eax )
+		
+		  case( INT1tkn )
+		
+			movzx( (type byte [ecx+1]), eax );
+			mov( eax, varEDI.i );
+			mov( Integer_c, al );
+			mov( al, varEDI.DataType );
+			add( @size( Variant ), edi );
+			add( 2, ecx );
+			ret();
+			
+		  case( INT2tkn )
+		
+			movzx( (type word [ecx+1]), eax );
+			mov( eax, varEDI.i );
+			mov( Integer_c, al );
+			mov( al, varEDI.DataType );
+			add( @size( Variant ), edi );
+			add( 3, ecx );
+			ret();
+			
+		  case( INT4tkn )
+		
+			mov( [ecx+1], eax );
+			mov( eax, varEDI.i );
+			mov( Integer_c, al );
+			mov( al, varEDI.DataType );
+			add( @size( Variant ), edi );
+			add( 5, ecx );
+			ret();
+			
+		  case( FLT4tkn )
+		
+			fld( (type real32 [ecx+1]) );
+			fstp( varEDI.r );
+			mov( Real_c, al );
+			mov( al, varEDI.DataType );
+			add( @size( Variant ), edi );
+			add( 5, ecx );
+			ret();
+			
+		  case( FLT8tkn )
+		
+			mov( [ecx+1], eax );
+			mov( eax, (type dword varEDI.r) );
+			mov( [ecx+5], eax );
+			mov( eax, (type dword varEDI.r[4]) );
+			mov( Real_c, al );
+			mov( al, varEDI.DataType );
+			add( @size( Variant ), edi );
+			add( 9, ecx );
+			ret();
+			
+		 case( STRtkn )
+		
+			// Push a string object onto the evaluation stack:
+
+			add( 1, ecx );
+			movzx( (type byte [ecx]), edx );
+
+			stralloc( edx );
+			mov( eax, varEDI.s );
+			mov( String_c, varEDI.DataType );
+			mov( edx, (type str.strRec [eax]).length );
+			add( @size( Variant ), edi );
+			
+			// Copy the string data:
+
+			push( ecx );
+			push( esi );
+			push( edi );
+			lea( esi, [ecx+1] );
+			mov( eax, edi );
+			mov( edx, ecx );
+			cld();
+			rep.movsb();
+			mov( 0, (type byte [edi]));
+			pop( edi );
+			pop( esi );
+			pop( ecx );
+			
+			// Okay, skip over the string in the source code:
+
+			add( edx, ecx );
+			add( 1, ecx );
+
+			mov( String_c, al );
+			ret();
+			
+			
+			
+		  case( IDtkn1, IDtkn2 )
+		
+			// Get the symbol index into edi and skip the token ID and index:
+			
+			push( ebx );
+			if( al = IDtkn1 ) then
+			
+				movzx( (type byte [ecx+1]), ebx );
+				add( 2, ecx );
+				
+			else
+			
+				movzx( (type word [ecx+1]), ebx );
+				add( 3, ecx );
+				
+			endif;
+			
+			// Compute index into this.varData array:
+			
+			mov( ebx, eax );
+			intmul( @size( Variant ), ebx );
+			
+			// Compute address of this particular symbols varData entry:
+			
+			mov( this.varData, edx );
+			add( ebx, edx );
+			pop( ebx );
+			push( eax );	// Save index, in case symbol is undefined.
+			
+			// Process any needed array indexes:
+			
+			while( varEDX.DataType = Array_c ) do
+			
+				// Okay, we've got an array.  Let's verify that an appropriate
+				// index follows this variable in the token stream.
+				
+				if( (type byte [ecx]) <> LBRACKtkn ) then
+				
+					str.put
+					(
+						this.exceptionMsg,  
+						"Expected an array index"
+					);
+					raise( BasicErrorWithMsg );
+					
+				endif;
+				inc( ecx );
+				push( edx );				// Save ptr to variable.
+				this.evalRPN( ecx, edi );	// Get index expression.
+				pop( edx );					// Restore pointer.
+
+				// Deal with the index here:
+				
+				mov( tosEDI.DataType, al );
+				if( al = String_c ) then
+				
+					StrToNumber( edi );
+					
+				endif;
+				if( al <> Integer_c ) then
+				
+					str.put
+					( 
+						this.exceptionMsg, 
+						"Array index must be an integer expression" 
+					);
+					raise( BasicErrorWithMsg );
+					
+				endif;
+				
+				// Now check the bounds of the array:
+				
+				mov( tosEDI.i, eax );
+				
+
+				sub( @size( Variant ), edi );	// Remove index from stack.
+				if( eax >= varEDX.a.elements ) then
+				
+					str.put
+					(
+						this.exceptionMsg,  
+						"Array bounds violation ",
+						nl
+						"Index = ",
+						(type uns32 eax),
+						" must be less than ",
+						varEDX.a.elements,
+						nl
+					);
+					raise( BasicErrorWithMsg );
+					
+				endif;
+				
+				// Okay, now select the specied element:
+				
+				mov( varEDX.a.array, edx );
+				intmul( @size( Variant ), eax );
+				lea( edx, [edx+eax] ); 
+
+				// Skip over the ']' token.
+				
+				inc( ecx );			
+		 
+				
+			endwhile;
+			pop( ebx );		// Retrieve symbol index in case symbol is undefined.
+			
+			// Push the variable's value onto the expression stack:
+			
+			mov( varEDX.DataType, al ); 
+			if( al = Integer_c ) then
+			
+				mov( al, varEDI.DataType );
+				mov( varEDX.i, edx );
+				mov( edx, varEDI.i );
+				add( @size( Variant ), edi );
+				ret();
+				
+			endif;
+			
+			if( al = Real_c ) then
+			
+				mov( al, varEDI.DataType );
+				fld( varEDX.r );
+				fstp( varEDI.r );
+				add( @size( Variant ), edi );
+				ret();
+				
+			endif;
+			
+			if( al = String_c ) then
+			
+				mov( al, varEDI.DataType );
+				str.a_cpy( varEDX.s );
+				mov( eax, varEDI.s );
+				add( @size( Variant ), edi );
+				mov( String_c, al );
+				ret();
+				
+			endif;
+			
+			if( al = Undefined_c ) then
+			
+				str.put
+				( 
+					this.exceptionMsg, 
+					"Attempt to use uninitialized variable: " 
+				);
+				shl( 2, ebx );				// ebx*4
+				add( this.symbols, ebx );
+				str.cat( (type string [ebx]), this.exceptionMsg );
+				raise( BasicErrorWithMsg );
+				
+			endif;
+			
+			str.put( this.exceptionMsg, "Unsupported variable type in expression" );
+			raise( BasicErrorWithMsg );
+						
+			
+		  ///////////////////////////////////////
+		  
+		  case( LBRACKtkn )
+		  
+		  	str.put( this.exceptionMsg, "Unexpected array index" );
+			raise( BasicErrorWithMsg );
+			
+			
+		  case( LPARENtkn )
+		
+			inc( ecx );
+			this.evalRPN( ecx, edi );
+			inc( ecx );				// Skip RPARENtkn
+			ret();
+			
+			
+		  
+		endswitch;
+		
+		
+		str.put
+		( 
+			this.exceptionMsg, 
+			"Illegal factor token: ", 
+			(type byte [ecx]),
+			" at offset ",
+			ecx,
+			nl
+			"Start of line: ", 
+			ebx,
+			nl 
+		);
+		raise( BasicErrorWithMsg );
+		 
+	end Factor;
+	
+	
+	
+	
+	
+	/////////////////////////////////////////////////////////////////////////
+	//
+	// PseudoVariables-
+	// 
+	// Handles pseudovariables that appear within an expression.
+	
+	
+	
+	procedure PseudoVariables( ip:dword in ecx; ExprStackPtr:dword in edi );
+		@noframe;
+		@returns( "al" );
+		
+		// Macro used to read a pseudo-variable's value that is
+		// found in an expression:
+		
+	begin PseudoVariables;
+
+		movzx( (type byte [ecx]), eax );
+		switch( eax )
+		
+			case( PVtkn1 )
+			
+				movzx( (type byte [ecx+1]), eax );	// Get pseudo-var ID #
+				
+			case( PVtkn2 )
+			
+				movzx( (type byte [ecx+1]), eax );	// Get pseudo-var ID #
+				add( 256, eax );
+				
+			case( PVtkn3 )
+			
+				movzx( (type byte [ecx+1]), eax );	// Get pseudo-var ID #
+				add( 512, eax );
+				
+			case( PVtkn4 )
+			
+				movzx( (type byte [ecx+1]), eax );	// Get pseudo-var ID #
+				add( 768, eax );
+				
+			case( PVtkn )
+			
+				movzx( (type word [ecx+1]), eax );	// Get pseudo-var ID #
+				add( 1, ecx );						// Skip extra ID # byte.
+
+		endswitch;				
+				
+		add( 2, ecx );		// Skip token & ID #
+		switch( eax )
+		
+			// The following loop emits all the cases for the
+			// pseudo-variables defined in the pseudoVars record
+			// (see basic.hhf).  
+			
+			#for( _i_ := 0 to  @elements( pseudoVars )-1 )
+			
+				case
+				( 
+					@text( pseudoVars[_i_].identifier + "_tkn" )
+				)
+				
+					readPV( pseudoVars[_i_] );
+					
+			#endfor
+				
+		
+			default
+			
+				this.pseudoVarExtensions( true, edi );
+				
+		endswitch;
+		ret();
+		 
+	end PseudoVariables;
+	
+	
+	
+	
+	
+	/////////////////////////////////////////////////////////////////////////
+	//
+	// Functions-
+	// 
+	// Handles built-in functions.
+	
+	procedure Functions( ip:dword in ecx; ExprStackPtr:dword in edi );
+		@noframe;
+		@returns( "al" );		
+				 
+	readonly
+		funcTable	:dword[@elements( functions_c )] :=
+			[
+				#for( _i_ := 0 to @elements( functions_c )-1 )
+				
+					&@text( functions_c[_i_].identifier + "_f" ),
+					
+				#endfor
+			];
+			
+	begin Functions;
+
+		add( 1, ecx );
+		movzx( (type byte [ecx]), eax );
+		if( eax < @elements( functions_c )) then
+		
+			jmp(funcTable[eax*4]);
+			
+		endif;
+		if( !this.functionExtensions( edi ) ) then
+		
+		
+			str.put
+			( 
+				this.exceptionMsg, 
+				"Illegal function token: ", 
+				(type byte [ecx]),
+				" at offset ",
+				ecx,
+				nl
+				"Start of line: ", 
+				ebx,
+				nl 
+			);
+			raise( BasicErrorWithMsg );
+			
+		endif;
+		ret();
+		 
+	end Functions;
+	
+	
+	
+	
+	
+	
+	
+// evalRPN-
+// Evaluate an expression (stored in reverse-polish notation):
+
+begin evalRPN;
+
+	push( esi );			// Save "this"
+	forever
+	
+		movzx( (type byte [ecx]), eax );
+		movzx( (type byte RWTypes[eax]), edx );
+		switch( edx )
+		
+			case( exprTerm_c )
+		
+				Factor( ecx, edi );
+		
+			case( exprFunc_c )
+		
+				Functions( ecx, edi );
+		
+			case( exprVar_c )
+
+				PseudoVariables( ecx, edi );
+				
+			case( exprUnaryOp_c )
+						
+				add( 1, ecx );		// Skip token
+				switch( eax )
+
+					case( NEGtkn )
+
+						mov( tosEDI.DataType, al );
+						if( al = Integer_c ) then
+
+							neg( tosEDI.i );
+							
+						elseif( al = Real_c ) then
+
+							fld( tosEDI.r );
+							fchs();
+							fstp( tosEDI.r );
+							
+						else
+
+							str.put
+							(	
+								this.exceptionMsg, 
+								"Type mismatch error in expression"	
+							);
+							raise( BasicErrorWithMsg );
+							
+						endif;
+
+					case( NOTtkn )
+
+						mov( tosEDI.DataType, al );
+						if( al = Integer_c ) then
+
+							cmp( tosEDI.i, 0 );
+							mov( 0, tosEDI.i );
+							sete( (type byte tosEDI.i) );
+							
+						else
+
+							str.put
+							( 
+								this.exceptionMsg, 
+								"Type mismatch error in expression" 
+							);
+							raise( BasicErrorWithMsg );
+							
+						endif;
+						
+				endswitch;
+			
+			
+			
+			case( exprOperator_c )
+		
+				add( 1, ecx );		// Skip token
+				switch( eax )
+				
+					case( ORtkn )
+					
+						twoInts( edi, "OR" );
+				
+						// Okay, compute the arithmetic OR of the two operands:
+						
+						xor( edx, edx );
+						mov( tosEDI.i, eax );
+						or( nosEDI.i, eax );
+						setne( dl );
+						mov( edx, nosEDI.i );
+						sub( @size( Variant ), edi );
+
+					case( ANDtkn )					
+					
+						twoInts( edi, "OR" );
+				
+						// Okay, compute the arithmetic AND of the two operands:
+						
+						xor( edx, edx );
+						cmp( tosEDI.i, 0 );
+						setne( dl );
+						cmp( nosEDI.i, 0 );
+						setne( ah );
+						and( ah, dl );
+						mov( edx, nosEDI.i );
+						sub( @size( Variant ), edi );
+						
+					case( EQtkn )
+					
+						RelOperators( eqFuncs );
+					
+					case( NEtkn )
+					
+						RelOperators( neFuncs );
+					
+						
+					case( LTtkn )
+					
+						RelOperators( ltFuncs );
+					
+					case( LEtkn )
+					
+						RelOperators( leFuncs );
+					
+						
+					case( GTtkn )
+					
+						RelOperators( gtFuncs );
+					
+					case( GEtkn )
+					
+						RelOperators( geFuncs );						
+						
+						
+					case( PLUStkn, MINUStkn )
+					
+						AddOperators( al );
+						
+					case( MULtkn, DIVtkn, MODtkn );
+					
+						MulOperators( al );
+		  
+						
+						
+				endswitch;
+			
+			default	 
+						
+				mov( tosEDI.DataType, al );
+				break;
+			
+		endswitch;
+		
+	endfor;
+	pop( esi );		// Restore "this"			
+		
+end evalRPN;		
+		
+/****************************************************************************/			
+
+
+procedure rtPgmClass.evalExpr( ip :dword in ecx );	@noframe; 
+begin evalExpr;
+
+	push( ebx );
+	push( edx );
+	pushfd();
+	
+	
+	lea( edi, this.ExprStack );
+	this.evalRPN( ecx, edi );
+	sub( @size( Variant ), edi );
+	
+	#if( @defined( DEBUG ))
+	
+		lea( ebx, this.ExprStack );
+		if( edi <> ebx ) then
+		
+			str.put
+			( 
+				this.exceptionMsg, 
+				"Evaluation stack error! (internal error)", 
+				nl
+				"EDI = ", edi, nl
+				"EBX = ", ebx, nl 
+			);
+			raise( BasicErrorWithMsg );
+			
+		endif;
+		
+	#endif
+	
+	popfd();
+	pop( edx );
+	pop( ebx );
+	ret();
+	
+end evalExpr;
+
+
+
+/************************************************************/
+/*                                                          */
+/* Deallocate-                                              */
+/*                                                          */
+/* Whenever we assign a value to a variable, we need to     */
+/* deallocate any storage previously held by that variable. */
+/* This routine handles that chore.                         */
+/*                                                          */
+/* Input:                                                   */
+/* 	EAX-	Contains a pointer to the VALUE entry	        */
+/* 			for the specified identifier.                   */
+/*                                                          */
+/************************************************************/
+			
+
+procedure Deallocate( var valPtr:Variant in eax ); @noframe; 
+begin Deallocate;
+
+	push( eax );
+	push( edx );
+	push( edi );
+	mov( eax, edx );
+	if( varEDX.DataType = Array_c ) then
+	
+		// We've got an array.  Recursively call
+		// this function on each element of the array.
+		// Note that HLABasic array elements can be
+		// different types, so we must iterate over each
+		// element.
+		
+
+		mov( varEDX.a.elements, edi );
+		mov( varEDX.a.array, eax );
+		test( edi, edi );
+		while( @nz ) do
+		
+			Deallocate( [eax] );
+			add( @size( Variant ), eax );
+			dec( edi );
+			
+		endwhile;
+		mem.free( varEDX.a.array );
+		
+		
+	else // It's a scalar variable
+	
+		// If it's a string, we've got to free the data associated
+		// with the string data.  If it's some other data type,
+		// we don't have to do anything.
+		
+		if( varEDX.DataType = String_c ) then
+		
+			str.free( varEDX.s );
+			
+		elseif(	varEDX.DataType = Label_c ) then
+		
+			raise( AttemptToDeallocateLabel );
+			
+		endif;
+		 
+	endif;
+	pop( edi );
+	pop( edx );
+	pop( eax );
+	ret();
+
+end Deallocate;
+
+
+
+
+
+
+
+/**************************************************************/
+/*                                                            */
+/* ProcessIndex-                                              */
+/*                                                            */
+/* Checks for a "[" after a variable name.                    */
+/* If present, and the variable is an array object,           */
+/* this code computes the index of the specified              */
+/* array element.                                             */
+/*                                                            */
+/* Inputs-                                                    */
+/* 	EDX-	Points at the hash table entry for the variable.  */
+/* 	ECX-	Points at the first token beyond the var address. */
+/* 	                                                          */
+/* Outputs-                                                   */
+/* 	EDX-	Pointer to variant object (scalar variable or     */
+/*          the array element).	                              */
+/*                                                            */
+/**************************************************************/
+
+
+method rtPgmClass.ProcessIndex( ip:dword in ecx; index:dword in edx );
+begin ProcessIndex;
+
+	// If a bracket follows the ID, then we've
+	// got an array index.  Process that.
+
+	while( (type byte [ecx]) = LBRACKtkn ) do
+
+		push( edx );	// Save value ptr for later.
+		
+		// Make sure this is an array variable before
+		// we go any farther:
+		
+		if( varEDX.DataType <> Array_c ) then
+		
+			str.put
+			( 
+				this.exceptionMsg,
+				"Attempt to index non-array variable" 
+			);
+			raise( BasicErrorWithMsg );
+		
+		endif;
+
+		// Evaluate the expression inside the brackets:
+		
+		inc( ecx );					// Skip the "[" token.
+		this.evalExpr( ecx );		// Get Index value.
+		inc( ecx );					// Skip the "]" token.
+		if( al = String_c ) then
+		
+			// If the index is a string value,
+			// attempt to convert it to an integer.
+			
+			StrToNumber( esi );
+			
+		endif;
+		if( al <> Integer_c ) then
+		
+			str.put
+			(
+				this.exceptionMsg,
+				"Expected an integer array index"
+			);
+			raise( BasicErrorWithMsg );
+			
+		endif;
+		pop( edx );							// Retrieve var pointer
+		mov( this.ExprStack.i, eax );		// Get index
+		if( eax >= varEDX.a.elements ) then
+		
+			str.put
+			( 
+				this.exceptionMsg, 
+				"Array bounds exceeded" nl
+				"Index = ",
+				(type uns32 eax),
+				nl
+				"Maximum bound = ",
+				(type uns32 varEDX.a.elements), nl
+			);
+			raise( BasicErrorWithMsg );
+			
+		endif;
+
+		// Compute the address of the desired element:
+		
+		intmul( @size( Variant ), eax );
+		mov( (type dword varEDX.a.array), edx );
+		lea( edx, [edx+eax] );
+
+	endwhile;
+
+end ProcessIndex;
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// resume-
+//
+//	Resumes execution of a suspended HLA Basic program.
+
+
+method rtPgmClass.resume;
+var
+	InputStr		:string;
+	VarPtr			:dword;
+	index			:dword;
+	
+begin resume;
+
+	pushad();
+	
+	// Okay, this.ip contains the address of the statement
+	// where we are to begin program execution.  Move this
+	// into EBX and begin program execution:
+	
+	mov( this.ip, ebx );					// Get base adrs of current line.
+	forever									// For all statements in the program.
+	
+		mov( this.offset, ecx );
+		push( esi );						// Preserve "this" pointer.
+		begin EachStmt;
+		
+			forever							// For all stmts on the line.
+		
+				movzx( (type byte [ecx]), eax );
+				switch( eax )
+
+					case( BEEPtkn )
+					
+						stdout.putc( stdio.bell );
+						add( 1, ecx );
+						
+					case( CLStkn )
+					
+						console.cls();
+						add( 1, ecx );
+						
+					
+					case( COLORtkn )
+					
+						//	COLOR expr, expr
+					
+						add( 1, ecx );				// Skip the COLOR token.
+						this.evalExpr( ecx );		// Get foreground value.
+						this.makeInt( al, "COLOR requires integer operands" );
+						and( $f, eax );
+						push( eax );
+						add( 1, ecx );				// Skip the "," token.
+						this.evalExpr( ecx );		// Get the background color.
+						this.makeInt( al, "COLOR requires integer operands" );
+						pop( edx );
+						and( $f, eax );
+						console.setAttrs( edx, eax );
+					
+						
+					
+					
+					case( DEBUGtkn )
+					
+						xor( true, this.debugFlag );
+						add( 1, ecx );
+						
+					case( ELSEtkn )
+					
+						// The only way we hit an ELSEtkn is by
+						// falling into it from the THEN section.
+						// So we must transfer control to the target
+						// address (the ENDIF).
+						
+						movzx( (type word [ecx+1]), ebx );
+						add( this.TxtStart, ebx );
+						mov( ebx, this.ip );
+						lea( ecx, (type StmtRec [ebx]).stmt );
+						
+						
+					case( ELSEIFtkn )
+					
+						// The only way we hit an ELSEIFtkn is by
+						// falling into it from the THEN section of
+						// an IF or ELSEIF.  So we must transfer 
+						// control to the target address (the next
+						// ENDIF).
+						
+						// Note that the target address is two bytes
+						// beyond the ELSEIF token because an ELSEIFtkn2
+						// token immediately follows the ELSEIF token.
+						
+						movzx( (type ElseIfStmt [ebx]).endIndex, ebx );
+						add( this.TxtStart, ebx );
+						mov( ebx, this.ip );
+						lea( ecx, (type StmtRec [ebx]).stmt );
+						mov( [ecx], al );
+						while( al <> ENDIFtkn ) do
+						
+							if( al = ELSEIFtkn ) then
+							
+								movzx( (type ElseIfStmt [ebx]).endIndex, ebx );
+							
+							elseif( al = ELSEtkn ) then
+							
+								movzx( (type IfStmt [ebx]).endIndex, ebx );
+
+							else
+							
+								sub( this.TxtStart, ebx );
+								str.put
+								( 
+									(type rtPgmClass [esi]).exceptionMsg, 
+									"Internal BASIC error! (Expected ENDIF) "
+									nl
+									"Token = $", al, 
+									nl
+									" Offset=$", ebx,  
+									nl 
+								);
+								raise( BasicErrorWithMsg );
+							
+							endif;
+							add( this.TxtStart, ebx );
+							mov( ebx, this.ip );
+							lea( ecx, (type StmtRec [ebx]).stmt );
+							mov( [ecx], al );
+							
+						endwhile; 
+						
+						
+					case( ELSEIFtkn2 )
+					
+						// ELSEIFtkn2 is treated exactly like an IFtkn
+						// except for the fact that we print "ELSEIF" in
+						// any error messages:
+					
+		 				add( 3, ecx );			// Skip ELSEIFtkn and stmt offset
+						this.evalExpr( ecx );
+						this.makeInt
+						( 
+							al, 
+							"ELSEIF requires an integer expression" 
+						);
+						
+						mov( this.ExprStack.i, eax );
+						if( !eax ) then
+						
+							// Expression is false, so transfer
+							// control to the ELSEIF, ELSE, or ENDIF clause:
+							
+							movzx( (type ElseIfStmt [ebx]).endIndex, ebx );
+							add( this.TxtStart, ebx );
+							mov( ebx, this.ip );
+							if( (type StmtRec [ebx]).stmt = ELSEtkn ) then
+							
+								// Skip ELSE token and target offset.
+								
+								lea( ecx, (type StmtRec [ebx]).stmt[3] ); 
+								
+							else // Must be ENDIF or ELSEIF
+								
+								// Skip ENDIF or ELSEIF token:
+								
+								lea( ecx, (type StmtRec [ebx]).stmt[1] );
+								
+							endif;
+							
+						else
+						
+							// Expression is true, so skip over
+							// the THEN token and continue.
+							
+							add( 1, ecx );
+							
+						endif;
+						
+						
+						
+					case( ENDIFtkn )
+					
+						add( 1, ecx );		// Just skip over this token.
+						
+						
+					case( ENDWHILEtkn )
+					
+						// First, make sure that we've got an active WHILE
+						// statement:
+						
+						lea( eax, this.WhileStack );
+						if( eax = this.WhileStackPtr ) then
+						
+							str.put
+							( 
+								this.exceptionMsg, 
+								"ENDWHILE without WHILE" 
+							);
+							raise( BasicErrorWithMsg );
+							
+						endif;	 
+					
+						// Evaluate the while expression and
+						// repeat the loop if true.
+						//
+						// First, save index to ENDWHILE token
+						// in case the expression evaluates false.
+						 
+						mov( ebx, this.ip );
+						mov( ecx, this.offset );
+						
+						// Okay, point EBX/ECX at the original WHILE
+						// expression and go and evaluate it:
+
+						mov( this.WhileStackPtr, ebx );
+						sub( @size( WhileRecord ), ebx );
+						mov( (type WhileRecord [ebx]).Line, ebx );
+						lea( ecx, (type StmtRec [ebx]).stmt[3] );
+						this.evalExpr( ecx );
+						this.makeInt
+						( 
+							al, 
+							"WHILE requires an integer expression" 
+						);
+						
+						mov( this.ExprStack.i, eax );
+						if( !eax ) then
+						
+							// Expression is false, so transfer
+							// control to the stmt following the
+							// ENDWHILE clause:
+							
+							sub( @size( WhileRecord ), this.WhileStackPtr );
+
+							mov( this.ip, ebx );
+							mov( this.offset, ecx );
+							add( 1, ecx );			// Skip ENDWHILE tkn
+							
+						else
+						
+							// Expression is true, so skip over
+							// the DO token and continue.
+							
+							add( 1, ecx );
+							mov( ebx, this.ip );
+							mov( ecx, this.offset );
+							
+						endif;
+						
+					
+					
+					case( FORtkn )
+					
+						//	FOR var = expr TO expr {STEP expr}
+						
+						mov( this.ForStackPtr, eax );
+						mov( ebx, (type ForRecord [eax]).Line );
+						
+						// Get the loop-control variable's index
+						// and calculate the address of the loop-
+						// control variable:
+						
+						movzx( (type word [ecx+3]), edx );
+						intmul( @size( Variant ), edx );
+						add( this.varData, edx );
+						
+						// Save on the FOR loop stack"
+						
+						mov( edx, (type ForRecord [eax]).VarAdrs );
+						
+						push( edx );	// Save VarPtr for later use.
+						add( 5, ecx );	// Skip FORtkn, adrs, and ID bytes.
+						
+						// Compute the value of the starting expression:
+						
+						this.evalExpr( ecx );
+						this.makeInt( al, "FOR loop expression must be integer" );
+						
+						// Free up the data associated with the loop
+						// control variable:
+						
+						Deallocate( val (type dword [esp]) );
+						
+						// Assign the value of the starting expression
+						// to the loop control variable.
+						
+						mov( [esp], edi );
+						mov( Integer_c, varEDI.DataType );						
+						mov( this.ExprStack.i, eax );
+						mov( eax, varEDI.i );
+						
+						// Skip over the "TO" token:
+						
+						add( 1, ecx );
+						
+						// Evaluate the final loop value expression:
+						
+						this.evalExpr( ecx );
+						this.makeInt
+						( 
+							al,
+							"FOR loop ending expression must be integer" 
+						);
+												
+						// Save the ending expression value in the
+						// FORLOOP stack data structure.
+						
+						mov( this.ForStackPtr, edi );
+						mov( this.ExprStack.i, eax );
+						mov( eax, (type ForRecord [edi]).Limit );
+						
+						// Check to see if there is a STEP token:
+						
+						if( (type ReservedWords [ecx]) = STEPtkn ) then
+						
+							add( 1, ecx );		// Skip the STEP token.
+
+							// Evaluate the increment expression:
+							
+							this.evalExpr( ecx );
+							this.makeInt
+							( 
+								al,
+								"FOR loop STEP expression "
+								"must be an integer" 
+							);
+													
+							// Save the step expression value in the
+							// FORLOOP stack data structure.
+							
+							mov( this.ForStackPtr, edi );
+							mov( this.ExprStack.i, eax );
+							mov( eax, (type ForRecord [edi]).Increment );
+							
+							
+						else
+						
+							// If no STEP expression, then set the
+							// increment value to +1.
+							
+							mov( 1, (type ForRecord [edi]).Increment );
+							
+						endif;
+						
+						// Save away the pointer to the end of the statement
+						// into the FOR record:
+						
+						mov( this.ForStackPtr, edi );
+						mov( ecx, (type ForRecord [edi]).Stmt );
+						
+						// Determine if we should even execute this
+						// FOR loop once:
+						
+						pop( edx );		// Retrieve ptr to Loop Ctrl Var.
+						mov( varEDX.i, eax );  // Get its value.
+						
+						if( (type ForRecord [edi]).Increment < 0 ) then
+						
+							// The STEP value is negative, so ensure
+							// that the loop control variable is greater
+							// than or equal to the Limit value.
+							
+							if( eax < (type ForRecord [edi]).Limit ) then
+							
+								// Don't execute this loop even once.
+								// Immediately skip to the statement following
+								// the NEXT <ID> clause:
+								
+								movzx( (type ForStmt [ebx]).nextIndex, ebx );
+								add( this.TxtStart, ebx );
+								mov( ebx, this.ip );
+
+								// Skip over NEXT clause.
+								
+								mov( (type NextStmt [ebx]).idTknIndex, al );
+								if( al = IDtkn1  ) then
+								
+									lea( ecx, [ebx+@size( StmtRec ) + 3] );
+									
+								elseif( al = IDtkn2  ) then
+								
+									lea( ecx, [ebx+@size( StmtRec ) + 4] );
+									
+								else
+								
+									lea( ecx, [ebx + @size( StmtRec ) + 1] );
+									
+								endif;
+
+							else
+							
+								// Push the FOR data onto the FOR stack:
+								
+								add( @size( ForRecord ), this.ForStackPtr );
+								
+							endif;
+							
+						else 
+						
+							// The step value is non-negative.  Therefore,
+							// we execute the body of the loop if the loop
+							// control variable's value is less than or equal
+							// to the final value.
+
+							if( eax > (type ForRecord [edi]).Limit ) then
+							
+								// Don't execute this loop even once.
+								// Immediately skip to the statement following
+								// the NEXT <ID> clause:
+								
+								movzx( (type ForStmt [ebx]).nextIndex, ebx );
+								add( this.TxtStart, ebx );
+								mov( ebx, this.ip );
+
+								// Skip over NEXT clause.
+								
+								mov( (type NextStmt [ebx]).idTknIndex, al );
+								if( al = IDtkn1  ) then
+								
+									lea( ecx, [ebx+@size( StmtRec ) + 3] );
+									
+								elseif( al = IDtkn2  ) then
+								
+									lea( ecx, [ebx+@size( StmtRec ) + 4] );
+									
+								else
+								
+									lea( ecx, [ebx + @size( StmtRec ) + 1] );
+									
+								endif;
+
+							else
+							
+								// Push the FOR data onto the FOR stack:
+								
+								add( @size( ForRecord ), this.ForStackPtr );
+								
+							endif;
+							
+						endif;
+															
+						
+						
+						 
+						 
+						
+					case( GOSUBtkn )
+					
+						// Skip GOSUBtkn and dest index.
+						
+						add( 3, ecx );
+						push( ecx );	// Save pointer(+2) to dest index
+						
+						// If there are any parameters, copy them to ParmStack:
+
+						mov( 0, this.ParmStackCnt );
+						lea( eax, this.ParmStack    );
+						mov( eax, this.ParmStackPtr );
+						if( (type byte [ecx]) > StmtSeptkn ) then
+						
+							repeat
+
+								// Evaluate the parameter expression:
+								
+								this.evalExpr( ecx );
+								
+								// Push the value of the expression onto
+								// the parameter stack:
+								
+								if( this.ParmStackCnt < this.maxParmStackSize ) then
+								
+									push( ebx );
+									mov( this.ParmStackPtr, ebx );
+									add( @size( Variant ), this.ParmStackPtr );
+									?i_ct := 0;
+									#while( i_ct < @size( Variant ))
+									
+										mov( [edi + i_ct], eax );
+										mov( eax, [ebx+i_ct] );
+										?i_ct += 4;
+										
+									#endwhile
+									add( 1, this.ParmStackCnt );
+									pop( ebx );
+ 	
+								else
+								
+									str.put
+									( 
+										this.exceptionMsg,
+										"Too many parameters", nl 
+									);
+									raise( BasicErrorWithMsg );
+								
+								endif; 
+								 
+								mov( [ecx], al );
+								if( al = COMMAtkn ) then
+								
+									add( 1, ecx );
+									mov( [ecx], al );
+									
+								endif;
+								
+							until( al <= StmtSeptkn );
+							
+						endif;
+						
+						// Push the return address onto the GOSUB stack:
+						
+
+						mov( this.GosubStackPtr, eax );
+						mov( ecx, (type GosubRecord [eax]).RtnAdrs );
+						mov( ebx, (type GosubRecord [eax]).LinePtr );
+						add( @size( GosubRecord ), eax );
+						mov( eax, this.GosubStackPtr );
+						lea( edx, this.GosubStack[ @size(pgmClass.GosubStack)  ] );
+						if( eax >= edx ) then
+						
+							str.put( this.exceptionMsg,"Too many nested GOSUBs" );
+							raise( BasicErrorWithMsg );
+							
+						endif;
+						
+						// Transfer control to the specified statement:
+						
+						pop( ecx );							// Retrieve target index
+						movzx( (type word [ecx-2]), edi );  // Get symbol index.
+						intmul( @size( Variant ), edi );
+						add( this.varData, edi );
+						mov( varEDI.l, ecx );
+						
+						// If the symbol is undefined or is not a label, 
+						// then stop the program.
+												
+						if( varEDI.DataType <> Label_c ) then
+						
+							str.put( this.exceptionMsg,"GOSUB to undefined label " );
+							raise( BasicErrorWithMsg );
+							
+						endif;
+						
+						// Okay, the statement label exists.  Update all of
+						// our pointers and begin execution of the new stmt.
+						//
+						// Point at first token on line:
+						
+						mov( ecx, ebx );
+						lea( ecx, (type StmtRec [ebx]).stmt );
+						mov( ebx, this.ip ); 
+						
+						// Since we're not dropping down to the code that
+						// handles new statements, check the DEBUG flag to
+						// determine if we should print trace information.
+						
+						if( this.debugFlag ) then
+						
+							DoDebug( (type StmtRec [ebx]).lineNum );
+							
+						endif;						
+						
+							
+												
+					case( GOTOtkn )
+					
+						// Immediately following the GOTO token is index
+						// of the target label.
+						
+						movzx( (type word [ecx+1]), edi );
+						intmul( @size( Variant ), edi );
+						add( this.varData, edi );
+						
+						mov( varEDI.l, ecx );
+						
+						// If the symbol is undefined or is not a label, 
+						// then stop the program.
+												
+						if( varEDI.DataType <> Label_c ) then
+						
+							str.put( this.exceptionMsg,"GOSUB to undefined label " );
+							raise( BasicErrorWithMsg );
+							
+						endif;
+						
+						// Okay, the statement label exists.  Update all of
+						// our pointers and begin execution of the new stmt.
+						//
+						// Point at first token on line:
+						
+						mov( ecx, ebx );
+						lea( ecx, (type StmtRec [ebx]).stmt );
+						mov( ebx, this.ip ); 
+						
+						// Since we're not dropping down to the code that
+						// handles new statements, check the DEBUG flag to
+						// determine if we should print trace information.
+						
+						if( this.debugFlag ) then
+						
+							DoDebug( (type StmtRec [ebx]).lineNum );
+							
+						endif;						
+						
+							
+												
+						
+						
+						
+					case( GOTOXYtkn )
+					
+						//	GOTOXY expr, expr
+					
+						add( 1, ecx );			// Skip the GOTOXY token.
+						this.evalExpr( ecx );	// Get the x-coordinate value.
+						this.makeInt( al, "GOTOXY requires integer operands" );
+						push( eax );
+						add( 1, ecx );			// Skip the "," token.
+						this.evalExpr( ecx );	// Get the y-coordinate.
+						this.makeInt( al, "GOTOXY requires integer operands" );
+						pop( edx );
+						try
+						
+							console.gotoxy( edx, eax );
+							
+						  anyexception
+						  
+						  	str.put
+							( 
+								this.exceptionMsg,
+								"Cursor position is out of range" 
+							);
+							raise( BasicErrorWithMsg );
+							
+						endtry;
+							
+												
+					
+					case( IFtkn )
+					
+		 				add( 3, ecx );				// Skip IFtkn and stmt offset
+						this.evalExpr( ecx );
+						this.makeInt
+						( 
+							al, 
+							"IF requires an integer expression" 
+						);
+						
+						mov( this.ExprStack.i, eax );
+						if( !eax ) then
+						
+							// Expression is false, so transfer
+							// control to the ELSEIF, ELSE, or ENDIF clause:
+							
+							movzx( (type IfStmt [ebx]).endIndex, ebx );
+							add( this.TxtStart, ebx );
+							mov( ebx, this.ip );
+							if( (type StmtRec [ebx]).stmt = ELSEtkn ) then
+							
+								// Skip ELSE token and target offset.
+								
+								lea( ecx, (type StmtRec [ebx]).stmt[3] ); 
+								
+							else // Must be ENDIF or ELSEIF
+								
+								// Skip ENDIF or ELSEIF token:
+								
+								lea( ecx, (type StmtRec [ebx]).stmt[1] );
+								
+							endif;
+							
+						else
+						
+							// Expression is true, so skip over
+							// the THEN token and continue.
+							
+							add( 1, ecx );
+							
+						endif;
+							
+							
+
+						
+					
+					
+					
+					
+					case( INPUTtkn )
+					
+						//	INPUT var
+						//
+						// Grab the two-byte symbol table index following
+						// the INPUT token:
+						
+						movzx( (type word [ecx+1]), edx );
+						intmul( @size( Variant ), edx );
+						add( this.varData, edx );
+						add( 3, ecx );			// Skip input token and index.
+
+						// Handle access of an array element here:
+						
+						this.ProcessIndex( ecx, edx );
+						Deallocate( [edx] );		// Free the data in the VAR.
+						
+						// Okay, this gets tricky because variables are
+						// variant objects.  We have to try to read an
+						// integer first;  if that fails, we have to try
+						// to read a floating point number;  if that fails,
+						// we read the line as a string.
+						
+						stdin.a_gets();
+						mov( eax, InputStr );	// Save ptr to input line.
+						mov( edx, VarPtr );
+						push( ebx );
+						push( ecx );
+						try
+						
+							conv.strToi32( eax, 0 );
+							
+							// Success! We have an integer.  Store the
+							// result away in the variable.
+							
+						  unprotected
+						  
+							mov( Integer_c, varEDX.DataType );
+							mov( eax, varEDX.i );
+							str.free( InputStr );
+							
+						  anyexception
+						  
+						  	// If it was a conversion error or an overflow
+							// error, then let's try converting this to
+							// a floating point value.  Otherwise, just
+							// re-raise the exception.
+							
+						  	cmp( eax, ex.ConversionError );
+							je TryFloat;
+							cmp( eax, ex.ValueOutOfRange );
+							je TryFloat;
+							
+								reraise( eax );
+								
+							TryFloat:
+							
+								try
+								
+									conv.strToFlt( InputStr, 0 );
+											
+									// Success! We have a real.  Store the
+									// result away in the variable.
+									
+								  unprotected
+								  
+								    mov( VarPtr, edx );
+									mov
+									( 
+										Real_c, 
+										varEDX.DataType 
+									);
+									fstp( varEDX.r );
+									str.free( InputStr );
+									
+								  anyexception
+								  
+								  	// If it wasn't a conversion error
+									// then something weird has happened,
+									// so reraise the exception.
+									
+								  	if( eax <> ex.ConversionError ) then
+									
+										reraise( eax );
+										
+									endif;
+									
+									// If it was a conversion error, then
+									// let's just treat the input as a string
+									// input.
+									
+								    mov( VarPtr, edx );
+									mov
+									( 
+										String_c, 
+										varEDX.DataType 
+									);
+									mov( InputStr, eax );
+									mov( eax, varEDX.s );
+									
+								endtry;
+								
+								
+						endtry;
+						pop( ecx );
+						pop( ebx );
+
+
+
+
+
+					case( Labeltkn1 )
+					
+						// Just skip over the label:
+						
+						add( 2, ecx );
+						
+					
+					case( Labeltkn2 )
+					
+						// Just skip over the label:
+						
+						add( 3, ecx );
+						
+					
+					case( LBRACKtkn )
+					
+						str.put( this.exceptionMsg,"Unexpected array index" );
+						raise( BasicErrorWithMsg );
+							
+						
+					case( LETtkn1, LETtkn2 )
+											
+						// LET representation in memory:
+						//
+						//	<LETtkn:1>
+						//	<Pointer to Hash Table Entry:4>
+						//	<< optional array index:0..n >>
+						//	<< implied "=" token (i.e., not really present) >>
+						//
+						//	<< Encoding for expression >>
+
+						if( al = LETtkn1 ) then
+						
+							add( 2, ecx );		// Skip LET token.
+							movzx( (type byte [ecx-1]), edx );
+							
+						else
+						
+							add( 3, ecx );		// Skip LET token.
+							movzx( (type word [ecx-2]), edx );
+							
+						endif;
+						intmul( @size( Variant ), edx );
+						add( this.varData, edx );
+						
+						// Handle an array index, if present:
+						
+						this.ProcessIndex( ecx, edx );
+												
+						// Okay, Evaluate the expression on the right hand
+						// side of the "=" operator:
+						
+						pushd( edx );
+						this.evalExpr( ecx );
+						pop( edi );
+						
+						// x86 TOS contains a pointer to variable.  Before
+						// we do anything else, deallocate the storage
+						// currently held by this variable.  
+						
+						Deallocate( [edi] );
+						
+						// Assign the value of the expression to the variable.
+						
+						?i_ct := 0;
+						#while( i_ct < @size( Variant ))
+						
+							mov( (type dword this.ExprStack[i_ct]), eax );
+							mov( eax, (type dword varEDI[i_ct]) );
+							?i_ct += 4;
+							
+						#endwhile					
+					
+							
+						
+					case( LETtknPV1, LETtknPV2, LETtknPV3, LETtknPV4, LETtknPV )
+											
+						// LET <pseudovar> = <expr> representation in memory:
+						//
+						//	<LETtknPVx:1>
+						//	<pseudo-var token>
+						//	<< optional arguments >>
+						//	<< "=" token >>
+						//
+						//	<< Encoding for expression >>
+
+						switch( eax )
+						
+							case( LETtknPV1 )
+						
+								movzx( (type byte [ecx+1]), eax );
+															
+							case( LETtknPV2 )
+						
+								movzx( (type byte [ecx+1]), eax );
+								add( 256, eax );
+							
+							case( LETtknPV3 )
+						
+								movzx( (type byte [ecx+1]), eax );
+								add( 512, eax );
+							
+							case( LETtknPV4 )
+						
+								movzx( (type byte [ecx+1]), eax );
+								add( 768, eax );
+							
+							case( LETtknPV )
+						
+								movzx( (type word [ecx+1]), eax );
+								add( 1, ecx );
+							
+						endswitch;
+						add( 2, ecx );		// Skip LET/pseudovar
+						switch( eax )
+						
+							// The following loop emits all the cases for the
+							// pseudo-variables defined in the pseudoVars record
+							// (see basic.hhf).  
+							
+							#for( _i_ := 0 to  @elements( pseudoVars )-1 )
+							
+								case
+								( 
+									@text( pseudoVars[_i_].identifier + "_tkn" )
+								)
+								
+									writePV( pseudoVars[_i_] );
+									
+							#endfor
+						
+							default
+							
+								this.pseudoVarExtensions( false, NULL );
+								
+						endswitch;
+						
+												
+					
+					
+						
+												
+					
+					
+					case( NEXTtkn )
+					
+						// First, make sure that we've got an active FOR
+						// statement:
+						
+						lea( eax, this.ForStack );
+						if( eax = this.ForStackPtr ) then
+						
+							str.put( this.exceptionMsg, "NEXT without FOR" );
+							raise( BasicErrorWithMsg );
+							
+						endif;	 
+						
+						// Okay, we've got an active FOR loop, now let's
+						// do the NEXT operation.  Begin by updating the
+						// loop control variable.
+
+						mov( this.ForStackPtr, edi );
+						sub( @size( ForRecord ), edi );
+						mov( (type ForRecord [edi]).VarAdrs, edx );
+						mov( varEDX.i, eax );
+						add( (type ForRecord [edi]).Increment, eax );
+						mov( eax, varEDX.i );
+						
+						// To see if we must repeat this loop, we have
+						// to execute different code for negative and
+						// non-negative STEP values.
+						
+						if( (type ForRecord [edi]).Increment < 0 ) then
+						
+							// The STEP value is negative, so ensure
+							// that the loop control variable is greater
+							// than or equal to the Limit value.
+
+							if( eax < (type ForRecord [edi]).Limit ) then
+							
+								// Don't execute this loop.
+								// Immediately skip to the statement following
+								// the NEXT <ID> clause.  Note that this may
+								// be an intermediate NEXT, so we have to get
+								// the address of the actual NEXT statement
+								// from the FOR stack.
+								
+								mov( (type ForRecord [edi]).Line, ebx );
+								movzx( (type ForStmt [ebx]).nextIndex, ebx );
+								add( this.TxtStart, ebx );
+								mov( ebx, this.ip );
+								
+								// EBX points at the line containing the
+								// NEXT <ID> statement:
+								
+								mov( (type NextStmt [ebx]).idTknIndex, al );
+								if( al = IDtkn1 ) then
+								
+									lea( ecx, [ebx+@size( StmtRec )+3] );
+								
+								else // Must be IDtkn2
+								
+									lea( ecx, [ebx+@size( StmtRec )+4] );
+									
+								endif; 
+								
+								// Remove the ForRecord for this loop from
+								// the FOR stack.
+								
+								mov( edi, this.ForStackPtr );
+
+							else
+							
+								// Go back to the FOR loop and repeat
+								
+								mov( (type ForRecord [edi]).Stmt, ecx );
+								mov( (type ForRecord [edi]).Line, ebx );
+								mov( ebx, this.ip );
+								
+							endif;
+							
+						else 
+						
+							// The step value is non-negative.  Therefore,
+							// we execute the body of the loop if the loop
+							// control variable's value is less than or equal
+							// to the final value.
+							
+							if( eax > (type ForRecord [edi]).Limit ) then
+							
+								// Don't execute this loop again.
+								// Immediately skip to the statement following
+								// the NEXT <ID> clause (of course, if this
+								// is a NEXT <ID> statement, we're already
+								// there, but we have to go through this
+								// in case we encounter a NEXT without an ID.
+								
+								mov( (type ForRecord [edi]).Line, ebx );
+								movzx( (type ForStmt [ebx]).nextIndex, ebx );
+								add( this.TxtStart, ebx );
+								mov( ebx, this.ip );
+								
+								mov( (type NextStmt [ebx]).idTknIndex, al );
+								if( al = IDtkn1 ) then
+								
+									lea( ecx, [ebx+@size( StmtRec )+3] );
+								
+								else // Must be IDtkn2
+								
+									lea( ecx, [ebx+@size( StmtRec )+4] );
+								
+								endif; 
+								
+								// Remove the ForRecord for this loop from
+								// the FOR stack.
+								
+								mov( edi, this.ForStackPtr );
+
+							else
+							
+								// Go back to the FOR loop and repeat
+								
+								mov( (type ForRecord [edi]).Stmt, ecx );
+								mov( (type ForRecord [edi]).Line, ebx );
+								mov( ebx, this.ip );
+
+							endif;
+							
+						endif;
+															
+						
+						
+						 
+					
+					case( ONtkn )
+					
+						add( 1, ecx );					// Skip ONtkn.
+						this.evalExpr( ecx );
+						this.makeInt( al, "ON requires an integer expression" );
+						if( (type ReservedWords [ecx]) = ONGOTOtkn ) then
+						
+							add( 1, ecx );		// Skip GOTO token.
+							
+							// Immediately following the GOTO token is a list of
+							// label tokens. 
+							//
+							// Locate the specified label in the list, if
+							// it exists:
+							
+							mov( this.ExprStack.i, eax );	// Get index into list
+							forever
+							
+								// Get the current token 
+								// (label, stmtsep, endstmt).
+								
+								mov( [ecx], dl );
+								if( eax = 0 ) then
+								
+									if( dl = Labeltkn1 || dl = Labeltkn2 )
+									then
+
+										
+										// Get symbol offset.
+										
+										if( dl = Labeltkn1 ) then
+										
+											movzx( (type byte [ecx+1]), edi );
+											
+										else // must be Labeltkn2
+										
+											movzx( (type word [ecx+1]), edi );
+											
+										endif;
+										
+										// Get the address the 
+										// variable's entry.
+										  
+										intmul( @size( Variant ), edi );
+										add( this.varData, edi );
+										mov( varEDI.l, ecx );
+										
+										// If the symbol is undefined,
+										// stop the program.
+										
+										if
+										( 
+											varEDI.DataType <> 
+												Label_c 
+										) then
+										
+											str.put
+											( 
+												this.exceptionMsg,
+												"ON..GOTO to undefined label "
+											);
+											raise( BasicErrorWithMsg );
+											
+										endif;
+										
+										// Okay, the statement label
+										// exists.  Update all of our
+										// pointers and begin execution
+										// of the new stmt.
+										
+										mov( ecx, ebx );
+										mov( ebx, this.ip );
+										
+										// Point at 1st token on line.
+										
+										lea( ecx, [ebx+@size( StmtRec )] ); 
+										
+										// Since we're not dropping
+										// down to the code that
+										// handles new statements,
+										// check the DEBUG flag to
+										// determine if we should print
+										// trace information.
+										
+										if( this.debugFlag ) then
+										
+											DoDebug
+											( 
+												(type StmtRec [ebx]).lineNum 
+											);
+											
+										endif;
+											
+									endif;
+									break;						
+								
+								elseif( dl = Labeltkn1 ) then
+								
+									add( 2, ecx );
+								
+								elseif( dl = Labeltkn2 ) then	
+																	
+									add( 3, ecx );
+
+								else
+								
+									str.put
+									(
+										this.exceptionMsg,
+										"Internal error in ON..GOTO " 
+										"Statement (byte=$",
+										dl,
+										")"
+									);
+									raise( BasicErrorWithMsg );
+								
+								
+								endif;
+								breakif
+								( 
+									(type ReservedWords [ecx]) <> COMMAtkn 
+								);
+								add( 1, ecx ); // Skip comma token.
+								sub( 1, eax ); // Adjust for next item in list.
+								
+							endfor;
+						
+						elseif( (type ReservedWords [ecx]) = ONGOSUBtkn ) then
+
+							add( 1, ecx );		// Skip GOSUB token.
+							
+							// Locate the specified label in the list, if
+							// it exists:
+							
+							mov( this.ExprStack.i, eax );
+							forever
+							
+								// Get the current token 
+								// (label, stmtsep, endstmt).
+								
+								mov( [ecx], dl );
+								if( eax = 0 ) then
+
+									if( dl = Labeltkn1 || dl = Labeltkn2 )
+									then
+
+										
+										// Get symbol offset.
+										
+										if( dl = Labeltkn1 ) then
+										
+											movzx( (type byte [ecx+1]), edi );
+											
+										else // must be Labeltkn2
+										
+											movzx( (type word [ecx+1]), edi );
+											
+										endif;
+										
+										// Get the address the 
+										// variable's entry.
+										  
+										intmul( @size( Variant ), edi );
+										add( this.varData, edi );
+										
+										// If the symbol is undefined,
+										// stop the program.
+										
+										if
+										( 
+											varEDI.DataType <> 
+												Label_c 
+										) then
+										
+											str.put
+											( 
+												this.exceptionMsg,
+												"ON..GOSUB to undefined label "
+											);
+											raise( BasicErrorWithMsg );
+											
+										endif;
+										mov( varEDI.l, edi );
+										
+										// Okay, the statement label
+										// exists.  Update all of our
+										// pointers and call the specified
+										// subroutine.  Begin by computing
+										// the "return" address at the end
+										// of this statement. Note that the
+										// first time we hit this code, ECX
+										// is still pointing at the IDtoken
+										// of the label we're calling.
+										
+										sub( 1, ecx );	// Because of add below
+										repeat
+										
+											add( 1, ecx );	// Skip COMMAtkn
+											mov( [ecx], al );
+											if( al = Labeltkn1 ) then
+											
+												add( 2, ecx );
+												
+											else // must be Labeltkn2
+											
+												add( 3, ecx );
+												
+											endif;
+											
+										until
+										( 
+											(type ReservedWords [ecx]) <> 
+												COMMAtkn
+										);
+										
+										mov( this.GosubStackPtr, eax );
+										mov
+										( 
+											ecx, 
+											(type GosubRecord [eax]).RtnAdrs 
+										);
+										mov
+										( 
+											ebx, 
+											(type GosubRecord [eax]).LinePtr 
+										);
+										add( @size( GosubRecord ), eax );
+										mov( eax, this.GosubStackPtr );
+										lea
+										( 
+											edx, 
+											this.GosubStack
+											[ 
+												@size(pgmClass.GosubStack)  
+											] 
+										);
+										if( eax >= edx ) then
+										
+											str.put
+											( 
+												this.exceptionMsg,
+												"Too many nested GOSUBs" 
+											);
+											raise( BasicErrorWithMsg );
+											
+										endif;
+										
+										// Transfer control to the specified 
+										// statement:										
+										
+										mov( edi, ebx );
+										mov( ebx, this.ip );
+										
+										// Point at 1st token on line.
+										
+										lea( ecx, [edi+@size( StmtRec )] ); 
+										
+										// Since we're not dropping down to
+										// the code that handles new
+										// statements, check the DEBUG flag
+										// to determine if we should print
+										// trace information.
+										
+										if( this.debugFlag ) then
+										
+											DoDebug
+											( 
+												(type StmtRec [ebx]).lineNum 
+											);
+											
+										endif;						
+										break;						
+											
+									endif;
+																	
+								
+								elseif( dl = Labeltkn1 ) then
+								
+									add( 2, ecx );
+								
+								elseif( dl = Labeltkn2 ) then	
+																	
+									add( 3, ecx );
+
+								else
+								
+									str.put
+									(
+										this.exceptionMsg,
+										"Internal error in ON..GOSUB " 
+										"Statement (byte=$",
+										dl,
+										")"
+									);
+									raise( BasicErrorWithMsg );
+								
+								
+								endif;
+								breakif
+								( 
+									(type ReservedWords [ecx]) <> COMMAtkn 
+								);
+								add( 1, ecx ); // Skip comma token.
+								sub( 1, eax ); // Adjust for next item in list.
+								
+							endfor;
+							
+						
+						else
+
+							str.put
+							(
+								this.exceptionMsg,
+								"Internal error in ON..XXXX " 
+								"Statement (byte=$",
+								dl,
+								")"
+							);
+							raise( BasicErrorWithMsg );
+						
+						endif;
+						
+						
+						
+												 
+						
+						
+					case( PARMStkn )
+						push( ebx );
+						xor( ebx, ebx );	// Actual parameter count
+						lea( eax, this.ParmStack );
+						mov( eax, this.ParmStackPtr );
+						add( 1, ecx );		// Skip PARMStkn
+						mov( [ecx], al ); 
+						while( al > StmtSeptkn ) do
+						
+							if( ebx > this.ParmStackCnt ) then
+							
+								str.put
+								(
+									this.exceptionMsg,
+									"Too many parameters passed to subroutine (",
+									(type uns32 ebx),
+									")"
+								);
+								raise( BasicErrorWithMsg );
+							
+							elseif( al = COMMAtkn ) then
+							
+								add( 1, ecx );	// Skip COMMAtkn 
+								
+							elseif( al = IDtkn1 ) then
+							
+								movzx( (type byte [ecx+1]), edx );
+								intmul( @size( Variant ), edx );
+								add( this.varData, edx );
+
+								add( 2, ecx );			// Skip input token and index.
+								Deallocate( [edx] );	// Free the data in the VAR.
+								push( ecx );
+								mov( this.ParmStackPtr, ecx );
+								?i_ct := 0;
+								#while( i_ct < @size( Variant ))
+								
+									mov( [ecx + i_ct], eax );
+									mov( eax, (type dword varEDX[i_ct]) );
+									?i_ct += 4;
+									
+								#endwhile
+								pop( ecx );
+								add( 1, ebx );
+								add( @size( Variant ), this.ParmStackPtr );
+								
+							elseif( al = IDtkn2 ) then
+								
+							else
+							
+								str.put
+								(
+									this.exceptionMsg,
+									"Internal error in PARMS " 
+									"Statement (byte=$",
+									al,
+									")"
+								);
+								raise( BasicErrorWithMsg );
+							
+							endif;
+							
+							// Get the next token byte:
+							
+							mov( [ecx], al ); 
+						
+						endwhile;
+						if( ebx < this.ParmStackCnt ) then
+						
+							str.put
+							(
+								this.exceptionMsg,
+								"Too few parameters passed to subroutine "
+								"(expected ",
+								(type uns32 ebx),
+								" found ",
+								(type uns32 this.ParmStackCnt),
+								")"
+							);
+							raise( BasicErrorWithMsg );
+							
+						endif;
+						pop( ebx ); 
+					
+					
+					
+					case( PRINTtkn )
+					
+						add( 1, ecx );		// Skip OUTPUTtkn
+						if( (type byte [ecx]) > StmtSeptkn ) then
+						
+							repeat
+
+								this.evalExpr( ecx );
+								if( al = Integer_c ) then
+								
+									stdout.put( this.ExprStack.i );
+									
+								elseif( al = Real_c ) then
+						
+									RealToStr( this.ExprStack.r );
+									stdout.puts( eax );
+									str.free( eax );
+									
+								elseif( al = String_c ) then
+								
+									stdout.puts( this.ExprStack.s );
+									str.free( this.ExprStack.s );
+									
+								else
+								
+									str.put
+									( 
+										this.exceptionMsg,
+										"Data type error in print", nl 
+									);
+									raise( BasicErrorWithMsg );
+									
+								endif;
+								
+								mov( (type ReservedWords [ecx]), al );
+								if( al = COMMAtkn ) then
+								
+									stdout.putc( stdio.tab );
+									add( 1, ecx );
+									mov( (type ReservedWords [ecx]), al );
+									
+								elseif( al = SEMICOLONtkn ) then
+								
+									add( 1, ecx );
+									mov( (type ReservedWords [ecx]), al );
+									
+									
+								endif;
+									
+								// Note: the following code depends upon the
+								// fact that StmtSepTkn's value is one and
+								// StmtEndTkn's value is zero.
+								
+								if( al <= StmtSeptkn ) then
+								
+									cmp( (type ReservedWords [ecx-1]), COMMAtkn );
+									je NoNewLn;
+									cmp
+									(
+										(type ReservedWords [ecx-1]), 
+										SEMICOLONtkn
+									);
+									je NoNewLn;
+									
+										stdout.newln();
+								  
+								  NoNewLn:
+								  
+								  
+								endif;
+								
+							until( al <= StmtSeptkn );
+							
+						else	// Empty print statement. Just print a newline
+															
+							stdout.newln();
+							
+						endif;								
+
+					
+
+					
+					case( OUTPUTtkn )
+					
+						add( 1, ecx );		// Skip OUTPUTtkn
+						if( (type byte [ecx]) > StmtSeptkn ) then
+						
+							repeat
+
+								this.evalExpr( ecx );
+								if( al = Integer_c ) then
+								
+									stdout.put( this.ExprStack.i );
+									
+								elseif( al = Real_c ) then
+						
+									RealToStr( this.ExprStack.r );
+									stdout.puts( eax );
+									str.free( eax );
+									
+								elseif( al = String_c ) then
+								
+									stdout.puts( this.ExprStack.s );
+									str.free( this.ExprStack.s );
+									
+								else
+								
+									str.put
+									( 
+										this.exceptionMsg,
+										"Data type error in print", nl 
+									);
+									raise( BasicErrorWithMsg );
+									
+								endif;
+								
+								mov( (type ReservedWords [ecx]), al );
+								if( al = COMMAtkn ) then
+								
+									stdout.putc( stdio.tab );
+									add( 1, ecx );
+									mov( (type ReservedWords [ecx]), al );
+									
+								elseif( al = SEMICOLONtkn ) then
+								
+									add( 1, ecx );
+									mov( (type ReservedWords [ecx]), al );
+									
+									
+								endif;
+									
+								// Note: the following code depends upon the
+								// fact that StmtSepTkn's value is one and
+								// StmtEndTkn's value is zero.
+								
+								if( al <= StmtSeptkn ) then
+								
+									cmp( (type ReservedWords [ecx-1]), COMMAtkn );
+									je NoNewLn2;
+									cmp
+									(
+										(type ReservedWords [ecx-1]), 
+										SEMICOLONtkn
+									);
+									je NoNewLn2;
+									
+										stdout.newln();
+								  
+								  NoNewLn2:
+								  
+								  
+								endif;
+								
+							until( al <= StmtSeptkn );
+							
+						else	// Empty print statement. Just print a newline
+															
+							stdout.newln();
+							
+						endif;								
+
+					
+					case( READLNtkn )
+							
+						//	READLN var
+						//
+						// Grab the two-byte symbol table index following
+						// the READLN token:
+						
+						movzx( (type word [ecx+1]), edx );
+						intmul( @size( Variant ), edx );
+						add( this.varData, edx );
+						add( 3, ecx );			// Skip input token and index.
+
+						// Handle access of an array element here:
+						
+						this.ProcessIndex( ecx, edx );
+						Deallocate( [edx] );		// Free the data in the VAR.
+						
+						// Read a string from the user and shove that into
+						// the specified variable object:
+												
+						stdin.a_gets();
+						mov( eax, varEDX.s );
+						mov( String_c, varEDX.DataType );
+
+
+
+
+
+
+					case( REMtkn )
+					
+						// Treat the REM token like the end of the line.
+						
+						exit EachStmt;
+				
+
+					case( RETURNtkn )
+					
+						mov( this.GosubStackPtr, eax );
+						lea( ebx, this.GosubStack );
+						if( eax = ebx ) then
+						
+							str.put
+							(
+								this.exceptionMsg,
+								"RETURN without GOSUB"
+							);
+							raise( BasicErrorWithMsg );
+							
+						endif;
+						sub( @size( GosubRecord ), eax );
+						mov( eax, this.GosubStackPtr );
+						mov( (type GosubRecord [eax]).RtnAdrs, ecx );
+						mov( (type GosubRecord [eax]).LinePtr, ebx );
+						mov( ebx, this.ip );
+							
+												
+					case( StmtEndtkn )
+					
+						// Okay, conversion is done.  
+						// Move on to the next stmt.
+						
+						exit EachStmt;
+				
+
+					case( StmtSeptkn )
+					
+						// If we come across a statement separator, just
+						// skip over it.
+						
+						add( 1, ecx );
+				
+
+					case( STOPtkn )
+					
+						//console.setAttrs( console.white, console.black );
+						raise( PgmStopException );
+						
+						
+						
+					case( SUSPENDtkn )
+					
+						pop( esi );				// Get "this" ptr from stk.
+						mov( ebx, this.ip );
+						add( 1, ecx );			// Skip SUSPEND token
+						mov( ecx, this.offset );
+						popad();
+						
+						// Tell the caller we've exited via resume
+						// by returning 1 in EAX:
+						
+						mov( 1, eax );
+						exit resume;
+						
+					case( SYSTEMtkn )
+					
+						add( 1, ecx );					// Skip SYSTEM token
+						this.evalExpr( ecx );			// Get string.
+						if( al = String_c ) then
+						
+							pushad();
+							cld();
+							os.system( this.ExprStack.s );
+							popad();
+						
+						else
+						
+							str.cpy
+							( 
+								"Expected a string expression", 
+								this.exceptionMsg 
+							);
+							raise( BasicErrorWithMsg );
+							
+						endif;	
+												
+						
+					case( WAITtkn )
+					
+						add( 1, ecx );					// Skip WAIT token
+						this.evalExpr( ecx );			// Get sleep time.
+						this.makeInt
+						( 
+							al,
+							"WAIT requires an integer expression" 
+						);
+						pushad();
+						cld();
+						os.sleep( this.ExprStack.i );
+						popad();
+						
+												
+						
+					case( WHILEtkn )
+					
+						// First, save a pointer to the WHILE statement on the
+						// While stack so we can iterate on this loop:
+						
+						mov( this.WhileStackPtr, eax );
+						mov( ebx, (type WhileRecord [eax]).Line );
+						
+						add( 3, ecx );			// Skip WHILEtkn and stmt offset
+						this.evalExpr( ecx );
+						this.makeInt
+						( 
+							al, 
+							"WHILE requires an integer expression" 
+						);
+						
+						mov( this.ExprStack.i, eax );
+						if( !eax ) then
+						
+							// Expression is false, so transfer
+							// control to the ENDWHILE clause:
+							
+							movzx( (type WhileStmt [ebx]).endIndex, ebx );
+							add( this.TxtStart, ebx );
+							mov( ebx, this.ip );
+							
+							// Skip over the ENDWHILE token:
+							
+							lea( ecx, (type StmtRec [ebx]).stmt[1] );
+							
+						else
+						
+							// Expression is true, so skip over
+							// the DO token and continue.
+							
+							add( 1, ecx );
+							
+							// Push the WHILE data onto the WHILE stack:
+							
+							add( @size( WhileRecord ), this.WhileStackPtr );
+							
+						endif;
+							
+							
+
+					
+					
+					default
+
+						if( this.byteCodeExtensions() = 0 ) then
+						
+							str.put
+							( 
+								this.exceptionMsg,
+								"Unexpected token: $", 
+								al 
+							);
+							raise( BasicErrorWithMsg );
+							
+						endif;
+					
+				endswitch;
+				
+			endfor;
+			
+		end EachStmt;
+		pop( esi );		// Restore "this" pointer.
+		
+		// We just finished executing a line of statements.
+		// Now move on to the next statement, if one exists.
+		
+		mov( this.ip, ebx );
+		movzx( (type StmtRec [ebx]).size, eax );
+		add( eax, ebx );
+		breakif( ebx >= this.TxtEnd );		
+		if( this.debugFlag ) then
+		
+			DoDebug( (type StmtRec [ebx]).lineNum );
+			
+		endif;
+		mov( ebx, this.ip );						
+		lea( ecx, [ebx+@size( StmtRec )] );	// Offset to start of current line.
+		mov( ecx, this.offset );
+	
+	endfor;
+	
+	// If we get down here, we "fell off the end" of the BASIC program.
+	// Return 0 in EAX to denote this case. Also, reset this.ip to
+	// the beginning of the program in case the caller decides to resume
+	// the code.
+	
+	mov( this.TxtStart, ebx );
+	mov( ebx, this.ip );
+	lea( ecx, (type StmtRec [ebx]).stmt );
+	mov( ecx, this.offset );
+	popad();
+	xor( eax, eax );
+	
+end resume;
+
+
+// run-
+//
+//	Does a "label compile" and starts a program running.
+// Note: this code assumes that it is only called on a newly-created
+// program object; in particular, the assumption is that the varData
+// object is completely uninitialized at this point.
+
+method rtPgmClass.run;
+begin run;
+
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( edi );
+	push( esi );
+	
+	// Before we can begin execution, we must make a quick pass
+	// through the program and compute the address of all label objects.
+	
+	mov( this.TxtStart, ebx );
+	lea( ecx, [ebx+@size( StmtRec )] );	// Offset to start of current line.
+	mov( ecx, this.offset );
+	while( ebx < this.TxtEnd ) do
+	
+		// Check to see if the first token on the line is a label token:
+		
+		mov( (type LabelStmt1 [ebx]).labelTkn, al );
+		
+		// If it's a one- or two-byte label token, update the symbol
+		// table entry with the address of this statement:
+				
+		if( al = Labeltkn1 ) then
+		
+			movzx( (type LabelStmt1 [ebx]).idIndex, eax );
+			intmul( @size( Variant ), eax );
+			add( this.varData, eax );
+			mov( Label_c, (type Variant [eax]).DataType );
+			mov( ebx, (type Variant [eax]).l );	
+		
+		elseif( al = Labeltkn2 ) then
+		
+			movzx( (type LabelStmt2 [ebx]).idIndex, eax );
+			intmul( @size( Variant ), eax );
+			add( this.varData, eax );
+			mov( Label_c, (type Variant [eax]).DataType );
+			mov( ebx, (type Variant [eax]).l );	
+		
+		endif;
+		
+		// Move on to the next statement in the byte code file:
+		
+		movzx( (type StmtRec [ebx]).size, eax );
+		add( eax, ebx );
+		
+	endwhile;
+	
+	// Set up program state for a new program execution:
+	
+	lea( eax, this.ParmStack    );
+	mov( eax, this.ParmStackPtr );
+	lea( eax, this.GosubStack    );
+	mov( eax, this.GosubStackPtr );
+	lea( eax, this.ForStack      );
+	mov( eax, this.ForStackPtr   );
+	lea( eax, this.WhileStack    );
+	mov( eax, this.WhileStackPtr );
+	
+	// Reset the program counter to the beginning of the token file:
+	
+	mov( this.TxtStart, eax );
+	mov( eax, this.ip );
+	if( eax < this.TxtEnd ) then
+		
+		// Run the code:
+		
+		this.resume();
+		
+	else
+	
+		xor( eax, eax );	// If empty token file, return stop condition.
+		
+	endif;
+	pop( esi );
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+	
+end run;
+
+
+
+
+// reset-
+//
+//	Reinitializes a running program to run from the beginning of the
+// program (deallocates and uninitializes all variables).
+
+method rtPgmClass.reset;
+begin reset;
+
+	push( ebx );
+	push( ecx );
+	push( edx );
+	push( edi );
+	push( esi );
+	
+	lea( eax, this.GosubStack    );
+	mov( eax, this.GosubStackPtr );
+	lea( eax, this.ForStack      );
+	mov( eax, this.ForStackPtr   );
+	lea( eax, this.WhileStack    );
+	mov( eax, this.WhileStackPtr );
+	
+	// Have to go through all the symbols and deallocate them, if necessary.
+	
+	mov( this.varData, ebx );
+	for( mov( 0, ecx ); ecx < this.symCnt; inc( ecx )) do
+	
+		destroyVar( [ebx] );
+		add( @size( Variant ), ebx );
+	
+	endfor;
+	
+	// Reset the program counter to the beginning of the token file:
+	
+	mov( this.TxtStart, eax );
+	mov( eax, this.ip );
+	
+	// Rerun the code:
+	
+	this.resume();
+	
+	pop( esi );
+	pop( edi );
+	pop( edx );
+	pop( ecx );
+	pop( ebx );
+
+end reset;
+
+
+end HLABasic; 
+ 
+ 

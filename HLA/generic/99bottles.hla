@@ -1,0 +1,193 @@
+program bottles; 
+#include( "stdlib.hhf" ) 
+// HLA version of the "99 Bottles of Beer" song 
+// Cross-platform:  Linux console or Windows console 
+// Get HLA here:  http://webster.cs.ucr.edu/AsmTools/HLA/index.html 
+// 
+// 
+// Macro compile-time function that does a limited "unsigned to English" 
+// conversion: 
+
+
+const 
+     Tens :string[10] := 
+             [ 
+                 "", // zero 
+                 "", // one, handled as a special case 
+                 "Twenty", 
+                 "Thirty", 
+                 "Forty", 
+                 "Fifty", 
+                 "Sixty", 
+                 "Seventy", 
+                 "Eighty", 
+                 "Ninety" 
+             ]; 
+
+
+     Ones    :string[20] := 
+             [ 
+                 "", // zero is not used 
+                 "One", 
+                 "Two", 
+                 "Three", 
+                 "Four", 
+                 "Five", 
+                 "Six", 
+                 "Seven", 
+                 "Eight", 
+                 "Nine", 
+                 "Ten", 
+                 "Eleven", 
+                 "Twelve", 
+                 "Thirteen", 
+                 "Fourteen", 
+                 "Fifteen", 
+                 "Sixteen", 
+                 "Seventeen", 
+                 "Eighteen", 
+                 "Nineteen" 
+             ]; 
+
+
+#macro uToEnglish( unsVal, NumberCase ); 
+
+
+     #if( unsVal >= 20 ) 
+
+
+         #if( unsVal mod 10 <> 0 ) 
+
+
+             #if( NumberCase ) 
+
+
+                 Tens[unsVal div 10] + "-" + @lowercase( Ones[unsVal mod 
+10], 0) 
+
+
+             #else 
+
+
+                 @lowercase( Tens[unsVal div 10] + "-" + Ones[unsVal mod 
+10], 0 ) 
+
+
+             #endif 
+
+
+         #else 
+
+
+             #if( NumberCase ) 
+
+
+                 Tens[ unsVal div 10] 
+
+
+             #else 
+
+
+                 @lowercase( Tens[ unsVal div 10], 0 ) 
+
+
+             #endif 
+
+
+         #endif 
+
+
+     #else 
+
+
+         #if( NumberCase ) 
+
+
+             Ones[ unsVal ] 
+
+
+         #else 
+
+
+             @lowercase( Ones[ unsVal ], 0) 
+
+
+         #endif 
+
+
+     #endif 
+
+
+#endmacro 
+
+
+static 
+     sOrNot      :string[100] := 
+                 [ 
+                     "s", 
+                     "", 
+                     98 dup ["s"] 
+                 ]; 
+
+
+     Numbers     :string[100] := 
+                 [ 
+                     "No more", 
+                     #for( i := 1 to 98) 
+
+
+                         uToEnglish( i, true ), 
+
+
+                     #endfor 
+                     uToEnglish( 99, true ) 
+                 ]; 
+
+
+     lcNumbers   :string[100] := 
+                 [ 
+                     "no more", 
+                     #for( i := 1 to 98) 
+
+
+                         uToEnglish( i, false ), 
+
+
+                     #endfor 
+                     uToEnglish( 99, false ) 
+                 ]; 
+
+
+begin bottles; 
+
+
+     mov( 99, ecx ); 
+     repeat 
+
+
+         stdout.put 
+         ( 
+             Numbers[ecx*4], 
+             " bottle", sOrNot[ecx*4], 
+             " of beer on the wall, ", 
+             lcNumbers[ecx*4], 
+             " bottle", sOrNot[ecx*4], 
+             " of beer." nl 
+             "Take one down and pass it around, ", 
+             lcNumbers[ecx*4-4], 
+             " bottle", sOrNot[ecx*4-4], 
+             " of beer on the wall" nl nl 
+         ); 
+
+
+         dec( ecx ); 
+
+
+     until( @z ); 
+     stdout.puts( "No more bottles of beer on the wall. No more bottles of beer..." nl ); 
+     stdout.puts( "Go to the store and buy some more... 99 bottles of beer for the wall." nl); 
+
+
+end bottles; 
+
+

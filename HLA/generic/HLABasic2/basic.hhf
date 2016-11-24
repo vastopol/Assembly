@@ -1,0 +1,1490 @@
+#if( !@defined( basic_hhf ))
+?basic_hhf := true;
+
+#includeOnce( "siteSpecific.hhf" )
+
+			
+
+/******************************************************************************	
+
+Tokenized line format:
+
+Each line of text in the PgmSpace buffer takes the following form (see
+StmtRec):
+
+
+|   1 byte  |   2 bytes   |  n bytes  | 1 byte |
+| Line_Size | Line_number | Line_Text |   0    |
+
+n = LineSize - 3
+
+Line_Size is the number of bytes for the entire statement, including
+the overhead bytes (Line_Size, Leading_Spaces, Line_Number, and
+zero terminating byte).  Note that Line_Text is limited to 250
+characters in length (this isn't necessarily 250 characters of
+source because tokenization can actually expand certain lines).
+
+Line_number 
+Line_Text is a tokenized form of the source line.  Token descriptions
+appear a little later.  Statements always begin with a statement token.
+
+All source lines end with a zero terminating (sentinel) byte to help
+make determining the end of a statement more efficient.
+
+	
+******************************************************************************/
+
+
+const	
+	MaxArraySize	:= 65536;		// Maximum # of elements in an array.
+	MaxNestedFors	:= 32;			// Maximum # of nested FOR loops.
+	MaxNestedWhiles	:= 32;			// Maximum # of nested WHILE loops.
+	MaxNestedGosubs	:= 256;			// Maximum # of nested GOSUB invocations.
+	MaxLabelLength	:= 32;			// Maximum length of an identifier.
+	
+	varEBX	:text := "(type Variant [ebx])";
+	varEDX	:text := "(type Variant [edx])";
+	varEDI	:text := "(type Variant [edi])";
+	tosEDI	:text := "(type Variant [edi-@size( Variant )])";
+	nosEDI	:text := "(type Variant [edi-@size(Variant)*2])";
+	
+	
+	// Exceptions defined for this program:
+	
+	BasicError				:= 1024;		
+	BasicErrorWithMsg		:= BasicError + 1;		
+	StmtTooLongException	:= BasicErrorWithMsg + 1;
+	LineNumberException		:= StmtTooLongException + 1;
+	SyntaxErrorException	:= LineNumberException + 1;
+	BadPgmDataException		:= SyntaxErrorException + 1;
+	NoSuchLineException		:= BadPgmDataException + 1;
+	PgmStopException		:= NoSuchLineException + 1;
+	LabelSyntaxException	:= PgmStopException + 1;
+	ExprSyntaxException		:= LabelSyntaxException + 1;
+	tooManySymbols			:= ExprSyntaxException + 1;
+	StrToNumberError		:= tooManySymbols + 1;
+	NumToStrError			:= StrToNumberError + 1;
+	typeMismatch			:= NumToStrError + 1;
+	typeMismatchIntOpStr	:= typeMismatch + 1;
+	typeMismatchStrOpInt	:= typeMismatchIntOpStr + 1;
+	typeMismatchRealOpStr	:= typeMismatchStrOpInt + 1;
+	typeMismatchStrOpReal	:= typeMismatchRealOpStr + 1;
+	AttemptToDeallocateLabel:= typeMismatchStrOpReal + 1;
+	
+	// Warning: Because of the "interesting" way that MASM assembles
+	// large arrays, you probably don't want to make the following
+	// constant much larger than about 256K because it will take a long
+	// time for MASM to assemble HLA's output if you do.
+	// If you really want to set aside a large amount of space for the
+	// BASIC program, either dynamically allocate this storage or put
+	// it in a VAR section (see PgmSpace below).
+	
+	PgmSize			:= $10000;		// 64K for BASIC program text area.
+
+
+	HLABasicSourceCodeExt_c :text := """bas""";
+	
+	
+type
+	statusStrs_t	:string[16];		
+	ProcType		:procedure;
+
+	// ForRecord-  Data structure for the FOR loop stack:
+	
+	ForRecord: record
+	
+		VarAdrs:	dword;		// Adress of FOR loop variable 
+		Limit:		int32;		// Higher value of FOR variable
+		Increment:	int32;		// STEP increment or 1
+		Line:		dword;		// Address of line containing FOR stmt
+		Stmt:		dword;		// Address after FOR to go back to with NEXT 
+		
+	endrecord;
+
+	// WhileRecord-  Data structure for the WHILE loop stack:
+	
+	WhileRecord: record
+	
+		Line:		dword;		// Address of line containing WHILE stmt
+		
+	endrecord;
+
+	// GosubRecord-	Data structure for the Gosub stack:
+	
+	GosubRecord: record
+	
+		RtnAdrs:	dword;		// Ptr to byte GOSUB
+		LinePtr:	dword;		// Ptr to line containing GOSUB.
+		
+	endrecord;
+	
+	// StmtRec- Data structure for a basic statement.
+	
+	StmtRec: record
+	
+		size		:uns8;					// Size of this line.
+		lineNum		:uns16;					// Line # of this statement.
+		stmt		:byte;	@nostorage;		// Start of stmt text.
+		
+	endrecord;
+	
+	// LabelStmt- 	Record structure for a Label definition
+	//				Note that labels always occur at the beginning of
+	//				a line. Hence, this declaration includes the statement
+	//				header record.
+	
+	LabelStmt1	:record
+	
+		stmtHeader	:StmtRec;
+		labelTkn	:byte;
+		idIndex		:byte;
+		
+	endrecord;
+	
+	LabelStmt2	:record
+	
+		stmtHeader	:StmtRec;
+		labelTkn	:byte;
+		idIndex		:word;
+		
+	endrecord;
+	
+	// ForStmt- 	Record structure for a FOR statement
+	//				Note that FOR statements always occur at the beginning of
+	//				a line. Hence, this declaration includes the statement
+	//				header record.
+	
+	ForStmt	:record
+	
+		stmtHeader	:StmtRec;
+		forTkn		:byte;
+		nextIndex	:word;
+		idIndex		:word;
+		
+	endrecord;
+	
+	// NextStmt- 	Record structure for a Next statement
+	//				Note that NEXT <id> statements always occur at the beginning 
+	//				of a line. Hence, this declaration includes the statement
+	//				header record.
+	
+	NextStmt	:record
+	
+		stmtHeader	:StmtRec;
+		nextTkn		:byte;
+		idTknIndex	:byte;		// This is IDtkn if we have NEXT <id>
+		forIndex	:word;		// This is the ID index if we have NEXT <id>
+		
+	endrecord;
+	
+	
+	// IfStmt- 		Record structure for an IF or ELSE statement
+	//				Note that IF statements always occur at the beginning 
+	//				of a line. Hence, this declaration includes the statement
+	//				header record.
+	
+	IfElseIfElse	:record
+		stmtHeader	:StmtRec;
+		stmtTkn		:byte;		// Must immediately follow stmtHeader
+	endrecord;
+	
+	IfStmt	:record inherits( IfElseIfElse );
+	
+		endIndex	:word;
+		
+	endrecord;
+	
+	// ElseIfStmt- 	Record structure for an ELSEIF statement
+	//				Note that ELSEIF statements always occur at the beginning 
+	//				of a line. Hence, this declaration includes the statement
+	//				header record.
+	//				stmtTkn must be at the same offset in IfStmt and in
+	//				ElseIfStmt. 
+	
+	ElseIfStmt	:record inherits( IfElseIfElse );
+	
+		extraIfTkn	:byte;
+		endIndex	:word;
+		
+	endrecord;
+	
+	
+	// WhileStmt- 	Record structure for a WHILE statement
+	//				Note that WHILE statements always occur at the beginning 
+	//				of a line. Hence, this declaration includes the statement
+	//				header record.
+	
+	WhileStmt	:record
+	
+		stmtHeader	:StmtRec;
+		whileTkn	:byte;
+		endIndex	:word;
+		
+	endrecord;
+	
+	
+	// tokenClass_t-
+	//
+	//	Specifies the type of token
+	
+	tokenClass_t:enum
+	{
+		stmt_c,
+		stmtMisc_c,
+		
+		exprTerm_c,		// exprTerm_c, exprFunc_c, and exprVar_c must
+		exprFunc_c,		// be in this order.
+		exprVar_c,
+		
+		exprOperator_c,
+		exprUnaryOp_c,
+		exprMisc_c
+	};
+	
+	// vTypes specifies the data types that HLABasic supports:
+	
+	vTypes:
+		enum
+		{ 
+			Undefined_c,
+			Label_c,
+			Array_c, 
+			Integer_c, 
+			Real_c, 
+			String_c
+		};
+		
+		
+	rwOps_t:
+		enum
+		{
+			read_c,			// Must be zero
+			write_c,		// Must be one
+			global_c
+		};
+	
+	
+	// The value of a HLABasic variable is held within a variable
+	// of the Variant type:
+	
+	Variant: record
+	
+		union
+		
+			a: record
+			
+				elements:	uns32;	// Number of elements for this array.
+				array:		dword;	// Pointer to array data.
+				
+			endrecord;
+			i:int32;		// Integer value if Integer_c object.
+			l:dword;		// Stmt address if Label_c object.
+			r:real64;		// Real value if Real_c object.
+			s:string;		// String value if String_c object.
+			
+		endunion;
+		
+		// Symbols current type:
+		
+		DataType	:vTypes;	// Type of this particular variable.
+		
+		// Lots of code in the Basic interpreter assumes that the
+		// size of the Variant type is a multiple of four. Ensure this.
+		
+		align(4);			
+		
+	endrecord;
+	pVariant	:pointer to Variant;
+	
+		
+	// tableVariant is used by the READ, WRITE, and GLOBAL statements
+	// to hold global data.
+	
+	tableVariant: record
+	
+		elements	:uns32;
+		data		:dword;	@nostorage;	// Starting address of Variant data.
+		
+	endrecord;
+	
+	
+	
+	
+	pgmClass	:class
+		const
+			maxParmStackSize	:= 64;
+			maxExprStackSize	:= 64;
+	
+		var
+			pgmFileName		:string;
+			
+			// Program storage space and pointer variables:
+			
+			TxtStart		:dword;			// Basic text area
+			TxtEnd			:dword;			// End of Basic Text pointer
+			ip				:dword;			// Index of current stmt to erage space and pointer variables:
+			offset			:dword;			// Index into current stmt to execute
+			symCnt			:dword;			// Number of identifiers in code
+			varData			:dword;			// Run-time pointer to symbol data
+			symbols			:dword;			// Run-time pointer to symbol strings.
+			
+			exceptionMsg	:string;		// Message if exception occurs.
+
+			// Stacks to maintain FOR/NEXT, WHILE/ENDWHILE, 
+			// and GOSUB/RETURN statements
+
+			ForStackPtr		:dword;
+			ForStack		:ForRecord[ MaxNestedFors ];
+			
+			WhileStackPtr	:dword;
+			WhileStack		:WhileRecord[ MaxNestedWhiles ];
+			
+			GosubStackPtr	:dword;
+			GosubStack		:GosubRecord[ MaxNestedGosubs ];
+			
+			ParmStackCnt	:dword;
+			ParmStackPtr	:dword;
+			ParmStack		:Variant[ maxParmStackSize ];
+			
+			
+			ExprStack		:Variant[ maxExprStackSize ];
+		
+			// DEBUG control
+			
+			debugFlag		:boolean;		// Turns run-time trace on/off.
+			pgmAllocated	:boolean;		// True if pgm data allocated on heap.
+			objAllocated	:boolean;		// True if Object allocated on heap.
+			
+			// Buffer area for the exception message.
+			
+			exceptionMsgBuf	:char[256];
+			
+			align(4);
+		
+	endclass;
+	
+	rw_func:procedure
+	(
+			opFlag	:rwOps_t; 
+			extName	:string;
+		var	expr	:Variant;
+		var symbol	:Variant
+	);
+	
+	
+	rtPgmClass	:class inherits( pgmClass );
+	
+		procedure create( filename:string; pgmData:dword ); 
+			external;
+			
+		method destroy; 
+			external;
+		
+		method makeReal( CurType:vTypes in al; msg:string ); 
+			@returns( "eax" );
+			external;
+			 
+		method makeInt( CurType:vTypes in al; msg:string ); 
+			@returns( "eax" );
+			external;
+			 
+		method intRange( value:int32; low:int32; high:int32; msg:string );
+			external;
+			
+		method tosInt
+		( 
+			CurType:vTypes in al; 
+			ExprStackPtr:dword; 
+			msg:string 
+		); 
+			@returns( "eax" );
+			external;
+			 
+		procedure evalExpr( ip:dword in ecx ); 
+			@returns( "al" ); 
+			external;
+			
+		procedure evalRPN( ip:dword in ecx; ExprStackPtr:dword in edi );
+			@returns( "al" );
+			external; 		
+			
+		method ProcessIndex( ip:dword in ecx; index:dword in edx ); 
+			external;
+		
+		method run; 
+			external;
+		
+		method resume;
+			external;
+				
+		method reset;
+			external;		
+		
+		
+		
+		method byteCodeExtensions;  @returns( "eax" ); external;
+		
+		method functionExtensions
+		(
+			ExprStackPtr:dword
+		);  
+			@returns( "eax" ); 
+			external;
+			
+		method pseudoVarExtensions
+		( 
+			isRead:boolean;
+			ExprStackPtr:dword
+		); 
+			@returns( "eax" ); 
+			external;
+				
+										
+	endclass;
+	
+	
+	
+	
+//////////////////////////////////////////////////////////////////////////////////
+//
+// Pseudo variables:
+//
+	
+	// User-defined pseudo-var declaration structure:
+	//
+	// Automate the generation of pseudo variables across the compiler,
+	// decompiler, and interpreter for those pseudo-variable objects that
+	// correspond to HLA global variables.
+	//
+	// identifier:
+	//		The pseudo-variable name. This is the name of the global variable
+	//		in the HLA Basic interpreter.  Converted to upper case with "tkn"
+	//		appended to the identifier is the token name used to refer to
+	//		the pseudo-variable's numeric token code. Prepended with an "@"
+	//		produces the HLA Basic reserved word used to reference this
+	//		pseudo-variable in an HLA Basic program.
+	//
+	//
+	//	elements:
+	//		Number of array elements for this object. Zero or one denotes
+	//		a scalare object, any other value denotes an array of the
+	//		specified type.	 Note that this mechanism only supports single
+	//		dimension arrays for pseudo-variables. If you need more than
+	//		one index, you must manually implement the pseudo-variable.
+	//
+	//	max:
+	//		Maximum value that an (integer) object can have.
+	//
+	//	runTimeType:
+	//		String specifying the type of the variable that implements this
+	//		object in the HLA source file. Note: if elements is greater than
+	//		one, this is an array type.
+	
+	pvrec_t	:record
+		
+		identifier	:string;
+		elements	:dword;
+		max			:dword;
+		runTimeType	:string;
+		
+	endrecord; 
+
+
+const
+	pseudoVars	:pvrec_t[] :=
+		[
+			pvrec_t:[ "timeZone", 0, 0, "int32" ],
+			
+			// Expand site-specific pseudovariables here:
+			
+			siteSpecificPseudoVars
+			
+		];
+
+
+// Generate constants for all the pseudo-variable tokens of the form
+// "<id>_tkn":
+		
+type
+	pvTokens	:enum 
+	{
+		#for( _i_ := 0 to @elements( pseudoVars )-1 )
+		
+			@text( pseudoVars[_i_].identifier + "_tkn"),
+			
+		#endfor
+		numPVtokens
+	};
+	
+		
+const		
+	PVStrs_c	:string[] :=
+	[
+		#for( _i_ := 0 to @elements( pseudoVars )-1 )
+		
+			"@" + pseudoVars[_i_].identifier,
+			
+		#endfor
+	];
+	
+		
+		
+	#macro pv( _pv_ );
+	
+		PVStrs_c[ @uns8( _pv_ ) ]
+		
+	#endmacro
+		
+		
+	// Emit useful constants for elements and max values.
+	// If the "xxx.elements" field is non-zero, this generates
+	// an identifier for the form "max_index_<id>_c".
+	// If the "xxx.max" field is non-zero, this generates an
+	// identifier of the form "max_value_<id>_c".
+	
+	#for( _i_ := 0 to @elements( pseudoVars )-1 )
+	
+		// Emit max_index_<id>_c constants:
+		
+		#if( pseudoVars[_i_].elements <> 0 )
+		
+			@text( "max_index_" + pseudoVars[_i_].identifier + "_c" ) :=
+				pseudoVars[_i_].elements;
+				
+		#endif
+		
+		// Emit max_value_<id>_c constants:
+		
+		#if( pseudoVars[_i_].max <> 0 )
+		
+			@text( "max_value_" + pseudoVars[_i_].identifier + "_c" ) :=
+				pseudoVars[_i_].max;
+				
+		#endif
+	
+	#endfor
+	
+	
+	
+	// Support macros for generating pseudo-variable access code.
+	
+	
+	#macro _eax_index( _cond_, _size_ );
+	
+		#if( _cond_ )
+		
+			#if( _size_ > 1 )
+			
+				[eax*_size_]
+			
+			#else
+			
+				[eax]
+				
+			#endif
+			
+		#endif
+		
+	#endmacro
+	
+	
+	#macro _edx_index( _cond_, _size_ );
+	
+		#if( _cond_ )
+		
+			#if( _size_ > 1 )
+			
+				[edx*_size_]
+			
+			#else
+			
+				[edx]
+				
+			#endif
+			
+		#endif
+		
+	#endmacro
+	
+	
+
+
+
+	
+	
+	// writePV-
+	//
+	//	Macro used to write a value to a pseudo-variable.
+	
+	#macro writePV( _pv_ ):_writePV_index_, _the_type_, _pv_ID;
+		?_the_type_ := _pv_.runTimeType;
+		?_writePV_index_ := false;
+		?_pv_ID :string := _pv_.identifier;
+		#if( _pv_.elements > 1 )
+		
+			if(	(type byte [ecx]) <> LPARENtkn ) then
+			
+				str.put
+				(
+					this.exceptionMsg,
+					"Pseudo-variable ",
+					_pv_ID,
+					" requires an index expression"
+				);
+				raise( BasicErrorWithMsg );
+				
+			endif;
+			
+			add( 1, ecx );					// Skip '(' token.
+			this.evalExpr( ecx );			// Get index value.
+			
+			// Must have a ')' at this point as the compiler
+			// verifies this.
+			
+			assert( (type byte [ecx]) = RPARENtkn );
+
+			add( 1, ecx );					// Skip ')' token.
+			
+			this.makeInt
+			( 
+				al, 
+				_pv_.identifier + "(n) requires an integer argument" 
+			);
+			mov( eax, index );
+			if(	eax >= _pv_.elements ) then
+			
+				str.put
+				(
+					this.exceptionMsg,
+					"Pseudo-variable @",
+					_pv_ID,
+					"'s index is out of range (",
+					(type uns32 eax),
+					')'
+				);
+				raise( BasicErrorWithMsg );
+				
+			endif;
+							
+			?_writePV_index_ := true;
+								
+		#endif
+		
+	
+		#if
+		( 
+			_the_type_ = "real64" 
+		)
+		
+			add( 1, ecx );				// Skip '=' token
+			this.evalExpr( ecx );		// Get value.
+			this.makeReal
+			( 
+				al, 
+				"Must assign a real value to @" + _pv_.identifier 
+			);
+			
+			// ST0 has the value to assign.
+			
+			#if( _writePV_index_ ) 
+			
+				mov( index, edx );
+				
+			#endif
+			fstp( @text(_pv_.identifier) _edx_index( _writePV_index_, 8 ) );
+			
+			
+		#elseif
+		( 
+			_the_type_ = "real32" 
+		)
+		
+			add( 1, ecx );				// Skip '=' token
+			this.evalExpr( ecx );		// Get value.
+			this.makeReal
+			( 
+				al, 
+				"Must assign a real value to @" + _pv_.identifier 
+			);
+			
+			// ST0 has the value to assign.
+			
+			#if( _writePV_index_ ) 
+			
+				mov( index, edx );
+				
+			#endif
+			fstp( @text(_pv_.identifier) _edx_index( _writePV_index_, 4 ) );
+			
+		#elseif
+		(
+				_the_type_ = "dword"
+			|	_the_type_ = "int32"
+			|	_the_type_ = "uns32"
+		)
+		
+			add( 1, ecx );				// Skip '=' token
+			this.evalExpr( ecx );		// Get value.
+			this.makeInt
+			( 
+				al, 
+				"Must assign an integer value to @" + _pv_.identifier 
+			);
+			#if( _pv_.max <> 0 )
+			
+				this.intRange
+				( 
+					eax, 
+					0, 
+					_pv_.max, 
+					"@" + _pv_.identifier + " value out of range" 
+				);
+				
+			#endif
+			
+			// EAX has the value to assign to ainCnt.
+			
+			#if( _writePV_index_ ) 
+			
+				mov( index, edx );
+				
+			#endif
+			mov( eax, @text(_pv_.identifier) _edx_index( _writePV_index_, 4 ) );
+			
+			
+			
+			
+			
+		#elseif
+		( 
+				_the_type_ = "word"
+			|	_the_type_ = "int16"
+			|	_the_type_ = "uns16"
+		)
+		
+			add( 1, ecx );				// Skip '=' token
+			this.evalExpr( ecx );		// Get value.
+			this.makeInt
+			( 
+				al, 
+				"Must assign an integer value to @" + _pv_.identifier 
+			);
+			#if( _pv_.max <> 0 )
+			
+				this.intRange
+				( 
+					eax, 
+					0, 
+					@min( _pv_.max, 65535 ), 
+					"@" + _pv_.identifier + " value out of range" 
+				);
+				
+			#endif
+			
+			// EAX has the value to assign to ainCnt.
+			
+			#if( _writePV_index_ ) 
+			
+				mov( index, edx );
+				
+			#endif
+			mov( ax, @text(_pv_.identifier) _edx_index( _writePV_index_, 2 ) );
+			
+			
+		#elseif
+		( 
+				_the_type_ = "byte"
+			|	_the_type_ = "int8"
+			|	_the_type_ = "uns8"
+			|	_the_type_ = "boolean"
+		)
+		
+			add( 1, ecx );				// Skip '=' token
+			this.evalExpr( ecx );		// Get value.
+			this.makeInt
+			( 
+				al, 
+				"Must assign an integer value to @" + _pv_.identifier 
+			);
+			#if( _pv_.max <> 0 )
+			
+				this.intRange
+				( 
+					eax, 
+					0, 
+					@min( _pv_.max, 255 ), 
+					"@" + _pv_.identifier + " value out of range" 
+				);
+				
+			#endif
+			
+			// EAX has the value to assign to ainCnt.
+			
+			#if( _writePV_index_ ) 
+			
+				mov( index, edx );
+				
+			#endif
+			mov( al, @text(_pv_.identifier) _edx_index( _writePV_index_, 1 ) );
+			
+		#elseif
+		( 
+				_the_type_ = "char"
+		)
+		
+			add( 1, ecx );				// Skip '=' token
+			this.evalExpr( ecx );		// Get <x> value.
+			if( al <> String_c ) then
+			
+				str.cpy
+				( 
+					"Must assign a string value to @" + _pv_.identifier,
+					this.exceptionMsg 
+				);
+				raise( BasicErrorWithMsg );
+				
+			endif;
+			
+			// Grab the first character of the string and shove it into
+			// the char variable:
+			
+			#if( _writePV_index_ ) 
+			
+				mov( index, edx );
+				
+			#endif
+			mov( this.ExprStack.s, eax );
+			mov( [eax], al );
+			mov( al, @text(_pv_.identifier) _edx_index( _writePV_index_, 1 ));
+			str.free( this.ExprStack.s );
+			
+		#elseif
+		( 
+				_the_type_ = "string"
+		)
+		
+			add( 1, ecx );				// Skip '=' token
+			this.evalExpr( ecx );		// Get <x> value.
+			if( al <> String_c ) then
+			
+				str.cpy
+				( 
+					"Must assign a string value to @" + _pv_.identifier,
+					this.exceptionMsg 
+				);
+				raise( BasicErrorWithMsg );
+				
+			endif;
+			#if( _writePV_index_ ) 
+			
+				mov( index, edx );
+				
+			#endif
+			if
+			( 
+				@text( _pv_.identifier ) _edx_index( _writePV_index_, 4 ) <> NULL 
+			) then
+			
+				str.free
+				(
+					@text( _pv_.identifier ) _edx_index( _writePV_index_, 4 ) 
+				);
+			
+			endif;
+			
+			mov( this.ExprStack.s, eax );
+			mov( eax, @text( _pv_.identifier ) _edx_index( _writePV_index_, 4 ));
+			
+		#else
+		
+			#error
+			( 
+				"writePV macro does not support data type " + 
+					_the_type_
+			)
+		
+		#endif
+	
+	#endmacro
+	
+	
+	#macro readPV( _pv_ ):_readPV_index_, _pv_ID;
+	
+		?_readPV_index_ := false;
+		?_pv_ID :string := _pv_.identifier;
+		#if( _pv_.elements > 1 )
+		
+			if(	(type byte [ecx]) <> LPARENtkn ) then
+			
+				str.put
+				(
+					this.exceptionMsg,
+					"Pseudo-variable ",
+					_pv_ID,
+					" requires an index expression"
+				);
+				raise( BasicErrorWithMsg );
+				
+			endif;
+				
+					
+			add( 1, ecx );					// Skip '(' token.
+			this.evalRPN( ecx, edi );		// Get index value.
+			
+			// Syntactically, the closing ')' must be there or
+			// we wouldn't have compiled properly.
+			
+			assert( (type byte [ecx]) = RPARENtkn );
+			add( 1, ecx );					// Skip ')' token.
+			
+			this.tosInt
+			( 
+				al, 
+				edi, 
+				_pv_.identifier + "(n) requires an integer operand" 
+			);
+			if(	eax >= _pv_.elements ) then
+			
+				str.put
+				(
+					this.exceptionMsg,
+					"Pseudo-variable @",
+					_pv_ID,
+					"'s index is out of range (",
+					(type uns32 eax),
+					')'
+				);
+				raise( BasicErrorWithMsg );
+				
+			endif;
+							
+			?_readPV_index_ := true;
+								
+		#endif
+	
+		#if
+		( 
+			@typename( @text(_pv_.identifier) ) = "real64" 
+		)
+		
+			#if( _pv_.elements <= 1 )
+			
+				fld( @text(_pv_.identifier) _eax_index( _readPV_index_, 8 ));
+				fstp( varEDI.r );
+				mov( Real_c, al );
+				mov( al, varEDI.DataType );
+				add( @size( Variant ), edi );
+				
+			#else
+			
+				fld( @text(_pv_.identifier) _eax_index( _readPV_index_, 8 ));
+				fstp( tosEDI.r );
+				mov( Real_c, al );
+				mov( al, tosEDI.DataType );
+			
+			#endif
+			
+		#elseif
+		( 
+			@typename( @text(_pv_.identifier) ) = "real32" 
+		)
+		
+			#if( _pv_.elements <= 1 )
+			
+				fld( @text(_pv_.identifier) _eax_index( _readPV_index_, 4 ));
+				fstp( varEDI.r );
+				mov( Real_c, al );
+				mov( al, varEDI.DataType );
+				add( @size( Variant ), edi );
+			
+			#else
+			
+				fld( @text(_pv_.identifier) _eax_index( _readPV_index_, 4 ));
+				fstp( tosEDI.r );
+				mov( Real_c, al );
+				mov( al, tosEDI.DataType );
+			
+			#endif
+			
+		#elseif
+		( 
+				@typename( @text(_pv_.identifier) ) = "dword"
+			|	@typename( @text(_pv_.identifier) ) = "int32"
+			|	@typename( @text(_pv_.identifier) ) = "uns32"
+		)
+		
+			#if( _pv_.elements <= 1 )
+
+				mov( @text(_pv_.identifier) _eax_index( _readPV_index_, 4 ), eax );
+				mov( eax, varEDI.i );
+				mov( Integer_c, al );
+				mov( al, varEDI.DataType );
+				add( @size( Variant ), edi );
+				
+			
+			#else
+			
+				mov( @text(_pv_.identifier) _eax_index( _readPV_index_, 4 ), eax );
+				mov( eax, tosEDI.i );
+				mov( Integer_c, al );
+				mov( al, tosEDI.DataType );
+			
+			#endif
+			
+		#elseif
+		( 
+				@typename( @text(_pv_.identifier) ) = "word"
+			|	@typename( @text(_pv_.identifier) ) = "int16"
+			|	@typename( @text(_pv_.identifier) ) = "uns16"
+		)
+		
+			#if( _pv_.elements <= 1 )
+
+				movzx( @text(_pv_.identifier) _eax_index( _readPV_index_, 2 ), eax );
+				mov( eax, varEDI.i );
+				mov( Integer_c, al );
+				mov( al, varEDI.DataType );
+				add( @size( Variant ), edi );
+				
+			#else
+			
+				movzx( @text(_pv_.identifier) _eax_index( _readPV_index_, 2 ), eax );
+				mov( eax, tosEDI.i );
+				mov( Integer_c, al );
+				mov( al, tosEDI.DataType );
+			
+			#endif
+			
+		#elseif
+		( 
+				@typename( @text(_pv_.identifier) ) = "byte"
+			|	@typename( @text(_pv_.identifier) ) = "int8"
+			|	@typename( @text(_pv_.identifier) ) = "uns8"
+			|	@typename( @text(_pv_.identifier) ) = "boolean"
+		)
+		
+			#if( _pv_.elements <= 1 )
+
+				movzx( @text(_pv_.identifier) _eax_index( _readPV_index_, 1 ), eax );
+				mov( eax, varEDI.i );
+				mov( Integer_c, al );
+				mov( al, varEDI.DataType );
+				add( @size( Variant ), edi );
+				
+			#else
+			
+				movzx( @text(_pv_.identifier) _eax_index( _readPV_index_, 1 ), eax );
+				mov( eax, tosEDI.i );
+				mov( Integer_c, al );
+				mov( al, tosEDI.DataType );
+			
+			#endif
+			
+		#elseif
+		( 
+				@typename( @text(_pv_.identifier) ) = "char"
+		)
+		
+			#if( _pv_.elements <= 1 )
+
+				movzx( @text(_pv_.identifier) _eax_index( _readPV_index_, 1 ), eax );
+				push( eax );
+				str.alloc( 4 );
+				pop( (type dword [eax]) );
+				mov( 1, (type str.strRec [eax]).length );
+				mov( eax, varEDI.s );
+				mov( String_c, al );
+				mov( al, varEDI.DataType );
+				add( @size( Variant ), edi );
+				
+			#else
+
+				movzx( @text(_pv_.identifier) _eax_index( _readPV_index_, 1 ), eax );
+				push( eax );
+				str.alloc( 4 );
+				pop( (type dword [eax]) );
+				mov( 1, (type str.strRec [eax]).length );
+				mov( eax, tosEDI.s );
+				mov( String_c, al );
+				mov( al, tosEDI.DataType );
+			
+			#endif
+			
+		#elseif
+		( 
+				@typename( @text(_pv_.identifier) ) = "string"
+		)
+		
+			if
+			( 
+				@text(_pv_.identifier) _eax_index( _readPV_index_, 4 ) = NULL 
+			) then
+			
+				str.a_cpy( "" );
+				
+			else
+			
+				str.a_cpy
+				( 
+					@text(_pv_.identifier) _eax_index( _readPV_index_, 4 ) 
+				);
+				
+			endif;
+			#if( _pv_.elements <= 1 )
+
+				mov( eax, varEDI.s );
+				mov( String_c, al );
+				mov( al, varEDI.DataType );
+				add( @size( Variant ), edi );
+				
+			#else
+			
+				mov( eax, tosEDI.s );
+				mov( String_c, al );
+				mov( al, tosEDI.DataType );
+			
+			#endif
+			
+		#else
+		
+			#error
+			( 
+				"readPV macro does not support data type " + 
+					@typename( @text(_pv_.identifier) )
+			)
+		
+		#endif
+	
+	#endmacro
+
+		
+		
+	
+		
+		
+			
+			
+// Emit external declarations for all the pseudostatic variables:
+	
+static
+	#for( _i_ := 1 to @elements( pseudoVars )-1 )	// Skips TimeZone
+	
+		@text( pseudoVars[_i_].identifier ) :
+			@text( pseudoVars[_i_].runTimeType )
+				#if( pseudoVars[_i_].elements > 1 )
+					[ pseudoVars[_i_].elements ]
+				#endif
+			; external;
+				
+	#endfor
+	
+
+	
+
+
+//////////////////////////////////////////////////////////////////////////////////
+//
+// Function reserved words:
+
+type
+	frec_t	:record
+		
+		identifier	:string;
+		minParms	:uns32;
+		maxParms	:uns32;
+		
+	endrecord; 
+
+
+const
+	functions_c	:frec_t[] :=
+		[
+			frec_t:[ "abs",			1,  1 ],			
+			frec_t:[ "acos",		1,  1 ], 
+			frec_t:[ "asc",			1,  1 ], 
+			frec_t:[ "asin",		1,  1 ], 
+			frec_t:[ "atan",		1,  1 ], 
+			frec_t:[ "chr",			1,  1 ], 
+			frec_t:[ "cos",			1,  1 ], 
+			frec_t:[ "date",		0,  0 ],
+			frec_t:[ "dim",			1,  1 ],
+			frec_t:[ "exp",			1,  1 ], 
+			frec_t:[ "int",			1,  1 ],	
+			frec_t:[ "left",		2,  2 ], 
+			frec_t:[ "len",			1,  1 ], 
+			frec_t:[ "log",			1,  1 ], 
+			frec_t:[ "mid",			3,  3 ], 
+			frec_t:[ "pwr10",		1,  1 ], 
+			frec_t:[ "randomize",	0,  0 ],							
+			frec_t:[ "right",		2,  2 ],
+			frec_t:[ "rnd",			0,  0 ],				
+			frec_t:[ "round",		1,  1 ],				
+			frec_t:[ "sin",			1,  1 ], 
+			frec_t:[ "sqrt",		1,  1 ], 
+			frec_t:[ "str",			1,  3 ], 
+			frec_t:[ "tan",			1,  1 ], 
+			frec_t:[ "time",		0,  0 ], 
+			frec_t:[ "trim",		1,  1 ], 
+			frec_t:[ "unixTime",	0,  0 ], 
+			frec_t:[ "val",			1,  1 ], 
+			
+			
+			// Expand site-specific functions here:
+			
+			siteSpecificFunctions
+			
+		];
+
+
+
+// Generate constants for all the pseudo-variable tokens of the form
+// "<id>_tkn":
+		
+type
+	funcTokens	:enum 
+	{
+		#for( _i_ := 0 to @elements( functions_c )-1 )
+		
+			@text( functions_c[_i_].identifier + "_tkn"),
+			
+		#endfor
+		numFuncTokens
+	};
+	
+
+	// Generate external (HLA) procedure declarations for all the functions:
+
+	#for( _i_ := 0 to @elements( functions_c )-1 ) 
+	
+		procedure
+			@text( functions_c[_i_].identifier + "_f" );
+			external;
+			
+	#endfor
+	
+
+// Generate string names for all the functions:
+		
+const		
+	FUNCStrs_c	:string[] :=
+	[
+		#for( _i_ := 0 to @elements( functions_c )-1 )
+		
+			functions_c[_i_].identifier,
+			
+		#endfor
+	];
+	
+		
+		
+		
+
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//
+// Reserved words (non-pseudo-var and non-function):		
+
+
+	
+	// Reserved word tokens:
+	
+	#macro mkRWstrs( pairs[] ):i;
+	
+		#if( @elements( pairs ) mod 4 != 0 )
+		
+			#error( "mkRWstrs requires a multiple of 4 arguments" )
+			
+		#else
+			
+			const
+				RWStrs_c: string[] :=
+				[
+					?i := 0;
+					#while( i < @elements( pairs ))
+					
+						@text( pairs[i+1] ),
+						?i += 4;
+						
+					#endwhile
+				];
+				
+				RWSpaces_c: byte[] :=
+				[
+					?i := 0;
+					#while( i < @elements( pairs ))
+					
+						@text( pairs[i+2] ),
+						?i += 4;
+						
+					#endwhile
+				];
+				
+				RWTypes_c:	tokenClass_t[] :=
+				[
+					?i := 0;
+					#while( i < @elements( pairs ))
+					
+						@text( pairs[i+3] ),
+						?i += 4;
+						
+					#endwhile
+				];
+				
+				
+			type
+				ReservedWords:
+					enum
+					{ 
+						?i := 0;
+						#while( i < @elements( pairs ))
+						
+							@text( pairs[i] ),
+							?i += 4;
+							
+						#endwhile
+						
+						numReservedWords
+					};
+			
+		#endif
+		
+	#endmacro
+	
+	#macro rw( _rw_ );
+	
+		RWStrs_c[ @uns8( _rw_ ) ]
+		
+	#endmacro
+	
+	// mkRWstrs-
+	//
+	//	1st field-	Token value for the reserved word
+	//	2nd field-	String representation of token
+	//	3rd field-	Spaces to put around string during detokenization:
+	//					bit 0:	Space before token (if 1)
+	//					bit 1:	Space after token (if 1)
+	
+	mkRWstrs
+	( 
+			StmtEndtkn, 	"", 			@{},	stmt_c,	// Must be first
+			StmtSeptkn,		":",			@{0,1},	stmt_c,	// Must be second.
+			
+			Labeltkn1,		"",				@{},	stmt_c,
+			Labeltkn2,		"",				@{},	stmt_c,
+			
+			IDtkn1,			"",				@{},	exprTerm_c,
+			IDtkn2,			"",				@{},	exprTerm_c,
+			INT1tkn, 		"",				@{1},	exprTerm_c,
+			INT2tkn,		"",				@{1},	exprTerm_c,
+			INT4tkn,		"",				@{1},	exprTerm_c,
+			FLT4tkn,		"",				@{1},	exprTerm_c,
+			FLT8tkn,		"",				@{1},	exprTerm_c,
+			STRtkn,			"",				@{1},	exprTerm_c,
+			
+			PVtkn1,			"",				@{},	exprVar_c,
+			PVtkn2,			"",				@{},	exprVar_c,
+			PVtkn3,			"",				@{},	exprVar_c,
+			PVtkn4,			"",				@{},	exprVar_c,
+			PVtkn,			"",				@{},	exprVar_c,
+			FUNCtkn,		"",				@{},	exprFunc_c,
+			
+			LTtkn,			"<",			@{0,1},	exprOperator_c,
+			LEtkn,			"<=",			@{0,1},	exprOperator_c,
+			GTtkn,			">",			@{0,1},	exprOperator_c,
+			GEtkn,			">=",			@{0,1},	exprOperator_c,
+			EQtkn,			"=",			@{0,1},	exprOperator_c,
+			NEtkn,			"<>",			@{0,1},	exprOperator_c,
+			ORtkn,			"or",			@{0,1},	exprOperator_c,
+			ANDtkn,			"and",			@{0,1},	exprOperator_c,
+			NOTtkn,			"not",			@{0,1},	exprUnaryOp_c,
+			PLUStkn,		"+",			@{0,1},	exprOperator_c,
+			MINUStkn,		"-",			@{0,1},	exprOperator_c,
+			NEGtkn,			"-", 			@{0},	exprUnaryOp_c,
+			MULtkn,			"*",			@{0,1},	exprOperator_c,
+			DIVtkn,			"/",			@{0,1},	exprOperator_c,
+			MODtkn,			"mod",			@{0,1},	exprOperator_c,
+			LPARENtkn,		"(",			@{1},	exprTerm_c,
+			RPARENtkn,		")",			@{0},	exprMisc_c,
+			LBRACKtkn,		"[",			@{1},	exprMisc_c,
+			RBRACKtkn,		"]",			@{0},	exprMisc_c,
+			COMMAtkn,		",",			@{1},	exprMisc_c,
+			SEMICOLONtkn,	";",			@{1},	stmtMisc_c,
+			
+			BEEPtkn,		"beep",			@{},	stmt_c,
+			CLStkn,			"cls",			@{},	stmt_c,
+			COLORtkn,		"color",		@{1},	stmt_c,
+			DEBUGtkn,		"debug",		@{},	stmt_c,
+			DOtkn,			"do",			@{0,1},	stmt_c,
+			ELSEIFtkn,		"elseif",		@{},	stmt_c,
+			ELSEIFtkn2,		"elseif",		@{},	stmt_c,
+			ELSEtkn,		"else",			@{},	stmt_c,
+			ENDIFtkn,		"endif",		@{},	stmt_c,
+			ENDWHILEtkn,	"endwhile",		@{},	stmt_c,
+			FORtkn,			"for",			@{1},	stmt_c,
+			GOSUBtkn,		"gosub",		@{1},	stmt_c,
+			GOTOtkn,		"goto",			@{1},	stmt_c,
+			GOTOXYtkn,		"gotoxy",		@{1},	stmt_c,
+			IFtkn,			"if",			@{},	stmt_c,
+			INPUTtkn,		"input",		@{1},	stmt_c,
+			LETtkn1,		"let",			@{1},	stmt_c,
+			LETtkn2,		"let",			@{1},	stmt_c,
+			LETtknPV1,		"let",			@{1},	stmt_c,
+			LETtknPV2,		"let",			@{1},	stmt_c,
+			LETtknPV3,		"let",			@{1},	stmt_c,
+			LETtknPV4,		"let",			@{1},	stmt_c,
+			LETtknPV,		"let",			@{1},	stmt_c,
+			NEXTtkn,		"next",			@{1},	stmt_c,
+			ONtkn,			"on",			@{1},	stmt_c,
+			ONGOSUBtkn,		"gosub",		@{0,1},	stmt_c,
+			ONGOTOtkn,		"goto",			@{0,1},	stmt_c,
+			OUTPUTtkn,		"output",		@{1},	stmt_c,
+			PARMStkn,		"parms",		@{1},	stmt_c,
+			PRINTtkn,		"print",		@{1},	stmt_c,
+			READLNtkn,		"readln",		@{1},	stmt_c,
+			REMtkn,			"rem",			@{},	stmt_c,
+			RETURNtkn,		"return",		@{},	stmt_c,
+			STEPtkn,		"step",			@{},	stmt_c,
+			STOPtkn,		"stop",			@{},	stmt_c,
+			SUSPENDtkn,		"suspend",		@{},	stmt_c,
+			SYSTEMtkn,		"system",		@{},	stmt_c,
+			TOtkn,			"to",			@{0,1},	stmt_c,
+			THENtkn,		"then",			@{0,1},	stmt_c,
+			WAITtkn,		"wait",			@{},	stmt_c,
+			WHILEtkn,		"while",		@{},	stmt_c,
+						
+
+			@text( siteSpecificReservedWords )
+			
+			
+			numBasicTokens,			"",							@{},	stmtMisc_c
+		); 
+	
+	
+	
+
+
+
+
+
+
+	
+	
+	
+//readonly
+//	vmt( pgmClass );	external;
+//	vmt( rtPgmClass );	external;
+	
+	
+static
+	timeZone	:int32;		external;
+
+
+
+	procedure RealToStr( r:real64 ); @returns( "eax" );	external;
+	procedure Deallocate( var valPtr:Variant in eax );	external; 
+	procedure destroyVar( var v:Variant in ebx );		external;
+	procedure StrToNumber( ExprSP:dword in edi );		external;
+		
+
+#endif

@@ -1,0 +1,54 @@
+/*
+
+Hi
+
+I need some help with Euclid's algorithm.
+I want to write a program in assembly to execute this algorithm
+
+In C++
+
+long gcd( long m, long n )
+{
+  while( n!=0)
+  {
+    long rem = m % n;
+    m = n;
+   n = rem;
+  }
+ return m;
+}
+
+*/
+
+program gcdDemo;
+#include( "stdlib.hhf" );
+
+	/*
+	** gcd-	Returns the greatest common divisor of
+	**      integer values (in EAX).
+	*/
+	
+	procedure gcd( m:int32; n:int32 ); @nodisplay;
+	begin gcd;
+	
+		push( edx );		// Preserve this across call
+		while( n != 0 ) do
+		
+			mov( m, eax );
+			cdq();
+			imod( n, edx:eax );
+			mov( n, eax );
+			mov( eax, m );
+			mov( edx, n );
+			
+		endwhile;
+		pop( edx );
+			
+	end gcd;
+		
+begin gcdDemo;
+			  
+	gcd( 100, 75 );
+	stdout.put( "gcd( 100,75 )=", (type int32 eax), nl );
+				  	
+end gcdDemo;

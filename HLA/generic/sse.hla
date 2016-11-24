@@ -1,0 +1,623 @@
+
+program t;
+
+static
+	tt:lword; @nostorage;
+		real32 1.1, 1.2, 1.3, 1.4;
+		
+	tu:lword; @nostorage;
+		real64 2.1, 2.2;
+		
+	b:byte;
+	d:dword;
+	q:qword;
+	l:lword;
+
+begin t;
+
+	lfence();
+	mfence();
+	pause();
+	sfence();
+
+	ldmxcsr( d );
+	stmxcsr( d );
+	clflush( b );
+	prefetcht0( b );
+	prefetcht1( b );
+	prefetcht2( b );
+	prefetchnta( b );
+
+	movq2dq( mm0, xmm1 );
+	movdq2q( xmm2, mm3 );
+	movntq( mm4, q );
+
+
+	movhpd( q, xmm0 );
+	movhps( q, xmm1 );
+	movlpd( q, xmm2 );
+	movlps( q, xmm3 );
+
+	movhpd( xmm0, q );
+	movhps( xmm1, q );
+	movlpd( xmm2, q );
+	movlps( xmm3, q );
+
+	maskmovq( mm6, mm7 );
+
+	maskmovdqu( xmm0, xmm1 );
+	movhlps( xmm2, xmm3 );
+	movlhps( xmm4, xmm5 );
+
+	movss( d, xmm0 );
+	movss( xmm1, d );
+
+	//movsdp( q, xmm2 );
+	//movsdp( xmm3, q );
+
+	movapd( l, xmm2 );
+	movaps( l, xmm2 );
+	movdqa( l, xmm2 );
+	movdqu( l, xmm2 );
+	movupd( l, xmm2 );
+	movups( l, xmm2 );
+
+	movapd( xmm3, l );
+	movaps( xmm3, l );
+	movdqa( xmm3, l );
+	movdqu( xmm3, l );
+	movupd( xmm3, l );
+	movups( xmm3, l );
+
+	movnti( eax, d );
+
+	cvtsi2sd( eax, xmm0 );
+	cvtsi2ss( ebx, xmm1 );
+	cvtsi2sd( d, xmm0 );
+	cvtsi2ss( d, xmm1 );
+
+	movmskpd( xmm7, esi );
+	movmskps( xmm6, edi );
+
+	cvtss2si( xmm0, eax );
+	cvttss2si( xmm1, ebx );
+	cvtss2si( d, eax );
+	cvttss2si( d, ebx );
+
+	cvtsd2si( xmm2, ecx );
+	cvttsd2si( xmm3, edx );
+
+	pmovmskb( xmm4, ebp );
+	pmovmskb( mm4, esp );
+
+	movntdq( xmm0, l );
+	movntpd( xmm0, l );
+	movntps( xmm0, l );
+
+	cvtpd2pi( xmm0, mm0 );
+	cvtpd2pi( l, mm1 );
+
+	cvtps2pi( xmm1, mm1 );
+	cvttps2pi( xmm2, mm2 );
+	cvtps2pi( q, mm1 );
+	cvttps2pi( q, mm2 );
+
+	cvtpd2pi( xmm3, mm3 );
+	cvtpd2pi( l, mm4 );
+
+	addss		( d, xmm0 );
+	comiss		( d, xmm0 );
+	divss		( d, xmm0 );
+	cvtss2sd	( d, xmm0 );
+	maxss		( d, xmm0 );
+	minss		( d, xmm0 );
+	mulss		( d, xmm0 );
+	rcpss		( d, xmm0 );
+	rsqrtss		( d, xmm0 );
+	sqrtss		( d, xmm0 );
+	subss		( d, xmm0 );
+	ucomiss		( d, xmm0 );
+
+	addss		( xmm6,  xmm0 );
+	comiss		( xmm6,  xmm0 );
+	divss		( xmm6,  xmm0 );
+	cvtss2sd	( xmm6,  xmm0 );
+	maxss		( xmm6,  xmm0 );
+	minss		( xmm6,  xmm0 );
+	mulss		( xmm6,  xmm0 );
+	rcpss		( xmm6,  xmm0 );
+	rsqrtss		( xmm6,  xmm0 );
+	sqrtss		( xmm6,  xmm0 );
+	subss		( xmm6,  xmm0 );
+	ucomiss		( xmm6,  xmm0 );
+
+	addsd		( xmm6,  xmm0 );
+	comisd		( xmm6,  xmm0 );
+	cvtps2pd	( xmm6,  xmm0 );
+	cvtpi2pd	( mm6,  xmm0 );
+	cvtpi2ps	( mm6,  xmm0 );
+	cvtsd2ss	( xmm6,  xmm0 );
+	cvtdq2pd	( xmm6,  xmm0 );
+	maxsd		( xmm6,  xmm0 );
+	minsd		( xmm6,  xmm0 );
+	mulsd		( xmm6,  xmm0 );
+	sqrtsd		( xmm6,  xmm0 );
+	subsd		( xmm6,  xmm0 );
+	ucomisd		( xmm6,  xmm0 );
+
+	addsd		( q,  xmm0 );
+	comisd		( q,  xmm0 );
+	cvtps2pd	( q,  xmm0 );
+	cvtpi2pd	( q,  xmm0 );
+	cvtpi2ps	( q,  xmm0 );
+	cvtsd2ss	( q,  xmm0 );
+	cvtdq2pd	( q,  xmm0 );
+	maxsd		( q,  xmm0 );
+	minsd		( q,  xmm0 );
+	mulsd		( q,  xmm0 );
+	sqrtsd		( q,  xmm0 );
+	subsd		( q,  xmm0 );
+	ucomisd		( q,  xmm0 );
+
+	packsswb( mm0, mm1 );
+	packsswb( q, mm1 );
+	packsswb( xmm0, xmm1 );
+	packsswb( l, xmm1 );
+
+	packssdw( mm0, mm1 );
+	packssdw( q, mm1 );
+	packssdw( xmm0, xmm1 );
+	packssdw( l, xmm1 );
+
+	packuswb( mm0, mm1 );
+	packuswb( q, mm1 );
+	packuswb( xmm0, xmm1 );
+	packuswb( l, xmm1 );
+
+	packuswb( mm0, mm1 );
+	packuswb( q, mm1 );
+	packuswb( [ebx], mm1 );
+	packuswb( xmm0, xmm1 );
+	packuswb( l, xmm1 );
+	packuswb( [ebx], xmm1 );
+
+	paddb( mm0, mm1 );
+	paddb( q, mm1 );
+	paddb( [ebx], mm1 );
+	paddb( xmm0, xmm1 );
+	paddb( l, xmm1 );
+	paddb( [ebx], xmm1 );
+
+	paddw( mm0, mm1 );
+	paddw( q, mm1 );
+	paddw( [ebx], mm1 );
+	paddw( xmm0, xmm1 );
+	paddw( l, xmm1 );
+	paddw( [ebx], xmm1 );
+
+	paddd( mm0, mm1 );
+	paddd( q, mm1 );
+	paddd( [ebx], mm1 );
+	paddd( xmm0, xmm1 );
+	paddd( l, xmm1 );
+	paddd( [ebx], xmm1 );
+
+	paddq( mm0, mm1 );
+	paddq( q, mm1 );
+	paddq( [ebx], mm1 );
+	paddq( xmm0, xmm1 );
+	paddq( l, xmm1 );
+	paddq( [ebx], xmm1 );
+
+	paddsb( mm0, mm1 );
+	paddsb( q, mm1 );
+	paddsb( [ebx], mm1 );
+	paddsb( xmm0, xmm1 );
+	paddsb( l, xmm1 );
+	paddsb( [ebx], xmm1 );
+
+	paddsw( mm0, mm1 );
+	paddsw( q, mm1 );
+	paddsw( [ebx], mm1 );
+	paddsw( xmm0, xmm1 );
+	paddsw( l, xmm1 );
+	paddsw( [ebx], xmm1 );
+
+	paddusb( mm0, mm1 );
+	paddusb( q, mm1 );
+	paddusb( [ebx], mm1 );
+	paddusb( xmm0, xmm1 );
+	paddusb( l, xmm1 );
+	paddusb( [ebx], xmm1 );
+
+	paddusw( mm0, mm1 );
+	paddusw( q, mm1 );
+	paddusw( [ebx], mm1 );
+	paddusw( xmm0, xmm1 );
+	paddusw( l, xmm1 );
+	paddusw( [ebx], xmm1 );
+
+	pand( mm0, mm1 );
+	pand( q, mm1 );
+	pand( [ebx], mm1 );
+	pand( xmm0, xmm1 );
+	pand( l, xmm1 );
+	pand( [ebx], xmm1 );
+
+	pandn( mm0, mm1 );
+	pandn( q, mm1 );
+	pandn( [ebx], mm1 );
+	pandn( xmm0, xmm1 );
+	pandn( l, xmm1 );
+	pandn( [ebx], xmm1 );
+
+	pavgb( mm0, mm1 );
+	pavgb( q, mm1 );
+	pavgb( [ebx], mm1 );
+	pavgb( xmm0, xmm1 );
+	pavgb( l, xmm1 );
+	pavgb( [ebx], xmm1 );
+
+	pavgw( mm0, mm1 );
+	pavgw( q, mm1 );
+	pavgw( [ebx], mm1 );
+	pavgw( xmm0, xmm1 );
+	pavgw( l, xmm1 );
+	pavgw( [ebx], xmm1 );
+
+	pcmpeqb( mm0, mm1 );
+	pcmpeqb( q, mm1 );
+	pcmpeqb( [ebx], mm1 );
+	pcmpeqb( xmm0, xmm1 );
+	pcmpeqb( l, xmm1 );
+	pcmpeqb( [ebx], xmm1 );
+
+	pcmpeqw( mm0, mm1 );
+	pcmpeqw( q, mm1 );
+	pcmpeqw( [ebx], mm1 );
+	pcmpeqw( xmm0, xmm1 );
+	pcmpeqw( l, xmm1 );
+	pcmpeqw( [ebx], xmm1 );
+
+	pcmpeqd( mm0, mm1 );
+	pcmpeqd( q, mm1 );
+	pcmpeqd( [ebx], mm1 );
+	pcmpeqd( xmm0, xmm1 );
+	pcmpeqd( l, xmm1 );
+	pcmpeqd( [ebx], xmm1 );
+
+	pcmpgtb( mm0, mm1 );
+	pcmpgtb( q, mm1 );
+	pcmpgtb( [ebx], mm1 );
+	pcmpgtb( xmm0, xmm1 );
+	pcmpgtb( l, xmm1 );
+	pcmpgtb( [ebx], xmm1 );
+
+	pcmpgtw( mm0, mm1 );
+	pcmpgtw( q, mm1 );
+	pcmpgtw( [ebx], mm1 );
+	pcmpgtw( xmm0, xmm1 );
+	pcmpgtw( l, xmm1 );
+	pcmpgtw( [ebx], xmm1 );
+
+	pcmpgtd( mm0, mm1 );
+	pcmpgtd( q, mm1 );
+	pcmpgtd( [ebx], mm1 );
+	pcmpgtd( xmm0, xmm1 );
+	pcmpgtd( l, xmm1 );
+	pcmpgtd( [ebx], xmm1 );
+
+	pmaddwd( mm0, mm1 );
+	pmaddwd( q, mm1 );
+	pmaddwd( [ebx], mm1 );
+	pmaddwd( xmm0, xmm1 );
+	pmaddwd( l, xmm1 );
+	pmaddwd( [ebx], xmm1 );
+
+	pmaxsw( mm0, mm1 );
+	pmaxsw( q, mm1 );
+	pmaxsw( [ebx], mm1 );
+	pmaxsw( xmm0, xmm1 );
+	pmaxsw( l, xmm1 );
+	pmaxsw( [ebx], xmm1 );
+
+	pmaxub( mm0, mm1 );
+	pmaxub( q, mm1 );
+	pmaxub( [ebx], mm1 );
+	pmaxub( xmm0, xmm1 );
+	pmaxub( l, xmm1 );
+	pmaxub( [ebx], xmm1 );
+
+	pminsw( mm0, mm1 );
+	pminsw( q, mm1 );
+	pminsw( [ebx], mm1 );
+	pminsw( xmm0, xmm1 );
+	pminsw( l, xmm1 );
+	pminsw( [ebx], xmm1 );
+
+	pminub( mm0, mm1 );
+	pminub( q, mm1 );
+	pminub( [ebx], mm1 );
+	pminub( xmm0, xmm1 );
+	pminub( l, xmm1 );
+	pminub( [ebx], xmm1 );
+
+	pmulhuw( mm0, mm1 );
+	pmulhuw( q, mm1 );
+	pmulhuw( [ebx], mm1 );
+	pmulhuw( xmm0, xmm1 );
+	pmulhuw( l, xmm1 );
+	pmulhuw( [ebx], xmm1 );
+
+	pmulhw( mm0, mm1 );
+	pmulhw( q, mm1 );
+	pmulhw( [ebx], mm1 );
+	pmulhw( xmm0, xmm1 );
+	pmulhw( l, xmm1 );
+	pmulhw( [ebx], xmm1 );
+
+	pmullw( mm0, mm1 );
+	pmullw( q, mm1 );
+	pmullw( [ebx], mm1 );
+	pmullw( xmm0, xmm1 );
+	pmullw( l, xmm1 );
+	pmullw( [ebx], xmm1 );
+
+	pmuludq( mm0, mm1 );
+	pmuludq( q, mm1 );
+	pmuludq( [ebx], mm1 );
+	pmuludq( xmm0, xmm1 );
+	pmuludq( l, xmm1 );
+	pmuludq( [ebx], xmm1 );
+
+	por( mm0, mm1 );
+	por( q, mm1 );
+	por( [ebx], mm1 );
+	por( xmm0, xmm1 );
+	por( l, xmm1 );
+	por( [ebx], xmm1 );
+
+	psadbw( mm0, mm1 );
+	psadbw( q, mm1 );
+	psadbw( [ebx], mm1 );
+	psadbw( xmm0, xmm1 );
+	psadbw( l, xmm1 );
+	psadbw( [ebx], xmm1 );
+
+	psubb( mm0, mm1 );
+	psubb( q, mm1 );
+	psubb( [ebx], mm1 );
+	psubb( xmm0, xmm1 );
+	psubb( l, xmm1 );
+	psubb( [ebx], xmm1 );
+
+	psubw( mm0, mm1 );
+	psubw( q, mm1 );
+	psubw( [ebx], mm1 );
+	psubw( xmm0, xmm1 );
+	psubw( l, xmm1 );
+	psubw( [ebx], xmm1 );
+
+	psubd( mm0, mm1 );
+	psubd( q, mm1 );
+	psubd( [ebx], mm1 );
+	psubd( xmm0, xmm1 );
+	psubd( l, xmm1 );
+	psubd( [ebx], xmm1 );
+
+	psubd( mm0, mm1 );
+	psubd( q, mm1 );
+	psubd( [ebx], mm1 );
+	psubd( xmm0, xmm1 );
+	psubd( l, xmm1 );
+	psubd( [ebx], xmm1 );
+
+	psubq( mm0, mm1 );
+	psubq( q, mm1 );
+	psubq( [ebx], mm1 );
+	psubq( xmm0, xmm1 );
+	psubq( l, xmm1 );
+	psubq( [ebx], xmm1 );
+
+	psubsb( mm0, mm1 );
+	psubsb( q, mm1 );
+	psubsb( [ebx], mm1 );
+	psubsb( xmm0, xmm1 );
+	psubsb( l, xmm1 );
+	psubsb( [ebx], xmm1 );
+
+	psubsw( mm0, mm1 );
+	psubsw( q, mm1 );
+	psubsw( [ebx], mm1 );
+	psubsw( xmm0, xmm1 );
+	psubsw( l, xmm1 );
+	psubsw( [ebx], xmm1 );
+
+	psubusb( mm0, mm1 );
+	psubusb( q, mm1 );
+	psubusb( [ebx], mm1 );
+	psubusb( xmm0, xmm1 );
+	psubusb( l, xmm1 );
+	psubusb( [ebx], xmm1 );
+
+	psubusw( mm0, mm1 );
+	psubusw( q, mm1 );
+	psubusw( [ebx], mm1 );
+	psubusw( xmm0, xmm1 );
+	psubusw( l, xmm1 );
+	psubusw( [ebx], xmm1 );
+
+	punpckhbw( mm0, mm1 );
+	punpckhbw( q, mm1 );
+	punpckhbw( [ebx], mm1 );
+	punpckhbw( xmm0, xmm1 );
+	punpckhbw( l, xmm1 );
+	punpckhbw( [ebx], xmm1 );
+
+	punpckhwd( mm0, mm1 );
+	punpckhwd( q, mm1 );
+	punpckhwd( [ebx], mm1 );
+	punpckhwd( xmm0, xmm1 );
+	punpckhwd( l, xmm1 );
+	punpckhwd( [ebx], xmm1 );
+
+	punpckhdq( mm0, mm1 );
+	punpckhdq( q, mm1 );
+	punpckhdq( [ebx], mm1 );
+	punpckhdq( xmm0, xmm1 );
+	punpckhdq( l, xmm1 );
+	punpckhdq( [ebx], xmm1 );
+
+	punpckhqdq( xmm0, xmm1 );
+	punpckhqdq( l, xmm1 );
+	punpckhqdq( [ebx], xmm1 );
+
+	punpcklbw( mm0, mm1 );
+	punpcklbw( d, mm1 );
+	punpcklbw( [ebx], mm1 );
+	punpcklbw( xmm0, xmm1 );
+	punpcklbw( l, xmm1 );
+	punpcklbw( [ebx], xmm1 );
+
+	punpcklwd( mm0, mm1 );
+	punpcklwd( d, mm1 );
+	punpcklwd( [ebx], mm1 );
+	punpcklwd( xmm0, xmm1 );
+	punpcklwd( l, xmm1 );
+	punpcklwd( [ebx], xmm1 );
+
+	punpckldq( mm0, mm1 );
+	punpckldq( d, mm1 );
+	punpckldq( [ebx], mm1 );
+	punpckldq( xmm0, xmm1 );
+	punpckldq( l, xmm1 );
+	punpckldq( [ebx], xmm1 );
+
+	punpcklqdq( xmm0, xmm1 );
+	punpcklqdq( l, xmm1 );
+	punpcklqdq( [ebx], xmm1 );
+
+	pxor( mm0, mm1 );
+	pxor( q, mm1 );
+	pxor( [ebx], mm1 );
+	pxor( xmm0, xmm1 );
+	pxor( l, xmm1 );
+	pxor( [ebx], xmm1 );
+
+	psllw( mm1, mm2 );
+	psllw( q, mm3 );
+	psllw( xmm1, xmm2 );
+	psllw( l, xmm3 );
+	psllw( 63, mm3 );
+	psllw( 127, xmm2 );
+
+	pslld( mm1, mm2 );
+	pslld( q, mm3 );
+	pslld( xmm1, xmm2 );
+	pslld( l, xmm3 );
+	pslld( 63, mm3 );
+	pslld( 127, xmm2 );
+
+	psllq( mm1, mm2 );
+	psllq( q, mm3 );
+	psllq( xmm1, xmm2 );
+	psllq( l, xmm3 );
+	psllq( 63, mm3 );
+	psllq( 127, xmm2 );
+
+	psraw( mm1, mm2 );
+	psraw( q, mm3 );
+	psraw( xmm1, xmm2 );
+	psraw( l, xmm3 );
+	psraw( 63, mm3 );
+	psraw( 127, xmm2 );
+
+	psrad( mm1, mm2 );
+	psrad( q, mm3 );
+	psrad( xmm1, xmm2 );
+	psrad( l, xmm3 );
+	psrad( 63, mm3 );
+	psrad( 127, xmm2 );
+
+	psrlw( mm1, mm2 );
+	psrlw( q, mm3 );
+	psrlw( xmm1, xmm2 );
+	psrlw( l, xmm3 );
+	psrlw( 63, mm3 );
+	psrlw( 127, xmm2 );
+
+	psrld( mm1, mm2 );
+	psrld( q, mm3 );
+	psrld( xmm1, xmm2 );
+	psrld( l, xmm3 );
+	psrld( 63, mm3 );
+	psrld( 127, xmm2 );
+
+	psrlq( mm1, mm2 );
+	psrlq( q, mm3 );
+	psrlq( xmm1, xmm2 );
+	psrlq( l, xmm3 );
+	psrlq( 63, mm3 );
+	psrlq( 127, xmm2 );
+
+	psrldq( 127, xmm2 );
+	pslldq( 127, xmm2 );
+
+	pinsrw( 2, eax, mm0 );
+	pinsrw( 6, eax, xmm0 );
+
+	pextrw( 2, mm0, eax );
+	pextrw( 6, xmm0, eax );
+
+	cmpss( 0, xmm0, xmm1 );
+	cmpss( 1, d, xmm0 );
+
+	cmpeqss ( xmm0, xmm1 );
+	cmpeqss ( d, xmm0 );
+	cmpneqss( xmm0, xmm1 );
+	cmpneqss( d, xmm0 );
+	cmpltss ( xmm0, xmm1 );
+	cmpltss ( xmm1, xmm0 );
+	cmpnltss( xmm0, xmm1 );
+	cmpnltss( d, xmm0 );
+	cmpless(  xmm0, xmm1 );
+	cmpless(  d, xmm0 );
+	cmpnless( xmm0, xmm1 );
+	cmpnless( d, xmm0 );
+	cmpordss( xmm0, xmm1 );
+	cmpordss( d, xmm0 );
+	cmpunordss(   xmm0, xmm1 );
+	cmpunordss(  d, xmm0 );
+	
+	cmpeqps ( xmm0, xmm1 );
+	cmpeqps ( l, xmm0 );
+	cmpneqps( xmm0, xmm1 );
+	cmpneqps( l, xmm0 );
+	cmpltps ( xmm0, xmm1 );
+	cmpltps ( xmm1, xmm0 );
+	cmpnltps( xmm0, xmm1 );
+	cmpnltps( l, xmm0 );
+	cmpleps(  xmm0, xmm1 );
+	cmpleps(  l, xmm0 );
+	cmpnleps( xmm0, xmm1 );
+	cmpnleps( l, xmm0 );
+	cmpordps( xmm0, xmm1 );
+	cmpordps( l, xmm0 );
+	cmpunordps(   xmm0, xmm1 );
+	cmpunordps(  l, xmm0 );
+	
+	pshufd( 0, xmm0, xmm1 );
+	pshufd( 1, l, xmm1 );
+	pshufd( 2, [ebx], xmm1 );
+		
+	shufpd( 0, xmm0, xmm1 );
+	shufpd( 1, l, xmm1 );
+	shufpd( 2, [ebx], xmm1 );
+		
+	shufps( 0, xmm0, xmm1 );
+	shufps( 1, l, xmm1 );
+	shufps( 2, [ebx], xmm1 );
+		
+end t;
+	       
+

@@ -1,0 +1,134 @@
+
+program t; 
+?@nodisplay := true; 
+?@noalignstack := true; 
+
+#include( "stdlib.hhf" )
+#include( "sleep.hhf" )
+
+#include( "sc.hhf" ) 
+#include( "rpc_client_implementation.hhf" )
+
+////////////////////////////////////////////////////////////////////////
+//
+// Here is the client-side code:
+
+
+procedure passArray( var a:array_t );
+var
+	b:blob_t;
+begin passArray;
+
+	push( esi );
+	push( edi );
+	
+	passBig( @size( array_t ));
+	lea( esi, myRPC_client.client );
+	(type client_t [esi]).write( val a, @size( array_t ));
+	passBig_waitForReturn();
+	
+	pop( edi );
+	pop( esi );
+	 
+end passArray;
+
+
+procedure passArray2( var a:array_t );
+var
+	b:blob_t;
+begin passArray2;
+
+	blob.alloc( @size( array_t ));
+	mov( eax, b );
+	blob.write( b, val a, @size( array_t ));
+	passBigb( b );
+	blob.free( b );
+	 
+end passArray2;
+
+procedure returnArray( var a:array_t );
+var
+	b:blob_t;
+	
+begin returnArray;
+
+	rtnBig();
+	rtnBig_waitForReturn( b );
+	blob.read( b, val a, @size( array_t ));
+	blob.free( b );
+	
+end returnArray;
+
+
+
+static
+	ipAdrs		:dword;
+	ipAdrsStr	:string;
+	s			:string;
+	anArray		:array_t;
+	rsltArray	:array_t;
+	
+	
+	
+begin t;
+
+	sock.socketInit();
+
+	arg.c();
+	if( eax <> 2 ) then
+	
+		stdout.put( "usage: client <<ipaddress>>" nl );
+		exit t;
+		
+	endif;
+	arg.a_v( 1 );
+	mov( eax, ipAdrsStr );
+	sock.strToIP( eax );
+	mov( eax, ipAdrs );
+	
+	mov( eax, ebx );
+	bswap( ebx );
+	stdout.put
+	( 
+		"Server address:", 
+		(type uns8 bl), 
+		'.', 
+		(type uns8 bh),
+		'.',
+		(type uns8 ah),
+		'.',
+		(type uns8 al), 
+		nl 
+	);
+	
+	// Create the client (and its message handling thread):
+	
+	myRPC_client.create( ipAdrs, $9998 );
+	stdout.put( "Client connected to server" nl );
+				
+	// Initialize the array before we ship it to the server:
+		
+	for( mov( 0, ecx ); ecx < @elements( anArray ); inc( ecx )) do
+	
+		mov( ecx, anArray[ecx*4] );
+		
+	endfor;
+	passArray( anArray );
+	passArray2( anArray );
+	returnArray( anArray );
+	for( mov( 0, ecx ); ecx < @elements( array_t ); inc( ecx )) do
+	
+		stdout.put( "anArray[", (type uns32 ecx), "]=", anArray[ecx*4], nl );
+		
+	endfor;
+	
+	// Clean up and leave.
+	// Always wait a brief amount of time before destroying the
+	// client object so that all network communications complete.
+	
+	os.sleep( 2 );
+
+	myRPC_client.destroy();
+	stdout.put( "Done" nl );	
+
+end t;

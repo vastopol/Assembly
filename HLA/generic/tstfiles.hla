@@ -1,0 +1,590 @@
+// Example program that demonstrates file I/O
+
+program tstFileIO;
+
+#include( "stdlib.hhf" );
+
+static
+	handle: dword;
+	f:		file;
+
+	s:		string;
+
+	i8:		int8	:= -8;
+	i16:	int16	:= -16000;
+	i32:	int32	:= -320_000_000;
+
+	u8:		uns8	:= 88;
+	u16:	uns16	:= 1616;
+	u32:	uns32	:= 3_232_323_232;
+
+	byt:	byte	:= %10001000;	//$88
+	wrd:	word	:= $1616;
+	dw:		dword	:= $3232_3232;
+
+	bool:	boolean	:= true;
+	c:		char	:= 'c';
+
+	st:		string	:= "string";
+	cst:	cset	:= {'c', 's', 't' };
+
+	r32:	real32	:= 32.3232;
+	r64:	real64	:= 6464.64;
+	r80:	real80	:= 808080.8080;
+
+	qw:		qword; @nostorage;
+			dword $64646464, $84646464;
+
+	tb:		tbyte;	@nostorage;
+			dword $10101010, $10101010; word $1010;
+		
+begin tstFileIO;
+	
+
+	// Allocate storage for the string variable.
+
+	mov( stralloc( 256 ), s );
+
+
+	// Test using traditional file I/O routines:
+
+	fileio.openNew( "tstfile.data" );
+	mov( eax, handle );
+
+	// Write a string to the output file.
+
+	fileio.puts( handle, "Standard I/O Test Data File" nl );
+
+	// Write a sequence of integers to the output file.
+
+	fileio.puti8( handle, i8 );
+	fileio.newln( handle );
+	fileio.puti16( handle, i16 );
+	fileio.newln( handle );
+	fileio.puti32( handle, i32 );
+	fileio.newln( handle );
+	fileio.puti64( handle, qw );
+	fileio.newln( handle );
+
+	// Write integers to the output file using the putiXXsize routines:
+
+	fileio.puti8Size( handle, i8, 15, ' ' );
+	fileio.puti16Size( handle, i16, 15, ' ' );
+	fileio.puti32Size( handle, i32, 15, ' ' );
+	fileio.puti64Size( handle, qw, 25, ' ' );
+	fileio.newln( handle );
+
+	fileio.puti8Size( handle, i8, -15, ',' );
+	fileio.puti16Size( handle, i16, -15, ',' );
+	fileio.puti32Size( handle, i32, -15, ',' );
+	fileio.puti64Size( handle, qw, -25, ',' );
+	fileio.newln( handle );
+
+	// Write a set of unsigned values to the file.
+
+	fileio.putu8Size( handle, u8, 15, ' ' );
+	fileio.putu16Size( handle, u16, 15, ' ' );
+	fileio.putu32Size( handle, u32, 15, ' ' );
+
+	fileio.putu64Size( handle, qw, 25, ' ' );
+	fileio.newln( handle );
+
+	fileio.putu8Size( handle, u8, -15, ',' );
+	fileio.putu16Size( handle, u16, -15, ',' );
+	fileio.putu32Size( handle, u32, -15, ',' );
+	fileio.putu64Size( handle, qw, -25, ',' );
+	fileio.newln( handle );
+
+	// Write chars, booleans, csets, and strings to the file.
+
+	fileio.putc( handle, c );
+	fileio.putcSize( handle, c, 4, 'C' );
+	fileio.newln( handle );
+
+	fileio.putbool( handle, bool );
+	fileio.newln( handle );
+
+	fileio.putcset( handle, cst );
+	fileio.newln( handle );
+
+	fileio.puts( handle, st );
+	fileio.newln( handle );
+
+	fileio.putsSize( handle, st, 20, '.' );
+	fileio.newln( handle );
+
+	// Write hexadecimal values to the file:
+
+	fileio.putb( handle, byt );
+	fileio.newln( handle );
+
+	fileio.putw( handle, wrd );
+	fileio.newln( handle );
+
+	fileio.putd( handle, dw );
+	fileio.newln( handle );
+
+	fileio.putq( handle, qw );
+	fileio.newln( handle );
+
+	fileio.puttb( handle, tb );
+	fileio.newln( handle );
+
+	// Write real values to the file in
+	// both decimal and scientific forms.
+
+	fileio.putr32( handle, r32, 15, 6, ' ' );
+	fileio.newln( handle );
+
+	fileio.putr64( handle, r64, 15, 6, ' ' );
+	fileio.newln( handle );
+
+	fileio.putr80( handle, r80, 15, 6, ' ' );
+	fileio.newln( handle );
+
+
+	fileio.pute32( handle, r32, 15 );
+	fileio.newln( handle );
+
+	fileio.pute64( handle, r64, 15 );
+	fileio.newln( handle );
+
+	fileio.pute80( handle, r80, 15 );
+	fileio.newln( handle );
+
+
+
+	fileio.close( handle );
+
+
+	// Okay, re-open the value and read the data back
+	// to verify it was properly written.
+
+	fileio.open( "tstfile.data", fileio.r );
+	mov( eax, handle );
+
+	fileio.gets( handle, s );
+	stdout.put( "string = """, s, """" nl );
+
+	// read the integers written one per line.
+
+	fileio.geti8( handle );
+	stdout.put( "i8=", (type int8 al ), nl );
+
+	fileio.geti16( handle );
+	stdout.put( "i16=", (type int16 ax ), nl );
+
+	fileio.geti32( handle );
+	stdout.put( "i32=", (type int32 eax ), nl );
+
+	fileio.geti64( handle );
+	mov( eax, (type dword qw) );
+	mov( edx, (type dword qw[4]) );
+	stdout.put( "i64=" );
+	stdout.puti64( qw );
+	stdout.newln();
+
+	// Read the integers that are all on a single line:
+
+	fileio.geti8( handle );
+	mov( al, i8 );
+	fileio.geti16( handle );
+	mov( ax, i16 );
+	fileio.geti32( handle );
+	mov( eax, i32 );
+	fileio.geti64( handle );
+	mov( eax, (type dword qw) );
+	mov( edx, (type dword qw[4]) );
+
+	stdout.put( i8:18, i16:18, i32:18 );
+	stdout.puti64Size( qw, 22, ' ' );
+	stdout.newln();
+
+
+	// Read the second group of integers all on a single line
+	// (with non-blank delimiter characters):
+
+	fileio.geti8( handle );
+	stdout.puti8Size( al, -18, ';' );
+	fileio.geti16( handle );
+	stdout.puti16Size( ax, -18, ';' );
+	fileio.geti32( handle );
+	stdout.puti32Size( eax, -18, ';' );
+	fileio.geti64( handle );
+	mov( eax, (type dword qw) );
+	mov( edx, (type dword qw[4]) );
+	stdout.puti64Size( qw, -22, ';' );
+	stdout.newln();
+
+
+	// Read the unsigned integers that are all on a single line:
+
+	fileio.getu8( handle );
+	mov( al, u8 );
+	fileio.getu16( handle );
+	mov( ax, u16 );
+	fileio.getu32( handle );
+	mov( eax, u32 );
+	fileio.getu64( handle );
+	mov( eax, (type dword qw) );
+	mov( edx, (type dword qw[4]) );
+
+	stdout.put( u8:18, u16:18, u32:18 );
+	stdout.putu64Size( qw, 22, ' ' );
+	stdout.newln();
+
+
+	// Read the second group of unsigned integers all on a single line
+	// (with non-blank delimiter characters):
+
+	fileio.getu8( handle );
+	stdout.putu8Size( al, -18, ';' );
+	fileio.getu16( handle );
+	stdout.putu16Size( ax, -18, ';' );
+	fileio.getu32( handle );
+	stdout.putu32Size( eax, -18, ';' );
+	fileio.getu64( handle );
+	mov( eax, (type dword qw) );
+	mov( edx, (type dword qw[4]) );
+	stdout.putu64Size( qw, -22, ';' );
+	stdout.newln();
+
+	// Read a couple of characters, and then reject the rest of the line:
+
+	fileio.readLn( handle );
+	fileio.getc( handle );
+	stdout.put( "chars='" );
+	stdout.putc( al );
+	fileio.getc( handle );
+	stdout.putc( al );
+	fileio.readLn( handle );
+	stdout.put( "'" nl );
+
+	// No boolean input, just read it as a string.
+
+	fileio.a_gets( handle );
+	stdout.put( "bool=", (type string eax), nl );
+	strfree( eax );
+
+	// No character set input.  Read it as a string
+	// and convert to a character set.
+
+	fileio.a_gets( handle );
+	cs.strToCset( eax, cst );
+	strfree( eax );
+	stdout.put( "cst = {", cst, "}" nl );
+
+	// Read the two strings from the file:
+
+	fileio.a_gets( handle );
+	fileio.gets( handle, s );
+	stdout.put( "str(1) = """, (type string eax), """, str(2) = """, s, """" nl );
+	strfree( eax );
+
+	// Read the hexadecimal values from the input file:
+
+	fileio.geth8( handle );
+	mov( al, byt );
+	fileio.geth16( handle );
+	mov( ax, wrd );
+	fileio.geth32( handle );
+	mov( eax, dw );
+	fileio.geth64( handle );
+	mov( eax, (type dword qw) );
+	mov( edx, (type dword qw[4]) );
+	stdout.put( "byt= $", byt, ", wrd= $", wrd, ", dw= $", dw, ", qw= $" );
+	stdout.putq( qw );
+	stdout.newln();
+	fileio.readLn( handle );
+
+	// There is no fileio.gettb (yet).  So just read the line and ignore it.
+
+	fileio.gets( handle, s );
+
+
+	// Read the three floating point values from the user:
+
+	fileio.getf( handle );
+	fstp( r32 );
+	fileio.getf( handle );
+	fstp( r64 );
+	fileio.getf( handle );
+	fstp( r80 );
+	stdout.put( "r32 =", r32:15:6, ", r64 =", r64:15:6, " r80 =", r80:15:6, nl );
+
+	// Read the real numbers with delimiter characters:
+
+	fileio.getf( handle );
+	fstp( r32 );
+	stdout.putr32( r32, 15, 6, ':' );
+	stdout.newln();
+	fileio.getf( handle );
+	fstp( r64 );
+	stdout.putr64( r64, 15, 6, ':' );
+	stdout.newln();
+	fileio.getf( handle );
+	fstp( r80 );
+	stdout.putr80( r80, 15, 6, ':' );
+	stdout.newln();
+
+	// Read the three real numbers in scientific notation:
+
+
+	fileio.getf( handle );
+	fstp( r32 );
+	stdout.pute32( r32, 15 );
+	stdout.newln();
+	fileio.getf( handle );
+	fstp( r64 );
+	stdout.pute64( r64, 15 );
+	stdout.newln();
+	fileio.getf( handle );
+	fstp( r80 );
+	stdout.pute80( r80, 15 );
+	stdout.newln();
+
+	fileio.close( handle );
+
+
+
+
+
+	stdout.newln();
+	stdout.newln();
+
+
+
+
+
+	// Repeat all of the above, this time using a file variable.
+
+
+	f.create();
+	f.openNew( "tstfile2.data" );
+
+	f.put( "Standard I/O Test Data File #2", nl );
+
+	f.put( i8, nl, i16, nl, i32, nl );
+	f.puti64( qw );
+	
+	f.put( nl, i8:15, i16:15, i32:15 );
+	f.puti64Size( qw, 25, ' ' );
+	f.newln();
+
+	f.puti8Size( i8, -15, ',' );
+	f.puti16Size( i16, -15, ',' );
+	f.puti32Size( i32, -15, ',' );
+	f.puti64Size( qw, -25, ',' );
+	f.newln( );
+
+	f.put( u8:15, u16:15, u32:15 );
+	f.putu64Size( qw, 25, ' ' );
+	f.newln( );
+
+	f.putu8Size( u8, -15, ',' );
+	f.putu16Size( u16, -15, ',' );
+	f.putu32Size( u32, -15, ',' );
+	f.putu64Size( qw, -25, ',' );
+	f.newln( );
+
+	f.put( c );
+	f.putcSize( c, 4, 'C' );
+	f.newln( );
+
+	f.putbool( bool );
+	f.newln( );
+
+	f.putcset( cst );
+	f.newln( );
+
+	f.puts( st );
+	f.newln( );
+
+	f.putsSize( st, 20, '.' );
+	f.newln( );
+
+	f.put( byt, nl, wrd, nl, dw, nl );
+	f.putq( qw );
+	f.newln( );
+
+	f.puttb( tb );
+	f.newln( );
+
+	f.put( r32:15:6, nl, r64:15:6, nl, r80:15:6, nl );
+	f.put( r32:15, nl, r64:15, nl, r80:15, nl );
+
+
+	f.putr32( r32, 15, 6, ':' );
+	f.newln( );
+
+	f.putr64( r64, 15, 6, ':' );
+	f.newln( );
+
+	f.putr80( r80, 15, 6, ':' );
+	f.newln( );
+
+
+	f.close( );
+
+
+
+
+
+
+	// Okay, read the file data just written:
+
+	f.open( "tstfile2.data", fileio.r );
+
+
+	f.gets( s );
+	stdout.put( "string = """, s, """" nl );
+
+	// read the integers written one per line.
+
+	f.get( i8, i16, i32 );
+	f.geti64( );
+	mov( eax, (type dword qw) );
+	mov( edx, (type dword qw[4]) );
+	stdout.put( "i8=", i8, nl, "i16=", i16, nl, "i32=", i32, nl, "i64=" );
+	stdout.puti64( qw );
+	stdout.newln();
+
+	// Read the integers that are all on a single line:
+
+	f.get( i8, i16, i32 );
+	f.geti64( );
+	mov( eax, (type dword qw) );
+	mov( edx, (type dword qw[4]) );
+	stdout.put( i8:18, i16:18, i32:18 );
+	stdout.puti64Size( qw, 22, ' ' );
+	stdout.newln();
+
+
+	// Read the second group of integers all on a single line
+	// (with non-blank delimiter characters):
+
+
+	f.get( i8, i16, i32 );
+	f.geti64( );
+	mov( eax, (type dword qw) );
+	mov( edx, (type dword qw[4]) );
+	stdout.puti8Size( i8, -18, ';' );
+	stdout.puti16Size( i16, -18, ';' );
+	stdout.puti32Size( i32, -18, ';' );
+	stdout.puti64Size( qw, -22, ';' );
+	stdout.newln();
+
+
+	// Read the unsigned integers that are all on a single line:
+
+	f.get( u8, u16, u32 );
+	f.getu64( );
+	mov( eax, (type dword qw) );
+	mov( edx, (type dword qw[4]) );
+	stdout.put( u8:18, u16:18, u32:18 );
+	stdout.putu64Size( qw, 22, ' ' );
+	stdout.newln();
+
+
+
+
+	// Read the second group of unsigned integers all on a single line
+	// (with non-blank delimiter characters):
+
+	f.get( u8, u16, u32 );
+	f.getu64( );
+	mov( eax, (type dword qw) );
+	mov( edx, (type dword qw[4]) );
+
+	stdout.putu8Size( al, -18, ';' );
+	stdout.putu16Size( ax, -18, ';' );
+	stdout.putu32Size( eax, -18, ';' );
+	stdout.putu64Size( qw, -22, ';' );
+	stdout.newln();
+
+	// Read a couple of characters, and then reject the rest of the line:
+
+	f.readLn( );
+	f.getc( );
+	stdout.put( "chars='" );
+	stdout.putc( al );
+	f.getc( );
+	stdout.putc( al );
+	f.readLn( );
+	stdout.put( "'" nl );
+
+	// No boolean input, just read it as a string.
+
+	f.a_gets( );
+	stdout.put( "bool=", (type string eax), nl );
+	strfree( eax );
+
+	// No character set input.  Read it as a string
+	// and convert to a character set.
+
+	f.a_gets( );
+	cs.strToCset( eax, cst );
+	strfree( eax );
+	stdout.put( "cst = {", cst, "}" nl );
+
+	// Read the two strings from the file:
+
+	f.a_gets( );
+	f.gets( s );
+	stdout.put( "str(1) = """, (type string eax), """, str(2) = """, s, """" nl );
+	strfree( eax );
+
+	// Read the hexadecimal values from the input file:
+
+	f.get( byt, wrd, dw );
+	f.geth64( );
+	mov( eax, (type dword qw) );
+	mov( edx, (type dword qw[4]) );
+	stdout.put( "byt= $", byt, ", wrd= $", wrd, ", dw= $", dw, ", qw= $" );
+	stdout.putq( qw );
+	stdout.newln();
+
+	// There is no fgettb (yet).  So just read the line and ignore it.
+
+	f.readLn();	// End of previous line.
+	f.readLn();	// Eat current line.
+
+	// Read the three floating point values from the user:
+
+	f.get( r32, r64, r80 );
+	stdout.put( "r32 =", r32:15:6, ", r64 =", r64:15:6, " r80 =", r80:15:6, nl );
+
+	// Read the real numbers with delimiter characters:
+
+	f.get( r32 );
+	stdout.putr32( r32, 15, 6, ':' );
+	stdout.newln();
+
+	f.get( r64 );
+	stdout.putr64( r64, 15, 6, ':' );
+	stdout.newln();
+
+	f.get( r80 );
+	stdout.putr80( r80, 15, 6, ':' );
+	stdout.newln();
+
+	// Read the three real numbers in scientific notation:
+
+
+	f.getf( );
+	fstp( r32 );
+	stdout.pute32( r32, 15 );
+	stdout.newln();
+	f.getf( );
+	fstp( r64 );
+	stdout.pute64( r64, 15 );
+	stdout.newln();
+	f.getf( );
+	fstp( r80 );
+	stdout.pute80( r80, 15 );
+	stdout.newln();
+
+	f.close( );
+
+			
+end tstFileIO;

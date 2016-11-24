@@ -1,0 +1,3750 @@
+program testpat;
+#include( "stdout.hhf" );
+#include( "patterns.hhf" );
+#include( "strings.hhf" );
+
+
+static
+	TestStr: string := "Hello There";
+	s:		 string;
+	
+
+	procedure MyPat;
+	begin MyPat;
+
+		pat.oneCset( { 'a'..'z', 'A'..'Z'} );
+
+	end MyPat;
+
+begin testpat;
+
+
+	/***** PeekCset *****/
+
+	stdout.put( "Testing PeekCset:" nl nl );
+
+	// Pattern that succeeds:
+
+	mov( TestStr, esi );
+	lea( edi, [esi+11] );
+	pat.match( esi, edi )
+
+		pat.peekCset( {'H'} );
+		stdout.put( "Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.peekCset( {'a'..'z'} );
+		stdout.put( "Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Success" nl );
+
+	pat.endmatch;
+
+	// Test of OneCset failure propogation:
+
+	pat.match( TestStr )
+
+		pat.peekCset( {'H'} );			// This succeeds, but
+		pat.peekCset( {'E'} );			//  this one fails.
+
+		stdout.put( "Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Success" nl );
+
+	pat.endmatch;
+
+	
+	
+	/***** OneCset *****/
+
+	stdout.put( nl nl "Testing OneCset:" nl nl );
+
+	// Pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.oneCset( {'H'} );
+		stdout.put( "Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.oneCset( {'a'..'z'} );
+		stdout.put( "Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Success" nl );
+
+	pat.endmatch;
+
+	// Test of OneCset failure propogation:
+
+	pat.match( TestStr )
+
+		pat.oneCset( {'H'} );			// This succeeds, but
+		pat.oneCset( {'E'} );			//  this one fails.
+
+		stdout.put( "Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Success" nl );
+
+	pat.endmatch;
+
+	
+	
+	/***** UptoCset *****/
+	
+	stdout.put( nl nl "Testing UptoCset:" nl nl );
+
+	// Pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.upToCset( {' '} );
+		stdout.put( "Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.upToCset( {'.'} );
+
+		stdout.put( "Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Success" nl );
+
+	pat.endmatch;
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.upToCset( {' '} );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Success" nl );
+
+	pat.endmatch;
+
+	
+	
+	/***** ZeroOrOneCset *****/
+	
+	stdout.put( nl nl "Testing ZeroOrOneCset:" nl nl );
+
+	// Pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.zeroOrOneCset( {'H'} );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+
+	pat.match( TestStr )
+
+		pat.l_ZeroOrOneCset( {'H'} );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: ailure" nl );
+
+	pat.endmatch;
+	
+
+	// Pattern that fails cannot be done as a standalone pattern
+	// since this pattern only fails via error propogation.
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.zeroOrOneCset( {'H'} );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ZeroOrOneCset( {'H'} );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+	/***** zeroOrMoreCset *****/
+	
+	stdout.put( nl nl "Testing ZeroOrMoreCset:" nl nl );
+
+	// Pattern that succeeds by matching zero items:
+
+	pat.match( TestStr )
+
+		pat.zeroOrMoreCset( {'.'} );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ZeroOrMoreCset( {'.'} );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( TestStr )
+
+		pat.zeroOrMoreCset( {'A'..'Z', 'a'..'z'} );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+
+	pat.match( TestStr )
+
+		pat.l_ZeroOrMoreCset( {'A'..'Z', 'a'..'z'} );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.zeroOrMoreCset( {'H'} );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );	// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ZeroOrMoreCset( {'H'} );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );	// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+	/***** OneOrMoreCset *****/
+	
+	stdout.put( nl nl "Testing OneOrMoreCset:" nl nl );
+
+	// Pattern that succeeds by matching One item:
+
+	pat.match( TestStr )
+
+		pat.oneOrMoreCset( {'A'..'Z'} );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+
+	pat.match( TestStr )
+
+		pat.l_OneOrMoreCset( {'A'..'Z'} );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( TestStr )
+
+		pat.oneOrMoreCset( {'A'..'Z', 'a'..'z'} );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_OneOrMoreCset( {'A'..'Z', 'a'..'z'} );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.oneOrMoreCset( { 'a'..'z'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_OneOrMoreCset( { 'a'..'z'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.oneOrMoreCset( {'A'..'Z'} );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_OneOrMoreCset( {'A'..'Z'} );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+	/***** ExactlyNCset *****/
+	
+	stdout.put( nl nl "Testing ExactlyNCset:" nl nl );
+
+	// Pattern that succeeds by matching One item:
+
+	pat.match( TestStr )
+
+		pat.exactlyNCset( {'A'..'Z'}, 1 );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( TestStr )
+
+		pat.exactlyNCset( {'A'..'Z', 'a'..'z'}, 5 );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.exactlyNCset( { 'a'..'z'}, 1 );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+	// Another pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.exactlyNCset( { 'A'..'Z', 'a'..'z'}, 1 );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.exactlyNCset( {'A'..'Z'}, 1 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+	/***** FirstNCset *****/
+	
+	stdout.put( nl nl "Testing FirstNCset:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( TestStr )
+
+		pat.firstNCset( {'A'..'Z', 'a'..'z'}, 3 );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.firstNCset( { 'a'..'z'}, 1 );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+	// Another pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.firstNCset( { 'A'..'Z', 'a'..'z'}, 6 );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.firstNCset( {'A'..'Z'}, 1 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+	/***** NorLessCset *****/
+	
+	stdout.put( nl nl "Testing NorLessCset:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( TestStr )
+
+		pat.norLessCset( {'A'..'Z', 'a'..'z'}, 5 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NorLessCset( {'A'..'Z', 'a'..'z'}, 5 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Another pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.norLessCset( {'A'..'Z', 'a'..'z'}, 10 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NorLessCset( {'A'..'Z', 'a'..'z'}, 10 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.norLessCset( {'A'..'Z'}, 1 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NorLessCset( {'A'..'Z'}, 1 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+	/***** NorMoreCset *****/
+	
+	stdout.put( nl nl "Testing NorMoreCset:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( TestStr )
+
+		pat.norMoreCset( {'A'..'Z', 'a'..'z'}, 4 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NorMoreCset( {'A'..'Z', 'a'..'z'}, 4 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Another pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.norMoreCset( {'A'..'Z', 'a'..'z'}, 1 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NorMoreCset( {'A'..'Z', 'a'..'z'}, 1 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.norMoreCset( { 'A'..'Z', 'a'..'z'}, 6 );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NorMoreCset( { 'A'..'Z', 'a'..'z'}, 6 );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.norMoreCset( {'A'..'Z'}, 1 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NorMoreCset( {'A'..'Z'}, 1 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+	/***** NtoMCset *****/
+	
+	stdout.put( nl nl "Testing NtoMCset:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( TestStr )
+
+		pat.ntoMCset( {'A'..'Z', 'a'..'z'}, 1, 4 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NtoMCset( {'A'..'Z', 'a'..'z'}, 1, 4 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Another pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.l_NtoMCset( {'A'..'Z', 'a'..'z'}, 1, 3 );
+		pat.l_NtoMCset( {'A'..'Z', 'a'..'z'}, 2, 4 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NtoMCset( {'A'..'Z', 'a'..'z'}, 1, 3 );
+		pat.l_NtoMCset( {'A'..'Z', 'a'..'z'}, 2, 4 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.ntoMCset( { 'A'..'Z', 'a'..'z'}, 6,7 );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NtoMCset( { 'A'..'Z', 'a'..'z'}, 6,7 );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.ntoMCset( {'A'..'Z'}, 1, 5 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NtoMCset( {'A'..'Z'}, 1, 5 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+	/***** ExactlyNtoMCset *****/
+	
+	stdout.put( nl nl "Testing ExactlyNtoMCset:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( TestStr )
+
+		pat.exactlyNtoMCset( {'A'..'Z', 'a'..'z'}, 1, 5 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ExactlyNtoMCset( {'A'..'Z', 'a'..'z'}, 1, 5 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Another pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.exactlyNtoMCset( {'A'..'Z'}, 1, 1 );
+		pat.oneCset( {'a'..'z'} );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ExactlyNtoMCset( {'A'..'Z'}, 1, 1 );
+		pat.oneCset( {'a'..'z'} );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.exactlyNtoMCset( { 'A'..'Z', 'a'..'z'}, 1,4 );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ExactlyNtoMCset( { 'A'..'Z', 'a'..'z'}, 1,4 );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.exactlyNtoMCset( {'A'..'Z'}, 1, 5 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ExactlyNtoMCset( {'A'..'Z'}, 1, 5 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+	/***** EOS *****/
+	
+	stdout.put( nl nl "Testing EOS:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( TestStr )
+
+		pat.zeroOrMoreCset( {'A'..'Z', ' ', 'a'..'z'} );
+		pat.EOS();
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.exactlyNtoMCset( { 'A'..'Z', 'a'..'z'}, 1,4 );
+		pat.EOS();
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+	/***** position *****/
+	
+	stdout.put( nl nl "Testing position:" nl nl );
+
+
+	// Pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.position( 5 );
+		pat.oneOrMoreCset( {' '} );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.position( 20 );
+		pat.EOS();
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+	/***** AtPos *****/
+	
+	stdout.put( nl nl "Testing AtPos:" nl nl );
+
+
+	// Pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.oneOrMoreCset( {'A'..'Z', 'a'..'z'} );
+		pat.atPos( 5 );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that succeeds via backtracking:
+
+	pat.match( TestStr )
+
+		pat.oneOrMoreCset( {'A'..'Z', ' ', 'a'..'z'} );
+		pat.atPos( 5 );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.atPos( 20 );
+		pat.EOS();
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+
+
+	/***** fail *****/
+	
+	stdout.put( nl nl "Testing fail:" nl nl );
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.fail();
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	/***** PeekChar *****/
+
+	stdout.put( nl nl "Testing PeekChar:" nl nl );
+
+	// Pattern that succeeds:
+
+	mov( TestStr, esi );
+	lea( edi, [esi+11] );
+	pat.match( esi, edi )
+
+		pat.peekChar( 'H' );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.peekChar( 'a' );
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+	// Test of PeekChar failure propogation:
+
+	pat.match( TestStr )
+
+		pat.peekChar( 'H' );			// This succeeds, but
+		pat.peekChar( 'E' );			//  this one fails.
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+	
+	
+	/***** OneChar *****/
+
+	stdout.put( nl nl "Testing OneChar:" nl nl );
+
+	// Pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.oneChar( 'H' );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.oneChar( 'a' );
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+	// Test of OneChar failure propogation:
+
+	pat.match( TestStr )
+
+		pat.oneChar( 'H' );						// This succeeds, but
+		pat.oneChar( 'E' );						//  this one fails.
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+	
+
+
+
+	
+	
+	/***** UptoChar *****/
+	
+	stdout.put( nl nl "Testing UptoChar:" nl nl );
+
+	// Pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.upToChar( ' ' );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.upToChar( '.' );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.upToChar( ' ' );
+		pat.oneChar( '.' );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+	
+
+
+	
+	
+	/***** ZeroOrOneChar *****/
+	
+	stdout.put( nl nl "Testing ZeroOrOneChar:" nl nl );
+
+	// Pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.zeroOrOneChar( 'H' );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ZeroOrOneChar( 'H' );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that fails cannot be done as a standalone pattern
+	// since this pattern only fails via error propogation.
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.zeroOrOneChar( 'H' );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ZeroOrOneChar( 'H' );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+	
+
+
+
+	/***** ZeroOrMoreChar *****/
+	
+	stdout.put( nl nl "Testing ZeroOrMoreChar:" nl nl );
+
+	// Pattern that succeeds by matching zero items:
+
+	pat.match( TestStr )
+
+		pat.zeroOrMoreChar( '.' );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ZeroOrMoreChar( '.' );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that succeeds by matching zero items:
+
+	pat.match( TestStr )
+
+		pat.zeroOrMoreChar( 'z' );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ZeroOrMoreChar( 'z' );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.zeroOrMoreChar( 'H' );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.zeroOrMoreChar( 'H' );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+	
+
+
+
+
+	/***** OneOrMoreChar *****/
+	
+	stdout.put( nl nl "Testing OneOrMoreChar:" nl nl );
+
+	// Pattern that succeeds by matching One item:
+
+	pat.match( "HHHHello There" )
+
+		pat.oneOrMoreChar( 'H' );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( "HHHHello There" )
+
+		pat.l_OneOrMoreChar( 'H' );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.oneOrMoreChar( 'a' );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_OneOrMoreChar( 'a' );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.oneOrMoreChar( 'H' );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_OneOrMoreChar( 'H' );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+	/***** ExactlyNChar *****/
+	
+	stdout.put( nl nl "Testing ExactlyNChar:" nl nl );
+
+	// Pattern that succeeds by matching One item:
+
+	pat.match( "HHHello" )
+
+		pat.exactlyNChar( 'H', 3 );
+		stdout.put( "Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.exactlyNChar( 'a', 1 );
+
+		stdout.put( "Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Success" nl );
+
+	pat.endmatch;
+
+
+	// Another pattern that fails:
+
+	pat.match( "HHHello" )
+
+		pat.exactlyNChar( 'H', 1 );
+
+		stdout.put( "Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.exactlyNChar( 'H', 1 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+	/***** FirstNCset *****/
+	
+	stdout.put( nl nl "Testing FirstNChar:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( "HHHello" )
+
+		pat.firstNChar( 'H', 2 );
+		stdout.put( "Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.firstNChar( 'a', 1 );
+
+		stdout.put( "Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.firstNChar( 'H', 1 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+	/***** NorLessChar *****/
+	
+	stdout.put( nl nl "Testing NorLessChar:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( "HHHello" )
+
+		pat.norLessChar( 'H', 3 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( "HHHello" )
+
+		pat.l_NorLessChar( 'H', 3 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.norLessChar( 'H', 1 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NorLessChar( 'H', 1 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+
+
+
+	/***** NorMoreChar *****/
+	
+	stdout.put( nl nl "Testing NorMoreChar:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( "HHHello" )
+
+		pat.norMoreChar( 'H', 2 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( "HHHello" )
+
+		pat.l_NorMoreChar( 'H', 2 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Another pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.norMoreChar( 'H', 1 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NorMoreChar( 'H', 1 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.norMoreChar( 'h', 1 );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NorMoreChar( 'h', 1 );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.norMoreChar( 'H', 1 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NorMoreChar( 'H', 1 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+
+
+
+
+
+
+	/***** NtoMChar *****/
+	
+	stdout.put( nl nl "Testing NtoMChar:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( "HHHello" )
+
+		pat.ntoMChar( 'H', 1, 4 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( "HHHello" )
+
+		pat.l_NtoMChar( 'H', 1, 4 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Another pattern that succeeds:
+
+	pat.match( "HHHHello" )
+
+		pat.ntoMChar( 'H', 1, 4 );
+		pat.ntoMChar( 'H', 2, 4 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( "HHHHello" )
+
+		pat.l_NtoMChar( 'H', 1, 4 );
+		pat.l_NtoMChar( 'H', 2, 4 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.ntoMChar( 'H', 6,7 );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NtoMChar( 'H', 6,7 );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.ntoMChar( 'H', 1, 5 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NtoMChar( 'H', 1, 5 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+
+
+
+
+	/***** ExactlyNtoMChar *****/
+	
+	stdout.put( nl nl "Testing ExactlyNtoMChar:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( "HHHHHello" )
+
+		pat.exactlyNtoMChar( 'H', 1, 5 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( "HHHHHello" )
+
+		pat.l_ExactlyNtoMChar( 'H', 1, 5 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Another pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.exactlyNtoMChar( 'H', 1, 2 );
+		pat.oneCset( {'a'..'z'} );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ExactlyNtoMChar( 'H', 1, 2 );
+		pat.oneCset( {'a'..'z'} );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( "HHHello" )
+
+		pat.exactlyNtoMChar( 'H', 1,2 );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( "HHHello" )
+
+		pat.l_ExactlyNtoMChar( 'H', 1,2 );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.exactlyNtoMChar( 'h', 1, 5 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ExactlyNtoMChar( 'h', 1, 5 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+	/* iChar tests */
+
+
+	/***** PeekiChar *****/
+
+	stdout.put( nl nl "Testing PeekiChar:" nl nl );
+
+	// Pattern that succeeds:
+
+	mov( TestStr, esi );
+	lea( edi, [esi+11] );
+	pat.match( esi, edi )
+
+		pat.peekiChar( 'h' );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.peekiChar( 'a' );
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+	// Test of PeekChar failure propogation:
+
+	pat.match( TestStr )
+
+		pat.peekiChar( 'h' );			// This succeeds, but
+		pat.peekChar( 'E' );			//  this one fails.
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+	
+	
+	/***** OneiChar *****/
+
+	stdout.put( nl nl "Testing OneiChar:" nl nl );
+
+	// Pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.oneiChar( 'h' );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.oneiChar( 'a' );
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+	// Test of OneChar failure propogation:
+
+	pat.match( TestStr )
+
+		pat.oneiChar( 'h' );			// This succeeds, but
+		pat.oneiChar( 'l' );			//  this one fails.
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+	
+
+
+
+	
+	
+	/***** UptoiChar *****/
+	
+	stdout.put( nl nl "Testing UptoiChar:" nl nl );
+
+	// Pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.upToiChar( 'O' );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.upToiChar( '.' );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.upToiChar( 'O' );
+		pat.oneiChar( '.' );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+	
+
+
+	
+	
+	/***** ZeroOrOneiChar *****/
+	
+	stdout.put( nl nl "Testing ZeroOrOneiChar:" nl nl );
+
+	// Pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.zeroOrOneiChar( 'h' );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ZeroOrOneiChar( 'h' );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that fails cannot be done as a standalone pattern
+	// since this pattern only fails via error propogation.
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.zeroOrOneiChar( 'h' );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ZeroOrOneiChar( 'h' );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+	
+
+
+
+	/***** ZeroOrMoreiChar *****/
+	
+	stdout.put( nl nl "Testing ZeroOrMoreiChar:" nl nl );
+
+	// Pattern that succeeds by matching zero items:
+
+	pat.match( TestStr )
+
+		pat.zeroOrMoreiChar( '.' );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ZeroOrMoreiChar( '.' );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that succeeds by matching zero items:
+
+	pat.match( TestStr )
+
+		pat.zeroOrMoreiChar( 'z' );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ZeroOrMoreiChar( 'z' );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.zeroOrMoreiChar( 'h' );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ZeroOrMoreiChar( 'h' );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+	
+
+
+
+
+	/***** OneOrMoreiChar *****/
+	
+	stdout.put( nl nl "Testing OneOrMoreiChar:" nl nl );
+
+	// Pattern that succeeds by matching One item:
+
+	pat.match( "HHHHello There" )
+
+		pat.oneOrMoreiChar( 'h' );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( "HHHHello There" )
+
+		pat.l_OneOrMoreiChar( 'h' );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.oneOrMoreiChar( 'a' );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_OneOrMoreiChar( 'a' );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.oneOrMoreiChar( 'h' );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_OneOrMoreiChar( 'h' );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+	/***** ExactlyNiChar *****/
+	
+	stdout.put( nl nl "Testing ExactlyNiChar:" nl nl );
+
+	// Pattern that succeeds by matching One item:
+
+	pat.match( "HHHello" )
+
+		pat.exactlyNiChar( 'h', 3 );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.exactlyNiChar( 'a', 1 );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+	// Another pattern that fails:
+
+	pat.match( "HHHello" )
+
+		pat.exactlyNiChar( 'h', 1 );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.exactlyNiChar( 'h', 1 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+	/***** FirstNiChar *****/
+	
+	stdout.put( nl nl "Testing FirstNiChar:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( "HHHello" )
+
+		pat.firstNiChar( 'h', 2 );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.firstNiChar( 'a', 1 );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.firstNiChar( 'h', 1 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+	/***** NorLessiChar *****/
+	
+	stdout.put( nl nl "Testing NorLessiChar:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( "HHHello" )
+
+		pat.norLessiChar( 'h', 3 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( "HHHello" )
+
+		pat.l_NorLessiChar( 'h', 3 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.norLessiChar( 'h', 1 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NorLessiChar( 'h', 1 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+
+
+
+	/***** NorMoreiChar *****/
+	
+	stdout.put( nl nl "Testing NorMoreiChar:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( "HHHello" )
+
+		pat.norMoreiChar( 'h', 2 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( "HHHello" )
+
+		pat.l_NorMoreiChar( 'h', 2 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Another pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.norMoreiChar( 'h', 1 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NorMoreiChar( 'h', 1 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.norMoreiChar( 'a', 1 );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NorMoreiChar( 'a', 1 );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.norMoreiChar( 'h', 1 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NorMoreiChar( 'h', 1 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+
+	/***** NtoMiChar *****/
+	
+	stdout.put( nl nl "Testing NtoMiChar:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( "HHHello" )
+
+		pat.ntoMiChar( 'h', 1, 4 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( "HHHello" )
+
+		pat.l_NtoMiChar( 'h', 1, 4 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Another pattern that succeeds:
+
+	pat.match( "HHHHello" )
+
+		pat.ntoMiChar( 'h', 1, 4 );
+		pat.ntoMiChar( 'h', 2, 4 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( "HHHHello" )
+
+		pat.l_NtoMiChar( 'h', 1, 4 );
+		pat.l_NtoMiChar( 'h', 2, 4 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.ntoMiChar( 'h', 6,7 );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NtoMiChar( 'h', 6,7 );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.ntoMiChar( 'h', 1, 5 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_NtoMiChar( 'h', 1, 5 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+
+
+
+
+	/***** ExactlyNtoMiChar *****/
+	
+	stdout.put( nl nl "Testing ExactlyNtoMChar:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( "HHHHHello" )
+
+		pat.exactlyNtoMiChar( 'h', 1, 5 );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( "HHHHHello" )
+
+		pat.l_ExactlyNtoMiChar( 'h', 1, 5 );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Another pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.exactlyNtoMiChar( 'h', 1, 2 );
+		pat.oneCset( {'a'..'z'} );
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ExactlyNtoMiChar( 'h', 1, 2 );
+		pat.oneCset( {'a'..'z'} );
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( "HHHello" )
+
+		pat.exactlyNtoMiChar( 'h', 1,2 );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( "HHHello" )
+
+		pat.l_ExactlyNtoMiChar( 'h', 1,2 );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.exactlyNtoMiChar( 'a', 1, 5 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_ExactlyNtoMiChar( 'a', 1, 5 );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+
+
+
+
+
+	/***** MatchStr *****/
+	
+	stdout.put( nl nl "Testing MatchStr:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( TestStr )
+
+		pat.matchStr( TestStr );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.matchStr( "Hello There World" );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.matchStr( "Hello" );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+	/***** matchiStr *****/
+	
+	stdout.put( nl nl "Testing MatchiStr:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( TestStr )
+
+		pat.matchiStr( "hello" );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.matchiStr( "Hello There World" );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.matchiStr( "hello" );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+
+
+
+
+
+	/***** matchWord *****/
+	
+	stdout.put( nl nl "Testing MatchWord:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( TestStr )
+
+		pat.matchWord( "Hello" );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.matchWord( "Hell" );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.matchWord( "Hello" );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+
+
+
+
+	/***** MatchiWord *****/
+	
+	stdout.put( nl nl "Testing MatchiWord:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( TestStr )
+
+		pat.matchiWord( "hello" );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.matchiWord( "hell" );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.matchiWord( "Hello" );
+		pat.oneCset( {'.'} );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+
+
+	// Test the Extract routine:
+
+	stdout.put( nl nl "Testing Extract:" nl nl );
+
+	pat.match( TestStr );
+
+		pat.matchStr( "Hello" );
+		pat.a_extract( s );
+		stdout.put( "      Success, str='", s, "'" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" );
+
+	pat.endmatch;
+
+
+
+
+
+	/***** ZeroOrMoreWS *****/
+	
+	stdout.put( nl nl "Testing ZeroOrMoreWS:" nl nl );
+
+
+	// Pattern that succeeds by matching several items:
+
+	pat.match( TestStr )
+
+		pat.zeroOrMoreWS();
+		pat.matchStr( "Hello" );
+		pat.zeroOrMoreWS();
+		pat.matchStr( "There" );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.zeroOrMoreWS();
+		pat.oneCset( {'.'} );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+
+	/***** OneOrMoreWS *****/
+	
+	stdout.put( nl nl "Testing OneOrMoreWS:" nl nl );
+
+
+	// Pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.zeroOrMoreWS();
+		pat.matchStr( "Hello" );
+		pat.oneOrMoreWS();
+		pat.matchStr( "There" );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.oneOrMoreWS();
+		pat.matchStr( "Hello" );
+		stdout.put( "      Failure" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.matchStr( "Hello" );
+		pat.oneOrMoreWS();
+		pat.oneCset( {'.'} );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+	/***** WSorEOS *****/
+	
+	stdout.put( nl nl "Testing WSorEOS:" nl nl );
+
+
+	// Pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.zeroOrMoreWS();
+		pat.matchStr( "Hello" );
+		pat.WSorEOS();
+		pat.matchStr( "There" );
+		pat.WSorEOS();
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.WSorEOS();
+		pat.matchStr( "Hello" );
+		stdout.put( "      Failure" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.matchStr( "Hello" );
+		pat.WSorEOS();
+		pat.oneCset( {'.'} );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+	/***** WSthenEOS *****/
+	
+	stdout.put( nl nl "Testing WSthenEOS:" nl nl );
+
+
+	// Pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.zeroOrMoreWS();
+		pat.matchStr( "Hello" );
+		pat.WSorEOS();
+		pat.matchStr( "There" );
+		pat.WSthenEOS();
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.WSthenEOS();
+		pat.matchStr( "Hello" );
+		stdout.put( "      Failure" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.matchStr( "Hello there" );
+		pat.WSthenEOS();
+		pat.oneCset( {'.'} );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+	/***** PeekWS *****/
+	
+	stdout.put( nl nl "Testing PeekWS:" nl nl );
+
+
+	// Pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.matchStr( "Hello" );
+		pat.peekWS();
+		pat.WSorEOS();
+		pat.matchStr( "There" );
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.peekWS();
+		pat.matchStr( "Hello" );
+		stdout.put( "      Failure" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.matchStr( "Hello there" );
+		pat.peekWS();
+		pat.oneCset( {'.'} );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+	/***** PeekWSorEOS *****/
+	
+	stdout.put( nl nl "Testing PeekWSorEOS:" nl nl );
+
+
+	// Pattern that succeeds:
+
+	pat.match( TestStr )
+
+		pat.matchStr( "Hello" );
+		pat.peekWS();
+		pat.WSorEOS();
+		pat.matchStr( "There" );
+		pat.peekWSorEOS();
+		stdout.put( "      Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Failure" nl );
+
+	pat.endmatch;
+
+
+	// Pattern that fails:
+
+	pat.match( TestStr )
+
+		pat.peekWSorEOS();
+		pat.matchStr( "Hello" );
+		stdout.put( "      Failure" nl );
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.matchStr( "Hello there" );
+		pat.peekWSorEOS();
+		pat.oneCset( {'.'} );
+
+		stdout.put( "      Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "      Success" nl );
+
+	pat.endmatch;
+
+
+
+
+
+
+
+
+
+
+	/***** arb *****/
+	
+	stdout.put( nl nl "Testing arb:" nl nl );
+
+
+	// Pattern that succeeds:
+
+	pat.match( TestStr )
+	
+		pat.arb();
+		pat.matchStr( "There" );
+		pat.peekWSorEOS();
+		stdout.put( "Eager:Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Failure" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+	
+		pat.l_arb();
+		pat.matchStr( "There" );
+		pat.peekWSorEOS();
+		stdout.put( "Lazy: Success" nl );
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Failure" nl );
+
+	pat.endmatch;
+
+
+
+	// Test error propogation:
+
+	pat.match( TestStr )
+
+		pat.arb();
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Eager:Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Eager:Success" nl );
+
+	pat.endmatch;
+
+	pat.match( TestStr )
+
+		pat.l_arb();
+		pat.oneCset( {'.'} );
+
+		stdout.put( "Lazy: Failure" nl );		// Match succeeds but test fails!
+
+	  pat.if_failure
+
+		stdout.put( "Lazy: Success" nl );
+
+	pat.endmatch;
+
+
+
+	// Test alternation:
+	
+	stdout.put( nl nl "Testing alternation:" nl nl );
+	
+	pat.match( TestStr );
+	
+		pat.matchStr( "hello world" );
+		stdout.put( "'hello world' matched (failure)" );
+		
+	  pat.alternate;
+	  
+	  	pat.matchStr( "Hello World" );
+		stdout.put( "Alternation #1 (Failure)" nl );
+		
+	  pat.alternate;
+	  
+	  	pat.matchStr( "Hello There" );
+		stdout.put( "Alternation #2 (success)" nl );
+		
+	  pat.if_failure;
+	  
+	  	stdout.put( "Alternation failed" nl );
+		
+	pat.endmatch;
+
+
+end testpat;

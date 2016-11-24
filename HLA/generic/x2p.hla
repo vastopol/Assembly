@@ -1,0 +1,804 @@
+/*
+
+Hi there,
+I'm trying to translate a text containing a logic formula into a
+subroutine in asm :
+S=(a.b)
+will be translated :
+MOV AX,[a]
+AND AX,[b]
+well, it isn't as easy for complex formulas ...
+Any tutorials, sample code about this?
+Thanks
+
+
+-------
+
+What you're asking for is the expression evaluator portion of
+a compiler, which is not a trivial piece of code.  I have put
+together an HLA (High Level Assembly) program that does
+much of what you ask for.  The following program ("x2p" for
+eXpression to Procedure) accepts an expression after the
+call on the command line and writes an HLA procedure to
+the standard output.  This particular example responds to
+the following arithmetic operators:
+
+Lowest precedence:
+
+!    logical OR
+&   logical AND
+^    logical XOR
+
+Middle Precedence:
+
++    addition
+-    subtraction
+
+High precedence:
+
+*    multiplication
+/    division
+%  modulo (remainder)
+
+Terms:
+
+identifier (HLA/C/C++ compatible)
+unsigned integer constants (decimal, as you would expect)
+hexadecimal constants (must begin with a $)
+
+Notes:
+
+I used the "!" character as the OR operator rather than
+the more common "|" symbol because the command
+line processor uses "|" as the pipe operator.
+
+For the same reason, and also to conform with your
+example, I used the "." as the logical AND operator
+rather than the more common "&" symbol.
+
+The compiler does not allow white space in the middle
+of the expression.  The command line processor
+removes all white space, so this generally isn't a
+problem, however, if you enclose the expression
+in quotes, it is possible to insert white space into
+the expression.  This program will treat that as a
+syntax error.  Eliminating white space is an exercise
+left to the reader.
+
+All operators are left associative.
+
+This program does not produce optimized code,
+indeed, the code it produces is really crappy (an
+optimizing expression compiler is a *lot* of work
+and I'm not willing to go that far).  You can optimize
+the output by hand or feel free to tweak the HLA
+source code to your heart's content.
+
+I haven't tested this code beyond the simple examples
+I've written below.  Let me know if you find any problems
+(there are probably some!).
+
+Randy Hyde
+
+
+Here are some sample calls and the output they produce:
+
+x2p   x=a+b*(c ! d)
+
+procedure x; nodisplay; noframe;
+begin x;
+
+  mov( a, eax );
+  mov( eax, ebx );
+  mov( b, eax );
+  push( ebx );
+  mov( eax, ebx );
+  mov( c, eax );
+  push( ebx );
+  mov( eax, ebx );
+  mov( d, eax );
+  or( ebx, eax );
+  pop( ebx );
+  mul( ebx, eax );
+  pop( ebx );
+  add( ebx, eax );
+  ret();
+
+end x;
+
+
+
+x2p  l =~(a . b) ! ~(c . d)
+
+procedure l; nodisplay; noframe;
+begin l;
+
+  mov( a, eax );
+  mov( eax, ebx );
+  mov( b, eax );
+  and( ebx, eax );
+  not( eax );
+  mov( eax, ebx );
+  mov( c, eax );
+  push( ebx );
+  mov( eax, ebx );
+  mov( d, eax );
+  and( ebx, eax );
+  pop( ebx );
+  not( eax );
+  or( ebx, eax );
+  ret();
+
+end l;
+
+
+
+
+*/
+
+
+
+
+
+// Expression compiler:
+//
+//	This program accepts a single line input containing
+//  an expression of the form:
+//
+//		identifier = arithmetic_expression
+//
+//	For each valid input line, this program outputs a
+//	short HLA procedure that calculates the specified
+//	expression, leaving the result in EAX.
+//
+//	This compiled code is by no means efficient, but
+//	you can optimize the result if this really bugs you.
+//
+//	Here is the generic grammar for the arithmetic_expression
+//
+//		X-> X ! E	// Logical OR.
+//		X-> X . E	// Logical AND.
+//		X-> X ^ E	// Logical XOR.
+//		X-> E
+//
+//		E-> E + T	// Addition
+//		E-> E - T	// Subtraction
+//		E-> T
+//
+//		T-> T * F	// Multiplication
+//		T-> T / F	// Division
+//		T-> T % F	// Modulus (remainder)
+//
+//		F-> identifier
+//		F-> $hexadecimalConst
+//		F-> decimalConst
+//		F-> ~F				// Logical NOT
+//		F-> ( X )
+//
+//
+//	Grammar with left recursion removed (see the Dragon book):
+//
+//		X -> E x'
+//		x'-> ! E x'
+//		x'-> . E x'
+//		x'-> ^ E x'
+//		x'->
+//
+//		E -> T e'
+//		e'-> + T e'
+//		e'-> - T e'
+//		e'->
+//
+//		T -> F t'
+//		t'-> * F t'
+//		t'-> / F t'
+//		t'-> % F t'
+//		t'->
+//
+//		F-> identifier
+//		F-> $hexadecimalConst
+//		F-> decimalConst
+//		F-> ~F
+//		F-> ( X )
+
+
+program ExprCompiler;
+
+#include( "stdlib.hhf" );
+
+
+
+
+
+static
+	Expression:	string;
+	StackCnt:	uns32	:= 0;
+	EAXisEmpty:	boolean := true;
+	EBXisEmpty: boolean := true;
+
+
+
+procedure X( start:dword; endstr:dword ); forward;
+
+
+
+// EmptyEAX-
+//
+//	If EAX is currently occupied, this function
+//  pushes EAX's value onto the stack to free up
+//  EAX for other use.
+//
+//	Note that the stack consists of the following:
+//
+//		EAX		- TOS
+//		EBX		- NOS
+//		[esp]	- remainder of stack.
+
+procedure EmptyEAX; @nodisplay; @noframe;
+begin EmptyEAX;
+
+	if( EAXisEmpty = false ) then
+
+		if( EBXisEmpty = false ) then
+		
+			stdout.put( "  push( ebx );" nl );
+			inc( StackCnt );
+			
+		endif;
+		stdout.put( "  mov( eax, ebx );" nl );
+		mov( false, EBXisEmpty );
+
+	endif;
+	mov( false, EAXisEmpty );
+	ret();
+
+end EmptyEAX;
+
+
+// PopStack-
+//
+//	If we've got values on the hardware stack, pop them
+//  off the stack and into EBX.
+
+procedure PopStack; @nodisplay; @noframe;
+begin PopStack;
+
+	if( StackCnt > 0 ) then
+	
+		stdout.put( "  pop( ebx );" nl );
+		dec( StackCnt );
+		
+	else
+	
+		mov( true, EBXisEmpty );
+		
+	endif;
+	ret();
+	
+end PopStack;
+
+
+
+
+
+/*********************************************************************/
+/*                                                                   */
+/*  F-                                                               */
+/*                                                                   */
+/*  This procedure handles the following productions in the grammar: */
+/*                                                                   */
+/* 		F-> identifier                                               */
+/* 		F-> $hexadecimalConst                                        */
+/* 		F-> decimalConst                                             */
+/* 		F-> ( X )                                                    */
+/*                                                                   */
+/*********************************************************************/
+
+procedure F( start:dword; endstr:dword ); @nodisplay;
+var
+	identifier:	string;
+	hexValue:	string;
+	decValue:	string;
+	mark:		dword;
+	
+begin F;
+
+	pat.match( start, endstr );
+
+			// Match an identifier
+
+			mov( esi, mark );
+			pat.oneOrMoreCset( {'a'..'z', 'A'..'Z', '_'} );
+			pat.zeroOrMoreCset( {'a'..'z', 'A'..'Z', '_', '0'..'9'} );
+
+			mov( mark, ebx );
+
+			pat.a_extract( identifier );
+			
+			// Emit the code to load the variable into EAX:
+
+			EmptyEAX();
+			stdout.put( "  mov( ", identifier, ", eax );" nl );
+			strfree( identifier );
+
+		pat.alternate
+
+			// Match a hexadecimal constant
+
+			mov( esi, mark );
+			pat.oneChar( '$' );
+			pat.oneOrMoreCset( {'0'..'9', 'a'..'f', 'A'..'F'} );
+
+			mov( mark, ebx );
+			pat.a_extract( hexValue );
+
+			// Emit the code to load the constant into EAX:
+
+			EmptyEAX();
+			stdout.put( "  mov( ", hexValue, ", eax );" nl );
+			strfree( hexValue );
+
+		pat.alternate
+
+			// Match a decimal constant
+
+			mov( esi, mark );
+			pat.oneOrMoreCset( {'0'..'9'} );
+
+			mov( mark, ebx );
+			pat.a_extract( decValue );
+
+			// Emit the code to load the decimal constant into EAX:
+
+			EmptyEAX();
+			stdout.put( "  mov( ", decValue, ", eax );" nl );
+			strfree( decValue );
+
+		pat.alternate
+
+			// Match parentheses around an expression:
+
+			pat.oneChar( '(' );
+
+			X( esi, edi );
+
+			pat.oneChar( ')' );
+
+
+		pat.alternate
+
+			// Handle the logical NOT operator.
+
+			pat.oneChar( '~' );
+			F( esi, edi );
+			
+			// Emit the code to logically negate the value.
+			
+			stdout.put( "  not( eax );" nl );
+
+			
+
+		pat.if_failure
+
+			stdout.put( nl nl "F:Syntax error in expression.  Near '" );
+			mov( start, eax );
+			while( (type char [eax]) <> #0 ) do
+
+				stdout.putc( (type char [eax]) );
+				inc( eax );
+
+			endwhile;
+			stdout.put( "'" nl nl );
+
+	pat.endmatch;
+
+end F;
+
+
+
+
+/********************************************************************/
+/*                                                                  */
+/* T-                                                               */
+/*                                                                  */
+/* This procedure handles the following productions in the grammar: */
+/*                                                                  */
+/* 		T -> F t'                                                   */
+/* 		t'-> * F t'                                                 */
+/* 		t'-> / F t'                                                 */
+/* 		t'-> % F t'                                                 */
+/* 		t'->                                                        */
+/*                                                                  */
+/********************************************************************/
+
+procedure tP( start:dword; endstr:dword );
+begin tP;
+
+	pat.match( start, endstr )
+	
+			pat.oneChar( '*' );
+			F( esi, edi );
+			
+			// Okay, the "F[0]" value is in ebx.
+			// the "F[1]" value is in EAX.
+			// Note: F[0] is the attribute of F immediately before t'
+			// in either T-> F t' or any of the t' productions.
+			
+			stdout.put( "  mul( ebx, eax );" nl );
+			PopStack();
+			
+			// Product is now in EAX.  Compute the rest of the expression.
+			
+			tP( esi, edi );
+			
+		pat.alternate
+		
+			// See the comments above.  This production handles division.
+			
+			pat.oneChar( '/' );
+			F( esi, edi );
+
+			stdout.put( "  xor( edx, edx );" nl );
+			stdout.put( "  xchg( eax, ebx );" nl );
+			stdout.put( "  div( ebx, edx:eax );" nl );
+			PopStack();
+			
+			// Quotient is now in EAX.  Compute the rest of the expression.
+			
+			tP( esi, edi );
+			
+			
+		pat.alternate
+		
+			// See the comments above.  This production handles remainder.
+			
+			pat.oneChar( '%' );
+			F( esi, edi );
+
+			stdout.put( "  xor( edx, edx );" nl );
+			stdout.put( "  xchg( eax, ebx );" nl );
+			stdout.put( "  mod( ebx, edx:eax );" nl );
+			stdout.put( "  mov( edx, eax );" nl );
+			PopStack();
+			
+			// Remainder is now in EAX.  Compute the rest of the expression.
+			
+			tP( esi, edi );
+			
+		pat.if_failure
+			
+			// This matches the empty string, so succeed.
+						
+	pat.endmatch;
+			
+end tP;
+
+
+procedure T( start:dword; endstr:dword ); @nodisplay;
+begin T;
+
+	pat.match( start, endstr )
+	
+			F( esi, edi );
+			tP( esi, edi );	
+		
+		pat.if_failure
+		
+			pat.fail();
+			
+	pat.endmatch;
+	
+end T;
+
+
+
+
+
+
+
+
+
+/********************************************************************/
+/*                                                                  */
+/* E-                                                               */
+/*                                                                  */
+/* This procedure handles the following productions in the grammar: */
+/*                                                                  */
+/* 		E -> T e'                                                   */
+/* 		e'-> + T e'                                                 */
+/* 		e'-> - T e'                                                 */
+/* 		e'->                                                        */
+/*                                                                  */
+/********************************************************************/
+
+procedure eP( start:dword; endstr:dword );
+begin eP;
+
+	pat.match( start, endstr )
+	
+			// Compute the sum:
+			
+			pat.oneChar( '+' );
+			T( esi, edi );
+			
+			// Okay, the "F[0]" value is in ebx.
+			// the "F[1]" value is in EAX.
+			// Note: F[0] is the attribute of F immediately before t'
+			// in either T-> F t' or any of the t' productions.
+			
+			stdout.put( "  add( ebx, eax );" nl );
+			PopStack();
+			
+			// Sum is now in EAX.  Compute the rest of the expression.
+			
+			eP( esi, edi );
+			
+		pat.alternate
+		
+			// See the comments above.  This production handles subtraction.
+			
+			pat.oneChar( '-' );
+			T( esi, edi );
+
+			stdout.put( "  sub( eax, ebx );" nl );
+			stdout.put( "  mov( ebx, eax );" nl );
+			PopStack();
+			
+			// Difference is now in EAX.  Compute the rest of the expression.
+			
+			eP( esi, edi );
+			
+			
+			
+		pat.if_failure
+			
+			// This matches the empty string, so succeed.
+						
+	pat.endmatch;
+			
+end eP;
+
+
+procedure E( start:dword; endstr:dword ); @nodisplay;
+begin E;
+
+	pat.match( start, endstr )
+	
+			T( esi, edi );
+			eP( esi, edi );	
+		
+		pat.if_failure
+		
+			pat.fail();
+			
+	pat.endmatch;
+	
+end E;
+
+
+
+
+
+
+
+
+
+/********************************************************************/
+/*                                                                  */
+/* X-                                                               */
+/*                                                                  */
+/* This procedure handles the following productions in the grammar: */
+/*                                                                  */
+/* 		X -> E x'                                                   */
+/* 		x'-> ! E x'                                                 */
+/* 		x'-> . E x'                                                 */
+/* 		x'-> ^ E x'                                                 */
+/* 		x'->                                                        */
+/*                                                                  */
+/********************************************************************/
+
+procedure xP( start:dword; endstr:dword );
+begin xP;
+
+	pat.match( start, endstr )
+	
+			// Compute the logical OR:
+			
+			pat.oneChar( '!' );
+			E( esi, edi );
+			
+			// See the comments for the T productions!
+			
+			stdout.put( "  or( ebx, eax );" nl );
+			PopStack();
+			
+			// Logical OR is now in EAX.  
+			// Compute the rest of the expression.
+			
+			xP( esi, edi );
+			
+		pat.alternate
+		
+			// Compute the logical AND:
+			
+			pat.oneChar( '.' );
+			E( esi, edi );
+			
+			// See the comments above.
+			
+			stdout.put( "  and( ebx, eax );" nl );
+			PopStack();
+			
+			// Logical AND is now in EAX.  
+			// Compute the rest of the expression.
+			
+			xP( esi, edi );
+			
+			
+		pat.alternate
+		
+			// Compute the logical AND:
+			
+			pat.oneChar( '^' );
+			E( esi, edi );
+			
+			// See the comments above.
+			
+			stdout.put( "  xor( ebx, eax );" nl );
+			PopStack();
+			
+			// Logical XOR is now in EAX.  
+			// Compute the rest of the expression.
+			
+			xP( esi, edi );
+			
+			
+		pat.if_failure
+			
+			// This matches the empty string, so succeed.
+						
+	pat.endmatch;
+			
+end xP;
+
+
+procedure X( start:dword; endstr:dword ); @nodisplay;
+begin X;
+
+	pat.match( start, endstr )
+	
+			E( esi, edi );
+			xP( esi, edi );	
+		
+		pat.if_failure
+		
+			pat.fail();
+			
+	pat.endmatch;
+	
+end X;
+
+
+
+/**********************************************************/
+/*                                                        */
+/* Expr2Proc-                                             */
+/*                                                        */
+/* This processes the following production:               */
+/*                                                        */
+/* 	Expr2Proc ->  identifier = X                          */
+/* 	                                                      */
+/* This production emits a procedure (using the specified */
+/* identifier) that computes the value of expression X    */
+/* and leaves that expression in EAX.                     */
+/*                                                        */
+/**********************************************************/
+
+procedure Expr2Proc( start:dword; endstr:dword ); @nodisplay;
+var
+	mark:	dword;
+	id:		string;
+	
+begin Expr2Proc;
+
+	pat.match( start, endstr );
+	
+			// Match the identifier.
+			
+			mov( esi, mark );
+			pat.oneCset( {'a'..'z', 'A'..'Z', '_'} );
+			pat.zeroOrMoreCset(	 {'a'..'z', 'A'..'Z', '_'} );
+			mov( mark, ebx );
+			pat.a_extract( id );
+			pat.oneChar( '=' );
+			
+			// Before processing the expression, emit the
+			// HLA procedure header.
+			
+			stdout.put
+			(
+				nl 
+				"procedure ", 
+				id, 
+				"; nodisplay; noframe;" nl
+				"begin ",
+				id,
+				";" nl nl
+			);
+			
+			// Generate the code for the expression:
+			
+			X( esi, edi );
+			
+			// Generate the epilog for the procedure:
+			
+			stdout.put
+			( 
+				"  ret();" nl nl 
+				"end ", 
+				id, 
+				";" nl nl 
+			);
+			strfree( id );
+			
+		pat.if_failure
+		
+			stdout.put( nl nl "X:Syntax error in expression.  Near '" );
+			mov( start, eax );
+			while( (type char [eax]) <> #0 ) do
+
+				stdout.putc( (type char [eax]) );
+				inc( eax );
+
+			endwhile;
+			stdout.put( "'" nl nl );
+			
+	pat.endmatch;
+			
+end Expr2Proc;
+
+
+
+
+var
+	argc:	int32;
+
+
+begin ExprCompiler;
+
+	arg.c();
+	mov( eax, argc );
+	if( eax <= 1 ) then
+
+		stdout.put( "Usage: xcmp expression" nl );
+		os.exitProcess( 1 );
+
+	endif;
+
+
+	// Concatenate all the pieces of the command line
+	// together to get the full expression:
+
+	stralloc( 256 );
+	mov( eax, Expression );
+	for( mov( 1, ecx ); ecx < argc; inc( ecx ) ) do
+
+		arg.v( ecx );
+		mov( eax, ebx );
+		str.cat( eax, Expression );
+		strfree( ebx );
+
+	endfor;
+	
+	pat.match( Expression )
+	
+		Expr2Proc( esi, edi );
+		
+	  pat.if_failure
+	  
+	  	stdout.put( nl nl "Syntax error in expression" nl );
+		
+	pat.endmatch;
+	
+
+end ExprCompiler;

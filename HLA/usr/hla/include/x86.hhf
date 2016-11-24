@@ -1,0 +1,46 @@
+
+#if( ! @defined( x86_hhf ))
+?x86_hhf := true;
+
+namespace x86;
+
+	const
+		flag_carry		:= @{0};
+		flag_parity		:= @{2};
+		flag_auxcarry	:= @{4};
+		flag_zero		:= @{6};
+		flag_sign		:= @{7};
+		flag_trap		:= @{8};
+		flag_intEnable	:= @{9};
+		flag_direction	:= @{10};
+		flag_overflow	:= @{11};
+		flag_IOPL		:= @{12} | @{13};
+		flag_nestedTask	:= @{14};
+		flag_resume		:= @{16};
+		flag_vm			:= @{17};
+		flag_alignChk	:= @{18};
+		flag_vif		:= @{19};
+		flag_vip		:= @{20};
+		flag_id			:= @{21};
+		
+		
+
+	type
+		pushaRec:	record
+
+						ediOfs:dword;
+						esiOfs:dword;
+						ebpOfs:dword;
+						espOfs:dword;
+						ebxOfs:dword;
+						edxOfs:dword;
+						ecxOfs:dword;
+						eaxOfs:dword;
+
+					endrecord;
+					
+end x86;
+		
+
+#endif
+

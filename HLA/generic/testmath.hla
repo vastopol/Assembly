@@ -1,0 +1,858 @@
+program testMath;
+
+#include( "stdlib.hhf" );
+
+const
+	debug := false;
+	
+static
+
+	r32		:	real32;
+	r64		:	real64;
+	r80		:	real80;
+
+	ar32	:	real32;
+	ar64	:	real64;
+	ar80	:	real80;
+
+	cotVar	:	real64 := 3.0;
+	cotVar32:	real32 := 1.32;
+	cotVar64:	real64 := 1.64;
+	cotVar80:	real80 := 1.80;
+
+	cscVar	:	real64 := 1.5;
+	cscVar32:	real32 := 0.32;
+	cscVar64:	real64 := 0.64;
+	cscVar80:	real80 := 0.80;
+	cscRes	:	real64;
+	acscRes	:	real64;
+
+	secVar	:	real64 := 0.5;
+	secVar32:	real32 := 0.32;
+	secVar64:	real64 := 0.64;
+	secVar80:	real80 := 0.80;
+	secRes	:	real64;
+	asecRes	:	real64;
+
+	sinVar	:	real64 := 0.75;
+	sinVar32:	real32 := 0.32;
+	sinVar64:	real64 := 0.64;
+	sinVar80:	real80 := 0.80;
+	sinRes	:	real64;
+	asinRes	:	real64;
+
+	cosVar	:	real64 := 0.25;
+	cosVar32:	real32 := 0.32;
+	cosVar64:	real64 := 0.64;
+	cosVar80:	real80 := 0.80;
+	cosRes	:	real64;
+	acosRes	:	real64;
+
+	Two2xvar:	real64 := -2.5;
+	Two2x32 :	real32 := 0.32;
+	Two2x64 :	real64 := 0.64;
+	Two2x80 :	real80 := 0.80;
+	Two2xRes:	real64;
+	lgxRes	:	real64;
+
+	Ten2xVar:	real64 := 3.75;
+	Ten2x32 :	real32 := 1.32;
+	Ten2x64 :	real64 := 1.64;
+	Ten2x80 :	real80 := 1.80;
+	Ten2xRes:	real64;
+	logRes	:	real64;
+
+	expVar	:	real64 := 3.25;
+	expVar32:	real32 := 3.32;
+	expVar64:	real64 := 3.64;
+	expVar80:	real80 := 3.80;
+	expRes	:	real64;
+	lnRes	:	real64;
+
+	Y2Xx	:	real64 := 3.0;
+	Y2Xy	:	real64 := 3.0;
+	Y2Xx32	:	real32 := 3.32;
+	Y2Xy32	:	real32 := 3.32;
+	Y2Xx64	:	real64 := 3.64;
+	Y2Xy64	:	real64 := 3.64;
+	Y2Xx80	:	real80 := 3.80;
+	Y2Xy80	:	real80 := 3.80;
+	Y2XRes	:	real64;
+	
+	CtrlWord:	word;
+
+	#macro DumpSP;
+	
+		#if( @defined( debug ))
+		
+			#if( debug )
+			
+				fstsw( CtrlWord );
+				movzx( CtrlWord, eax );
+				shr( 11, eax );
+				and( 7, al );
+				stdout.put( "FPU SP=", al, "   ESP=", esp, nl );
+				
+			#endif
+			
+		#endif
+		
+	#endmacro;
+	
+		
+begin testMath;
+
+	finit();
+	DumpSP;
+
+	// Check to see if cot and acot are working properly.
+
+	fld( cotVar );
+	math.cot();
+	fstp( r80 );
+
+	fld( r80 );
+	math.acot();
+	fstp( ar80 );
+
+	stdout.put
+	( 
+		"x=", 
+		cotVar:10, 
+		" cot(x)=",
+		r80:10,
+		" acot(cot(x))=",
+		ar80:10,
+		nl
+	);
+	DumpSP;
+	
+
+
+	math.cot( cotVar32);
+	fstp( r32 );
+
+	math.acot( r32 );
+	fstp( ar32 );
+
+	stdout.put
+	( 
+		"x32=", 
+		cotVar32:10, 
+		" cot(x32)=",
+		r32:10,
+		" acot(cot(x32))=",
+		ar32:10,
+		nl
+	);
+	DumpSP;
+
+
+	math.cot( cotVar64);
+	fstp( r64 );
+
+	math.acot( r64 );
+	fstp( ar64 );
+
+	stdout.put
+	( 
+		"x64=", 
+		cotVar64:10, 
+		" cot(x64)=",
+		r64:10,
+		" acot(cot(x64))=",
+		ar64:10,
+		nl
+	);
+	DumpSP;
+
+
+	math.cot( cotVar80);
+	fstp( r80 );
+
+	math.acot( r80 );
+	fstp( ar80 );
+
+	stdout.put
+	( 
+		"x80=", 
+		cotVar80:10, 
+		" cot(x80)=",
+		r80:10,
+		" acot(cot(x80))=",
+		ar80:10,
+		nl
+	);
+	DumpSP;
+
+
+
+	stdout.newln();
+
+
+
+
+
+	// Check to see if csc and acsc are working properly.
+
+	fld( cscVar );
+	math._csc();
+	fst( cscRes );
+	math._acsc();
+	fstp( acscRes );
+
+	stdout.put
+	( 
+		"x=", 
+		cscVar:10, 
+		" csc(x)=",
+		cscRes:10,
+		" acsc(csc(x))=",
+		acscRes:10,
+		nl
+	);
+	DumpSP;
+
+	math.csc( cscVar32 );
+	fstp( r32 );
+
+	math.acsc( r32 );
+	fstp( ar32 );
+
+	stdout.put
+	( 
+		"x32=", 
+		cscVar32:10, 
+		" csc(x32)=",
+		r32:10,
+		" acsc(csc(x32))=",
+		ar32:10,
+		nl
+	);
+	DumpSP;
+
+	math.csc( cscVar64 );
+	fstp( r64 );
+
+	math.acsc( r64 );
+	fstp( ar64 );
+
+	stdout.put
+	( 
+		"x64=", 
+		cscVar64:10, 
+		" csc(x64)=",
+		r64:10,
+		" acsc(csc(x64))=",
+		ar64:10,
+		nl
+	);
+	DumpSP;
+
+	math.csc( cscVar80 );
+	fstp( r80 );
+
+	math.acsc( r80 );
+	fstp( ar80 );
+
+	stdout.put
+	( 
+		"x80=", 
+		cscVar80:10, 
+		" csc(x80)=",
+		r80:10,
+		" acsc(csc(x80))=",
+		ar80:10,
+		nl
+	);
+	DumpSP;
+	stdout.newln();
+
+
+
+
+
+
+
+	// Check to see if sec and asec are working properly.
+
+	fld( secVar );
+	math._sec();
+	fst( secRes );
+	math._asec();
+	fstp( asecRes );
+
+	stdout.put
+	( 
+		"x=", 
+		secVar:10, 
+		" sec(x)=",
+		secRes:10,
+		" asec(sec(x))=",
+		asecRes:10,
+		nl
+	);
+	DumpSP;
+
+
+	math.sec( secVar32 );
+	fstp( r32 );
+
+	math.asec( r32 );
+	fstp( ar32 );
+
+	stdout.put
+	( 
+		"x32=", 
+		secVar32:10, 
+		" sec(x32)=",
+		r32:10,
+		" asec(sec(x32))=",
+		ar32:10,
+		nl
+	);
+	DumpSP;
+
+
+	math.sec( secVar64 );
+	fstp( r64 );
+
+	math.asec( r64 );
+	fstp( ar64 );
+
+	stdout.put
+	( 
+		"x64=", 
+		secVar64:10, 
+		" sec(x64)=",
+		r64:10,
+		" asec(sec(x64))=",
+		ar64:10,
+		nl
+	);
+	DumpSP;
+
+
+	math.sec( secVar80 );
+	fstp( r80 );
+
+	math.asec( r80 );
+	fstp( ar80 );
+
+	stdout.put
+	( 
+		"x80=", 
+		secVar80:10, 
+		" sec(x80)=",
+		r80:10,
+		" asec(sec(x80))=",
+		ar80:10,
+		nl
+	);
+	DumpSP;
+	stdout.newln();
+
+
+
+	// Check to see if sin and asin are working properly.
+
+	fld( sinVar );
+	fsin();
+	fst( sinRes );
+	math._asin();
+	fstp( asinRes );
+
+	stdout.put
+	( 
+		"x=", 
+		sinVar:10, 
+		" sin(x)=",
+		sinRes:10,
+		" asin(sin(x))=",
+		asinRes:10,
+		nl
+	);
+	DumpSP;
+
+
+	fld( sinVar32 );
+	fsin();
+	fstp( r32 );
+
+	math.asin( r32 );
+	fstp( ar32 );
+
+	stdout.put
+	( 
+		"x32=", 
+		sinVar32:10, 
+		" sin(x32)=",
+		r32:10,
+		" asin(sin(x32))=",
+		ar32:10,
+		nl
+	);
+	DumpSP;
+
+
+	fld( sinVar64 );
+	fsin();
+	fstp( r64 );
+
+	math.asin( r64 );
+	fstp( ar64 );
+
+	stdout.put
+	( 
+		"x64=", 
+		sinVar64:10, 
+		" sin(x64)=",
+		r64:10,
+		" asin(sin(x64))=",
+		ar64:10,
+		nl
+	);
+	DumpSP;
+
+
+	fld( sinVar80 );
+	fsin();
+	fstp( r80 );
+
+	math.asin( r80 );
+	fstp( ar80 );
+
+	stdout.put
+	( 
+		"x80=", 
+		sinVar80:10, 
+		" sin(x80)=",
+		r80:10,
+		" asin(sin(x80))=",
+		ar80:10,
+		nl
+	);
+	DumpSP;
+	
+	stdout.newln();
+
+
+
+	// Check to see if cos and acos are working properly.
+
+	fld( cosVar );
+	fcos();
+	fst( cosRes );
+	math._acos();
+	fstp( acosRes );
+
+	stdout.put
+	( 
+		"x=", 
+		cosVar:10, 
+		" cos(x)=",
+		cosRes:10,
+		" acos(cos(x))=",
+		acosRes:10,
+		nl
+	);
+	DumpSP;
+
+
+
+	fld( cosVar32 );
+	fcos();
+	fstp( r32 );
+
+	math.acos( r32 );
+	fstp( ar32 );
+
+	stdout.put
+	( 
+		"x32=", 
+		cosVar32:10, 
+		" cos(x32)=",
+		r32:10,
+		" acos(cos(x32))=",
+		ar32:10,
+		nl
+	);
+	DumpSP;
+
+
+	fld( cosVar64 );
+	fcos();
+	fstp( r64 );
+
+	math.acos( r64 );
+	fstp( ar64 );
+
+	stdout.put
+	( 
+		"x64=", 
+		cosVar64:10, 
+		" cos(x64)=",
+		r64:10,
+		" acos(cos(x64))=",
+		ar64:10,
+		nl
+	);
+	DumpSP;
+
+
+	fld( cosVar80 );
+	fcos();
+	fstp( r80 );
+
+	math.acos( r80 );
+	fstp( ar80 );
+
+	stdout.put
+	( 
+		"x80=", 
+		cosVar80:10, 
+		" cos(x80)=",
+		r80:10,
+		" acos(cos(x80))=",
+		ar80:10,
+		nl
+	);
+	DumpSP;
+	
+	stdout.newln();
+	
+	
+	
+
+	// Check to see if 2**x and lg(x) are working properly.
+
+	fld( Two2xvar );
+	math._twoToX();
+	fst( Two2xRes );
+	fld1(); 
+	fxch();
+	fyl2x();
+	fstp( lgxRes );
+
+
+	stdout.put
+	( 
+		"x=", 
+		Two2xvar:10, 
+		" 2**x=",
+		Two2xRes:10,
+		" lg(x)=",
+		lgxRes:10,
+		nl
+	);
+	DumpSP;
+
+
+	math.twoToX( Two2x32 );
+	fst( r32 );
+
+	fld1(); 
+	fxch();
+	fyl2x();
+	fstp( ar32 );
+
+	stdout.put
+	( 
+		"x32=", 
+		Two2x32:10, 
+		" 2**(x32)=",
+		r32:10,
+		" lg(2**(x32))=",
+		ar32:10,
+		nl
+	);
+	DumpSP;
+
+
+	math.twoToX( Two2x64 );
+	fst( r64 );
+
+	fld1(); 
+	fxch();
+	fyl2x();
+	fstp( ar64 );
+
+	stdout.put
+	( 
+		"x64=", 
+		Two2x64:10, 
+		" 2**(x64)=",
+		r64:10,
+		" lg(2**(x64))=",
+		ar64:10,
+		nl
+	);
+	DumpSP;
+
+
+	math.twoToX( Two2x80 );
+	fstp( r80 );
+	fld( r80 );
+
+	fld1(); 
+	fxch();
+	fyl2x();
+	fstp( ar80 );
+
+	stdout.put
+	( 
+		"x80=", 
+		Two2x80:10, 
+		" 2**(x80)=",
+		r80:10,
+		" lg(2**(x80))=",
+		ar80:10,
+		nl
+	);
+	DumpSP;
+	
+	stdout.newln();
+	
+	
+
+
+	// Check to see if 10**x and log(x) are working properly.
+
+	fld( Ten2xVar );
+	math.tenToX();
+	fst( Ten2xRes );
+	math.log();
+	fstp( logRes );
+
+	stdout.put
+	( 
+		"x=", 
+		Ten2xVar:10, 
+		" 10**x=",
+		Ten2xRes:10,
+		" log(x)=",
+		logRes:10,
+		nl
+	);
+	DumpSP;
+
+
+	math.tenToX( Ten2x32 );
+	fstp( r32 );
+
+	math.log( r32 );
+	fstp( ar32 );
+
+	stdout.put
+	( 
+		"x32=", 
+		Ten2x32:10, 
+		" 10**(x32)=",
+		r32:10,
+		" log(10**(x32))=",
+		ar32:10,
+		nl
+	);
+	DumpSP;
+
+
+	math.tenToX( Ten2x64 );
+	fstp( r64 );
+
+	math.log( r64 );
+	fstp( ar64 );
+
+	stdout.put
+	( 
+		"x64=", 
+		Ten2x64:10, 
+		" 10**(x64)=",
+		r64:10,
+		" log(10**(x64))=",
+		ar64:10,
+		nl
+	);
+	DumpSP;
+
+
+	math.tenToX( Ten2x80 );
+	fstp( r80 );
+
+	math.log( r80 );
+	fstp( ar80 );
+
+	stdout.put
+	( 
+		"x80=", 
+		Ten2x80:10, 
+		" 10**(x80)=",
+		r80:10,
+		" log(10**(x80))=",
+		ar80:10,
+		nl nl
+	);
+	DumpSP;
+
+
+
+
+	// Check to see if exp(x) and ln(x) are working properly.
+
+	fld( expVar );
+	math.exp();
+	fst( expRes );
+	math.ln();
+	fstp( lnRes );
+
+	stdout.put
+	( 
+		"x=", 
+		expVar:10, 
+		" e**x=",
+		expRes:10,
+		" ln(x)=",
+		lnRes:10,
+		nl
+	);
+	DumpSP;
+	
+
+
+	math.exp( expVar32 );
+	fstp( r32 );
+
+	math.ln( r32 );
+	fstp( ar32 );
+
+	stdout.put
+	( 
+		"x32=", 
+		expVar32:10, 
+		" e**(x32)=",
+		r32:10,
+		" ln(e**(x32))=",
+		ar32:10,
+		nl
+	);
+	DumpSP;
+	
+
+
+	math.exp( expVar64 );
+	fstp( r64 );
+
+	math.ln( r64 );
+	fstp( ar64 );
+
+	stdout.put
+	( 
+		"x64=", 
+		expVar64:10, 
+		" e**(x64)=",
+		r64:10,
+		" ln(e**(x64))=",
+		ar64:10,
+		nl
+	);
+	DumpSP;
+	
+
+
+	math.exp( expVar80 );
+	fstp( r80 );
+
+	math.ln( r80 );
+	fstp( ar80 );
+
+	stdout.put
+	( 
+		"x80=", 
+		expVar80:10, 
+		" e**(x80)=",
+		r80:10,
+		" ln(e**(x80))=",
+		ar80:10,
+		nl
+	);
+	DumpSP;
+	
+	stdout.newln();
+
+
+
+	
+
+	// Check to see if y**x is working properly.
+
+	fld( Y2Xy );
+	fld( Y2Xx );
+	math.yToX();
+	fstp( Y2XRes );
+
+	stdout.put
+	( 
+		"x=", 
+		Y2Xx:10, 
+		" y=", 
+		Y2Xy:10, 
+		" y**x=",
+		Y2XRes:10,
+		nl
+	);
+	DumpSP;
+
+	
+
+
+	math.yToX( Y2Xy32, Y2Xx32 );
+	fstp( r32 );
+	stdout.put
+	( 
+		"x=", 
+		Y2Xx32:10, 
+		" y=", 
+		Y2Xy32:10, 
+		" y**x=",
+		r32:10,
+		nl
+	);
+	DumpSP;
+
+	
+
+
+	math.yToX( Y2Xy64, Y2Xx64 );
+	fstp( r64 );
+	stdout.put
+	( 
+		"x=", 
+		Y2Xx64:10, 
+		" y=", 
+		Y2Xy64:10, 
+		" y**x=",
+		r64:10,
+		nl
+	);
+	DumpSP;
+
+	
+
+
+	math.yToX( Y2Xy80, Y2Xx80 );
+	fstp( r80 );
+	stdout.put
+	( 
+		"x=", 
+		Y2Xx80:10, 
+		" y=", 
+		Y2Xy80:10, 
+		" y**x=",
+		r80:10,
+		nl
+	);
+	DumpSP;
+	stdout.newln();
+
+
+
+end testMath;

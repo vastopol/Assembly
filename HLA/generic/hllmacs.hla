@@ -1,0 +1,261 @@
+/************************************************/
+/*                                              */
+/* This program demonstrates how to use HLA's   */
+/* "context-free" macros, along with the JT and */
+/* JF "medium-level" instructions to create     */
+/* all the standard HLA control structures      */
+/*                                              */
+/************************************************/
+
+program HLLDemo;
+#include( "stdlib.hhf" )
+
+	val
+		LabelGen:uns32 := 0;
+
+
+	/*
+	** Emulate the if..elseif..else..endif statement here.
+	*/
+	
+	#macro _if(ifx):elseLbl, ifDone, hasElse;
+		?elseLbl := LabelGen;
+		?LabelGen := LabelGen + 1;
+		?hasElse := false;
+	
+		jf(ifx) @text( "_" + string( elseLbl ));
+		
+	#keyword _then;
+	
+	#keyword _elseif(elsex);	
+		jmp ifDone;
+		@text( "_" + string( elseLbl )):
+		?elseLbl := LabelGen;
+		?LabelGen := LabelGen + 1;
+		jf(elsex) @text( "_" + string( elseLbl ));
+		
+	#keyword _else;
+		jmp ifDone;
+		@text( "_" + string( elseLbl )):
+		?hasElse := true;
+		
+	#terminator _endif;
+		ifDone:
+		#if( !hasElse )
+
+			@text( "_" + string( elseLbl )):
+
+		#endif	
+			
+	#endmacro;
+	
+	
+	/*
+	** Emulate the while..endwhile loop here.
+	*/
+	
+	#macro _while( whlx ): repeatwhl, whltest, brkwhl;
+		jmp whltest;
+		repeatwhl:
+				
+	#keyword _do;
+	
+	#keyword _break;
+		jmp brkwhl;
+		
+	#keyword _breakif( biwExpr );
+		jt( biwExpr ) brkwhl;
+		
+	#keyword _continue;
+		jmp whltest;
+		
+	#keyword _continueif( ciwExpr );
+		jt( ciwExpr ) whltest;
+		
+	#terminator _endwhile;
+	
+		whltest:
+		jt( whlx ) repeatwhl;
+		brkwhl:
+		
+	#endmacro;
+	
+	
+	/*
+	** Emulate the FOR..ENDFOR loop here:
+	*/
+	
+	#macro _for( for_init, for_expr, for_inc );
+		for_init;
+		_while( for_expr ) _do
+		
+	#keyword _do;
+
+	#terminator _endfor;
+	
+		for_inc;
+		_endwhile
+
+	#endmacro;
+	
+
+	/*
+	** Emulate the FOREVER..ENDFOR loop here.
+	*/
+	
+	#macro _forever:foreverLbl, foreverbrk;
+		foreverLbl:
+		
+	#keyword _break;
+		jmp foreverbrk;
+		
+	#keyword _breakif( bifExpr );
+		jt( bifExpr ) foreverbrk;
+		
+	#keyword _continue;
+		jmp foreverLbl;
+		
+	#keyword _continueif( cifExpr );
+		jt( cifExpr ) foreverLbl;
+		
+	#terminator _endfor;
+		jmp foreverLbl;
+		foreverbrk:
+		
+	#endmacro;
+
+	
+	
+	/*
+	** Emulate the repeat..until loop here.
+	*/
+	
+	#macro _repeat:rptLbl, rptbrk;
+		rptLbl:
+		
+	#keyword _break;
+		jmp rptbrk;
+		
+	#keyword _breakif( birExpr );
+		jt( birExpr ) rptbrk;
+		
+	#keyword _continue;
+		jmp rptLbl;
+		
+	#keyword _continueif( cirExpr );
+		jt( cirExpr ) rptLbl;
+		
+	#terminator _until( untilExpr );
+		jt( untilExpr ) rptLbl;
+		rptbrk:
+		
+	#endmacro;
+	
+	
+	/*
+	** Partial implementation of BEGIN..EXIT..EXITIF..END
+	** (does not support returning from a procedure;  it
+	** is possible to do this, but it's a lot of work.)
+	*/
+	
+	#macro _begin( target );
+	#keyword _exit;
+		jmp
+		
+	#keyword _exitif( xitExpr);
+		jt( xitExpr )
+		
+	#terminator _end( endTarget );
+	
+		#if( @string:target <> @string:endTarget )
+		
+			#error( "_end label must match _begin label" )
+			
+		#endif
+		target:
+		
+	#endmacro;
+	
+	/*
+	** I'll leave TRY..ENDTRY and FOREACH..ENDFOR
+	** for a later date (they're doable, just a bit more difficult
+	** is all).
+	*/
+	
+		
+	    
+begin HLLDemo;
+
+	_if( eax = ebx ) _then
+	
+		mov( 0, eax );
+		
+	_elseif( eax < ebx ) _then
+	
+		mov( 1, eax );
+		
+	_elseif( eax <= ebx ) _then
+	
+		mov( 2, eax );
+		
+	_else
+	
+		mov( 3, eax );
+		_if( eax > ebx ) _then
+		
+			mov( 4, eax );
+			
+		_endif;
+		
+	_endif;
+	
+	
+	_while( eax < ebx ) _do
+	
+		inc( eax );
+		_while( ecx < ebx ) _do
+		
+			inc( ecx );
+			
+		_endwhile;
+		
+	_endwhile
+	
+	
+	_for( mov( 0, ebx), ebx < 10, inc( ebx )) _do
+	
+		stdout.put( ebx );
+		
+	_endfor;
+	
+	_repeat
+	
+		_continue;
+		_continueif( eax = ebx );
+		_break;
+		_breakif( eax <> ebx );
+		mov( 0, eax );
+		_repeat
+			_break;
+		_until( eax = ebx );
+		
+		
+	_until( eax > ebx );
+	
+	
+	_begin( outside )
+	
+		_begin( inside );
+		
+			_exit inside;
+			_exit outside;
+			_exitif( eax = ebx ) inside;
+			_exitif( eax <> ebx ) outside;
+			
+		_end( inside );
+		
+	_end( outside );
+	
+	
+	                    
+end HLLDemo;

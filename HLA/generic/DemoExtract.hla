@@ -1,0 +1,59 @@
+program DemoExtract;
+
+#include( "stdio.hhf" );
+#include( "stdout.hhf" );
+#include( "patterns.hhf" );
+#include( "memory.hhf" );
+
+var
+	s:string;
+
+begin DemoExtract;
+
+	pat.match( "Hello There" );
+
+		// The following extract only grabs "Hello"
+		
+		pat.matchStr( "Hello" );
+		pat.a_extract( s );
+		stdout.put( "Succeeded1, s=", s, nl );
+		strfree( s );
+		
+		
+		// Nested match.
+		
+		pat.match( esi, edi );
+
+			pat.arb();	// Match to end of string.
+
+		pat.if_failure;
+
+			stdout.put( "Never happens" nl );
+			pat.fail();
+
+		pat.endmatch;
+
+		// This extract grabs the stuff matched by the
+		// previous "match" statement (i.e., " there" ).
+		
+		pat.a_extract( s );
+		stdout.put( "Succeeded2, s=", s, nl );
+		strfree( s );
+				
+	  pat.if_failure;
+	  
+	  	stdout.put( "Never happens #2" nl );
+
+	pat.endmatch;
+	
+	// This extract grabs all the stuff matched by
+	// the whole pat.match sequence (i.e., "Hello There" ).
+	// In general, this is dangerous because if the match
+	// fails, EBX and ESI may not contain reasonable values.
+	
+	pat.a_extract( s );
+	stdout.put( "Succeeded3, s=", s, nl );
+	strfree( s );
+	
+
+end DemoExtract;

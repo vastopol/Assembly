@@ -1,0 +1,91 @@
+/*
+
+Hello all,
+   I have just started an assembly class in school, and for our first
+program we have to take input from the keyboard, and arrange the
+characters in correct alphabetical order.  OK, so I can't get anywhere,
+and my text isn't helping much.  First, I need to know how to get input
+from the keyboard.  According to my book it consists of this:
+MOV  AH,10
+INT  16H
+and from there the input is stored in AL.
+Then, according to my text, to print out you use this:
+MOV  AH,09
+MOV  DX,(some memory loc)
+INT  21H
+I have tried both of these methods, but I get nothing, meaning no
+output (I'm not even asked for input).
+Also, I am assuming that my program will need a CMP instruction
+followed by some Jxxx instruction, but my text lacks in descriptions of
+those as well.  I have looked around the net and various postings, but
+to no avail.  I am not asking for this program to be written, I just
+want to understand how the above functions work.
+Thanks in advance for any help you can give.
+      -JB
+*/
+
+program keysort;
+#include( "stdlib.hhf" );
+
+
+
+	// Insert sort to sort the chars in a string.
+	// (note: usually, strings input by the user
+	//  are quite short, so an insert sort really
+	//  is a good sort to use here.)
+			
+	procedure SortStr( s:string ); @nodisplay;
+	begin SortStr;
+	
+		pushad();
+				
+		// Get the address of the string into EBX
+		// and the length of the string into ECX:
+		
+		mov( s, ebx );
+		mov( (type str.strRec [ebx]).length, ecx );
+		xor( esi, esi );
+		dec( ecx );
+		while( esi < ecx ) do
+		
+			mov( esi, edi );
+			mov( [ebx+esi], al );	// assume s[esi] is min val.
+			inc( edi );
+			while( edi <= ecx ) do
+			
+				if( al > (type byte [ebx+edi]) ) then
+				
+					// If this is the new minimum value,
+					// swap it with s[esi].
+					 
+					xchg( al, (type byte [ebx+edi]) );
+					mov( al, [ebx+esi] );
+					
+				endif;
+				inc( edi );
+				
+			endwhile;
+			inc( esi );
+		
+		endwhile;
+		
+		popad();
+		
+	end SortStr;			
+		
+			
+					
+
+begin keysort;
+
+	stdin.a_gets();					// Read a string from the user.
+	SortStr( (type string eax ));	// Sort it.
+	stdout.put						// Print it.
+	( 
+		"string='", 
+		(type string eax ), 
+		"'" nl 
+	);
+	
+
+end keysort;

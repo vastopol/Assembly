@@ -1,0 +1,20 @@
+#if( !@defined( uio_hhf ))
+?uio_hhf := true;
+
+namespace linux; @fast;
+
+const
+	uio_fastiov	:= 8;
+	uio_maxiov	:= 1024;
+	
+type
+  	iovec:record
+		iov_base	:dword;
+		iov_len		:__kernel_size_t;
+	endrecord;
+			
+
+	
+
+end linux;
+#endif //uio_hhf

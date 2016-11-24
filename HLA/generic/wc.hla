@@ -1,0 +1,45 @@
+program WordCountDemo;
+#include( "stdlib.hhf" )
+
+const
+	MaxWordsPerString := 256;
+	
+
+	procedure wc( s:string ); @nodisplay; @returns( "eax" );
+	var
+		count:uns32;
+		words:string[MaxWordsPerString]; 
+		
+	begin wc;
+	
+		str.tokenize4( s,  {#0..' '}, words[0], MaxWordsPerString );
+				
+	end wc;
+
+static
+	input:str.strvar(256);
+		
+begin WordCountDemo;
+
+	repeat
+	
+		stdout.put("Enter a line of text (empty to quit):" );
+		stdin.gets( input );
+		wc( input );
+		if( eax <> 0 ) then
+		
+			stdout.put
+			(
+				"There were ", 
+				(type uns32 eax), 
+				" words on that line" 
+				nl 
+			);
+			
+		endif;
+		
+	until( eax = 0 );
+			
+
+
+end WordCountDemo;

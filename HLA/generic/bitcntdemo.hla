@@ -1,0 +1,379 @@
+program  BitCntDemo;
+#include( "stdlib.hhf" )
+
+// The way most instructors expect you to do it (slow):
+
+procedure BitCnt_1( bits2Cnt:dword ); 
+	@nodisplay; 
+	@noalignstack;
+	@returns( "eax" ); 
+	
+begin BitCnt_1;
+
+	push( ebx );
+	push( ecx );
+	mov( bits2Cnt, ebx );
+	mov( 0, eax );
+	for( mov( 32, ecx ); ecx > 0; dec( ecx )) do
+	
+		shr( 1, ebx );
+		if( @c ) then
+			
+			inc( eax );
+			
+		endif;
+		
+	endfor;
+	pop( ecx );
+	pop( ebx );
+	
+end BitCnt_1;
+
+// A slightly trickier way, and a little faster:
+
+procedure BitCnt_2( bits2Cnt:dword ); 
+	@nodisplay; 
+	@noalignstack;
+	@returns( "eax" ); 
+	
+begin BitCnt_2;
+
+	push( ebx );
+	mov( bits2Cnt, ebx );
+	xor( eax, eax );		// EAX := 0
+	while( ebx <> 0 ) do
+	
+		shr( 1, ebx );
+		adc( 0, eax );
+				
+	endwhile;
+	pop( ebx );
+	
+end BitCnt_2;
+
+
+// Here's a scheme that uses table lookups.
+//
+// First, a macro that we can use to generate bit
+// counts for each entry in the table.
+
+#macro m_bitCnt( v ):bResult, b;
+
+	?bResult := 0;
+	?b := v;
+	#while( b <> 0 )
+		?bResult := bResult + (b & 1);
+		?b := b >> 1;
+		
+	#endwhile
+	bResult
+	
+#endmacro;
+
+
+procedure BitCnt_3( bits2Cnt:dword ); 
+	@nodisplay; 
+	@noalignstack;
+	@returns( "eax" ); 
+	
+static
+
+	// Each entry in this table contains a value that
+	// specifies the number of bits found in the index
+	// of that particular table entry (e.g., 0=0, 1=1,
+	// 2=1, 3=2, 4=1, etc.):
+	
+	bitCntTbl: byte[256] :=
+		[
+			#for( i:= 0 to 254 )
+			
+				m_bitCnt( i ),
+				
+			#endfor
+			m_bitCnt( 255 )
+		];
+		
+begin BitCnt_3;
+
+	push( ebx );
+	push( ecx );
+	
+	xor( ecx, ecx );
+	mov( &bitCntTbl, ebx );
+	mov( bits2Cnt, eax );
+	
+	// Compute the number of bits in each
+	// byte of our 32-bit value and accumulate
+	// the result in ECX (note that the sum never
+	// exceeds 32, so the result fits into eight bits):
+	
+	xlat();
+	add( al, cl );
+	shr( 8, eax );
+	xlat();
+	add( al, cl );
+	shr( 8, eax );
+	xlat();
+	add( al, cl );
+	shr( 8, eax );
+	xlat();
+	add( al, cl );
+	
+	// Return result in EAX:
+	
+	mov( ecx, eax );	
+	
+	pop( ecx );
+	pop( ebx );
+	
+end BitCnt_3;
+
+
+// Here's the code from the HLA Standard Library bits.cnt procedure:
+
+procedure BitCnt_4( BitsToCnt:dword ); @nodisplay; @noalignstack;
+	
+const
+	EveryOtherBit		:= $5555_5555;
+	EveryAlternatePair	:= $3333_3333;
+	EvenNibbles			:= $0f0f_0f0f;
+	
+begin BitCnt_4;
+
+	push( edx );
+	mov( BitsToCnt, eax );
+	mov( eax, edx );
+	
+	// Compute sum of each pair of bits
+	// in EAX.  The algorithm treats 
+	// each pair of bits in EAX as a two
+	// bit number and calculates the
+	// number of bits as follows (description
+	// is for bits zero and one, it generalizes
+	// to each pair):
+	//
+	//	EDX = 	BIT1  BIT0
+	//  EAX =      0  BIT1
+	//
+	//  EDX-EAX =	00 if both bits were zero.
+	//				01 if Bit0=1 and Bit1=0.
+	//				01 if Bit0=0 and Bit1=1.
+	//				10 if Bit0=1 and Bit1=1.
+	//
+	// Note that the result is left in EDX.
+	
+	shr( 1, eax );
+	and( EveryOtherBit, eax );
+	sub( eax, edx );
+	
+	// Now sum up the groups of two bits to
+	// produces sums of four bits.  This works
+	// as follows:
+	//
+	//	EDX = bits 2,3, 6,7, 10,11, 14,15, ..., 30,31
+	//		  in bit positions 0,1, 4,5, ..., 28,29 with
+	//		  zeros in the other positions.
+	//
+	//	EAX = bits 0,1, 4,5, 8,9, ... 28,29 with zeros
+	//		  in the other positions.
+	//
+	//	EDX+EAX produces the sums of these pairs of bits.
+	//	The sums consume bits 0,1,2, 4,5,6, 8,9,10, ... 28,29,30
+	//  in EAX with the remaining bits all containing zero.
+	
+	mov( edx, eax );
+	shr( 2, edx );
+	and( EveryAlternatePair, eax );
+	and( EveryAlternatePair, edx );
+	add( edx, eax );
+	
+	// Now compute the sums of the even and odd nibbles in the
+	// number.  Since bits 3, 7, 11, etc. in EAX all contain
+	// zero from the above calcuation, we don't need to AND
+	// anything first, just shift and add the two values.
+	// This computes the sum of the bits in the four bytes
+	// as four separate value in EAX (AL contains number of
+	// bits in original AL, AH contains number of bits in
+	// original AH, etc.)
+	
+	mov( eax, edx );
+	shr( 4, eax );
+	add( edx, eax );
+	and( EvenNibbles, eax );
+	
+	// Now for the tricky part.
+	// We want to compute the sum of the four bytes
+	// and return the result in EAX.  The following
+	// multiplication achieves this.  It works
+	// as follows:
+	//	(1) the $01 component leaves bits 24..31
+	//		in bits 24..31.
+	//
+	//	(2) the $100 component adds bits 17..23
+	//		into bits 24..31.
+	//
+	//	(3) the $1_0000 component adds bits 8..15
+	//		into bits 24..31.
+	//
+	//	(4)	the $1000_0000 component adds bits 0..7
+	//		into bits 24..31.
+	//
+	//	Bits 0..23 are filled with garbage, but bits
+	//	24..31 contain the actual sum of the bits
+	//	in EAX's original value.  The SHR instruction
+	//	moves this value into bits 0..7 and zeroes
+	//	out the H.O. bits of EAX.
+	 
+	intmul( $0101_0101, eax );
+	shr( 24, eax );
+	
+	pop( edx );
+	
+end BitCnt_4;
+
+
+
+static
+	t	:timer;
+	tval:uns64;
+
+begin BitCntDemo;
+
+	t.create();		// Initialize the timer.
+
+	// Of course, in HLA this is the "proper" way to
+	// count the number of bits in a dword:
+	
+	bits.cnt( 1234567890 );
+	mov( eax, edx );
+	
+	// As a sanity check, make sure that each of the
+	// above routines return the same value as bits.cnt
+	// for this simple example:
+	
+	BitCnt_1( 1234567890 );
+	if( eax <> edx ) then
+	
+		stdout.put
+		( 
+			"BitCnt_1 produced an incorrect result: ",
+			(type uns32 eax),
+			" (Should have been ",
+			(type uns32 edx),
+			")" nl
+		);
+		
+	endif;
+	
+	BitCnt_2( 1234567890 );
+	if( eax <> edx ) then
+	
+		stdout.put
+		( 
+			"BitCnt_2 produced an incorrect result: ",
+			(type uns32 eax),
+			" (Should have been ",
+			(type uns32 edx),
+			")" nl
+		);
+		
+	endif;
+	
+	BitCnt_3( 1234567890 );
+	if( eax <> edx ) then
+	
+		stdout.put
+		( 
+			"BitCnt_3 produced an incorrect result: ",
+			(type uns32 eax),
+			" (Should have been ",
+			(type uns32 edx),
+			")" nl
+		);
+		
+	endif;
+	
+	BitCnt_4( 1234567890 );
+	if( eax <> edx ) then
+	
+		stdout.put
+		( 
+			"BitCnt_4 produced an incorrect result: ",
+			(type uns32 eax),
+			" (Should have been ",
+			(type uns32 edx),
+			")" nl
+		);
+		
+	endif;
+	
+	// Time BitCnt_1
+	
+	stdout.put
+	( 
+		"Timing the four bit count routines, "
+		"this will take a *long* time" nl 
+		"On a 300Mhz PII system:" nl
+		"  BitCnt_1 takes a little over an hour," nl
+		"  BitCnt_2 takes a little under a half hour," nl
+		"  BitCnt_3 takes a little over 11 minutes," nl
+		"  BitCnt_4 takes a little over five minutes." nl
+	);
+	t.start();
+	for( mov( $FFFF_FFFF, esi); esi <> 0; dec( esi )) do
+	
+		BitCnt_1( esi );
+		
+	endfor;
+	BitCnt_1( esi );
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );
+	stdout.put( "BitCnt_1 required ", tval, " milliseconds to execute" nl );
+	
+	
+	// Time BitCnt_2
+	
+	t.start();
+	for( mov( $FFFF_FFFF, esi); esi <> 0; dec( esi )) do
+	
+		BitCnt_2( esi );
+		
+	endfor;
+	BitCnt_2( esi );
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );
+	stdout.put( "BitCnt_2 required ", tval, " milliseconds to execute" nl );
+	
+	// Time BitCnt_3
+	
+	t.start();
+	for( mov( $FFFF_FFFF, esi); esi <> 0; dec( esi )) do
+	
+		BitCnt_3( esi );
+		
+	endfor;
+	BitCnt_3( esi );
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );
+	stdout.put( "BitCnt_3 required ", tval, " milliseconds to execute" nl );
+	
+	
+	// Time BitCnt_4
+	
+	t.start();
+	for( mov( $FFFF_FFFF, esi); esi <> 0; dec( esi )) do
+	
+		BitCnt_4( esi );
+		
+	endfor;
+	BitCnt_4( esi );
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );
+	stdout.put( "BitCnt_4 required ", tval, " milliseconds to execute" nl );
+	
+
+end BitCntDemo; 

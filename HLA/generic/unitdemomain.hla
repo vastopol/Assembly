@@ -1,0 +1,11 @@
+program UnitDemoMain;
+#include( "stdlib.hhf" );
+#include( "unitdemo.hhf" );
+	
+begin UnitDemoMain;
+
+	mov( -25, ExtVar );
+	ExtProc();
+	stdout.put( "UnitDemoMain is done" nl );
+	
+end UnitDemoMain;

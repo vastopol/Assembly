@@ -1,0 +1,101 @@
+/*
+
+Is there a standard model for an Object Class or does each language use a
+different model?
+
+For instance... to create a new Object Class for Visual Basic or Vbscript or
+Internet Information Server or Active Server Pages...
+
+The Class, of course, would contain the definitions of the Properties and
+Methods... and when a new 'instance' of the class was created by the higher
+level language... it could be used with the standard dot notation...
+
+thanks - Will
+
+
+*/
+
+
+program ClassDemo;
+
+#include( "hla.hhf" )
+#include( "stdio.hhf" )
+#include( "stdout.hhf" )
+#include( "memory.hhf" )
+
+type
+	cls:class
+	
+			var
+				start:int32;
+				stop: int32;
+				
+			method m1;
+			procedure create;
+			iterator range( start:int32; stop:int32 );
+			
+		endclass;
+		
+static
+	vmt( cls );
+	
+		
+method cls.m1;
+begin m1;
+
+	stdout.put( "Method m1 was called" nl );
+	
+end m1;
+
+
+procedure cls.create;
+begin create;
+
+	push( eax );
+	if( esi = 0 ) then
+	
+		malloc( @size( cls ));
+		mov( eax, esi );
+		
+	endif;
+	mov( &cls._VMT_, this._pVMT_ );
+	pop( eax );
+	
+end create;
+
+iterator cls.range( start:int32; stop:int32 );
+begin range;
+
+	mov( stop, eax );
+	mov( eax, this.stop );
+	mov( start, eax );
+	mov( eax, this.start );
+	while( eax <= stop ) do
+	
+		push( eax );
+		yield();
+		pop( eax );
+		inc( eax );
+		
+	endwhile;
+	
+end range;
+		
+		
+		
+static
+	c:cls;        
+    
+begin ClassDemo;
+
+	
+	c.create();						// Call the constructor.
+	c.m1();							// Call a method.
+	foreach c.range( 1, 10 ) do		// Call an iterator.
+	
+		stdout.put( "eax = ", eax, nl );
+		
+	endfor;
+	
+        
+end ClassDemo;

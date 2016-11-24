@@ -1,0 +1,139 @@
+#if( ! @defined( types_hhf ))
+?types_hhf := true;
+
+namespace linux; @fast;
+
+const
+
+	// Some generic constants:
+	
+	int_max		:= int32( $7FFF_FFFF );
+	uint_max	:= uns32( $FFFF_FFFF );
+	int_min		:= !int_max;
+	ssize_max	:= int_max;
+	page_size	:= 4096;
+
+	bits_per_long	:= 32;
+	
+type
+	umode_t		:word;
+	dev_t		:word;
+	ipc_pid_t	:word;
+	uid_t		:word;
+	gid_t		:word;
+	sid_t		:word;
+	mode_t		:word;
+	nlink_t		:word;
+	uid16_t		:word;
+	gid16_t		:word;
+	sa_family_t	:word;
+
+	ino_t		:dword;
+	off_t		:dword;
+	pid_t		:dword;
+	dma_addr_t	:dword;
+	size_t		:dword;
+	ptrdiff_t	:dword;
+	time_t		:dword;
+	suseconds_t	:dword;
+	clock_t		:dword;
+	daddr_t		:dword;
+	uid32_t		:dword;
+	gid32_t		:dword;
+	key_t		:dword;
+	kernel_cap_t:dword;
+	caddr_t		:pointer to char;
+	ssize_t		:int32;
+	uint		:uns32;
+	__u32		:uns32;
+
+	loff_t		:qword;
+	
+	
+	
+	// Kernel related types:
+	
+	kdev_t	:word;
+  	
+	__kernel_daddr_t	:int32;
+	__kernel_fsid_t:
+		record
+			__val	:int32[2];
+		endrecord;
+		
+	__kernel_ino_t	:dword;
+	__kernel_size_t	:uns32;
+
+	// These don't really belong here,
+	// but what the heck.
+	
+  	fd_set: record
+  		fds_bits	:dword[ 32 ];
+  	endrecord;
+  	fd_set_ptr	:pointer to fd_set;
+  	
+  	
+
+	__user_cap_user_header_struct: record
+		version	:uns32;
+		pid		:int32;
+	endrecord;
+			
+	cap_user_header_t	:pointer to __user_cap_user_header_struct;
+		
+	__user_cap_data_struct: record
+		effective	:uns32;
+		permitted	:uns32;
+		inheritable	:uns32;
+	endrecord;
+
+	cap_user_data_t		:pointer to __user_cap_data_struct;		
+		
+		
+		
+	old_sigset_t	:dword;
+			
+	mmap_arg_struct: record
+		addr	:dword;
+		len		:uns32;
+		prot	:dword;
+		flags	:dword;
+		fd		:dword;
+		offset	:uns32;
+	endrecord;
+			
+
+			
+	sel_arg_struct: record
+		n		:uns32;
+		inp		:dword;
+		outp	:dword;
+		exp		:dword;
+		tvp		:dword; //pointer to timeval;
+	endrecord;
+
+
+	#macro pushregs;
+	
+		push( ebx );
+		push( ecx );
+		push( edx );
+		push( esi );
+		push( edi );
+		
+	#endmacro
+	
+	#macro popregs;
+	
+		pop( edi );
+		pop( esi );
+		pop( edx );
+		pop( ecx );
+		pop( ebx );
+		
+	#endmacro
+
+	
+
+end linux;
+#endif //types_hhf

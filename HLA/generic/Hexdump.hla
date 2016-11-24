@@ -1,0 +1,56 @@
+program t;
+#include ("stdlib.hhf")
+
+static
+	f	:dword;
+	g	:dword;
+	c	:char;
+	buf	:char[16];
+
+begin t;
+
+	arg.v( 1 );
+	fileio.open( eax, fileio.r );
+	mov( eax, f );
+	mov( 0, ebx );
+	mov( 0, edx );
+
+	while( !fileio.eof( f )) do
+
+		if( edx = 0 ) then
+
+			stdout.putwSize( bx, 4, ' ' );
+			stdout.put( ": " );
+
+		endif;
+		fileio.getc( f );
+		stdout.putbSize( al, 2, '0' );
+		stdout.putc( ' ' );
+		mov( al, buf[edx] );
+		inc( edx );
+		if( edx = $10 ) then
+
+			mov( 0, edx );
+			for( mov(0, esi ); esi < $10; inc( esi )) do
+
+				mov( buf[esi], al );
+				if( al in ' '..#$7e ) then
+
+					stdout.put( (type char al ));
+					
+				else
+				
+					stdout.put( '.' );
+					
+				endif;
+				
+			endfor;
+			stdout.newln();
+			 
+		endif;
+		inc( ebx );
+
+	endwhile;
+	stdout.newln();
+
+end t;

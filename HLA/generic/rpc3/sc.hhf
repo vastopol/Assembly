@@ -1,0 +1,20 @@
+
+#if( !@defined( sc_hhf ))
+?sc_hhf := true;
+
+#include( "rpc.hhf" ) 
+
+
+type
+	array_t	:uns32[16];		  
+
+remoteProcedures( myRPC )
+
+	sync( passBigb( b:blob_t ) )
+	bisync( passBig( size:uns32 ) )
+	bisync( rtnBig:blob_t )
+
+	
+endRemoteProcedures
+
+#endif

@@ -1,0 +1,169 @@
+// Demonstration of the various str.cat routines:
+
+program t;
+#include( "stdlib.hhf" )
+
+var
+	s:string;
+	c:byte[256];
+	
+static
+	b:byte :=	255;
+	w:word :=	$FFFF;
+	d:dword :=	$FFFF_FFFF;
+	q:qword;	@nostorage;
+				dword $FFFF_FFFF, $FFFF_FFFF;
+		
+	u8:uns8 :=		255;
+	u16:uns16 := 	$FFFF;
+	u32:uns32 := 	$FFFF_FFFF;
+
+	i8:int8 := 		-1;
+	i16:int16 := 	-1;
+	i32:int32 := 	-1;
+	
+	chset:cset := 	{'a'..'z', #$d };
+	
+	r32:real32 := 	32.32;
+	r64:real64 := 	64.64;
+	r80:real80 := 	80.80;
+
+
+	
+begin t;
+
+	str.init( c[0], 256 );
+	mov( eax, s );
+	
+	str.cpy( "", s );
+	str.catbool(  s,  true );
+	str.catbool(  s,  false );
+	stdout.put( s, nl );
+
+	str.put( s, true, false );
+	stdout.put( s, nl, nl );
+	
+	str.put( s, 'H' );
+	str.cat( "ell", s );
+	str.catcSize( s,  '!', -3, 'o' );
+	str.cats(  s,  " There" );
+	stdout.put( s, nl, nl );
+	
+	str.put( s, chset );
+	str.catcset(  s,  chset );
+	stdout.put( s, nl, nl );
+	
+	
+	str.cpy( "", s );
+	stdout.put( "catcsize: " );
+	str.catcSize( s, '*', 5, ' ' );
+	stdout.put( s, nl, nl );
+	
+	str.cpy( "", s );
+	str.put( s, "catssize: ", "..":-4, ':' );
+	str.catsSize( s, "**", 6, ' ' );
+	stdout.put( s, nl, nl );
+	
+		
+	str.cpy( "", s );
+	str.put( s, b );
+	str.cat( " ", s );
+	str.catb(  s,  b );
+	stdout.put( s, nl );
+		
+	str.cpy( "", s );
+	str.put( s, w );
+	str.cat( " ", s );
+	str.catw(  s,  w );
+	stdout.put( s, nl );
+		
+	str.cpy( "", s );
+	str.put( s, d );
+	str.cat( " ", s );
+	str.catd(  s,  d );
+	stdout.put( s, nl );
+		
+	str.cpy( "", s );
+	str.catq(  s,  q );
+	stdout.put( s, nl, nl );
+	
+	
+	str.cpy( "", s );
+	str.catu8(  s,  u8 );
+	str.catu8Size( s, u8, 4, '.' );
+	stdout.put( s, nl );
+	
+	str.put( s, u8, u8:4 );
+	stdout.put( s, nl );
+	
+	str.cpy( "", s );
+	str.catu16(  s,  u16 );
+	str.catu16Size( s, u16, 6, '.' );
+	stdout.put( s, nl );
+	
+	str.put( s, u16, u16:6 );
+	stdout.put( s, nl );
+	
+	str.cpy( "", s );
+	str.catu32(  s,  u32 );
+	str.catu32Size( s, u32, 12, '.' );
+	stdout.put( s, nl );
+	
+	str.put( s, u32, u32:12 );
+	stdout.put( s, nl );
+	
+	str.cpy( "", s );
+	str.catu64(  s,  q );
+	str.catu64Size( s, q, 30, '.' );
+	stdout.put( s, nl, nl );
+
+	
+	str.cpy( "", s );
+	str.cati8(  s,  i8 );
+	str.cati8Size( s, i8, 4, '.' );
+	stdout.put( s, nl );
+	
+	str.put( s, i8, i8:4 );
+	stdout.put( s, nl );
+	
+	str.cpy( "", s );
+	str.cati16(  s,  i16 );
+	str.cati16Size( s, i16, 6, '.' );
+	stdout.put( s, nl );
+	
+	str.put( s, i16, i16:6 );
+	stdout.put( s, nl );
+	
+	str.cpy( "", s );
+	str.cati32(  s,  i32 );
+	str.cati32Size( s, i32, 12, '.' );
+	stdout.put( s, nl );
+	
+	str.put( s, i32, i32:12 );
+	stdout.put( s, nl );
+	
+	str.cpy( "", s );
+	str.cati64(  s,  q );
+	str.cati64Size( s, q, 30, '.' );
+	stdout.put( s, nl, nl );
+
+
+	str.put( s, r32, ',', r32:10, ',', r32:10:2, ',' );
+	str.catr32( s, r32, 10, 3 );
+	str.cate32( s, r32,  12 );
+	stdout.put( s, nl, nl );
+
+	str.put( s, r64, ',', r64:10, ',', r64:10:2, ',' );
+	str.catr64( s, r64, 10, 3 );
+	str.cate64( s, r64, 12 );
+	stdout.put( s, nl, nl );
+
+	str.put( s, r80, ',', r80:10, ',', r80:10:2, ',' );
+	str.catr80( s, r80, 10, 3 );
+	str.cate80( s, r80, 12 );
+	stdout.put( s, nl, nl );
+
+
+
+			
+end t;

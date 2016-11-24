@@ -1,0 +1,4514 @@
+// HLA Basic
+//
+// A BASIC interpreter system designed for writing embedded BASIC programs
+// in HLA applications.
+//
+// This is the compiler module. It reads an HLA BASIC source file from
+// the file specifed on the command line and writes a tokenized/compiled
+// version of the program to an output file.
+
+
+
+
+
+program hlaBASIC;
+#include( "stdlib.hhf" )
+#include( "basic.hhf" )
+
+?@nodisplay 	:= true;
+?@noalignstack	:= true;
+
+
+const
+	DEBUG := false;
+
+type
+
+	// Singleton object for identifiers in program:
+	
+	sym	:class
+	
+		static
+			symbols	:string[65536];		// Max 64K symbols (16-bit index).
+			labels	:word[65536];		// Indexes to labels in program.
+		
+		// We're just using a class for encapsulation purposes here.
+		// There is no real sym object. The following macros let
+		// us call lookup and _getSymbol without messing with ESI.
+			
+		#macro lookupAndEnter(s);
+			push(s);
+			call sym._lookupAndEnter;
+		#endmacro
+		
+		#macro getSymbol( s );
+			push(s);
+			call sym._getSymbol;
+		#endmacro
+		
+		procedure create;
+		procedure _lookupAndEnter( symbol:string );	@returns( "(type word eax)" );
+		procedure _getSymbol( index:dword );		@returns( "(type string eax)" );
+		procedure dumpSyms( handle:dword );
+		procedure zeroOutLabels;
+		procedure setLabel( index:dword in edi; labelNum:word in ax );
+		
+	endclass;			
+
+
+
+static
+	align( 4 );
+	PromptChar	:char 	:= '>';		// Input prompt.
+
+
+// Program storage space and pointer variables:
+
+storage
+	align(4);
+	hStdOut		:dword;				//Holds standard output handle.
+	TxtStart	:dword;				// Basic text area
+	TxtEnd		:dword;				// End of Basic Text pointer
+	lineNumber	:uns16;				// Line number of each stmt in pgm.
+	PgmSpace	:byte[ PgmSize ];	// Program storage space.
+				
+
+readonly
+	align(4);
+	BasicTitle	:string := siteTitle_c; 
+					
+	idSet		:cset := {'a'..'z', 'A'..'Z', '0'..'9', '_'};
+	startID		:cset := {'a'..'z', 'A'..'Z', '@'};
+	startPureID	:cset := {'a'..'z', 'A'..'Z'};
+	decDigits	:cset := { '0'..'9' };
+	hexDigits	:cset := { '0'..'9', 'A'..'F', 'a'..'f' };
+	
+	
+	funcNames	:string[ @elements( functions_c ) ] :=
+				[
+					#for( _i_ := 0 to @elements( functions_c )-1 )
+					
+						functions_c[_i_].identifier,
+						
+					#endfor
+				];
+	
+	
+	
+////////////////////////////////////////////////////////////////////////
+//
+// lookupAndEnter-
+//
+//	Searches for a symbol in the "symbols" table and returns
+// the index into the table if found. Enters the symbol at the end
+// of the table if not found (and returns the index). Raises an
+// exception if there is a symbol table overflow.
+//
+// Okay, this is a gross linear search. But the truth is that
+// the BASIC programs are all going to be short and not have that
+// many symbols in them, so we can get away with this. Should this
+// assumption ever prove false, substitute an HLA table object
+// for the linear symbol table.
+
+	
+procedure sym._lookupAndEnter( symbol:string );
+begin _lookupAndEnter;
+
+	push( ebx );
+	push( ecx );
+	
+	mov( symbol, ebx );
+	mov( -1, ecx );
+	repeat
+	
+		add( 1, ecx );
+		
+	until
+	( 
+			ecx >= 65536 
+		||	sym.symbols[ecx*4] = NULL 
+		||	str.eq( ebx, sym.symbols[ecx*4] )
+	);
+	if( ecx >= 65536 ) then
+	
+		raise( tooManySymbols );
+		
+	endif;
+	if( sym.symbols[ecx*4] = NULL ) then
+	
+		str.a_cpy( ebx );
+		mov( eax, sym.symbols[ecx*4] );
+		
+	endif;
+	mov( ecx, eax );
+	pop( ecx );
+	pop( ebx );
+	
+end _lookupAndEnter;
+
+
+procedure sym.dumpSyms( handle:dword );
+begin dumpSyms;
+
+	push( ecx );
+	
+	// Count and print the number of symbols in the program.
+	
+	mov( 0, ecx );
+	while( sym.symbols[ecx*4] <> NULL ) do
+	
+		add( 1, ecx );
+		
+	endwhile;
+	fileio.put( handle, (type uns32 ecx), " symbols in program" nl nl );
+	
+	// display all the symbols in the program:
+	
+	mov( 0, ecx );
+	while( sym.symbols[ecx*4] <> NULL ) do
+	
+		fileio.put( handle, (type uns32 ecx):5, ": ", sym.symbols[ecx*4], nl );
+		add( 1, ecx );
+		
+	endwhile;
+	pop( ecx );
+
+end dumpSyms;
+
+procedure sym.create;
+begin create;
+
+	push( eax );
+	push( ecx );
+	push( edi );
+	pushfd();
+	
+	cld();
+	mov( 65536, ecx );
+	xor( eax, eax );
+	mov( &sym.symbols, edi );
+	rep.stosd;
+	
+	popfd();
+	pop( edi );
+	pop( ecx );
+	pop( eax );
+	
+end create;
+
+
+procedure sym.zeroOutLabels;
+begin zeroOutLabels;
+
+	push( eax );
+	push( ecx );
+	push( edi );
+	pushfd();
+	
+	cld();
+	mov( 65536, ecx );
+	xor( eax, eax );
+	mov( &sym.labels, edi );
+	rep.stosw;
+	
+	popfd();
+	pop( edi );
+	pop( ecx );
+	pop( eax );
+	
+end zeroOutLabels;
+
+procedure sym.setLabel( index:dword in edi; labelNum:word in ax );
+begin setLabel;
+
+	push( sym.labels[edi*2] );
+	mov( ax, sym.labels[edi*2] );
+	pop( ax );
+	
+end setLabel;
+
+
+procedure sym._getSymbol( index:dword );
+begin _getSymbol;
+
+	mov( index, eax );
+	mov( sym.symbols[eax*4], eax );
+	
+end _getSymbol;
+	
+
+
+	
+
+
+/*****************************************/
+/*                                       */
+/* AtLineNumber-                         */
+/*                                       */
+/* A little utility routine that prints  */
+/* " at line number xx" where xx is the  */
+/* current source file line number (this */
+/* code assumes that EBX is pointing at  */
+/* the start of the current line).       */
+/*                                       */
+/*****************************************/
+
+procedure AtLineNumber( stmtPointer:dword in ebx ); 
+	@noframe;
+begin AtLineNumber;
+
+	stdout.put( " at line number ", (type StmtRec [ebx]).lineNum, nl );
+	ret();
+	
+end AtLineNumber;
+
+
+
+/*********************************************************************/
+/*                                                                   */
+/* ParseLine-                                                        */
+/*                                                                   */
+/* This procedure is passed two strings:  LineNumberStr and LineStr. */
+/* They contain the two components of a line that modifies the       */
+/* source program, e.g.,                                             */
+/*                                                                   */
+/* xxxxx   sssss ssss ssss sss sss ssss                              */
+/*                                                                   */
+/* xxxxx = a string of decimal digits representing the line number.  */
+/*                                                                   */
+/* ss..sss = the remainder of the text on the line (possibly empty). */
+/*                                                                   */
+/* This procedure deletes the specified line if LineStr is the empty */
+/* string;  it replaces the specified line with the new text if a    */
+/* line with the specified line number already exists;  this         */
+/* procedure inserts the line into the program if a line with that   */
+/* number does not already exist.                                    */
+/*                                                                   */
+/*********************************************************************/
+
+namespace pat;
+				  
+	// A pattern matching function that matches the end of
+	// a BASIC statement.  This will skip all spaces until
+	// it finds a ":" or the end of the string (where EDI points).
+	// This function does not support backtracking as it must only
+	// be called as the last pattern function in a sequence.
+	
+	procedure endStmt; @noframe;
+	begin endStmt;
+
+		// Okay, match a single char.
+		
+		push( esi );		// Preserve ESI's value for success/failure.
+		dec( esi );
+		SkipSpcs:
+			inc( esi );
+			cmp( esi, edi );
+			je	Succeed;
+			cmp( (type char [esi]), ' ' );
+			je SkipSpcs;
+			cmp( (type char [esi]), $9 );
+			je SkipSpcs;
+			cmp( (type char [esi]), $d );
+			je SkipSpcs;
+			
+		// If we stopped on a ":" then we succeed,
+		// else we fail.
+		
+		cmp( (type char [esi]), ':' );
+		je Succeed;
+
+			// If we get down here, we didn't match.  
+			// So transfer control to the previous 
+			// routine that supported backtracking.
+			
+			pop( esi );			// Must restore ESI on failure.
+			_fail_( FailTo );		
+
+		
+		// Since this routine doesn't have to handle backtracking,
+		// a simple return indicates success.
+
+		Succeed:
+			pop( ebx );			// Return original ESI value in EBX
+			ret();
+			
+	end endStmt;
+	
+	
+end pat;
+
+
+procedure ParseLine( LineStr :string ); 
+static
+	identifier:		string;
+	index:			dword;
+	nextIndex:		dword;
+	parseIndex:		dword;
+	listIndex1:		dword;
+	listIndex2:		dword;
+	StartOfID:		dword;
+	StartOfNum:		dword;
+	saveEBX:		dword;
+	CurLineNum:		uns16;
+	GoodExpr:		boolean;
+	LineBuffer:		byte[256];
+	IDbuffer		:char[280];
+	
+	
+	
+	//////////////////////////////////////////////////////
+	//
+	// PutToken- Emits a token to the output stream.
+
+	procedure PutToken( TokenValue:byte );
+	begin PutToken;
+	
+		push( eax );
+		push( ebx );
+		
+		mov( TokenValue, al );
+		mov( index, ebx );
+		mov( al, LineBuffer[ ebx ] );
+		inc( index );
+						 
+		pop( ebx );
+		pop( eax );
+		
+	end PutToken;
+	
+	
+	//////////////////////////////////////////////////////
+	//
+	// PutEndStmt-
+	//
+	//	Emits a StmtEndtkn token to the output stream.
+	
+
+	procedure PutEndStmt; @noframe;
+	begin PutEndStmt;
+	
+		PutToken( StmtEndtkn );
+		ret();
+		
+	end PutEndStmt;
+	
+	
+	//////////////////////////////////////////////////////
+	//
+	// PutWord- Emits a 16-bit value to the output stream.
+
+	procedure PutWord( wordValue:word in ax ); @noframe;
+	begin PutWord;
+	
+		push( ebx );
+		
+		mov( index, ebx );
+		mov( ax, (type word LineBuffer[ ebx ]) );
+		add( 2, index );
+						 
+		pop( ebx );
+		ret( 0 );
+		
+	end PutWord;
+	
+	
+	//////////////////////////////////////////////////////
+	//
+	// PutDword- Emits a 32-bit value to the output stream.
+
+	procedure PutDword( dwordValue:dword in eax ); @noframe;
+	begin PutDword;
+	
+		push( ebx );
+		
+		mov( index, ebx );
+		mov( eax, (type dword LineBuffer[ ebx ]) );
+		add( 4, index );
+						 
+		pop( ebx );
+		ret( 0 );
+		
+	end PutDword;
+	
+	
+	
+	
+	
+	
+	
+	
+	//////////////////////////////////////////////////////
+	//
+	// Expression- Parses an arithmetic expression.
+	//	
+	// Expression evaluator.                                              
+	//                                                                    
+	// Here's the grammar for hlaBASIC expressions:                       
+	//                                                                    
+	// 	expr-> ORx { relop ORx }*                                         
+	// 	relop -> < | <= | = | <> | >= | >                                 
+	// 	                                                                  
+	// 	ORx -> ANDx { or ANDx }*                                          
+	// 	                                                                  
+	// 	ANDx -> ADDx { and ADDx }*                                        
+	// 	                                                                  
+	// 	ADDx -> MULx { addop MULx }*                                      
+	// 	addop -> + | -                                                    
+	// 	                                                                  
+	// 	MULx -> Factor { mulop Factor }*                                  
+	// 	mulop -> * | / | %                                                
+	// 	                                                                  
+	// 	Factor ->	not Factor                                            
+	// 			|	- Factor                                              
+	// 			|	FuncID ( exprList )                                   
+	// 			|	ID [ expr ]                                           
+	// 			|	ID                                                    
+	// 			|	strConst                                              
+	// 			|	intConst                                              
+	// 			|	realConst                                             
+	// 			|	( expr )                                              
+	// 			                                                          
+	// 	FuncID ->                                                         
+	// 			|	ASC                                                   
+	// 			|	CHR                                                   
+	// 			|	STR                                                   
+	// 			|	VAL                                                   
+	// 			|	SIN                                                   
+	// 			|	COS                                                   
+	// 			|	TAN                                                   
+	// 			|	ASIN                                                  
+	// 			|	ACOS                                                  
+	// 			|	ATAN                                                  
+	// 			|	LOG                                                   
+	// 			|	EXP                                                   
+	// 			|	SQRT                                                  
+	// 			|	LEN                                                   
+	// 			|	LEFT                                                  
+	// 			|	MID                                                   
+	// 			|	RIGHT                                                 
+	// 	 		                                                          
+	// 			                                                          
+	// 	exprList -> expr { , expr }*                                      
+	// 	                                                                  
+	//                                                                    
+	// Each Non-terminal in this grammar has a "Variant" attribute        
+	// associated with it (that holds the value associated with           
+	// that non-terminal).  Mixed type expressions are legal and          
+	// subject to the following semantics:                                
+	//                                                                    
+	// note: r=real, i=integer, s=string                                  
+	//                                                                    
+	// i op i- produces i                                                 
+	//                                                                    
+	// r op r-	produces r                                                
+	//                                                                    
+	// s op s- returns s.                                                 
+	//                                                                    
+	// i op r-	promotes the integer to a real and then                   
+	// r op i	returns a real result (r op r semantics).                 
+	//                                                                    
+	// i op s- attempts to convert string to an integer,                  
+	// s op i	if successful, then does i op i.  If unsuccessful,        
+	// 		attempts to convert s to real.  If successful,                
+	// 		then computes i op r or r op i.  If unsuccessful,             
+	// 		then raises an exception.                                                 
+	// 		                                                              
+	// r op s-	Attempts to convert s to a real.  If successful,          
+	// s op r	computes r op r.  If unsuccessful, raises an exception.                                   
+	// 		                                                              
+	// Notes:                                                             
+	//                                                                    
+	// If i, r, or s is an array ID, then the code defaults               
+	// to the first element (i[0], r[0], or s[0]).                        
+	//                                                                    
+	// If i, r, or s is an ID and the value is undefined,                 
+	// the system raises an exception.                                    
+	//                                                                    
+	// Each of the following expression evaluation functions update       
+	// ECX to point at the next available token in the source.            
+	//                                                                    
+	// They also leave their result on the expression evaluation stack.   
+	// The call to EvalExpr should leave a single value at location       
+	// "ExprStack[0]" containing the result of the expression.            
+	//                                                                    
+	// This functions return the type of the expression in AL.            
+	// This is one of the following:                                      
+	//                                                                    
+	// 	Integer_c,                                                        
+	// 	Real_c                                                            
+	// 	String_c                                                          
+	
+	procedure Expression
+	( 
+		start:dword in esi; 
+		endstr:dword in edi
+	);	@noframe;
+	
+	
+		// SkipSpcs-
+		//
+		//	This function skips over leading spaces that ESI points at.
+		
+		procedure SkipSpcs; @noframe;
+		begin SkipSpcs;
+		
+			dec( esi );
+			repeat
+			
+				inc( esi );
+			
+			until( (type char [esi]) <> ' ' );
+			ret();
+				
+		end SkipSpcs;
+		
+		
+		
+		//////////////////////////////////////////////////////
+		//
+		// GetParenExpr-
+		//
+		//	Matches and processes an expression surrounded by
+		//	parentheses.  The parameters specify the minimum number
+		//	of allowable expressions and the maximum number.  If this
+		//	is greater than one, the expressions must be comma separated.
+		
+		procedure GetParenExpr
+		( 
+			MinExprs:uns32 in ECX;
+			MaxExprs:uns32 in EDX
+		); @noframe;
+
+		const
+			NumExprs:text := "ebx";
+			
+		begin GetParenExpr;
+		
+			SkipSpcs();
+			if( (type char [esi]) <> '(' ) then
+			
+				stdout.put( "Syntax error in function call" nl );
+				raise( ExprSyntaxException );
+				
+			endif;
+			PutToken( LPARENtkn );
+			inc( esi );
+			
+			mov( 0, NumExprs );			
+			forever
+			
+				push( ebx );
+				push( ecx );
+				push( edx );
+				Expression( esi, edi );
+				pop( edx );
+				pop( ecx );
+				pop( ebx );
+
+				
+				SkipSpcs();
+				inc( NumExprs );
+				breakif( NumExprs >= MaxExprs );
+				if( (type char [esi]) <> ',' ) then
+				
+					breakif( eax >= MinExprs ); 
+					stdout.put
+					( 
+						"Syntax error (expected ',') or insufficient "
+						"number of parameters"
+						nl
+					);
+					raise( ExprSyntaxException );
+					
+				endif;
+				PutToken( COMMAtkn );
+				inc( esi );
+				
+			endfor;
+			
+			SkipSpcs();
+			if( (type char [esi]) <> ')' ) then
+			
+				stdout.put
+				( 
+					"Expected a closing parenthesis " 
+					"(too many parameters?)"
+					nl 
+				);
+				raise( ExprSyntaxException );
+				
+			endif;
+			PutToken( RPARENtkn );
+			inc( esi );
+			ret();
+		
+		end GetParenExpr;
+		
+		
+		
+		
+		//////////////////////////////////////////////////////
+		//
+		// GetBracketExpr-
+		//
+		//	Matches and processes an expression surrounded by
+		//	brackets.
+		
+		procedure GetBracketExpr; @noframe;
+		begin GetBracketExpr;
+		
+			if( (type char [esi]) <> '[' ) then
+			
+				stdout.put( "Syntax error in array index" nl );
+				raise( ExprSyntaxException );
+				
+			endif;
+			PutToken( LBRACKtkn );
+			inc( esi );
+			
+			push( ebx );
+			push( ecx );
+			push( edx );
+			Expression( esi, edi );
+			pop( edx );
+			pop( ecx );
+			pop( ebx );
+			
+			SkipSpcs();
+			if( (type char [esi]) <> ']' ) then
+			
+				stdout.put
+				( 
+					"Expected a closing bracket" 
+					nl 
+				);
+				raise( ExprSyntaxException );
+				
+			endif;
+			PutToken( RBRACKtkn );
+			inc( esi );
+			ret();
+		
+		end GetBracketExpr;
+		
+		
+		//////////////////////////////////////////////////////
+		//
+		// matchID-
+		//
+		//	Matches an identifier and returns true/false in
+		//	AL depending on the comparison.  Identifiers always
+		//	begin with an alpha char and following chars may
+		//	be alphanumeric or underscore.
+		
+		procedure matchID( start:dword in esi; endstr:dword in edi ); 
+			@noframe; 
+			@returns( "al" );
+			
+		begin matchID;			
+			
+			SkipSpcs();
+			mov( esi, ebx );
+			movzx( (type byte [esi]), eax );
+			bt( eax, startID );
+			if( @c ) then
+			
+				inc( esi );		// skip 1st char (which might be '@')			
+				repeat
+				
+					movzx( (type byte [esi]), eax );
+					bt( eax, idSet );
+					breakif( @nc );
+					inc( esi );
+					
+				until( esi >= edi );
+				
+				// Copy EBX..ESI to identifier:
+				
+				pat.extract( identifier );
+				
+				
+				
+				
+				
+				// See if it's a built-in function here.
+				
+				#for( _i_ := 0 to @elements( functions_c )-1 )
+				
+					#if( _i_ = 0 )
+						
+						if
+						
+					#else
+						
+						elseif
+						
+					#endif
+					(str.ieq( identifier, functions_c[_i_].identifier )) then
+					
+					PutToken( FUNCtkn );
+					PutToken( @text( functions_c[_i_].identifier + "_tkn" ));
+					#if( functions_c[_i_].maxParms <> 0 )
+					
+						GetParenExpr
+						(
+							functions_c[_i_].minParms,
+							functions_c[_i_].maxParms
+						);
+						
+					#endif
+				
+				#endfor
+				
+					
+					
+				// Generate code for all the Pseudo-Vars that correspond
+				// to global variables in the HLA Basic interpreter source
+				// code (see pseudoVars in basic.hhf):
+				//
+				
+				#for( _i_ := 0 to @elements( pseudoVars )-1 )
+				
+					elseif
+					( 
+						str.ieq( identifier, PVStrs_c[_i_] ) 
+					) then
+					
+						#if( _i_ < 256 )
+						
+							PutToken( PVtkn1 );
+							PutToken( _i_ );
+							
+						#elseif( _i_ < 512 )
+						
+							PutToken( PVtkn2 );
+							PutToken( _i_ - 256 );
+							
+						#elseif( _i_ < 768 )
+						
+							PutToken( PVtkn3 );
+							PutToken( _i_ - 512 );
+							
+						#elseif( _i_ < 1024 )
+						
+							PutToken( PVtkn4 );
+							PutToken( _i_ - 768 );
+							
+						#elseif( _i_ < 65536 )
+						
+							PutToken( PVtkn );
+							PutToken( _i_ & $ff );
+							PutToken( (_i_ shr 8) & $ff );
+							
+						#else
+						
+							#error( "Too many pseudo-variable definitions" )
+							
+						#endif
+						
+						// If this is an array object (elements is
+						// greater than one), then process a parenthetical
+						// expression:
+						
+						#if( pseudoVars[_i_].elements > 1 )
+						
+							GetParenExpr( 1, 1 );
+						
+						#endif 
+				
+				#endfor
+						
+					
+					
+				// Handle standard identifiers down here:
+				
+				else				
+				
+					// Don't allow "@" to begin a non-pseudo-variable
+					// Identifier.
+					
+					mov( identifier, eax );
+					if( (type char [eax]) = '@' ) then
+					
+						mov( false, al );
+						mov( ebx, esi );	// Must restore ESI on failure.
+					
+					else
+					
+						// Okay, we've got a valid ID.  Emit the
+						// token for it.
+
+						sym.lookupAndEnter( identifier );
+						if( eax < $100 ) then
+						
+							PutToken( IDtkn1 );
+							PutToken( al );
+						
+						else
+						
+							PutToken( IDtkn2 );
+							PutWord( ax );
+							
+						endif;
+						SkipSpcs();
+						while( (type char [esi]) = '[' ) do
+						
+							GetBracketExpr();
+							
+						endwhile;
+						mov( true, al );
+						
+					endif;
+					
+				endif;
+				
+			else
+			
+				mov( false, al );
+				mov( ebx, esi );	// Must restore ESI on failure.
+				
+			endif;
+			ret();
+			
+		end matchID;
+		
+		
+		
+		//////////////////////////////////////////////////////
+		//
+		// matchIntConst-
+		//
+		//	Matches an integer constant and returns true/false in
+		//	AL depending on the comparison.  Decimal integer constants always
+		//	contain decimal digits.  Hexadecimal integer constants begin with
+		//  a '$' and may contain the hexadecimal digits 0-9, a-f, and A-F.
+		//
+		//	Comparison stops successfully on the first non-digit.
+		//	You must call matchFltConst prior to calling matchIntConst
+		//	if you need to differentiate between integer and floating
+		//	point constants.
+		
+		
+		procedure matchIntConst( start:dword in esi; endstr:dword in edi ); 
+			@noframe; 
+			@returns( "al" );
+		begin matchIntConst;
+		
+			SkipSpcs();
+			mov( esi, ebx );
+			movzx( (type byte [esi]), eax );
+			bt( eax, decDigits );
+			if( @c ) then
+			
+				repeat
+				
+					mov( [esi], al );
+					breakif( al not in decDigits );
+					inc( esi );
+					
+				until( esi = edi );
+				
+				// Copy EBX..ESI to identifier:
+				
+				pat.extract( identifier );
+				
+				// Convert to an integer value:
+				
+				try
+				
+					conv.strToi32( identifier, 0 );
+					
+				  exception( ex.ValueOutOfRange )
+				  
+				  	stdout.put( "Integer constant too large" nl );
+					reraise( ExprSyntaxException );
+					
+				endtry;
+				
+				if( (type int32 eax) >= -128 && (type int32 eax) <= 127 ) then
+				
+					mov( eax, ebx );
+					PutToken( INT1tkn );
+					PutToken( bl );
+					
+				elseif
+				( 
+					(type int32 eax) >= -32768 && (type int32 eax) <= 32767 
+				) then
+				
+					mov( eax, ebx );
+					PutToken( INT2tkn );
+					PutWord( bx );
+					
+				else
+				
+					mov( eax, ebx );
+					PutToken( INT4tkn );
+					PutDword( ebx );
+					
+				endif;
+				mov( 1, al );
+				
+			elseif( al = '$' ) then
+			
+				inc( ebx );		// Skip '$'
+				inc( esi );		// Skip '$'
+				repeat
+				
+					mov( [esi], al );
+					breakif( al not in hexDigits );
+					inc( esi );
+					
+				until( esi = edi );
+				
+				// Copy EBX..ESI to identifier:
+				
+				pat.extract( identifier );
+				
+				// Convert to an integer value:
+				
+				try
+				
+					conv.strToh32( identifier, 0 );
+					
+				  exception( ex.ValueOutOfRange )
+				  
+				  	stdout.put( "Integer (hex) constant too large" nl );
+					reraise( ExprSyntaxException );
+					
+				endtry;
+				
+				if( (type int32 eax) >= -128 && (type int32 eax) <= 127 ) then
+				
+					mov( eax, ebx );
+					PutToken( INT1tkn );
+					PutToken( bl );
+					
+				elseif
+				( 
+					(type int32 eax) >= -32768 && (type int32 eax) <= 32767 
+				) then
+				
+					mov( eax, ebx );
+					PutToken( INT2tkn );
+					PutWord( bx );
+					
+				else
+				
+					mov( eax, ebx );
+					PutToken( INT4tkn );
+					PutDword( ebx );
+					
+				endif;
+				mov( 1, al );
+				
+			
+			else
+			
+				mov( 0, al );
+				mov( ebx, esi );	// Must restore ESI on failure.
+				
+			endif;
+			ret();
+			
+		end matchIntConst;
+		
+		
+		//////////////////////////////////////////////////////
+		//
+		// matchFltConst-
+		//
+		//	Matches a real constant and returns true/false in
+		//	AL depending on the comparison.  Real constants always
+		//	contain decimal digits, an optional decimal point,
+		//	and an optional exponent. However, real constants must
+		//	contain either a decimal point, and exponent, or both.
+		
+		
+		procedure matchFltConst; 
+			@noframe; 
+			@returns( "al" );
+			
+		static
+			align(8);
+			tempFP		:real64;
+			tempFP32	:real32;
+			
+		begin matchFltConst;
+		
+			// Save the starting position.
+			// If we fail we must return this in ESI.
+			// If we succeed, we must return this in EBX.
+			
+			SkipSpcs();
+			push( esi );
+
+			
+			// The following value on the stack is a boolean
+			// variable to determine if we've matched an FP
+			// value.
+			
+			pushd( false );		// Assume failure.
+			
+			// The number has to begin with a digit:
+			
+			movzx( (type byte [esi]), eax );
+			bt( eax, decDigits );
+			if( @c ) then
+			
+				// Get the digits before the decimal point:
+				
+				repeat
+				
+					inc( esi );
+					breakif( esi >= edi );
+					movzx( (type byte [esi]), eax );
+					bt( eax, decDigits );
+					
+				until( @nc );
+				
+				// Get the optional decimal point and any digits
+				// after the decimal point:
+				
+				if( al = '.' ) then
+				
+					// If we've seen a decimal point, it's a floating
+					// point value, so set the flag to true.
+					
+					mov( true, (type boolean [esp]));
+					
+					// Grab any digits after the decimal point.
+					// Note that the first INC skips the decpt.
+					
+					repeat
+					
+						inc( esi );
+						breakif( esi >= edi );
+						movzx( (type byte [esi]), eax );
+						bt( eax, decDigits );
+						
+					until( @nc );
+					
+				endif;
+				
+				// Get the optional exponent:
+
+				mov( [esi], al );
+				chars.toUpper( al );
+				if( al = 'E' ) then
+				
+					mov( true, (type boolean [esp]));	// Note it's float.
+					mov( [esi+1], al );
+					if( al = '+' ) then
+					
+						inc( esi );
+						
+					elseif( al = '-' ) then
+					 
+						inc( esi );
+						
+					endif;
+					
+					// Get the exponent digits:
+					// Note that the first INC skips the 'E' or the
+					// sign character.
+					//
+					// If we had an "e" but we don't have at least
+					// one valid decimal digit, then we've got an
+					// error.
+					
+					inc( esi );
+					movzx( (type byte [esi]), eax );
+					bt( eax, decDigits );
+					if( @nc ) then
+					
+						stdout.put( "Illegal real constant" nl );
+						raise( ExprSyntaxException );
+						
+					endif;
+					
+					repeat
+					
+						inc( esi );
+						breakif( esi >= edi );
+						movzx( (type byte [esi]), eax );
+						bt( eax, decDigits );
+						
+					until( @nc );
+					
+				endif;
+				
+			endif;
+			
+			// Check boolean flag to see if we have
+			// a legal floating point value (as opposed to
+			// just an integer):
+			
+			
+			pop( eax );
+			pop( ebx );		// Retrieve start of sequence pointer.
+			push( ebx );	// Save for later restore.
+			if( al ) then
+			
+			
+				pat.extract( identifier );
+				try
+				
+					conv.strToFlt( identifier, 0 );
+					
+				  anyexception
+				  
+				  	stdout.put( "Error in floating point value" nl );
+					reraise( ExprSyntaxException );
+					
+				endtry;
+				
+				// Okay, we've got a legal floating point constant.
+				// Emit the token for it. Begin by seeing if we can
+				// emit a 32-bit FP constant or if we have to use
+				// a 64-bit FP constant. We'll use a 32-bit constant
+				// if we can exactly represent the value with a
+				// 32-bit floating-point value.
+				  				
+				fst( tempFP32 );	// Save as 32-bit float.
+				fld( tempFP32 );	// Compare the 32-bit floating point value
+				fcomip( st1 );		// against the original value and if they
+				jne doReal64;		// are not equal, save a 64-bit result.
+				
+				fst( tempFP );					// See if L.O. bits of 64-bit
+				cmp( (type dword tempFP), 0 );	// result are all zero. Do 64
+				jne doReal64;					// bits if this is not the case.
+				
+					// Emit a 32-bit real constant here.
+					
+					PutToken( FLT4tkn );
+					fstp( tempFP32 );
+					PutDword( (type dword tempFP32) );
+					jmp realDone;				
+					
+					
+				doReal64:
+				
+					// Emit a 64-bit FP constant here. Note: the token for
+					// a float constant takes the following form:
+					//
+					// <token> <8-byte binary rep>
+					//
+					// Rather long, but we need the binary representation
+					// for fast execution.
+					//
+					// Emit the FLT8tkn byte:
+
+					PutToken( FLT8tkn );
+					
+					// Now store away the binary representation:
+					
+					fstp( tempFP );
+					PutDword( (type dword tempFP) );
+					PutDword( (type dword tempFP[4]) );
+					
+				realDone:				
+				mov( true, al );	// Return success!
+				
+			else
+			
+				mov( false, al );	// Return failure.
+				mov( ebx, esi );	// Must restore ESI on failure.
+				
+			endif;				
+			pop( ebx );
+			ret();
+			
+		end matchFltConst;
+		
+		
+
+		//////////////////////////////////////////////////////
+		//
+		// Factor-
+		//
+		// Match IDs, constants, function calls, and 
+		// parenthetical expressions.
+		//
+		// Returns true/false in AL depending on the match operation.
+		
+		procedure Factor( start:dword in esi; endstr:dword in edi ); 
+			@noframe; 
+			@returns( "al" );
+			
+		begin Factor;
+		
+			push( esi );		// Put this in EBX if we succeed.
+			
+			SkipSpcs();
+
+			pat.match( esi, edi )
+			
+				// Check for a leading "-" here:
+				
+				pat.matchStr( rw(NEGtkn));
+				Factor( esi, edi );
+				PutToken( NEGtkn );
+				
+			  pat.alternate
+			  
+			  	pat.matchStr( rw(NOTtkn) );
+				Expression( esi, edi );
+				PutToken( NOTtkn );
+
+			  pat.alternate
+			  
+			  	// Tokenize parentheses so it's easy to detokenize
+				// the byte code later on.
+				
+			  	pat.matchStr( rw(LPARENtkn) );
+				PutToken( LPARENtkn );
+				Expression( esi, edi );
+				pat.matchStr( rw(RPARENtkn) );
+				PutToken( RPARENtkn );
+
+			  pat.alternate
+			  
+			  	pat.oneChar( '"' );			
+				PutToken( STRtkn );
+				
+				mov( index, edx );		// Output string here.
+				mov( edx, ebx );		// Ptr to length byte;
+				inc( edx );				// make room for length byte.
+				forever
+				
+					if( esi = edi ) then
+					
+						stdout.put( "Unterminated string constant" nl );
+						raise( ExprSyntaxException );
+					
+					endif;
+					mov( [esi], al );
+					if( al = '"' ) then
+					
+						inc( esi );
+						breakif( esi = edi );
+						breakif( (type char [esi]) <> '"' );
+						
+					endif;
+					mov( al, LineBuffer[ edx ] );
+					inc( edx );
+					inc( esi );
+					
+				endfor;
+				if( (type char [esi-1]) <> '"' ) then
+				
+					stdout.put( "Syntax error in string constant" nl );
+					raise( ExprSyntaxException );
+					
+				endif;
+				
+				// We've output the string constant to the line buffer,
+				// now compute and store the length of the string.
+				
+				mov( edx, index );
+				sub( ebx, edx );
+				dec( edx );
+				if( edx >= 256 ) then
+				
+					stdout.put
+					( 
+						"Error: String literals must be less "
+						"than 256 characters long"
+						nl
+					);
+					raise( ExprSyntaxException );
+					
+				endif;
+				mov( dl, LineBuffer[ ebx ] );	
+				
+				
+			  pat.alternate
+
+				// Check for identifiers, floating point constants, and
+				// integer constants.
+				
+				if( matchID( esi, edi ) ) then
+				
+					// All the real work is done inside matchID...
+					
+				
+				// Note: must check for floating point constant before
+				// we check for an integer constant.
+				
+				elseif( matchFltConst() ) then
+				
+					// All the real work is done inside matchFltConst...
+				
+				elseif( matchIntConst( esi, edi ) ) then
+				
+					// All the real work is done inside matchIntConst...
+					
+				else
+				
+					stdout.put( "Expected an ID or a constant" nl );
+					raise( ExprSyntaxException );
+
+				endif;
+				
+			  pat.if_failure
+				
+				// This section never executes, but just in case...
+				
+				stdout.put( "Expected an ID or a constant" nl );
+				raise( ExprSyntaxException );
+				
+			pat.endmatch;
+			pop( ebx );		
+			mov( true, al );
+			ret();
+			
+		end Factor;
+		
+		
+		procedure MULx( start:dword in esi; endstr:dword in edi );
+		var
+			GoodExpr	:boolean;
+			
+		begin MULx;
+		
+			Factor( start, endstr );
+			if( esi < edi ) then
+			
+				repeat
+				
+					SkipSpcs();
+					mov( true, GoodExpr );
+					pat.match( esi, edi );
+
+					  	pat.matchStr( rw(MULtkn) );
+						Factor( esi, edi );			
+						PutToken( MULtkn );
+					
+					  pat.alternate
+					  	pat.matchStr( rw(DIVtkn) );	
+						Factor( esi, edi );				
+						PutToken( DIVtkn );
+					
+					  pat.alternate
+					  	pat.matchStr( rw(MODtkn) );	
+						Factor( esi, edi );				
+						PutToken( MODtkn );
+					
+					  
+					  pat.if_failure
+						  
+						  	// No operator means the expression is
+							// done and we've got to let the following
+							// productions check for the correctness of
+							// what follows.
+							
+							mov( false, GoodExpr );
+						
+					pat.endmatch;
+				
+				until( !GoodExpr );
+				
+			endif;
+			
+		end MULx; 
+		
+		
+		
+		procedure ADDx( start:dword in esi; endstr:dword in edi );
+		var
+			GoodExpr	:boolean;
+			
+		begin ADDx;
+		
+			MULx( start, endstr );
+			if( esi < edi ) then
+			
+				repeat
+				
+					SkipSpcs();
+					mov( true, GoodExpr );
+					pat.match( esi, edi );
+
+					  	pat.matchStr( rw(PLUStkn) );
+						MULx( esi, edi );			
+						PutToken( PLUStkn );
+					
+					  pat.alternate
+					  	pat.matchStr( rw(MINUStkn) );	
+						MULx( esi, edi );				
+						PutToken( MINUStkn );
+					
+					  
+					  pat.if_failure
+						  
+						  	// No operator means the expression is
+							// done and we've got to let the following
+							// productions check for the correctness of
+							// what follows.
+							
+							mov( false, GoodExpr );
+						
+					pat.endmatch;
+				
+				until( !GoodExpr );
+				
+			endif;
+			
+		end ADDx; 
+		
+		
+		
+		procedure CMPx( start:dword in esi; endstr:dword in edi );
+		var
+			GoodExpr	:boolean;
+			
+		begin CMPx;
+		
+			ADDx( start, endstr );
+			if( esi < edi ) then
+			
+				repeat
+				
+					SkipSpcs();
+					mov( true, GoodExpr );
+					pat.match( esi, edi );
+
+					  	pat.matchStr( rw(LEtkn) );		// Must appear before
+						ADDx( esi, edi );				// LTtkn.
+						PutToken( LEtkn );
+					
+					  pat.alternate
+					  	pat.matchStr( rw(GEtkn) );		// Must appear before
+						ADDx( esi, edi );				// GTtkn.
+						PutToken( GEtkn );
+					
+					  pat.alternate
+					  	pat.matchStr( rw(NEtkn) );		// Must appear before
+						ADDx( esi, edi );				// LTtkn.
+						PutToken( NEtkn );
+					
+					  pat.alternate
+					  	pat.matchStr( rw(LTtkn) );
+						ADDx( esi, edi );		  
+						PutToken( LTtkn );
+					
+					  pat.alternate
+					  	pat.matchStr( rw(GTtkn) );
+						ADDx( esi, edi );		  
+						PutToken( GTtkn );
+					
+					  pat.alternate
+					  	pat.matchStr( rw(EQtkn) );
+						ADDx( esi, edi );		  
+						PutToken( EQtkn );
+					
+					  
+					  pat.if_failure
+						  
+						  	// No operator means the expression is
+							// done and we've got to let the following
+							// productions check for the correctness of
+							// what follows.
+							
+							mov( false, GoodExpr );
+						
+					pat.endmatch;
+				
+				until( !GoodExpr );
+				
+			endif;
+			
+		end CMPx; 
+		
+		
+		
+		// ANDx -> CMPx ANDx'
+		// ANDx' => <empty> | 'AND' ANDx
+		
+		procedure ANDx( start:dword in esi; endstr:dword in edi );
+		var
+			GoodExpr	:boolean;
+			
+		begin ANDx;
+		
+			CMPx( start, endstr );
+			if( esi < edi ) then
+			
+				repeat
+				
+					SkipSpcs();
+					mov( true, GoodExpr );
+					pat.match( esi, edi );
+
+					  	pat.matchiWord( rw(ANDtkn) );
+						CMPx( esi, edi );
+						PutToken( ANDtkn );
+					
+						pat.if_failure
+						  
+						  	// No operator means the expression is
+							// done and we've got to let the following
+							// productions check for the correctness of
+							// what follows.
+							
+							mov( false, GoodExpr );
+						
+					pat.endmatch;
+				
+				until( !GoodExpr );
+				
+			endif;
+			
+		end ANDx; 
+		
+		
+		// ORx -> ANDx ORx'
+		// ORx' => <empty> | 'OR' ORx
+		
+		procedure ORx( start:dword in esi; endstr:dword in edi );
+		var
+			GoodExpr	:boolean;
+			
+		begin ORx;
+		
+			ANDx( start, endstr );
+			if( esi < edi ) then
+			
+				repeat
+				
+					SkipSpcs();
+					mov( true, GoodExpr );
+					pat.match( esi, edi );
+
+					  	pat.matchiWord( rw(ORtkn) );
+						ANDx( esi, edi );
+						PutToken( ORtkn );
+					
+						pat.if_failure
+						  
+						  	// No operator means the expression is
+							// done and we've got to let the following
+							// productions check for the correctness of
+							// what follows.
+							
+							mov( false, GoodExpr );
+						
+					pat.endmatch;
+				
+				until( !GoodExpr );
+				
+			endif;
+			
+		end ORx; 
+		
+	begin Expression;
+
+		// Okay, match an arithmetic expression.
+		
+			push( esi );		// Preserve ESI's value for success/failure.
+
+			ORx( esi, edi );
+				
+			// Since this routine doesn't have to handle backtracking,
+			// a simple return indicates success.
+			//
+			// If there was some sort of syntax error, we've long since
+			// bailed using the exception handling mechanism.  If we
+			// get to this point, we can assume success.
+
+			Succeed:
+				pop( ebx );			// Return original ESI value in EBX
+				ret();
+		
+	end Expression;
+	
+	
+	// ParseID- matches an identifier.
+	//			On successful match, this function emits the two-byte
+	//			ID index to the code stream. It assumes that the caller
+	//			has already emitted some sort of ID token.
+	
+	procedure ParseID
+	(
+			start	:dword; 
+			last	:dword;
+			emitTkn	:byte 
+	);	@nodisplay;
+
+	var
+		esiSave		:dword;
+		StartOfID	:dword;
+		indexSave	:dword;
+		edxSave		:dword;
+		
+	begin ParseID;
+	
+		mov( edx, edxSave );
+		mov( esi, esiSave );
+		mov( index, indexSave );
+		pat.match( start, last )
+		
+			pat.zeroOrMoreWS();
+		  	mov( esi, StartOfID );
+			pat.oneCset( startPureID );
+			pat.zeroOrMoreCset( idSet );
+			mov( StartOfID, ebx );
+			pat.extract( identifier );
+				
+			// Labels must be fewer than MaxLabelLength characters long:
+			
+			mov( identifier, eax );
+			mov( (type str.strRec [eax]).length, ecx );
+			if( ecx > MaxLabelLength ) then
+			
+				// If the label is too long, raise an exception.
+				
+				stdout.put
+				( 
+					"Label is too long (",
+					(type uns32 ecx),
+					"chars, max ", 
+					MaxLabelLength, 
+					" chars)" 
+					nl 
+				);
+				raise( LabelSyntaxException );
+				
+			endif;
+			
+			// Look up the identifier in the ID table:
+			
+			sym.lookupAndEnter( eax );
+			
+			// Emit the pointer to the table entry for this symbol:
+			
+			mov( emitTkn, dl );
+			if( dl <> 0 ) then
+			
+				if( eax < $100 ) then
+				
+					PutToken( dl );
+					PutToken( al );
+					
+				else
+				
+					inc( dl );
+					PutToken( dl );
+					PutWord( ax );
+					
+				endif;
+			
+			else
+			
+				// Just emit a token by itself:
+				
+				PutWord( ax );
+				
+			endif;
+			
+			
+		  pat.if_failure
+		  
+		  	// If we failed, restore ESI and index and the return.
+			
+		  	mov( esiSave, esi );
+			mov( indexSave, index );
+			mov( edxSave, edx );
+		  	pat._fail_( pat.FailTo )
+			
+		pat.endmatch;
+		
+		// If we've matched the ID, return success to the caller.
+			
+		mov( esiSave, ebx );	// Must return start of string in EBX.
+		mov( edxSave, edx );	// Should preserve EDX across pattern calls.
+	
+	end ParseID;
+	
+	
+	
+	
+	
+	/*
+	** ParseStmt-
+	**
+	**	Parses a single statement on a line:
+	*/
+	
+	procedure ParseStmt
+	(
+			startLine	:dword in esi;
+			endLine		:dword in edi 
+	); 
+		@noframe;
+		
+	var
+		pseudoVarTkn	:byte;
+		noIndexPresent	:boolean; 
+		
+	begin ParseStmt;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		// Statements that the following code parses:
+		//
+		//	BEEP
+		//	CLS
+		//	COLOR #, #
+		//	DEBUG
+		//	FOR var = expr TO expr {STEP expr}
+		//	GET var
+		//	GOSUB label
+		//	GOTO label
+		//	IF( expr ) THEN stmt {stmts}  {ELSE {stmts}} ENDIF
+		//	INPUT var
+		//	{LET} var = expr	
+		//	GOTOXY expr, expr
+		//	NEXT {var}
+		//	ON expr GOTO label_list
+		//	ON expr GOSUB label_list
+		//	PRINT expr_list
+		//	READ <id>, <expr>, <id>
+		//	READLN var
+		//	REM
+		//	RETURN
+		//	STOP
+		//	SUSPEND #
+		//	SYSTEM <strExpr>
+		//	WAIT #
+		//	WHILE( # ) DO .. ENDWHILE
+		//	WRITE <id>, <expr>, <id>
+		//
+
+		pat.match( esi, edi )
+			
+			
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the BEEP statement here.
+		  
+					  
+			// BEEP keyword:
+			
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(BEEPtkn) );
+			pat.endStmt();
+			PutToken( BEEPtkn );
+
+
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the CLS statement here.
+		  
+		  pat.alternate
+		  
+		  	// CLS keyword:
+
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(CLStkn) );
+			pat.endStmt();
+			PutToken( CLStkn );			
+
+
+
+			
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the COLOR <expr>, <expr> statement here.
+			
+		  pat.alternate
+			
+			// COLOR keyword:
+			
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(COLORtkn) );
+			PutToken( COLORtkn );			
+			Expression( esi, edi );
+			pat.oneChar( ',' );
+			PutToken( COMMAtkn );
+			Expression( esi, edi );
+			pat.endStmt();		
+
+
+
+
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the DEBUG statement here.
+		  
+		  pat.alternate
+
+		  	// DEBUG keyword:
+
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(DEBUGtkn) );
+			pat.endStmt();
+			PutToken( DEBUGtkn );
+
+
+
+
+			
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the ELSE statement here.
+		  
+		  pat.alternate
+		  
+		  	// ELSE keyword:
+
+		  	pat.zeroOrMoreWS();
+			pat.matchiWord( rw(ELSEtkn) );
+			PutToken( ELSEtkn );
+			pat.zeroOrMoreWS();
+
+			mov( index, edx );
+			if( edx <> 1 ) then
+			
+				stdout.put
+				( 
+					"ELSE must appear at the start of the line"
+					nl
+				);
+				raise( BasicError );
+				
+			endif;
+			
+			// Make room for the pointer to the ENDIF clause:
+			
+			PutWord( 0 );
+			
+			// No pat.endStmt here because a statement could follow the else
+			
+			
+
+					
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the ELSEIF statement here.
+		  
+		  pat.alternate
+		  
+		  	// ELSEIF keyword:
+
+		  	pat.zeroOrMoreWS();
+			pat.matchiWord( rw(ELSEIFtkn) );
+			PutToken( ELSEIFtkn );
+			PutToken( ELSEIFtkn2 );
+			pat.zeroOrMoreWS();
+
+			mov( index, edx );
+			if( edx <> 2 ) then
+			
+				stdout.put
+				( 
+					"ELSEIF must appear at the start of the line"
+					nl
+				);
+				raise( BasicError );
+				
+			endif;
+			
+			// Make room for the pointer to the ENDIF clause:
+			
+			PutWord( 0 );
+			
+
+			// Process the expression and THEN token:
+			
+			pat.oneChar( '(' );
+			PutToken( LPARENtkn );			
+			Expression( esi, edi );
+			pat.zeroOrMoreWS();
+			pat.oneChar( ')' );
+			PutToken( RPARENtkn );
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(THENtkn) );
+			PutToken( THENtkn );
+			
+			// No pat.endstmt here because a statement could follow the THEN
+			
+			
+
+					
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the ENDIF statement here.
+		  
+		  pat.alternate
+		  
+		  	// ENDIf keyword:
+
+		  	pat.zeroOrMoreWS();
+			pat.matchiWord( rw(ENDIFtkn) );
+			pat.endStmt();
+			PutToken( ENDIFtkn );
+			if( index <> 1 ) then
+			
+				stdout.put
+				( 
+					"ENDIF must appear at the start of the line"
+					nl
+				);
+				raise( BasicError );
+				
+			endif;
+				
+				
+			
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the ENDWHILE statement here.
+		  
+		  pat.alternate
+		  
+		  	// ENDWHILE keyword:
+
+		  	pat.zeroOrMoreWS();
+			pat.matchiWord( rw(ENDWHILEtkn) );
+			pat.endStmt();
+			PutToken( ENDWHILEtkn );
+			if( index <> 1 ) then
+			
+				stdout.put
+				( 
+					"ENDWHILE must appear at the start of the line"
+					nl
+				);
+				raise( BasicError );
+				
+			endif;
+				
+				
+			
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the FOR <id> = <expr> to <expr> {step <expr>} statement here.
+		  
+		  pat.alternate
+
+		  	// FOR keyword:
+
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(FORtkn) );
+			PutToken( FORtkn );
+			
+			// Make room for the address that points at the corresponding
+			// "NEXT <ID>" clause for this FOR statement:
+			
+			mov( index, edx );
+			if( edx <> 1 ) then
+			
+				stdout.put
+				( 
+					"FOR statement must appear at the start of the line"
+					nl
+				);
+				raise( BasicError );
+				
+			endif;
+			PutWord( 0 );	// Holder for index to NEXT stmt.
+			
+			
+			
+			// Get the identifier following the FOR:
+			
+			ParseID( esi, edi, 0 );
+
+			// An equals sign must following the identifier.
+			// We won't emit a token for "=" because we can always
+			// assume its presence.
+
+			pat.zeroOrMoreWS();
+			pat.oneChar( '=' );
+			
+			// Parse the arithmetic expression following the
+			// "for ID ="
+			
+			Expression( esi, edi );
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(TOtkn) );
+			
+			// Handle the "TO expr" component here:
+			
+			PutToken( TOtkn );
+			Expression( esi, edi );
+			
+			// Check for the optional "STEP expr" component here:
+			
+			pat.match( esi, edi );
+			
+				pat.endStmt();
+				
+			  pat.if_failure
+			  
+				pat.match( esi, edi )
+				
+					pat.zeroOrMoreWS();
+					pat.matchiWord( rw(STEPtkn) );
+					PutToken( STEPtkn );
+					Expression( esi, edi );
+					pat.endStmt();
+						
+				  pat.if_failure
+					  
+				   	stdout.put
+					( 
+						"Syntax: FOR <var>=<expr> TO <expr> {STEP <expr>}" 
+						nl 
+					);
+					raise( BasicError );
+					
+				pat.endmatch;
+									
+			pat.endmatch;
+			pat.endStmt();
+			
+			
+
+
+					
+			
+			
+			
+			
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the GOSUB <label> statement here.
+		  
+		  pat.alternate
+
+		  	// GOSUB keyword:
+
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(GOSUBtkn) );
+			PutToken( GOSUBtkn );
+			
+			// Get the identifier following the GOSUB:
+			
+			ParseID( esi, edi, 0 );
+			
+			// Process the optional parameter/ID list following the PARMS keyword.
+			
+			pat.match( esi, edi )
+			
+				pat.endStmt();
+				mov( false, al );
+				
+			  pat.if_failure
+			  
+			  	mov( true, al );
+				
+			pat.endmatch;
+			
+			// AL = true if we're not at the end of a statment and we
+			// must process an ID.
+			
+			while( al ) do
+			
+				Expression( esi, edi );
+				
+				// At this point we could have the end of the
+				// statement or we could have a ',' 
+				
+				pat.match( esi, edi )
+				
+					pat.endStmt();
+					mov( false, al );
+					
+				  pat.alternate
+				  
+				  	pat.zeroOrMoreWS();
+					pat.oneChar( ',' );
+					PutToken( COMMAtkn );
+					
+				  pat.if_failure
+				  
+				  	stdout.put
+					( 
+						"Syntax error in GOSUB statement argument list"
+						nl
+					);
+					raise( BasicError );
+					
+				pat.endmatch;
+				
+			endwhile;			
+			pat.endStmt();
+			
+			
+
+
+					
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the GOTO <label> statement here.
+		  
+		  pat.alternate
+
+		  	// GOTO keyword:
+
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(GOTOtkn) );
+			PutToken( GOTOtkn );
+
+			// Get the identifier following the GOTO:
+			
+			ParseID( esi, edi, 0 );
+			pat.endStmt();
+			
+			
+
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the IF( <expr> ) THEN statement here.
+		  
+		  pat.alternate
+		  
+		  	// IF keyword:
+
+		  	pat.zeroOrMoreWS();
+			pat.matchiWord( rw(IFtkn) );
+			PutToken( IFtkn );
+			pat.zeroOrMoreWS();
+			mov( index, edx );
+			if( edx <> 1 ) then
+			
+				stdout.put( "IF must be first statement on line" nl );
+				raise( BasicError );
+				
+			endif;
+			
+			// Make room for a pointer to the ELSE or ENDIF clause.
+			
+			PutWord( 0 );
+
+			// Process the expression and THEN token:
+			
+			pat.oneChar( '(' );
+			PutToken( LPARENtkn );			
+			Expression( esi, edi );
+			pat.zeroOrMoreWS();
+			pat.oneChar( ')' );
+			PutToken( RPARENtkn );
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(THENtkn) );
+			PutToken( THENtkn );
+			
+			// No pat.endstmt here because a statement could follow the THEN
+			
+					
+
+
+					
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the INPUT <id> statement here.
+		  
+
+		  pat.alternate
+
+		  	// INPUT keyword:
+
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(INPUTtkn) );
+			PutToken( INPUTtkn );
+
+			// Get the identifier following the INPUT:
+			
+			ParseID( esi, edi, 0 );
+			
+			// Handle an optional array index here:
+
+			push( index );
+			
+			forever
+			
+				pat.zeroOrMoreWS();
+				breakif( (type char [esi]) <> '[' );
+			
+				pat.match( esi, edi )
+				
+					pat.oneChar( '[' );
+					PutToken( LBRACKtkn );
+					pat.zeroOrMoreWS();
+					Expression( esi, edi );
+					pat.zeroOrMoreWS();
+					pat.oneChar( ']' );
+					PutToken( RBRACKtkn );
+					mov( true, al );
+				
+				  pat.if_failure
+				  
+				  	mov( false, al );
+					
+				pat.endmatch;
+			
+				// If we failed to match the dimension list, then we
+				// need to restore the Index into the token output list
+				// to clean up any emissions by the code above.
+				
+				if( !al ) then
+				
+					pop( index );
+					
+				endif;
+				
+			endfor;
+			pat.endStmt();
+			
+			
+			
+			
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the GOTOXY <xexpr>, <yexpr> statement here.
+		  
+
+		  pat.alternate
+
+		  	// GOTOXY keyword:
+
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(GOTOXYtkn) );
+			PutToken( GOTOXYtkn );
+			Expression( esi, edi );
+			pat.zeroOrMoreWS();
+			pat.oneChar( ',' );
+			PutToken( COMMAtkn );
+			Expression( esi, edi );			
+			pat.endStmt();
+			
+			
+			
+			
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the NEXT <id> statement here (must have <id> after the NEXT).
+		  
+		  pat.alternate
+
+		  	// NEXT <id> statement:
+
+			mov( index, nextIndex );		// Save for next alternate.
+			
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(NEXTtkn) );
+			PutToken( NEXTtkn );
+
+			// Get the identifier following the NEXT:
+
+			ParseID( esi, edi, IDtkn1 );
+			pat.endStmt();
+			if( nextIndex <> 0 ) then
+			
+				stdout.put
+				( 
+					"Error: NEXT <ID> must be first statement on line "
+					nl
+				);
+				raise( BasicError );
+				
+			endif;
+			
+			
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the NEXT statement here (no <id> after the NEXT).
+		  
+		  pat.alternate
+
+		  	// NEXT statement (no ID):
+
+			mov( nextIndex, index );		// Restore if messed up above.
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(NEXTtkn) );
+			pat.endStmt();
+			PutToken( NEXTtkn );
+			
+
+					
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the ON <expr> GOTO <stmt list> and
+		  // ON <expr> GOSUB <stmt list> statements here.
+		  
+		  pat.alternate
+
+		  	// ON..GOTO/GOSUB keywords:
+
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(ONtkn) );
+			PutToken( ONtkn );
+			
+			Expression( esi, edi );
+			
+			// Match either GOTO or GOSUB here:
+
+			pat.match( esi, edi );
+
+			  	// GOTO keyword:
+
+				pat.zeroOrMoreWS();
+				pat.matchiWord( rw(ONGOTOtkn) );
+				PutToken( ONGOTOtkn );
+
+			  pat.alternate
+
+			  	// GOSUB keyword:
+
+				pat.zeroOrMoreWS();
+				pat.matchiWord( rw(ONGOSUBtkn) );
+				PutToken( ONGOSUBtkn );
+				
+			  pat.if_failure
+			  
+			  	stdout.put( "Expected GOSUB or GOTO in ON statement" nl );
+				raise( BasicError );
+				
+			pat.endmatch;
+
+			  			
+			// Process the label list following the GOSUB/GOTO keyword:			
+			
+			repeat
+			
+				ParseID( esi, edi, Labeltkn1 );
+				
+				// At this point we could have the end of the
+				// statement or we could have a ',' 
+				
+				pat.match( esi, edi )
+				
+					pat.endStmt();
+					mov( true, al );
+					
+				  pat.alternate
+				  
+				  	pat.zeroOrMoreWS();
+					pat.oneChar( ',' );
+					PutToken( COMMAtkn );
+					mov( false, al );
+					
+				  pat.if_failure
+				  
+				  	stdout.put
+					( 
+						"Syntax error in ON..GOTO/GOSUB label list"
+						nl
+					);
+					raise( BasicError );
+					
+				pat.endmatch;
+				
+			until( al );
+			
+			
+			
+			
+
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the PARMS <idlist> statement here.
+		  
+
+		  pat.alternate
+
+		  	// PARMS keyword:
+
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(PARMStkn) );
+			PutToken( PARMStkn );
+
+			// Process the ID list following the PARMS keyword:
+			// It is possible for the ID list to be empty (meaning
+			// we ignore all parameters passed to a subroutine)
+			
+			pat.match( esi, edi )
+			
+				pat.endStmt();
+				mov( false, al );
+				
+			  pat.if_failure
+			  
+			  	mov( true, al );
+				
+			pat.endmatch;
+			
+			// AL = true if we're not at the end of a statment and we
+			// must process an ID.
+			
+			while( al ) do
+			
+				ParseID( esi, edi, IDtkn1 );
+				
+				// At this point we could have the end of the
+				// statement or we could have a ',' 
+				
+				pat.match( esi, edi )
+				
+					pat.endStmt();
+					mov( false, al );
+					
+				  pat.alternate
+				  
+				  	pat.zeroOrMoreWS();
+					pat.oneChar( ',' );
+					PutToken( COMMAtkn );
+					
+				  pat.if_failure
+				  
+				  	stdout.put
+					( 
+						"Syntax error in PARMS statement argument list"
+						nl
+					);
+					raise( BasicError );
+					
+				pat.endmatch;
+				
+			endwhile;			
+			pat.endStmt();
+			
+			
+			
+			
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the PRINT <expr list> statement here.
+		  
+		  pat.alternate
+
+		  	// PRINT keyword:
+
+			pat.zeroOrMoreWS();
+			
+			// Match PRINT
+			
+			pat.matchiWord( rw(PRINTtkn) );
+			PutToken( PRINTtkn );
+				
+
+			// Process the expression list following the PRINT keyword:
+			// Since all expressions are optional, we must begin by
+			// seeing if there is at least one expression.
+			
+			pat.match( esi, edi )
+			
+				pat.endStmt();
+				mov( false, al );
+				
+			  pat.if_failure
+			  
+			  	mov( true, al );
+				
+			pat.endmatch;
+			
+			// AL = true if we're not at the end of a statment and we
+			// must process an expression.
+			
+			while( al ) do
+			
+				Expression( esi, edi );
+				
+				// At this point we could have the end of the
+				// statement or we could have a ';' or a ',' 
+				
+				pat.match( esi, edi )
+				
+					pat.endStmt();
+					mov( false, al );
+					
+				  pat.alternate
+				  
+				  	pat.zeroOrMoreWS();
+					pat.oneChar( ';' );
+					PutToken( SEMICOLONtkn );
+					
+					// If the semicolon appears at the end of a statement,
+					// that's okay too.
+					
+					pat.match( esi, edi )
+					
+						pat.endStmt();
+						mov( false, al );
+						
+					  pat.if_failure
+					  
+					  	mov( true, al );
+						
+					pat.endmatch;
+					
+				  pat.alternate
+				  
+				  	pat.zeroOrMoreWS();
+					pat.oneChar( ',' );
+					PutToken( COMMAtkn );
+					
+					// If the comma appears at the end of a statement,
+					// that's okay too.
+					
+					pat.match( esi, edi )
+					
+						pat.endStmt();
+						mov( false, al );
+						
+					  pat.if_failure
+					  
+					  	mov( true, al );
+						
+					pat.endmatch;
+					
+				  pat.if_failure
+				  
+				  	stdout.put
+					( 
+						"Syntax error in PRINT statement argument list"
+						nl
+					);
+					raise( BasicError );
+					
+				pat.endmatch;
+				
+			endwhile;			
+			
+
+
+					
+			
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the STDOUT <expr list> statement here.
+		  
+		  pat.alternate
+
+		  	// STDOUT keyword:
+
+			pat.zeroOrMoreWS();
+			
+			// Match STDOUT
+			
+			pat.matchiWord( rw(OUTPUTtkn) );
+			PutToken( OUTPUTtkn );
+				
+
+			// Process the expression list following the STDOUT keyword:
+			// Since all expressions are optional, we must begin by
+			// seeing if there is at least one expression.
+			
+			pat.match( esi, edi )
+			
+				pat.endStmt();
+				mov( false, al );
+				
+			  pat.if_failure
+			  
+			  	mov( true, al );
+				
+			pat.endmatch;
+			
+			// AL = true if we're not at the end of a statment and we
+			// must process an expression.
+			
+			while( al ) do
+			
+				Expression( esi, edi );
+				
+				// At this point we could have the end of the
+				// statement or we could have a ';' or a ',' 
+				
+				pat.match( esi, edi )
+				
+					pat.endStmt();
+					mov( false, al );
+					
+				  pat.alternate
+				  
+				  	pat.zeroOrMoreWS();
+					pat.oneChar( ';' );
+					PutToken( SEMICOLONtkn );
+					
+					// If the semicolon appears at the end of a statement,
+					// that's okay too.
+					
+					pat.match( esi, edi )
+					
+						pat.endStmt();
+						mov( false, al );
+						
+					  pat.if_failure
+					  
+					  	mov( true, al );
+						
+					pat.endmatch;
+					
+				  pat.alternate
+				  
+				  	pat.zeroOrMoreWS();
+					pat.oneChar( ',' );
+					PutToken( COMMAtkn );
+					
+					// If the comma appears at the end of a statement,
+					// that's okay too.
+					
+					pat.match( esi, edi )
+					
+						pat.endStmt();
+						mov( false, al );
+						
+					  pat.if_failure
+					  
+					  	mov( true, al );
+						
+					pat.endmatch;
+					
+				  pat.if_failure
+				  
+				  	stdout.put
+					( 
+						"Syntax error in STDOUT statement argument list"
+						nl
+					);
+					raise( BasicError );
+					
+				pat.endmatch;
+				
+			endwhile;			
+			
+
+
+					
+			
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the READLN <id> statement here.
+		  
+		  pat.alternate
+
+		  	// READLN keyword:
+
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(READLNtkn) );
+			PutToken( READLNtkn );
+
+			// Get the identifier following the READLN:
+			
+			ParseID( esi, edi, 0 );
+			pat.endStmt();
+			
+			
+
+
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the REM <comment text> statement here.
+		  // (Also allow "// <comment text>" because it's HLA Basic!)
+		  // Also allow MSBasic "  ' <comment text>"
+		  
+					
+		  pat.alternate
+
+		  	// REM keyword:
+
+			pat.zeroOrMoreWS();
+			pat.matchiStr( rw(REMtkn) );	// Must be matchiStr, not matchiWord!
+
+
+			////////////////////////////////////////////////////////////////////
+			//
+			// 		Do not store the comment text into the tokenized 
+			//		program area!
+			//
+			//			PutToken( REMtkn );
+			//
+			//			// All the text to the end of the line
+			//			// constitutes the remark which we must store:
+			//			
+			//			mov( edi, ecx );
+			//			sub( esi, ecx );
+			//			if( ecx >= 256 ) then
+			//			
+			//				stdout.put( "REMark is too long" nl );
+			//				raise( BasicError );
+			//			
+			//			endif;
+			//
+			//			mov( index, edx );
+			//			mov( cl, LineBuffer[ edx ] );
+			//			
+			//			// Move index past our string and length byte.
+			//			
+			//			stc();
+			//			adc( ecx, index );
+			//			
+			//			// Copy the string data to the line buffer:
+			//			
+			//			push( edi );
+			//			lea( edi, LineBuffer[ edx+1 ] );
+			//			rep.movsb();
+			//			pop( edi );
+			//
+			////////////////////////////////////////////////////////////////////
+
+			// Skip to the end of the input line and ignore everything:
+			
+			mov( edi, esi );
+			
+
+					
+		  pat.alternate
+
+		  	// Allow "//" as comment start sequence, too.
+
+			pat.zeroOrMoreWS();
+			pat.matchiStr( "//" );	// Must be matchiStr, not matchiWord!
+
+
+			// Skip to the end of the input line and ignore everything:
+			
+			mov( edi, esi );
+			
+
+					
+		  pat.alternate
+
+		  	// Allow ' <comment text> as comment start sequence, too.
+
+			pat.zeroOrMoreWS();
+			pat.oneChar( '''' );
+
+
+			// Skip to the end of the input line and ignore everything:
+			
+			mov( edi, esi );
+			
+
+
+
+
+
+
+
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the RETURN statement here.
+		  
+		  pat.alternate
+		  
+		  	// RETURN keyword
+
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(RETURNtkn) );
+			pat.endStmt();
+			PutToken( RETURNtkn );
+
+
+
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the STOP statement here.
+		  
+		  pat.alternate
+
+			// STOP keyword
+			
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(STOPtkn) );
+			pat.endStmt();
+			PutToken( STOPtkn );
+
+
+			
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the SUSPEND statement here.
+		  
+		  pat.alternate
+		  
+		  	// SUSPEND keyword:
+
+		  	pat.zeroOrMoreWS();
+			pat.matchiWord( rw(SUSPENDtkn) );
+			pat.endStmt();
+			PutToken( SUSPENDtkn );			
+			
+			
+			
+
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the SYSTEM statement here.
+		  
+		  pat.alternate
+		  
+		  	// SYSTEM keyword:
+
+		  	pat.zeroOrMoreWS();
+			pat.matchiWord( rw(SYSTEMtkn) );
+			PutToken( SYSTEMtkn );			
+			Expression( esi, edi );
+			pat.endStmt();
+			
+			
+			
+
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the WAIT <expr> statement here.
+		  
+		  pat.alternate
+		  
+		  	// WAIT keyword:
+
+		  	pat.zeroOrMoreWS();
+			pat.matchiWord( rw(WAITtkn) );
+			PutToken( WAITtkn );			
+			Expression( esi, edi );
+			pat.endStmt();
+			
+			
+			
+
+		  //////////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the WHILE statement here.
+		  //	
+		  //  WHILE( <expr> )DO
+		  //	.
+		  //	.
+		  //	.
+		  //  ENDWHILE
+		  
+		  pat.alternate
+		  
+		  	// WHILE keyword:
+
+		  	pat.zeroOrMoreWS();
+			pat.matchiWord( rw(WHILEtkn) );
+			PutToken( WHILEtkn );
+			pat.zeroOrMoreWS();
+			mov( index, edx );
+			if( edx <> 1 ) then
+			
+				stdout.put( "WHILE must be first statement on line" nl );
+				raise( BasicError );
+				
+			endif;
+			
+			// Make room for a pointer to the ENDWHILE clause.
+			
+			PutWord( 0 );
+			
+			pat.oneChar( '(' );
+			PutToken( LPARENtkn );			
+			Expression( esi, edi );
+			pat.zeroOrMoreWS();
+			pat.oneChar( ')' );
+			PutToken( RPARENtkn );
+			pat.zeroOrMoreWS();
+			pat.matchiWord( rw(DOtkn) );
+			pat.endStmt();
+			PutToken( DOtkn );
+			
+					
+
+
+					
+			
+		  //////////////////////////////////////////////////////////////////////
+		  //
+		  // Compile in any site-specific statements here:
+		  
+		  #for( _i_ := 0 to numSiteSpecificStmts-1 )
+		  
+		  	pat.alternate
+			
+				pat.zeroOrMoreWS();
+				pat.matchiWord( siteSpecificStmts_c[_i_].identifier );
+				PutToken( @text( siteSpecificStmts_c[_i_].identifier + "_tkn" ));
+				?_parmIDflag := siteSpecificStmts_c[_i_].IDmap;
+				#for( _j_ := 0 to siteSpecificStmts_c[_i_].numArgs-1 )
+				
+					pat.zeroOrMoreWS();
+					#if( _j_ <> 0 )
+					
+						pat.oneChar( ',' );
+						PutToken( COMMAtkn );
+						pat.zeroOrMoreWS();
+					
+					#endif
+					#if( (_parmIDflag & 1) <> 0 )
+					
+						ParseID( esi, edi, IDtkn1 );
+						
+					#else
+					
+						Expression( esi, edi );
+						
+					#endif
+					?_parmIDflag := _parmIDflag >> 1;
+					
+				#endfor
+				pat.endStmt();
+		  
+		  #endfor			
+
+			
+			
+			
+		  /////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle the line separator here (':').
+		  //
+
+		  pat.alternate
+
+			// Line separator.
+			// This pattern must follow the pattern
+			// for a statement label.
+
+			pat.zeroOrMoreWS();
+			pat.oneChar( ':' );
+			PutToken( StmtSeptkn );
+			
+
+		/////////////////////////////////////////////////////////////////	
+		//
+		// Handle pseudoVars here.
+		//
+		// Note: pseudo-vars need an explicit '=' token because
+		// there may be an optional parenthetical expression after
+		// the pseudo-var on the left-hand side of an assignment
+		// statement and we need an explicit '=' to separate that
+		// expression from the expression on the right-hand side of
+		// the assignment operator.
+		//
+		//
+		// Begin by automatically generating code for all the pseudo-variables
+		// that are scalar objects and correspond to HLA global variables
+		// (in the interpreter source code). See "pseudoVars" in basic.hhf
+		// for a description of the following data structure usage.
+			
+		  #for( _i_ := 0 to @elements( pseudoVars )-1 )
+		  
+		  	#if( pseudoVars[_i_].elements <= 1 )
+			
+				// Handle scalar pseudo-variable objects:
+				
+				pat.alternate
+				  
+					// Process an optional "LET" if it appears at the beginning
+					// of this statement:
+					
+					pat.zeroOrMoreWS();
+					pat.zeroOrOnePat;
+								
+						pat.matchiWord( rw(LETtkn1) );
+					  
+					pat.endZeroOrOnePat;
+					pat.zeroOrMoreWS();
+			
+					pat.matchiWord( PVStrs_c[_i_] );
+					#if( _i_ < 256 )
+					
+						PutToken( LETtknPV1 );
+						PutToken( _i_ );
+						
+					#elseif( _i_ < 512 )
+					
+						PutToken( LETtknPV2 );
+						PutToken( _i_ - 256 );
+						
+					#elseif( _i_ < 768 )
+					
+						PutToken( LETtknPV3 );
+						PutToken( _i_ - 512 );
+						
+					#elseif( _i_ < 1024 )
+					
+						PutToken( LETtknPV4 );
+						PutToken( _i_ - 768 );
+						
+					#else
+					
+						PutToken( LETtknPV  );
+						PutToken( _i_ & $FF );
+						PutToken( _i_ >> 8 );
+						
+					#endif
+											
+					// An equals sign must follow the identifier.
+			
+					pat.zeroOrMoreWS();
+					pat.oneChar( '=' );
+					PutToken( EQtkn );
+					pat.zeroOrMoreWS();
+									  
+					
+					// Parse the arithmetic expression following the
+					// "{let} <pseudoVar> ="
+					
+					Expression( esi, edi );
+					pat.endStmt();
+					
+					
+			#else	// Handle pseudo-variable arrays (single dimension)
+					
+			
+				pat.alternate
+				  
+				    // Process an option "LET" if it appears at the beginning
+					// of this statement:
+					
+					pat.zeroOrMoreWS();
+					pat.zeroOrOnePat;
+								
+						pat.matchiWord( rw(LETtkn1) );
+					  
+					pat.endZeroOrOnePat;
+					pat.zeroOrMoreWS();
+		  
+					pat.matchiWord( PVStrs_c[_i_] );
+					#if( _i_ < 256 )
+					
+						PutToken( LETtknPV1 );
+						PutToken( _i_ );
+						
+					#elseif( _i_ < 512 )
+					
+						PutToken( LETtknPV2 );
+						PutToken( _i_ - 256 );
+						
+					#elseif( _i_ < 768 )
+					
+						PutToken( LETtknPV2 );
+						PutToken( _i_ - 512 );
+						
+					#elseif( _i_ < 1024 )
+					
+						PutToken( LETtknPV2 );
+						PutToken( _i_ - 768 );
+						
+					#else
+					
+						PutToken( LETtknPV2 );
+						PutToken( _i_ & $FF );
+						PutToken( _i_ >> 8 );
+						
+					#endif
+			
+					// Get the parenthetical expression:
+					
+					pat.zeroOrMoreWS();
+					pat.onePat
+					
+						pat.oneChar( '(' );
+						
+					  pat.alternate
+					  
+					  	pat.oneChar( '[' );
+						stdout.put
+						( 
+							"Must use '(' for pseudo-variable access" 
+							nl 
+						);
+						raise( BasicError );
+						
+					  
+					pat.endOnePat;
+					
+					PutToken( LPARENtkn );
+					pat.zeroOrMoreWS();
+					Expression( esi, edi );
+					pat.zeroOrMoreWS();
+					pat.onePat
+					
+						pat.oneChar( ')' );
+						
+					  pat.alternate
+					  
+					  	pat.oneChar( ']' );
+						stdout.put
+						( 
+							"Must use ')' for pseudo-variable access" 
+							nl 
+						);
+						raise( BasicError );
+						
+					  
+					pat.endOnePat;
+					PutToken( RPARENtkn );
+										
+					// An equals sign must follow the array indices.
+
+					pat.zeroOrMoreWS();
+					pat.oneChar( '=' );
+					PutToken( EQtkn );
+					pat.zeroOrMoreWS();
+									  
+					
+					// Parse the arithmetic expression following the
+					// "{let} <pseudoVar> ="
+					
+					Expression( esi, edi );
+					pat.endStmt();
+					
+		  	#endif
+			
+		  #endfor
+		  
+		  // Non-standard pseudo-vars should be processed here.
+		  // (A non-standard pseudo-var is one that is not a scalar,
+		  // a single-dimension array, or one that doesn't correspond
+		  // directly to a variable in the HLA Basic interpreter and 
+		  // requires additional processing above and beyond copying data
+		  // to/from that global variable.)
+			
+		  /////////////////////////////////////////////////////////////////	
+		  //
+		  // Handle labels here.
+		  //
+		  //	Warning! This code must follow all the
+		  //	patterns for the reserved words or the parser
+		  //	will get confused and possibly treat a reserved
+		  //	word as a label.
+			
+			
+		  pat.alternate
+					
+			pat.zeroOrMoreWS();
+		  	mov( esi, StartOfID );			// Save ptr to start of ID
+			pat.oneCset( startPureID );
+			pat.oneOrMoreCset( idSet );
+			mov( StartOfID, ebx );
+			pat.extract( identifier );
+			pat.zeroOrMoreWS();
+			pat.oneChar( ':' );
+			
+			
+			// Only allow labels at the start of a statement.
+			
+			if( index <> 0 ) then
+			
+				// If index <> 0, then this isn't the first lexeme
+				// on the line.  Raise an exception to denote this.
+				
+				stdout.put( "Label must be first item in statement" nl );
+				raise( LabelSyntaxException );
+			
+			endif;
+						
+			// Labels must be fewer than MaxLabelLength characters long:
+			
+			mov( identifier, eax );
+			mov( (type str.strRec [eax]).length, ecx );
+			if( ecx > MaxLabelLength ) then
+			
+				// If the label is too long, raise an exception.
+				
+				stdout.put
+				( 
+					"Label is too long (",
+					(type uns32 ecx),
+					"chars, max ", 
+					MaxLabelLength, 
+					" chars)" 
+					nl 
+				);
+				
+				
+				raise( LabelSyntaxException );
+				
+			endif;
+			
+			
+			// Okay, we've got a valid label.
+			// Emit the label and appropriate tokens to the output buffer.
+			//
+			// Make sure the symbol is in the symbol table.
+			// The store a pointer to the table entry as the
+			// last four bytes of the token.			
+			//
+			// Save index of table entry as part of token value:
+			
+			sym.lookupAndEnter( identifier );
+			if( eax < $100 ) then
+			
+				PutToken( Labeltkn1 );
+				PutToken( al );
+				
+			else
+			
+				PutToken( Labeltkn2 );
+				PutWord( ax );
+				
+			endif;
+			pat.endStmt();
+			
+		  
+
+		  //////////////////////////////////////////////////////////////////////	
+		  //	
+		  // Handle the assignment statement here.
+		  // This version assumes there are one or
+		  // more array indicies following the identifier.
+		  // Warning! This code must follow all the
+		  // patterns for reserved words and it must
+		  // precede the pattern for statement labels.
+			
+		  pat.alternate
+		  
+
+		  	// LET keyword / Assignment statement:
+			//
+			//
+			// Put index in a safe place in case it gets messed up
+			// via backtracking.
+			
+			mov( index, eax );
+			mov( eax, parseIndex );
+		  
+			pat.zeroOrMoreWS();
+			pat.zeroOrOnePat;
+						
+				pat.matchiWord( rw(LETtkn1) );
+			  
+			pat.endZeroOrOnePat;
+			pat.zeroOrMoreWS();
+		  	mov( esi, StartOfID );
+			pat.oneCset( startPureID );
+			pat.zeroOrMoreCset( idSet );
+			mov( StartOfID, ebx );
+			pat.extract( identifier );
+			
+			// Make sure it's not a function identifier:
+			
+			for( mov( 0, ecx ); ecx < @elements( functions_c ); inc( ecx )) do
+			
+				if( str.ieq( identifier, funcNames[ecx*4]) ) then
+				
+					stdout.put
+					( 
+						"Cannot assign a value to a function name: ", 
+						identifier, 
+						nl 
+					);
+					raise( LabelSyntaxException );
+
+				endif;
+				
+			endfor;
+			
+			// Deal with the LET token and the ID here:
+			//		
+			// 	Labels must be fewer than MaxLabelLength characters long:
+			
+			mov( identifier, eax );
+			mov( (type str.strRec [eax]).length, ecx );
+			if( ecx > MaxLabelLength ) then
+			
+				// If the label is too long, raise an exception.
+				
+				stdout.put
+				( 
+					"Label is too long (",
+					(type uns32 ecx),
+					"chars, max ", 
+					MaxLabelLength, 
+					" chars)" 
+					nl 
+				);
+				raise( LabelSyntaxException );
+				
+			endif;
+			
+			// Look up the identifier in the ID table:
+			
+			sym.lookupAndEnter( eax );
+
+			// Emit a LET token as the first token of this line
+			// and the following symbol index as the next one or two
+			// bytes.
+			
+			if( eax < $100 ) then
+			
+				PutToken( LETtkn1 );
+				PutToken( al );
+				
+			else
+			
+				PutToken( LETtkn2 );
+				PutWord( ax );
+				
+			endif;
+			
+			
+					
+			// Handle an optional array index here:
+
+			forever
+			
+				pat.zeroOrMoreWS();
+				breakif( (type char [esi]) <> '[' );
+				mov( false, noIndexPresent );
+				pat.onePat
+				
+					pat.oneChar( '[' );
+					PutToken( LBRACKtkn );
+					pat.zeroOrMoreWS();
+					Expression( esi, edi );
+					pat.zeroOrMoreWS();
+					pat.oneChar( ']' );
+					PutToken( RBRACKtkn );
+					mov( true, noIndexPresent );
+				
+				pat.endOnePat;
+			
+				// If we failed to match the dimension list, 
+				// fail with an error.
+				
+				if( !noIndexPresent ) then
+				
+					stdout.put
+					( 
+						"Illegal array index" 
+						nl 
+					);
+				
+				
+					raise( BasicError );
+					
+				endif;
+				
+			endfor;
+			
+			// An equals sign must follow the identifier or array indices.
+			// We won't emit a token for "=" because we can always
+			// assume its presence.
+
+			pat.zeroOrMoreWS();
+			pat.oneChar( '=' );
+
+				
+							  
+			
+			// Parse the arithmetic expression following the
+			// "{let} ID ="
+			
+			Expression( esi, edi );
+			pat.endStmt();
+		  	
+			
+		  pat.if_failure
+		  
+		  	// If we get to this point, the line contains a syntax
+			// error.  Raise the appropriate exception and return
+			// to the main processing loop.
+			
+			raise( SyntaxErrorException );
+			
+		pat.endmatch;
+		leave();
+		ret( _parms_ );
+	
+	end ParseStmt;
+	
+	
+begin ParseLine;
+
+	pushad();
+	mov( 0, index );
+	mov( str.init( IDbuffer, 280 ), identifier );
+
+	
+	// Strip the leading spaces from the text.
+	
+	str.trim( LineStr );
+	
+	
+	
+	// Okay, now parse the line to ensure that it is
+	// syntactically correct.  Also, tokenize the line
+	// to speed up interpretation and (usually) reduce
+	// the size of the line.  Of course, first we have
+	// to make sure that there was a line (i.e., ensure
+	// that LineStr is not empty).
+	
+	mov( str.length( LineStr ), ebx );
+	push( ebx ); 						// Save for later.
+	if( ebx <> 0 ) then
+		
+		mov( LineStr, esi );
+		mov( (type str.strRec [esi]).length, edi );
+		add( esi, edi );
+		
+		while( esi <> edi ) do
+		
+			ParseStmt( esi, edi );
+
+		endwhile;
+		
+		// Mark the end of the statement with a StmtEndTkn.
+		// However, do this only if we have some actual program text
+		// (i.e., don't emit an emit statement that was the result
+		// of processing a REM on a line by itself).
+		
+		if( index <> 0 ) then
+		
+			PutEndStmt();
+			
+		endif;
+		
+		
+	endif;
+	pop( ebx );	// Restore line length.
+	
+	
+	// Add this line to the program.  If the LineStr
+	// is empty, then do nothing.
+	//
+	// Next, check LineStr to see if it was empty (EBX contains
+	// the original string length):
+
+	if( ebx <> 0 && index <> 0 ) then
+
+		// Now load EBX with the length of the tokenized
+		// buffer (LineBuffer):
+		
+		mov( index, ebx );
+		
+		// Our total line length must be less than 256 bytes.
+		// Check that here.
+		
+		lea( ecx, [ebx+@size(StmtRec)] );
+		if( ecx >= 256 ) then
+		
+			raise( StmtTooLongException );
+			
+		endif;
+		
+		// Just append the text to the end of the pgm.
+
+		mov( TxtEnd, edx );
+		lea( eax, [edx+ebx+@size( StmtRec )] );	// Line length + overhead bytes.
+		mov( eax, TxtEnd );						// New end of pgm ptr.
+		
+		// Save away the line size, the line number,
+		// the line's text, and a zero terminating byte:
+
+		mov( bl, (type StmtRec [edx]).size );
+		mov( lineNumber, ax );
+		mov( ax, (type StmtRec [edx]).lineNum );
+		add( @size( StmtRec ), (type StmtRec [edx]).size ); // Adjust for overhead			
+		
+		// Copy the text into the program space:
+		
+		lea( edi, [edx+@size(StmtRec)] );
+		lea( esi, LineBuffer );
+		mov( ebx, ecx );
+		rep.movsb();
+		
+		// Append the zero terminating byte:
+		
+		mov( 0, al );
+		stosb();
+		
+	endif;
+	popad();
+
+end ParseLine;
+
+/*****************************************************************/
+/*                                                               */
+/* Compile-                                                      */
+/*                                                               */
+/* This procedure makes a quick pass over the source file and    */
+/* computes the address of all the statement labels in the file. */
+/* This allows transfer of control instructions to run much more */
+/* quickly since the interpreter won't have to search for each   */
+/* label during interpretation.                                  */
+/*                                                               */
+/* This code also fills in addresses for the statements          */
+/* that have context-free productions associated with            */
+/* them (e.g., FOR..NEXT).                                       */
+/*                                                               */
+/*****************************************************************/
+
+
+procedure Compile;
+	@noframe;
+	
+	procedure CompileCFG( stmtPointer:dword in ebx ); @nodisplay;
+	var
+		VarPtr:		dword;
+		StmtPtr:	dword;
+		
+	begin CompileCFG;
+	
+		// Note: to simplify parsing, we require all
+		// CFG-type statements to start at the beginning
+		// of the line.  This includes the following
+		// statements:
+		//
+		//	for..next
+		//  if..endif
+		//	while..endwhile
+		
+		
+		// Get the first token on this line:
+		
+		mov( (type StmtRec [ebx]).stmt, al );
+		
+		// Caller is responsible for handling the
+		// following reserved words:
+		//
+		//	NEXT
+		//	ELSE
+		//	ELSEIF
+		//	ENDIF
+		//  ENDWHILE
+		
+		if( al = NEXTtkn ) then
+		
+			// Note: NEXT without an ID does not end
+			// the current FOR loop.  So check for an
+			// ID token immediately after the NEXTtkn
+			// before returning.
+			
+			cmp( (type NextStmt [ebx]).idTknIndex, IDtkn1 );
+			je RtnToCaller;
+			cmp( (type NextStmt [ebx]).idTknIndex, IDtkn2 );
+			je RtnToCaller;
+				
+		else
+		
+			cmp( al, ELSEtkn );
+			je RtnToCaller;
+			cmp( al, ELSEIFtkn );
+			je RtnToCaller;
+			cmp( al, ENDIFtkn );
+			je RtnToCaller;
+			
+		endif;
+		
+		// Look for reserved words that begin a context-free
+		// production.  These include FOR, IF:
+		//
+		//
+		//
+		//
+		//	FOR stmt
+		//
+		//	<ForTkn> <NextIndex> <idIndex>
+		//   1 byte    2 bytes    2 bytes
+		
+		if( al = FORtkn ) then
+		
+			// Save an index to this statement, save a pointer
+			// the the variable's hash table entry, and then process 
+			// the statements between the FOR and NEXT clauses:
+			
+			mov( ebx, StmtPtr );
+			movzx( (type ForStmt [ebx]).idIndex, eax );
+			mov( eax, VarPtr );
+			
+			// Move on to the next statement (NEXT <id> clause must
+			// always appear at the beginning of a line).
+			
+			movzx( (type StmtRec [ebx]).size, eax );
+			add( eax, ebx );
+			
+			
+			// Process the statements between the FOR and NEXT clauses:
+			
+			forever
+			
+				
+				// Bail with an error if we hit the end of the source
+				// file without finding the corresponding NEXT clause:
+				
+				if( ebx >= TxtEnd ) then
+				
+					sym.getSymbol( VarPtr );
+					stdout.put
+					(
+						nl
+						"FOR w/o corresponding NEXT statement"
+						nl
+						"(control variable is '",
+						(type string eax),
+						"')"
+					);
+					AtLineNumber( StmtPtr );
+					raise( BasicError );
+				
+				endif;
+				
+				// Check for a NEXT <id>.  Exit the loop if we find one.
+				
+				if( (type StmtRec [ebx]).stmt = NEXTtkn ) then
+				
+					breakif( (type NextStmt [ebx]).idTknIndex = IDtkn1 );
+					breakif( (type NextStmt [ebx]).idTknIndex = IDtkn2 );
+					
+				endif;
+				
+				// If not NEXT <id>, recursively call CompileCFG to handle
+				// nested FOR..NEXT loops:
+				
+				CompileCFG( ebx );
+				
+			endfor;
+			
+			// We arrive at this point when we find the NEXT that matches
+			// the FOR we saw earlier.  Verify that the IDs in the FOR and 
+			// NEXT statements are the same:
+			
+			movzx( (type NextStmt [ebx]).forIndex, eax );
+			mov( VarPtr, edx );
+			if( eax <> edx ) then
+			
+				sym.getSymbol( eax );
+				push( eax );
+				sym.getSymbol( edx );
+				mov( eax, edx );
+				pop( eax ); 
+				stdout.put
+				(
+					"NEXT identifier ('",
+					(type string eax),
+					"') is not the same as the"
+					nl
+					"corresponding FOR identifier ('",
+					(type string edx),
+					"')"
+				);
+				AtLineNumber( ebx );
+				raise( BasicError );
+				
+			endif;
+			
+			// Okay, patch the target address field of the
+			// FOR statement so that it points at the NEXT clause.
+			
+			mov( StmtPtr, edx );
+			mov( ebx, eax );
+			sub( TxtStart, eax );
+			assert( eax < $10000 );
+			mov( ax, (type ForStmt [edx]).nextIndex );
+		
+		
+		
+		
+		// Handle IF:
+			 			
+		elseif( al = IFtkn ) then
+		
+			// Save a pointer to this statement and then process 
+			// the statements between the IF and ELSEIF, ELSE, or ENDIF clauses:
+			
+			mov( ebx, StmtPtr );
+			
+			// Move on to the next statement (ELSEIF/ELSE/ENDIF clause must
+			// always appear at the beginning of a line).
+			
+			xor( eax, eax );
+			mov( (type StmtRec [ebx]).size, al );
+			add( eax, ebx );
+			
+			
+			// Process the statements between the IF and ENDIF clauses:
+			
+			forever
+			
+				
+				// Bail with an error if we hit the end of the source
+				// file without finding the corresponding ENDIF clause:
+				
+				if( ebx >= TxtEnd ) then
+				
+					mov( VarPtr, eax );
+					stdout.put
+					(
+						nl
+						"IF w/o corresponding ENDIF statement"
+						nl
+					);
+					AtLineNumber( StmtPtr );
+					raise( BasicError );
+				
+				endif;
+				
+				// If we come across an ELSEIF, patch the IF statement's
+				// target field so that it points at the ELSEIF and then
+				// set the ELSEIF as the current statement.
+				//
+				// Minor bug: if there is no corresponding ENDIF in the
+				// file, this code will report the error on the ELSEIF
+				// clause rather than the IF statement, but this isn't
+				// completely non-intuitive.
+				
+				mov( (type StmtRec [ebx]).stmt, al );
+				if( al = ELSEIFtkn ) then
+				
+					mov( StmtPtr, edx );	// Patch IF.
+					mov( (type IfElseIfElse [edx]).stmtTkn, al ); 
+					if( al = IFtkn || al = ELSEtkn ) then
+					
+						mov( ebx, eax );
+						sub( TxtStart, eax );
+						mov( ax, (type IfStmt [edx]).endIndex );
+						
+					else // Must be ELSEIF tkn
+					
+						mov( ebx, eax );
+						sub( TxtStart, eax );
+						mov( ax, (type ElseIfStmt [edx]).endIndex );
+						
+					endif;
+					assert( eax < $10000 );
+					mov( ebx, StmtPtr );	// Make ELSEIF the new statement.
+					
+					// Skip the statement with the ELSEIF clause:
+					
+					movzx( (type StmtRec [ebx]).size, eax );
+					add( eax, ebx );
+				
+				endif;
+				
+				// If we come across an ELSE, patch the IF statement's
+				// target field so that it points at the ELSE and then
+				// set the ELSE as the current statement.
+				//
+				// Minor bug: if there is no corresponding ENDIF in the
+				// file, this code will report the error on the ELSE
+				// clause rather than the IF statement, but this isn't
+				// completely non-intuitive.
+				
+				mov( (type StmtRec [ebx]).stmt, al );
+				if( al = ELSEtkn ) then
+				
+					mov( StmtPtr, edx );	// Patch IF.
+					mov( (type IfElseIfElse [edx]).stmtTkn, al ); 
+					if( al = IFtkn || al = ELSEtkn ) then
+					
+						mov( ebx, eax );
+						sub( TxtStart, eax );
+						mov( ax, (type IfStmt [edx]).endIndex );
+						
+					else // Must be ELSEIF tkn
+					
+						mov( ebx, eax );
+						sub( TxtStart, eax );
+						mov( ax, (type ElseIfStmt [edx]).endIndex );
+						
+					endif;
+					assert( eax < $10000 );
+					mov( ebx, StmtPtr );	// Make ELSEIF the new statement.
+					
+					// Skip the statement with the ELSE clause:
+					
+					xor( eax, eax );
+					mov( (type StmtRec [ebx]).size, al );
+					add( eax, ebx );
+				
+				endif;
+				
+				// Check for an ENDIF.
+				
+				breakif( al = ENDIFtkn || al = ELSEIFtkn );
+				
+				// If not ENDIF, recursively call CompileCFG to handle
+				// nested statements:
+				
+				CompileCFG( ebx );
+				
+			endfor;
+			
+			// We arrive at this point when we find the ENDIF that matches
+			// the IF we saw earlier. Now we must patch the target address 
+			// field of the IF, ELSEIF, or ELSE we processed earlier so that it
+			// points at the ENDIF clause
+			
+			mov( StmtPtr, edx );
+			mov( ebx, eax );
+			sub( TxtStart, eax );
+			assert( eax < $10000 );
+			if( (type StmtRec [edx]).stmt = ELSEIFtkn ) then
+			
+				mov( ax, (type ElseIfStmt [edx]).endIndex );
+
+			else
+			
+				mov( ax, (type IfStmt [edx]).endIndex );
+				
+			endif;
+			 			
+		
+		
+		
+		
+		// Handle WHILE:
+			 			
+		elseif( al = WHILEtkn ) then
+		
+			// Save a pointer to this statement and then process 
+			// the statements between the WHILE and ENDWHILE clauses:
+			
+			mov( ebx, StmtPtr );
+			
+			// Move on to the next statement (ENDWHILE clause must
+			// always appear at the beginning of a line).
+			
+			xor( eax, eax );
+			mov( (type StmtRec [ebx]).size, al );
+			add( eax, ebx );
+			
+			
+			// Process the statements between the WHILE and ENDWHILE clauses:
+			
+			forever
+			
+				
+				// Bail with an error if we hit the end of the source
+				// file without finding the corresponding ENDWHILE clause:
+				
+				if( ebx >= TxtEnd ) then
+				
+					mov( VarPtr, eax );
+					stdout.put
+					(
+						nl
+						"WHILE w/o corresponding ENDWHILE statement"
+						nl
+					);
+					AtLineNumber( StmtPtr );
+					raise( BasicError );
+				
+				endif;
+								
+				// Check for an ENDWHILE.
+				
+				breakif( (type StmtRec [ebx]).stmt = ENDWHILEtkn );
+				
+				// If not ENDWHILE, recursively call CompileCFG to handle
+				// nested statements:
+				
+				CompileCFG( ebx );
+				
+			endfor;
+			
+			// We arrive at this point when we find the ENDWHILE that matches
+			// the WHILE we saw earlier. Now we must patch the target address 
+			// field of the WHILE we processed earlier so that it
+			// points at the ENDWHILE clause
+			
+			mov( StmtPtr, edx );
+			mov( ebx, eax );
+			sub( TxtStart, eax );
+			assert( eax < $10000 );
+			mov( ax, (type WhileStmt [edx]).endIndex );
+			 			
+		endif;
+		
+		// Move on to the next statement:
+		
+		xor( eax, eax );
+		mov( (type StmtRec [ebx]).size, al );
+		add( eax, ebx );
+		
+	RtnToCaller:
+	
+		mov( (type StmtRec [ebx]).stmt, al );
+		
+	end CompileCFG;
+	
+	
+	
+	
+	
+begin Compile;
+
+	// Phase one- zero out the label indexes.
+	
+	sym.zeroOutLabels();
+	 
+	// Okay, do phase two (compute the address of all the labels).
+	
+	mov( TxtStart, ebx );
+	while( ebx < TxtEnd ) do
+
+		// Grab the first token and see if it's a label token
+
+		if( (type StmtRec [ebx]).stmt = Labeltkn1 ) then
+		
+			// Okay, we've got a single-byte label.  The next byte
+			// provide an index into the labels table.  
+			// Grab that and update the entry
+			// with the index of this statement.
+
+			movzx( (type LabelStmt1 [ebx]).idIndex, edi );
+			
+			// Compute the index of this label and store the index away
+			// into the symbol table:
+			
+			mov( ebx, eax );
+			sub( TxtStart, eax );
+			assert( eax < $10000 );
+			sym.setLabel( edi, ax );
+			if( ax <> 0 ) then
+			
+				sym.getSymbol( edi );
+				stderr.put
+				( 
+					"Multiple definition of symbol: ", 
+					(type string eax), 
+					nl 
+				); 
+			
+			endif;
+			
+		elseif( (type StmtRec [ebx]).stmt = Labeltkn2 ) then
+		
+			// Okay, we've got a label.  The next two bytes
+			// provide an index into the labels table.  
+			// Grab that and update the entry
+			// with the index of this statement.
+
+			movzx( (type LabelStmt2 [ebx]).idIndex, edi );
+			
+			// Compute the index of this label and store the index away
+			// into the symbol table:
+			
+			mov( ebx, eax );
+			sub( TxtStart, eax );
+			assert( eax < $10000 );
+			sym.setLabel( edi, ax );
+			if( ax <> 0 ) then
+			
+				sym.getSymbol( edi );
+				stderr.put
+				( 
+					"Multiple definition of symbol: ", 
+					(type string eax), 
+					nl 
+				); 
+			
+			endif;
+			
+		endif;
+		
+		// Move on to the next statement in the file:
+		
+		movzx( (type StmtRec [ebx]).size, eax );
+		add( eax, ebx );
+		
+		
+	endwhile;
+	
+	
+	// Fourth phase - process the statements that have context-free
+	// productions associated with them (fill in the addresses that
+	// point at their "end" statements).
+	
+	mov( TxtStart, ebx );
+	while( ebx <> TxtEnd ) do
+	
+		CompileCFG( ebx );
+		if( al = NEXTtkn ) then
+		
+			if
+			( 
+					(type NextStmt [ebx]).idTknIndex = IDtkn1 
+				||	(type NextStmt [ebx]).idTknIndex = IDtkn2 
+				
+			) then
+			
+				stdout.put( "NEXT w/o corresponding FOR" );
+				AtLineNumber( ebx );
+				raise( BasicError );
+				
+			endif;
+			
+		endif;
+		if( al = ELSEtkn ) then
+		
+			stdout.put( "ELSE w/o corresponding IF" );
+			AtLineNumber( ebx );
+			raise( BasicError );
+			
+		endif;
+		if( al = ENDIFtkn ) then
+		
+			stdout.put( "ENDIF w/o corresponding IF" );
+			AtLineNumber( ebx );
+			raise( BasicError );
+			
+		endif;
+		if( al = ENDWHILEtkn ) then
+		
+			stdout.put( "ENDWHILE w/o corresponding WHILE" );
+			AtLineNumber( ebx );
+			raise( BasicError );
+			
+		endif;
+		
+	endwhile;
+	ret();
+	
+end Compile;
+
+
+/*******************************************************/
+/*                                                     */
+/* DumpProc-                                           */
+/*                                                     */
+/* This procedure displays all the source lines between*/
+/* line number "start" and line number "stop" in a     */
+/* hexadecimal format.                                 */
+/*                                                     */
+/* This procedure is mainly used for debugging the     */
+/* BASIC interpreter.                                  */
+/*                                                     */
+/*******************************************************/
+
+procedure DumpProc; 
+
+	procedure PutValue
+	( 
+		id:string; 
+		theValue:dword; 
+		index:int32;
+		offset:int32 
+	); 	@nodisplay;
+	begin PutValue;
+	
+		push( eax );
+		push( ebx );
+		if( offset <> 0 ) then
+		
+			stdout.putcSize( ' ', offset, ' ' );
+			
+		endif;
+		stdout.put( id );
+		if( index >= 0 ) then
+		
+			stdout.put( "[", index, "]" );
+			
+		endif;
+		stdout.put( " = " );
+		mov( theValue, ebx );
+		if( ebx = NULL ) then
+		
+			mov( Undefined_c, eax );
+			
+		else
+		
+			movzx( (type Variant [ebx]).DataType, eax );
+			
+		endif;
+		switch( eax )
+		
+			case( Undefined_c )
+			
+				stdout.put( "Undefined identifier" nl );
+				
+				
+			case( Label_c )
+			
+				stdout.put
+				( 
+					"Statement label, address= $",
+					(type Variant [ebx]).l,
+					nl
+				);
+				
+				
+//			case( LabelVar_c )
+//			
+//				stdout.put
+//				( 
+//					"Label Variable, address= $",
+//					(type Variant [ebx]).l,
+//					nl
+//				);
+				
+				
+			case( Array_c )
+			
+				stdout.put( "Array" nl );
+				push( ecx );
+				push( ebx );
+				xor( ecx, ecx );
+				push( (type Variant [ebx]).a.elements ); 	//[esp] = #elements
+				mov( (type Variant [ebx]).a.array, ebx );
+				mov( offset, eax );
+				add( 4, eax );
+				while( ecx < [esp] ) do
+				
+					PutValue( id, ebx, ecx, eax );
+					add( @size( Variant ), ebx );
+					inc( ecx );
+					
+				endwhile;
+				pop( eax );  // Remove "elements" from stack.
+				pop( ebx );
+				pop( ecx ); 
+				
+			case( Integer_c )
+			
+				stdout.put( (type Variant [ebx]).i, nl );
+				
+			case( Real_c )
+			
+				stdout.put( (type Variant [ebx]).r, nl );
+				
+			case( String_c )
+			
+				stdout.put( """", (type Variant [ebx]).s, """" nl );
+				
+			default
+			
+				stdout.put( "Error! Unknown data type!" nl );
+		
+		endswitch;
+		pop( ebx );
+		pop( eax );
+		
+	end PutValue;
+
+begin DumpProc;
+
+	pushad();
+
+	stdout.put( "TxtStart:   ", TxtStart, nl );
+	stdout.put( "TxtEnd:     ", TxtEnd, nl nl );
+	
+	
+
+	// From the beginning to the end of the listing, 
+	// print the lines in the program in hexadecimal format:
+	
+	mov( TxtStart, edx );	
+	while( edx < TxtEnd ) do
+	
+		// Print the size and leading values:
+		
+		movzx( (type StmtRec [edx]).size, ecx );
+		movzx( (type StmtRec [edx]).lineNum, ebx );
+		stdout.put
+		(
+			edx,
+			":", 
+			(type uns8 cl):3,
+			",",
+			(type uns32 ebx):3,
+			": "
+		);
+		sub( @size( StmtRec ), cl );
+		lea( ebx, [edx+@size( StmtRec )] );
+		while( ecx <> 0 ) do 
+		
+			stdout.put( ' ', (type byte [ebx]));
+			inc( ebx );
+			dec( ecx );
+			
+		endwhile;
+		stdout.newln();
+				
+		// Adjust EDX so it points at the next line in the program:
+		
+		movzx( (type StmtRec [edx]).size, eax );
+		add( eax, edx );
+
+	endwhile;
+	
+	stdout.put ( nl "Last Byte:  ", edx, nl nl );
+
+	// Dump the symbol table:
+	
+	sym.dumpSyms( hStdOut );
+	
+	popad();
+
+end DumpProc;
+
+
+
+
+// usage-
+
+procedure usage;
+begin usage;
+
+	stdout.put( "usage: bc <<filename.bas>>" nl );
+	
+end usage;
+
+
+
+
+
+
+/*********************************/
+/*                               */
+/* The main program begins here. */
+/*                               */
+/*********************************/
+
+static
+	align( 4 );
+	Sstack				:dword;				//Here is saved the stack pointer
+	
+var
+	TxtSize				:dword;
+	fileHandle			:dword;
+	outHandle			:dword;
+	filename			:string;
+	baseName			:string;
+	extName				:string;
+	sourceName			:string;
+	outFile				:string;
+	inputLine			:string;
+
+	Input				:string;			// Used to read strings from user.
+	LineStr				:string;			// Holds line after line number.
+	CurLineNum			:uns16;
+	LastLineNum			:uns16;
+	
+	inputLineBuf		:char[1080];
+	inputBuf			:char[300];
+	LineStrBuf			:char[1024];
+	outFileBuf			:char[1024];
+	baseNameBuf			:char[1024];
+	extNameBuf			:char[1024];
+	sourceNameBuf		:char[1024];
+	
+begin hlaBASIC;
+
+	stdout.handle();
+	mov( eax, hStdOut );
+	
+	sym.create();
+
+	// Get strings for input purposes:
+		
+	str.init( inputLineBuf, 300 );
+	mov( eax, inputLine );
+	
+	str.init( inputBuf, 300 );
+	mov( eax, Input );
+	
+	str.init( LineStrBuf, 1024 );
+	mov( eax, LineStr );
+	
+	str.init( outFileBuf, 1024 );
+	mov( eax, outFile );
+	
+	str.init( baseNameBuf, 1024 );
+	mov( eax, baseName );
+	
+	str.init( extNameBuf, 1024 );
+	mov( eax, extName );
+	
+	str.init( sourceNameBuf, 1024 );
+	mov( eax, sourceName );
+	
+	// Get the source filename from the command line
+	
+	arg.c();
+	if( eax <> 2 ) then
+	
+		usage();
+		os.exitProcess( 1 );
+		
+	endif;
+	arg.a_v( 1 );
+	mov( eax, filename );
+	filesys.deleteExt( filename, baseName );
+	str.cat3( baseName, "." HLABasicByteCodeExt_c, outFile );
+	if( filesys.hasExtension( filename ) ) then
+	
+		filesys.extractExt( filename, extName );
+		
+	endif;
+	if( str.ne( extName, HLABasicSourceCodeExt_c )) then
+	
+		str.cat3( filename, "." HLABasicSourceCodeExt_c, sourceName );
+		
+	else
+	
+		str.cat3( baseName, "." HLABasicSourceCodeExt_c, sourceName );
+
+	endif;
+		
+	
+	// Clear out the program space:
+	
+	cld();						// Always assume D=0.
+	mov( &PgmSpace, edi );
+	mov( edi, TxtStart );		// Start of BASIC program area.
+	mov( edi, TxtEnd   );		// End of BASIC program area.	
+	
+	// Display welcome message );
+	
+//	stdout.put( nl, BasicTitle );
+//	stdout.put( "Compiling '", sourceName, "' to '", outFile, "'" nl nl ); 
+	
+	
+	// Read the source file:
+	
+	try
+	
+		fileio.open( sourceName, fileio.r );
+		mov( eax, fileHandle );
+		
+	  anyexception
+	  
+	  	stderr.put( "Could not open file '", sourceName, "'" nl );
+		os.exitProcess( 1 );
+		
+	endtry;
+	
+	try
+	
+		mov( 0, lineNumber );
+		while( !fileio.eof( fileHandle )) do
+		
+			inc( lineNumber );
+			fileio.gets( fileHandle, LineStr );
+			
+			// If the string ends with a carriage return (carried over
+			// from Windows source code into Linux), then delete the
+			// carriage return.
+			
+			mov( LineStr, eax );
+			mov( (type str.strRec [eax]).length, ecx );
+			if( (type byte [eax+ecx-1]) = $0d ) then
+			
+				dec( ecx );
+				mov( ecx, (type str.strRec [eax]).length );
+				mov( 0, (type byte [eax+ecx]));
+				
+			endif;
+			//stdout.put( lineNumber:4, ":  ", LineStr, nl );
+			ParseLine( LineStr );
+			 
+		endwhile;
+		fileio.close( fileHandle );
+		
+		
+		// "Compile" the program and patch up all the statement indexes:
+		
+		Compile();
+		
+		
+		// Write the output file to disk:
+		
+		try
+		
+			fileio.openNew( outFile );
+			mov( eax, outHandle );
+			
+			// Compute and write the size of the token buffer:
+			
+			mov( TxtEnd, eax );
+			sub( TxtStart, eax );
+			mov( eax, TxtSize );
+			fileio.write( outHandle, TxtSize, 2 );
+			
+			// Write the text buffer:
+			
+			fileio.write( outHandle, val TxtStart, TxtSize );
+			
+			// Write the symbol table:
+			
+			sym.dumpSyms( outHandle );
+			
+			fileio.close( outHandle );
+			
+		  anyexception
+		  
+		  	stdout.put( "Error writing file ", outFile, nl );
+			
+		endtry;
+			
+		
+		// Dump the program (debugging only).
+		
+		#if( DEBUG )
+		
+			stdout.put( nl nl "**********************************" nl );
+			stdout.put( "Dump of program" nl nl );
+			DumpProc();
+			
+		#endif
+		
+		// If we get to this point, we have a successful compilation.
+		
+		os.exitProcess( 0 );
+	  
+		
+	  exception( BasicError );
+	  
+	  	// Don't really need to do anything here other than to
+		// clean up junk on the stack (below) and begin processing
+		// user commands.
+		
+	  	stdout.put
+		( 
+			nl, lineNumber:4, ":  ", LineStr, nl
+		);
+		
+		
+	  exception( StmtTooLongException )
+	  
+	  	stdout.put
+		( 
+			"Input line too long to process" nl,
+			lineNumber:4, ":  ", LineStr, nl
+		);
+		
+	  exception( SyntaxErrorException )
+	  
+	  	stdout.put
+		( 
+			"Syntax error in statement" nl,
+			lineNumber:4, ":  ", LineStr, nl
+		);
+		
+	  exception( LabelSyntaxException )
+	  
+	  	stdout.put
+		( 
+			"Illegal statement label (too long or bad chars)" nl,
+			lineNumber:4, ":  ", LineStr, nl
+		);
+		
+	  exception( ExprSyntaxException )
+	  
+	  	stdout.put
+		(
+			"Expression syntax error:" nl, 
+			lineNumber:4, ":  ", LineStr, nl
+		);
+		
+	  anyexception
+	  
+		ex.printExceptionError( eax, ebx, ecx, edx, edi );
+	  	stderr.put( "Error reading file '", sourceName, "'" nl );
+		
+	endtry;
+	
+	// If we get to this point, there was a compiler error. So return an
+	// error status in the process return code:
+	
+	os.exitProcess( 1 );
+		
+end hlaBASIC; 
+ 
+ 

@@ -1,0 +1,1641 @@
+// bd.hla
+//
+// A detokenizer/dump utility for HLA BASIC programs.
+
+
+
+
+
+program hlaBASIC;
+#includeonce( "stdlib.hhf" )
+#includeonce( "basic.hhf" )
+
+
+const
+	DEBUG := true;
+	
+	title := "HLA BASIC (disassembler) v2.0";
+
+		
+storage
+	symbols	:string[ 65536 ];
+
+	
+
+	
+
+/*********************************************************************/
+/*                                                                   */
+/* Detokenize-                                                       */
+/*                                                                   */
+/* Converts a tokenize statement to a string for output.             */
+/*                                                                   */
+/* linePtr- address of a BASIC statement (starting with size field). */
+/* destStr- location to store detokenized result.                    */
+/*                                                                   */
+/*********************************************************************/
+
+procedure Detokenize( linePtr:dword; destStr:string ); @nodisplay;
+
+static
+	fpBuf		:str.strvar( 64 );
+	intBuf		:str.strvar( 64 );
+	
+readonly
+	RWStrs		:string[ @elements( RWStrs_c ) 		] := RWStrs_c;
+	RWSpaces	:byte  [ @elements( RWSpaces_c ) 	] := RWSpaces_c;
+	RWTypes		:tokenClass_t[ @elements(RWTypes_c) ] := RWTypes_c;
+	PVStrs		:string[ @elements( PVStrs_c ) 		] := PVStrs_c;
+	FUNCStrs	:string[ @elements( FUNCStrs_c )	] := FUNCStrs_c;
+
+
+	// spaceBefore-
+	//
+	// Checks bit #0 RWSpaces array entry specified by EAX to
+	// determine if this token needs a leading space.
+	 
+	procedure spaceBefore( token:dword in eax ); @noframe;
+	begin spaceBefore;
+	
+		test( 1, RWSpaces[eax] );
+		if( @nz ) then
+		
+			str.catc( ebp::destStr, ' ' );
+			
+		endif;
+		ret();
+		
+	end spaceBefore;
+
+
+	// spaceAfter-
+	//
+	// Checks bit #1 of the RWSpaces array entry specified by EAX to
+	// determine if this token needs a trailing space.
+	 
+	procedure spaceAfter( token:dword in eax ); @noframe;
+	begin spaceAfter;
+	
+		test( 2, RWSpaces[eax] );
+		if( @nz ) then
+		
+			str.catc( ebp::destStr, ' ' );
+			
+		endif;
+		ret();
+		
+	end spaceAfter;
+	
+	
+	// putLabel1-
+	//
+	//	ESI points at a label index. Fetch that byte and concatentate
+	// the corresponding symbol from the symbol table to the destStr.
+	
+	procedure putLabel1; @noframe;
+	begin putLabel1;
+	
+		push( eax );
+		movzx( (type byte [esi]), eax );
+		str.cat2( symbols[ eax*4], ebp::destStr );
+		add( 1, esi );
+		pop( eax );
+		ret();
+		
+	end putLabel1;
+	
+	// putLabel2-
+	//
+	//	ESI points at a label index. Fetch that word and concatentate
+	// the corresponding symbol from the symbol table to the destStr.
+	
+	procedure putLabel2; @noframe;
+	begin putLabel2;
+	
+		push( eax );
+		movzx( (type word [esi]), eax );
+		str.cat2( symbols[ eax*4], ebp::destStr );
+		add( 2, esi );
+		pop( eax );
+		ret();
+		
+	end putLabel2;
+	
+	
+	
+	// detokExpr-
+	//
+	//	Detokenizes an arithmetic expression.
+	//	Note that expressions are stored in RPN format, must convert
+	//	to infix notation.
+	//
+	// On entry:
+	//	ESI-	Points at expression to detokenize
+	//
+	// Returns:
+	//
+	//	EAX-	Pointer to a string allocated on the heap
+	
+	procedure detokExpr( tokenStream:dword in esi );		
+		
+		
+		
+		// detokTerm-
+		//
+		//	Detokenizes a term in an expression (constant, variable
+		//	or subexpression).
+		//
+		// On entry:
+		//	ESI-	Points at function to detokenize
+		//
+		// Returns:
+		//
+		//	EAX-	Pointer to a string allocated on the heap
+	
+		procedure detokTerm( tokenStream:dword in esi );
+		var
+			ebxSave	:dword;
+			ecxSave	:dword;
+			edxSave	:dword;
+			exprStr	:string;
+			exprBuf	:char[300];
+			
+		begin detokTerm;
+		
+			mov( ebx, ebxSave );
+			mov( ecx, ecxSave );
+			mov( edx, edxSave );
+			
+			str.init( exprBuf, 300 );
+			mov( eax, exprStr );
+			movzx( (type byte [esi]), eax );
+			switch( eax )
+			
+					
+				case( LPARENtkn )
+				
+					add( 1, esi );	// Skip '(' token
+					detokExpr( esi );
+					str.put( exprStr, '(', (type string eax) , ')' );
+					str.free( eax );
+					str.a_cpy( exprStr );
+					assert( (type byte [esi]) = RPARENtkn );
+					add( 1, esi );	// Skip past ')' token
+					
+				case( FLT4tkn )
+				
+					conv.e32ToStr( [esi+1], 13, exprStr );
+					add( 5, esi );	// Skip token + binary representation.
+					str.a_cpy( exprStr );
+					
+					
+				case( FLT8tkn )
+				
+					conv.e64ToStr( [esi+1], 20, exprStr );
+					add( 9, esi );	// Skip token + binary representation.
+					str.a_cpy( exprStr );
+				
+					
+				case( INT1tkn )
+				
+					movsx( (type byte [esi+1]), eax );
+					conv.i32ToStr( eax, 0, ' ', exprStr );
+					add( 2, esi );	// Skip token + 1-byte const
+					str.a_cpy( exprStr );
+
+					
+				case( INT2tkn )
+				
+					movsx( (type word [esi+1]), eax );
+					conv.i32ToStr( eax, 0, ' ', exprStr );
+					add( 3, esi );	// Skip token + 2-byte const
+					str.a_cpy( exprStr );
+
+					
+				case( INT4tkn )
+				
+					mov( [esi+1], eax );
+					conv.i32ToStr( eax, 0, ' ', exprStr );
+					add( 5, esi );	// Skip token + 4-byte const
+					str.a_cpy( exprStr );
+
+				case( IDtkn1 )
+				
+					movzx( (type byte [esi+1]), eax );
+					str.a_cpy( symbols[ eax*4] );
+					add( 2, esi );	// Skip token + ID index
+					
+					// Handle "[expr]" after an identifier.
+					
+					mov( eax, ebx );
+					while( (type byte [esi]) = LBRACKtkn ) do
+					
+						add( 1, esi );		// Skip '[' token
+						detokExpr( esi );
+						str.put
+						( 
+							exprStr, 
+							(type string ebx), 
+							"[ ", 
+							(type string eax), 
+							" ]" 
+						);
+						str.free( eax );
+						str.free( ebx );
+						str.a_cpy( exprStr );
+						mov( eax, ebx );
+						add( 1, esi );		// Skip ']' token
+					
+					endwhile;
+					mov( ebx, eax );
+
+				case( IDtkn2 )
+				
+					movzx( (type word [esi+1]), eax );
+					str.a_cpy( symbols[ eax*4] );
+					add( 3, esi );	// Skip token + ID index
+					
+					// Handle "[expr]" after an identifier.
+					
+					mov( eax, ebx );
+					while( (type byte [esi]) = LBRACKtkn ) do
+					
+						add( 1, esi );		// Skip '[' token
+						detokExpr( esi );
+						str.put
+						( 
+							exprStr, 
+							(type string ebx), 
+							"[ ", 
+							(type string eax), 
+							" ]" 
+						);
+						str.free( eax );
+						str.free( ebx );
+						str.a_cpy( exprStr );
+						mov( eax, ebx );
+						add( 1, esi );		// Skip ']' token
+					
+					endwhile;
+					mov( ebx, eax );
+					
+
+				case( STRtkn )
+				
+					movzx( (type byte [esi+1]), ecx );	// Get String length
+					add( 2, esi );						// Skip token+len
+					str.cpy( """", exprStr );
+					while( ecx > 0 ) do
+					
+						mov( [esi], al );
+						str.catc( exprStr, al );
+						if( al = '"' ) then
+						
+							str.catc( exprStr, al );
+							
+						endif;
+						dec( ecx );
+						inc( esi );
+						
+					endwhile;
+					str.catc( exprStr, '"'  );
+					str.a_cpy( exprStr );
+				
+
+				default
+					stderr.put
+					( 
+						"Unexpected expression term token=$", 
+						al,
+						" ('",
+						RWStrs[ eax*4 ],
+						"')", 
+						nl 
+					);
+					raise( BadPgmDataException );			
+				 					
+			endswitch;
+			mov( ebxSave, ebx );
+			mov( ecxSave, ecx );
+			mov( edxSave, edx );
+			
+		end detokTerm;
+		
+		
+		
+		// detokFunc-
+		//
+		//	Detokenizes a built-in function call in an expression.
+		//
+		// On entry:
+		//	ESI-	Points at function to detokenize
+		//
+		// Returns:
+		//
+		//	EAX-	Pointer to a string allocated on the heap
+	
+		procedure detokFunc( tokenStream:dword in esi );
+		var
+			ebxSave	:dword;
+			ecxSave	:dword;
+			edxSave	:dword;
+			exprStr	:string;
+			exprBuf	:char[300];
+			
+		begin detokFunc;
+		
+			mov( ebx, ebxSave );
+			mov( ecx, ecxSave );
+			mov( edx, edxSave );
+			
+			str.init( exprBuf, 300 );
+			mov( eax, exprStr );
+			movzx( (type byte [esi]), eax );
+			switch( eax )
+			
+				// 0-operand functions:
+				
+				case
+				(
+					?has_one_zero_operand_func_ := false;
+					#for( _i_ := 0 to @elements( functions_c )-1 )
+					
+						#if( functions_c[_i_].maxParms = 0 )
+						
+							#if( has_one_zero_operand_func_ )
+								,
+								?has_one_zero_operand_func_ := false;
+								
+							#endif
+							@text( functions_c[_i_].identifier + "_tkn" )
+							?has_one_zero_operand_func_ := true;
+							
+						#endif
+						
+					#endfor
+				)
+				
+					add( 1, esi );	// Skip function token
+					str.a_cpy( FUNCStrs[ eax*4 ] );
+					
+					
+				default	// All functions with one or more parameters:
+				
+					if( al < @elements( functions_c )) then
+					
+						str.cpy( FUNCStrs[ eax*4 ], exprStr );
+						str.cat( "( ", exprStr );
+						add( 3, esi );			// Skip function and "(" tokens.
+						repeat
+						
+							detokExpr( esi );
+							str.cat( eax, exprStr );
+							str.free( eax );
+							mov( [esi], al );
+							if( al = COMMAtkn ) then
+							
+								str.cat( ", ", exprStr );
+								add( 1, esi ); 	// Skip ',' token.
+								
+							endif;
+							
+						until( al <> COMMAtkn );
+						
+						if( (type char [esi]) <> RPARENtkn ) then
+						
+							stderr.put
+							(
+								"Expected a ')' token, found $",
+								al,
+								nl
+							);
+							raise( BadPgmDataException );
+							
+						endif;
+						add( 1, esi ); 			// Skip ")" token. 
+						str.cat( " )", exprStr );
+						str.a_cpy( exprStr );
+					
+					else
+						stderr.put
+						(
+							 
+							"Unexpected function token=$", 
+							al,
+							nl 
+						);
+						raise( BadPgmDataException );
+						
+					endif;			
+				 					
+			endswitch;
+			mov( ebxSave, ebx );
+			mov( ecxSave, ecx );
+			mov( edxSave, edx );
+			
+		end detokFunc;
+		
+		// detokVar-
+		//
+		//	Detokenizes a pseudo-var in an expression (constant, variable
+		//	or subexpression).
+		//
+		// On entry:
+		//	ESI-	Points at pseudo-var to detokenize
+		//  ECX-	Contains PVtkn1, PVtkn2, PVtkn3, PVtkn4, or PVtkn
+		//
+		// Returns:
+		//
+		//	EAX-	Pointer to a string allocated on the heap
+	
+		procedure detokVar( tokenStream:dword in esi; token:dword in ecx );			
+		var
+			ebxSave	:dword;
+			ecxSave	:dword;
+			edxSave	:dword;
+			exprStr	:string;
+			exprBuf	:char[300];
+			
+		begin detokVar;
+		
+			mov( ebx, ebxSave );
+			mov( ecx, ecxSave );
+			mov( edx, edxSave );
+			
+			str.init( exprBuf, 300 );
+			mov( eax, exprStr );
+			movzx( (type byte [esi]), eax ); 
+			switch( ecx )
+			
+				case( PVtkn2 )
+					add( 256, eax );
+					
+				case( PVtkn3 )
+					add( 512, eax );
+					
+				case( PVtkn4 )
+					add( 768, eax );
+					
+				case( PVtkn  )
+					movzx( (type word [esi]), eax );
+					add( 1, esi );	// Skip extra token byte. 
+				
+			endswitch;
+			switch( eax )
+			
+				#for( _i_ := 0 to @elements( pseudoVars )-1)
+				
+					case( _i_ )
+					#if( pseudoVars[_i_].elements <= 1 )
+					
+						str.cpy( PVStrs_c[_i_], exprStr );
+						str.a_cpy( exprStr );
+						add( 1, esi );		// Skip token
+							
+					#else	// pseudo-var array (single dimension):
+					
+						add( 2, esi );	// Skip function and '(' tokens
+						mov( eax, ebx );
+						detokExpr( esi );
+						str.put
+						( 
+							exprStr, 
+							PVStrs_c[_i_], 
+							"( ", 
+							(type string eax), 
+							" )"
+						);
+						str.free( eax ); 
+						str.a_cpy( exprStr );
+						add( 1, esi );	// Skip past ')' token
+			
+					#endif
+					
+				#endfor
+				
+				// If there are any non-standard pseudo-variables,
+				// they should be decompiled here.
+					
+				default
+				
+					stderr.put
+					( 
+						"Unexpected pseudo-var token=$", 
+						al,
+						" ('",
+						RWStrs[ eax*4 ],
+						"')", 
+						nl 
+					);
+					raise( BadPgmDataException );			
+				 					
+			endswitch;
+			mov( ebxSave, ebx );
+			mov( ecxSave, ecx );
+			mov( edxSave, edx );
+			
+		end detokVar;
+		
+		
+		
+	var
+		ebxSave		:dword;
+		ecxSave		:dword;
+		exprStr		:string;
+		termSP		:dword;
+		termStk		:string[256];
+		exprBuf		:byte[300];
+		
+	begin detokExpr;
+	
+		mov( ebx, ebxSave );
+		mov( ecx, ecxSave );
+		str.init( exprBuf, 300 );
+		mov( eax, exprStr );
+		
+		mov( 1, termSP );
+		
+		// Detokenize the left-hand term of this expression:
+		
+		movzx( (type byte [esi]), ecx );
+		movzx( RWTypes[ecx], eax );
+		switch( eax )
+		
+			case( exprTerm_c )
+		
+				// If const, var, subexpression, etc.
+				
+				detokTerm( esi );
+				
+			case( exprVar_c )
+					
+				// If a pseudo-var (not <= exprFunc_c is pseudo-var)
+
+				add( 1, esi );		// Skip to pseudo-var ID token.
+				detokVar( esi, ecx );
+				
+			case( exprFunc_c )
+			
+				// If equal, then it's a built-in function.
+				
+				add( 1, esi );		// Skip to function ID token.
+				detokFunc( esi );
+				
+			default
+			
+				stdout.put( "unexpected item" nl );
+				lea( eax, "****" );
+				
+		endswitch;
+		mov( eax, termStk[0] );
+		forever
+		
+			movzx( (type byte [esi]), ecx );
+			movzx( RWTypes[ecx], eax );
+
+			switch( eax )
+			
+				case( exprTerm_c )
+				
+					detokTerm( esi );
+					mov( termSP, ebx );
+					mov( eax, termStk[ebx*4] );
+					add( 1, termSP );
+				
+				case( exprFunc_c )
+				
+					detokFunc( esi );
+					mov( termSP, ebx );
+					mov( eax, termStk[ebx*4] );
+					add( 1, termSP );
+				
+				case( exprVar_c )
+				
+					add( 1, esi );
+					detokVar( esi, ecx );
+					mov( termSP, ebx );
+					mov( eax, termStk[ebx*4] );
+					add( 1, termSP );
+				
+				case( exprOperator_c )
+				
+					mov( termSP, ebx );
+					assert( ebx > 1 );
+					str.put
+					( 
+						exprStr, 
+						termStk[ebx*4-8],
+						' ',
+						RWStrs[ecx*4],
+						' ',
+						termStk[ebx*4-4]
+					);
+					str.free( termStk[ebx*4-4] );
+					str.free( termStk[ebx*4-8] );
+					str.a_cpy( exprStr );
+					mov( eax, termStk[ebx*4-8] );
+					sub( 1, termSP );
+					add( 1, esi );		// Skip operator token.
+					 
+				
+				case( exprUnaryOp_c )
+				
+					mov( termSP, ebx );
+					if( (type byte [esi]) = NEGtkn ) then
+					
+						str.put( exprStr, '-', termStk[ebx*4-4] );
+						
+					else // must be NOT
+					
+						str.put( exprStr, "not ", termStk[ebx*4-4] );
+						
+					endif;
+					str.free( termStk[ebx*4-4] );
+					str.a_cpy( exprStr );
+					mov( eax, termStk[ebx*4-4] );
+					add( 1, esi );		// Skip operator token.
+				
+				default
+					break;	// out of FOR!
+				
+			endswitch;
+			
+		endfor;
+		assert( termSP = 1 );
+		mov( ebxSave, ebx );
+		mov( ecxSave, ecx );
+		mov( termStk[0], eax );
+			
+	end detokExpr;
+	
+	
+	procedure detokID; @noframe;
+	begin detokID;
+	
+		if( (type byte [esi]) = IDtkn1 ) then
+		
+			str.catc( ebp::destStr, ' ' );
+			movzx( (type byte [esi+1]), eax );
+			str.cat2( symbols[ eax*4], ebp::destStr );
+			add( 2, esi );
+			
+		elseif( (type byte [esi]) = IDtkn2 ) then
+		
+			str.catc( ebp::destStr, ' ' );
+			movzx( (type word [esi+1]), eax );
+			str.cat2( symbols[ eax*4], ebp::destStr );
+			add( 3, esi );
+			
+		endif;
+		ret();
+	
+	end detokID;
+	
+		
+
+	// DetokenizeItem-
+	//
+	//	Translates a single token into string form.
+	// Assumes ESI points at token in memory. Adjusts ESI
+	// to point beyond the token.
+	
+	procedure DetokenizeItem( tokenStream:dword in esi; token:dword ); @noframe;
+	begin DetokenizeItem;
+
+		mov( [esp+@offset(token)-4], eax );	
+		spaceBefore( eax );
+		add( 1, esi );
+		switch( eax )
+		
+			case( StmtEndtkn )
+			
+				// Okay, conversion is done.  Bail on this code.
+				
+				ret(4);
+		
+			case
+			(
+				StmtSeptkn, 
+				ANDtkn,
+				BEEPtkn,
+				CLStkn,
+				COMMAtkn,
+				DEBUGtkn,
+				DIVtkn,
+				DOtkn,
+				ENDIFtkn,
+				ENDWHILEtkn,
+				EQtkn,
+				GEtkn,
+				GTtkn,
+				LBRACKtkn,
+				LEtkn,
+				GOTOXYtkn,
+				LPARENtkn,
+				LTtkn,
+				MINUStkn,
+				NEGtkn,
+				MODtkn,
+				MULtkn,
+				NEtkn,
+				NOTtkn,
+				ORtkn,
+				PLUStkn,
+				RBRACKtkn,
+				RETURNtkn,
+				RPARENtkn,
+				SEMICOLONtkn,
+				STEPtkn,
+				STOPtkn,
+				SUSPENDtkn,
+				THENtkn,
+				TOtkn,
+				REMtkn			// Shouldn't happen! 
+			)
+			
+				str.cat2( RWStrs[ eax*4 ], ebp::destStr );
+			
+			
+			
+			// Decompile the generic site-specific statements here.	
+				
+			#for( _i_ := 0 to numSiteSpecificStmts-1 )
+			
+				case( @text( siteSpecificStmts_c[_i_].identifier + "_tkn" ))
+				
+					str.cat2( siteSpecificStmts_c[_i_].identifier, ebp::destStr );
+					?_idFlag_ := siteSpecificStmts_c[_i_].IDmap;
+					#for( _j_ := 0 to siteSpecificStmts_c[_i_].numArgs-1 )
+					
+						#if( _j_ <> 0 )
+
+							assert( (type byte [esi]) = COMMAtkn );
+							add( 1, esi );	// Skip ',' token
+							str.cat2( ", ", ebp::destStr );
+							
+						#endif
+						#if( (_idFlag_ & 1) <> 0 )
+						
+							detokID();
+							
+						#else
+
+							detokExpr( esi );
+							str.cat2( eax, ebp::destStr );
+							str.free( eax );
+						
+						#endif
+						?_idFlag_ := _idFlag_ >> 1;
+						
+					#endfor
+					
+			#endfor
+					 
+				
+			
+			case( ELSEtkn )
+			
+				str.cat2( "else ", ebp::destStr );
+				add( 2, esi );
+				
+				
+				
+			case( ELSEIFtkn )
+			
+				str.cat2( RWStrs[ eax*4 ], ebp::destStr );
+				add( 3, esi );		// skips elseiftkn2 and false target
+				
+				detokExpr( esi );
+				str.cat2( eax, ebp::destStr );
+				str.free( eax );
+				add( 1, esi );	// skip THEN token
+				str.cat2( " then", ebp::destStr );
+				
+				
+				
+			case( FORtkn )
+			
+				str.cat2( "for ", ebp::destStr );
+				movzx( (type word [esi+2]), eax );
+				str.cat2( symbols[ eax*4], ebp::destStr );
+				str.cat2( " = ", ebp::destStr );
+				add( 4, esi );
+				
+				detokExpr( esi );
+				str.cat2( eax, ebp::destStr );
+				str.free( eax );
+				
+				assert( (type byte [esi]) = TOtkn );
+				add( 1, esi );		// Skip "to" token
+				str.cat2( " to ", ebp::destStr );
+				detokExpr( esi );
+				str.cat2( eax, ebp::destStr );
+				str.free( eax );
+				
+				if( (type byte [esi]) = STEPtkn ) then
+				
+					add( 1, esi );
+					str.cat2( " step ", ebp::destStr );
+					detokExpr( esi );
+					str.cat2( eax, ebp::destStr );
+					str.free( eax );
+					
+				endif;
+				
+
+			case( NEXTtkn )
+			
+				str.cat2( "next ", ebp::destStr );
+				detokID();
+
+
+			case
+			( 
+				GOSUBtkn,
+				GOTOtkn 
+			)
+			
+				str.cat2( RWStrs[ eax*4 ], ebp::destStr );
+				str.catc( ebp::destStr, ' ' );
+				putLabel2();
+				str.catc( ebp::destStr, ' ' );
+				forever
+				
+					mov( [esi], al );
+					breakif( al = StmtEndtkn );
+					breakif( al = StmtSeptkn );
+					if( al = COMMAtkn ) then
+					
+						str.cat2( ", ", ebp::destStr );
+						add( 1, esi );
+						continue;
+						
+					endif;
+					detokExpr( esi );
+					str.cat2( eax, ebp::destStr );
+					str.free( eax );
+					
+				endfor;
+				
+				
+			
+				
+
+			case
+			( 
+				INPUTtkn
+			)
+			
+				str.cat2( RWStrs[ eax*4 ], ebp::destStr );
+				str.catc( ebp::destStr, ' ' );
+				putLabel2();
+				while( (type byte [esi]) = LBRACKtkn ) do
+				
+					add( 1, esi );		// Skip "[" token
+					str.cat2( "[", ebp::destStr );
+					detokExpr( esi );
+					str.cat2( eax, ebp::destStr );
+					str.free( eax );
+					str.cat2( "]", ebp::destStr );
+					add( 1, esi );		// Skip "]" token
+					
+				endwhile;
+					
+				
+			
+				
+
+			case( IFtkn )
+			
+				str.cat2( RWStrs[ eax*4 ], ebp::destStr );
+				add( 2, esi );
+				
+				detokExpr( esi );
+				str.cat2( eax, ebp::destStr );
+				str.free( eax );
+				add( 1, esi );	// skip THEN token
+				str.cat2( " then", ebp::destStr );
+				
+				
+			case( WHILEtkn )
+			
+				str.cat2( RWStrs[ eax*4 ], ebp::destStr );
+				add( 2, esi );
+				
+				detokExpr( esi );
+				str.cat2( eax, ebp::destStr );
+				str.free( eax );
+				add( 1, esi );		// Skip DO token
+				str.cat2( " do", ebp::destStr );
+				
+				
+			case( Labeltkn1 )
+			
+				putLabel1();
+				str.catc( ebp::destStr,	':' );
+
+
+				
+			case( Labeltkn2 )
+			
+				putLabel2();
+				str.catc( ebp::destStr,	':' );
+
+
+				
+			case( LETtkn1, LETtkn2 )
+			
+				str.cat2( "let ", ebp::destStr );
+				if( eax = LETtkn1 ) then
+				
+					putLabel1();
+					
+				else
+				
+					putLabel2();
+					
+				endif;
+				
+				// If there's a "[" token then process array indices:
+
+				while( (type byte [esi]) = LBRACKtkn ) do
+				
+					add( 1, esi );	// Skip '[' token
+					str.cat2( "[ ", ebp::destStr );
+					detokExpr( esi );
+					str.cat2( eax, ebp::destStr );
+					str.cat2( " ]", ebp::destStr );
+					assert( (type byte [esi]) = RBRACKtkn ); 
+					add( 1, esi );
+
+				endwhile;
+				str.cat2( " = ", ebp::destStr );
+				detokExpr( esi );
+				str.cat2( eax, ebp::destStr );
+				str.free( eax );
+
+				
+
+				
+			case( LETtknPV1, LETtknPV2, LETtknPV3, LETtknPV4, LETtknPV )
+			
+				str.cat2( "let ", ebp::destStr );
+				
+				// Emit the pseudo-var name:
+				
+				if( eax = LETtknPV1 ) then
+				
+					movzx( (type byte [esi]), eax );
+					
+				elseif( eax = LETtknPV2 ) then
+				
+					movzx( (type byte [esi]), eax );
+					add( 256, eax );
+					
+				elseif( eax = LETtknPV3 ) then
+				
+					movzx( (type byte [esi]), eax );
+					add( 512, eax );
+					
+				elseif( eax = LETtknPV4 ) then
+				
+					movzx( (type byte [esi]), eax );
+					add( 768, eax );
+					
+				elseif( eax = LETtknPV ) then
+				
+					movzx( (type word [esi]), eax );
+					add( 1, esi );	// Skip two-byte token value.
+					
+				endif;
+				mov( PVStrs[eax*4], eax );
+				str.cat2( eax, ebp::destStr );
+				add( 1, esi );		// Skip pseudo-variable token and value.
+				
+				// If there's a "(" token then process pseudo-var arguments:
+
+				if( (type byte [esi]) = LPARENtkn ) then
+						
+					str.cat2( "( ", ebp::destStr );
+					add( 1, esi );	// Skip '(' token
+					repeat
+				
+						detokExpr( esi );
+						str.cat2( eax, ebp::destStr );
+						
+					until( (type byte [esi]) <> COMMAtkn );
+					str.cat2( " )", ebp::destStr );
+					assert( (type byte [esi]) = RPARENtkn ); 
+					add( 1, esi );	// Skip ')' token
+
+				endif;
+				
+				// At this point, there must be an EQtkn. Skip it.
+				
+				add( 1, esi );		// Skip '=' token.
+				
+				str.cat2( " = ", ebp::destStr );
+				detokExpr( esi );
+				str.cat2( eax, ebp::destStr );
+				str.free( eax );
+	
+				
+
+				
+			case( READLNtkn )
+			
+				str.cat2( "readln ", ebp::destStr );
+				putLabel2();
+				
+				
+			case( PARMStkn )
+			
+				str.cat2( RWStrs[ eax*4 ], ebp::destStr );
+				str.catc( ebp::destStr, ' ' );
+				forever
+				
+					mov( [esi], al );
+					breakif( al = StmtEndtkn );
+					breakif( al = StmtSeptkn );
+					add( 1, esi );
+					if( al = IDtkn1 ) then
+					
+						putLabel1();
+						
+					elseif( al = IDtkn2 ) then
+					
+						putLabel2();
+						
+					elseif( al = COMMAtkn ) then
+					
+						str.cat2( ", ", ebp::destStr );
+						
+					else
+					
+						sub( 1, esi );
+						break;
+						
+					endif;
+					
+				endfor;
+					 
+				
+				
+				
+				
+			case( PRINTtkn )
+			
+				str.cat2( RWStrs[ eax*4 ], ebp::destStr );
+				str.catc( ebp::destStr, ' ' );
+				forever
+				
+					mov( [esi], al );
+					breakif( al = StmtEndtkn );
+					breakif( al = StmtSeptkn );
+					if( al = SEMICOLONtkn ) then
+					
+						str.cat2( "; ", ebp::destStr );
+						add( 1, esi );
+						continue;
+						
+					endif;
+					if( al = COMMAtkn ) then
+					
+						str.cat2( ", ", ebp::destStr );
+						add( 1, esi );
+						continue;
+						
+					endif;
+					detokExpr( esi );
+					str.cat2( eax, ebp::destStr );
+					str.free( eax );
+					
+				endfor;
+					 
+				
+				
+				
+				
+			case( OUTPUTtkn )
+			
+				str.cat2( RWStrs[ eax*4 ], ebp::destStr );
+				str.catc( ebp::destStr, ' ' );
+				forever
+				
+					mov( [esi], al );
+					breakif( al = StmtEndtkn );
+					breakif( al = StmtSeptkn );
+					if( al = SEMICOLONtkn ) then
+					
+						str.cat2( "; ", ebp::destStr );
+						add( 1, esi );
+						continue;
+						
+					endif;
+					if( al = COMMAtkn ) then
+					
+						str.cat2( ", ", ebp::destStr );
+						add( 1, esi );
+						continue;
+						
+					endif;
+					detokExpr( esi );
+					str.cat2( eax, ebp::destStr );
+					str.free( eax );
+					
+				endfor;
+					 
+				
+				
+				
+				
+			case( COLORtkn )
+				
+				str.cat2( RWStrs[ eax*4 ], ebp::destStr );
+				str.catc( ebp::destStr, ' ' );
+				detokExpr( esi );
+				str.cat2( eax, ebp::destStr );
+				str.free( eax );
+				
+				add( 1, esi );		// Skip ',' token
+				str.cat2( ", ", ebp::destStr );
+				
+				detokExpr( esi );
+				str.cat2( eax, ebp::destStr );
+				str.free( eax );
+				
+								
+				
+			case( ONtkn )
+			
+				str.cat2( "on ", ebp::destStr );
+
+				detokExpr( esi );
+				str.cat2( eax, ebp::destStr );
+				str.free( eax );
+				
+				if( (type byte [esi]) = ONGOSUBtkn ) then
+				
+					str.cat2( " gosub ", ebp::destStr );
+					
+				else
+				
+					str.cat2( " goto ", ebp::destStr );
+					
+				endif;
+				add( 1, esi );
+				forever
+				
+					mov( [esi], al );
+					add( 1, esi );
+					if( al = Labeltkn1 ) then
+					
+						putLabel1();
+						
+					elseif( al = Labeltkn2 ) then
+					
+						putLabel2();
+						
+					elseif( al = COMMAtkn ) then
+					
+						str.cat2( ", ", ebp::destStr );
+						
+					else
+					
+						sub( 1, esi );
+						break;
+						
+					endif;
+						 
+				endfor;
+				
+			
+			case
+			( 
+				WAITtkn, 
+				SYSTEMtkn
+			)
+			
+				str.cat2( RWStrs[ eax*4 ], ebp::destStr );
+				str.catc( ebp::destStr, ' ' );
+
+				detokExpr( esi );
+				str.cat2( eax, ebp::destStr );
+				str.free( eax );
+				
+			
+				
+			default
+			
+				stdout.put
+				( 
+					"Unexpected token = 0x", 
+					(type byte [esi-1]),
+					" ('",
+					RWStrs[ eax*4 ],
+					"')" 
+					nl 
+				);
+				raise( BadPgmDataException );
+			
+		endswitch;
+		mov( [esp+@offset(token)-4], eax );
+		spaceAfter( eax );
+		ret( _parms_ );
+	
+	end DetokenizeItem;
+	
+	
+begin Detokenize;
+
+	pushad();
+	
+	mov( linePtr, esi );
+	str.put( destStr, (type StmtRec [esi]).lineNum:5, ": " );
+	
+	add( @size( StmtRec ), esi );			// Skip the overhead bytes.
+	
+	forever
+	
+		movzx( (type byte [esi]), eax );	// Get the next token.
+		breakif( al = StmtEndtkn );
+		DetokenizeItem( esi, eax );
+		
+	endfor;
+	popad();
+
+end Detokenize;
+
+
+
+
+/*******************************************************/
+/*                                                     */
+/* DumpProc-                                           */
+/*                                                     */
+/* This procedure displays all the source lines between*/
+/* line number "start" and line number "stop" in a     */
+/* hexadecimal format.                                 */
+/*                                                     */
+/* This procedure is mainly used for debugging the     */
+/* BASIC interpreter.                                  */
+/*                                                     */
+/*******************************************************/
+
+procedure DumpProc( TxtStart:dword; TxtEnd:dword; symCnt:dword ); 
+
+	procedure PutValue
+	( 
+		id:string; 
+		theValue:dword; 
+		index:int32;
+		offset:int32 
+	); 	@nodisplay;
+	begin PutValue;
+	
+		push( eax );
+		push( ebx );
+		if( offset <> 0 ) then
+		
+			stdout.putcSize( ' ', offset, ' ' );
+			
+		endif;
+		stdout.put( id );
+		if( index >= 0 ) then
+		
+			stdout.put( "[", index, "]" );
+			
+		endif;
+		stdout.put( " = " );
+		mov( theValue, ebx );
+		if( ebx = NULL ) then
+		
+			mov( Undefined_c, eax );
+			
+		else
+		
+			movzx( (type Variant [ebx]).DataType, eax );
+			
+		endif;
+		switch( eax )
+		
+			case( Undefined_c )
+			
+				stdout.put( "Undefined identifier" nl );
+				
+				
+			case( Label_c )
+			
+				stdout.put
+				( 
+					"Statement label, address= $",
+					(type Variant [ebx]).l,
+					nl
+				);
+				
+				
+//			case( LabelVar_c )
+//			
+//				stdout.put
+//				( 
+//					"Label Variable, address= $",
+//					(type Variant [ebx]).l,
+//					nl
+//				);
+				
+				
+			case( Array_c )
+			
+				stdout.put( "Array" nl );
+				push( ecx );
+				push( ebx );
+				xor( ecx, ecx );
+				push( (type Variant [ebx]).a.elements ); 	//[esp] = #elements
+				mov( (type Variant [ebx]).a.array, ebx );
+				mov( offset, eax );
+				add( 4, eax );
+				while( ecx < [esp] ) do
+				
+					PutValue( id, ebx, ecx, eax );
+					add( @size( Variant ), ebx );
+					inc( ecx );
+					
+				endwhile;
+				pop( eax );  // Remove "elements" from stack.
+				pop( ebx );
+				pop( ecx ); 
+				
+			case( Integer_c )
+			
+				stdout.put( (type Variant [ebx]).i, nl );
+				
+			case( Real_c )
+			
+				stdout.put( (type Variant [ebx]).r, nl );
+				
+			case( String_c )
+			
+				stdout.put( """", (type Variant [ebx]).s, """" nl );
+				
+			default
+			
+				stdout.put( "Error! Unknown data type!" nl );
+		
+		endswitch;
+		pop( ebx );
+		pop( eax );
+		
+	end PutValue;
+
+begin DumpProc;
+
+	pushad();
+
+	stdout.put( "TxtStart:   ", TxtStart, nl );
+	stdout.put( "TxtEnd:     ", TxtEnd, nl nl );
+	
+	
+
+	// From the beginning to the end of the listing, 
+	// print the lines in the program in hexadecimal format:
+	
+	mov( TxtStart, edx );	
+	while( edx < TxtEnd ) do
+	
+	
+		// Print the size and leading values:
+		
+		movzx( (type StmtRec [edx]).size, ecx );
+		movzx( (type StmtRec [edx]).lineNum, ebx );
+		mov( edx, eax );
+		sub( TxtStart, eax );
+		stdout.put
+		(
+			eax,
+			":", 
+			(type uns8 cl):3,
+			",",
+			(type uns32 ebx):3,
+			": "
+		);
+		sub( @size( StmtRec ), cl );
+		lea( ebx, [edx+@size( StmtRec )] );
+		while( ecx <> 0 ) do 
+		
+			stdout.put( ' ', (type byte [ebx]));
+			inc( ebx );
+			dec( ecx );
+			
+		endwhile;
+		stdout.newln();
+				
+		// Adjust EDX so it points at the next line in the program:
+		
+		movzx( (type StmtRec [edx]).size, eax );
+		add( eax, edx );
+
+	endwhile;
+	
+	stdout.put ( nl "Last Byte:  ", edx, nl nl );
+
+
+
+	// Dump the symbol table:
+	
+
+	
+	// display all the symbols in the program:
+	
+	for( mov( 0, ecx ); ecx < symCnt; inc( ecx )) do
+	
+		stdout.put( (type uns32 ecx):5, ": ", symbols[ecx*4], nl );
+		
+	endfor;	
+	popad();
+
+end DumpProc;
+
+
+
+
+// usage-
+
+procedure usage;
+begin usage;
+
+	stdout.put( "usage: bd <<filename.tbas>>" nl );
+	
+end usage;
+
+
+
+/*********************************/
+/*                               */
+/* The main program begins here. */
+/*                               */
+/*********************************/
+
+storage
+	align( 4 );
+	
+	TxtEnd			:dword;
+	textSize		:dword;
+	symCnt			:dword;
+	fileHandle		:dword;
+	filename		:string;
+	fileExt			:string;
+	byteCodeFile	:string;
+	lineOut			:string;
+	
+	lineOutBuf	:char[ 512 ];
+	fileExtBuf	:char[1024];
+	byteCodeBuf	:char[1024];
+	pgm			:byte[ 65536 ];		
+	
+begin hlaBASIC;
+
+	
+	str.init( lineOut, 512 );
+	mov( eax, lineOut );
+	
+	str.init( byteCodeBuf, 1024 );
+	mov( eax, byteCodeFile );
+	
+	str.init( fileExtBuf, 1024 );
+	mov( eax, fileExt );
+	
+	stdout.put( title, nl );
+	
+	// Get the source filename from the command line
+	
+	arg.c();
+	if( eax <> 2 ) then
+	
+		usage();
+		exit hlaBASIC;
+		
+	endif;
+	arg.a_v( 1 );
+	mov( eax, filename );
+	
+	// See if the filename has an extension attached to it:
+	
+	if( filesys.hasExtension( filename )) then
+	
+		filesys.extractExt( filename, fileExt );
+		if( str.ne( fileExt, HLABasicByteCodeExt_c )) then
+		
+			str.cat3( filename, "." HLABasicByteCodeExt_c, byteCodeFile );
+			
+		else
+		
+			str.cpy( filename, byteCodeFile );
+			
+		endif;
+	
+	else
+	
+		str.cat3( filename, "." HLABasicByteCodeExt_c, byteCodeFile );
+		
+	endif; 
+	stdout.put( "Disassembling '", byteCodeFile, "'" nl nl );
+	
+	
+	// Read the token file:
+	
+	try
+	
+		fileio.open( byteCodeFile, fileio.r );
+		mov( eax, fileHandle );
+		
+	  anyexception
+	  
+	  	stderr.put( "Could not open file '", byteCodeFile, "'" nl );
+		exit hlaBASIC;
+		
+	endtry;
+	
+	try
+	
+		// Get the size of the tokenized program:
+		
+		mov( 0, textSize );
+		fileio.read( fileHandle, textSize, 2 );
+		mov( textSize, eax );
+		add( &pgm, eax );
+		mov( eax, TxtEnd );
+		
+		// Read the token bytes:
+		
+		fileio.read( fileHandle, pgm, textSize );
+		
+		
+		// Read the number of symbols from the file:
+		
+		fileio.geti32( fileHandle ); 
+		mov( eax, symCnt );
+		fileio.readLn( fileHandle );
+		fileio.readLn( fileHandle );
+		
+		for( mov( 0, ecx ); ecx < symCnt; inc( ecx )) do
+		
+			fileio.a_gets( fileHandle );
+			mov( eax, ebx );
+			mov( (type str.strRec [eax]).length, edx );
+			sub( 7, edx );
+			str.a_substr( eax, 7, edx );
+			mov( eax, symbols[ecx*4] );
+				
+			str.free( ebx );
+			
+		endfor;
+
+		fileio.close( fileHandle );
+					
+		
+	  anyexception
+	  
+		ex.printExceptionError( eax, ebx, ecx, edx, edi );
+	  	stderr.put( "Error reading file '", byteCodeFile, "'" nl );
+		exit hlaBASIC;
+		
+	endtry;
+	
+	// Dump the file in hexadecimal form (do this first, in case there
+	// is a bug in the detokenizing code, we will then be able to see
+	// the hex codes).
+	
+	stdout.put( nl nl "**********************************" nl );
+	stdout.put( "Dump of program" nl nl );
+
+	DumpProc( &pgm, TxtEnd, symCnt );
+	
+	stdout.put( nl nl "**********************************" nl );
+	stdout.put( "Detokenized program:" nl nl );
+	
+	// Okay, detokenize and display the file:
+	
+	try
+	
+		mov( &pgm, esi );
+		while( esi < TxtEnd ) do
+		
+			Detokenize( esi, lineOut );
+			mov( esi, eax );
+			sub( &pgm, eax );
+			stdout.put( eax, ": ", lineOut, nl );
+			movzx( (type StmtRec [esi]).size, eax );
+			add( eax, esi );
+		
+		endwhile;
+		
+	  exception( BadPgmDataException )
+	  
+	  	stdout.put( "Bad data encountered while detokenizing program" nl );
+		
+	endtry;
+	
+		
+end hlaBASIC; 
+ 
+ 

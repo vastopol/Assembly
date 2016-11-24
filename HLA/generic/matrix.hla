@@ -1,0 +1,201 @@
+/*
+I'm having trouble writing a proggie.  can anyone assist?
+
+i have to write a program that reads 16 numbers (range 0-999)
+from the standard input and displays them on the screen as a 4 x 4
+matrix.  Like this:
+
+	  0	 50	  2	200
+	 66	 21	 54	 20
+	  1	  3	  4	  6
+	100	150	120	 99
+	
+then, it has to:
+1) compute and display the sum of row 1
+2) compute and display the sum of row 2
+3) count and display the number of values > 100
+4) wait for a key to be pressed, and then interchange rows 1 and 2 and
+redisplay the matrix.
+
+----------------
+Notes by RLH:
+
+A couple of the requirements are ambiguous, here's my resolution:
+
+"range 0-999"  This doesn't state whether the data is guaranteed
+to be in the range 0-999 or whether the program has to enforce
+this restriction.  I have chosen to assume that the data will
+arrive in the range 0-999.  Also, the requirements don't state
+whether negative numbers are legal;  I'll assume that the numbers
+are always non-negative.  Since the maximum value is 999 and
+4*1000 (sum of a row) easily fits into 16 bits, I've chosen
+the HLA uns16 data type for a matrix element.
+
+"count and display the number of values greater than 100"
+My assumption is that "display" means display the count, not
+each of the values greater than 100.
+
+"wait for a key to be pressed"  Doesn't specify whether this
+can be a specific key or any key.  I'll just wait for the user
+to press the Enter key.
+
+Note that the HLA Standard Library Arrays module makes this
+project very easy.
+
+Randy Hyde
+
+*/
+
+
+program matrix;
+#include( "stdlib.hhf" )
+
+type
+	oneRow		:uns16[4];
+	matType		:oneRow[4];
+	
+static(4)
+	i			:uns32;
+	j			:uns32;
+	ge100Cnt	:uns32;
+	sums		:oneRow;
+	temp		:oneRow;
+	
+	m4x4alias	:oneRow; @nostorage;
+	matrix4x4	:matType;
+	
+	goodInput	:boolean;
+		
+	
+	// Print the matrix as a 4x4 object:
+		
+	procedure printMatrix( var theMatrix:matType ); @nodisplay;
+	var
+		rows	:uns32;
+		cols	:uns32;
+		
+	begin printMatrix;
+
+		mov( theMatrix, ebx );
+		for( mov( 0, rows ); rows<4; inc( rows )) do
+		
+			for( mov( 0, cols ); cols<4; inc( cols )) do
+			
+				// Demonstrate manual 4x4 array indexing:
+				
+				mov( rows, esi );	// Index = rows*4+cols.
+				shl( 2, esi );
+				add( cols, esi );
+				
+				stdout.put( (type uns16 [ebx+esi*2]):6 );			
+				
+			endfor;
+			stdout.newln();
+			
+		endfor;
+		
+	end printMatrix;
+	
+	 	
+begin matrix;
+
+	// Begin by reading the data from the standard input:
+	
+	for( mov( 0, i ); i<4; inc( i )) do
+	
+		for( mov( 0, j ); j<4; inc( j )) do
+		
+			repeat
+		
+				try
+				
+					mov( false, goodInput );
+					stdout.put
+					( 
+						"Input value for matrix4x4[", 
+						i, 
+						", ", 
+						j, 
+						"]:" 
+					);
+					stdin.getu16();
+					array.index( ebx, matrix4x4, i, j );
+					mov( ax, [ebx] ); 
+					mov( true, goodInput );
+					
+				  anyexception
+					stdout.put( "Illegal uns32 input, please re-enter" nl );
+					
+				endtry;
+				
+			until( goodInput );
+			
+		endfor;
+		
+	endfor;
+	
+	// Display the matrix:
+	
+	stdout.newln();
+	printMatrix( matrix4x4 ); 
+	
+	// Compute and display the sum of each row (this will give us
+	// the sums of rows one and two).  Also, count the number of
+	// values greater than 100.
+	
+	array.reduce( matrix4x4, sums );
+	
+		// Initialization before processing the rows.
+		mov( 0, edx );
+		mov( 0, ge100Cnt );
+	
+		array.beforeRow
+		
+			mov( 0, eax );		// Initialize the sum before each row
+			
+		array.reduction
+		
+			if( matrix4x4[esi] > 100 ) then
+			
+				inc( ge100Cnt );
+				
+			endif;
+			add( matrix4x4[esi], ax );
+			
+		array.afterRow
+		
+			mov( ax, sums[edx*2] );
+			inc( edx );
+			
+	array.endreduce;
+	
+	stdout.put( "Sum of the values in the first row: ", sums[0], nl );
+	stdout.put( "Sum of the values in the second row: ", sums[2], nl );
+	stdout.put( "Number of values > 100 is ", ge100Cnt, nl );
+	
+	// Okay, wait for user to hit enter, interchange rows 1 and 2, and then
+	// redisplay the matrix:
+	
+	stdout.put( "Hit ENTER to continue:" );
+	stdin.readLn();
+	stdout.newln();
+	
+	cld();
+	lea( edi, temp );
+	lea( esi, matrix4x4 );
+	mov( @size( oneRow ), ecx );
+	rep.movsb();
+	lea( esi, matrix4x4[ @size( oneRow ) ]);
+	lea( edi, matrix4x4 );
+	mov( @size( oneRow ), ecx );
+	rep.movsb ();
+	
+	lea( esi, temp );
+	lea( edi, matrix4x4[ @size( oneRow ) ]);
+	mov( @size( oneRow ), ecx );
+	rep.movsb();
+	
+	printMatrix( matrix4x4 );	
+	
+
+end matrix;

@@ -1,0 +1,17 @@
+unit UnitDemoUnit;
+
+#include( "stdlib.hhf" );
+#include( "unitdemo.hhf" );
+
+static
+
+	ExtVar: int32 := 0;
+
+procedure ExtProc; @nodisplay;
+begin ExtProc;
+
+	stdout.put( "Inside ExtProc, ExtVar = ", ExtVar, nl );
+
+end ExtProc;
+
+end UnitDemoUnit;

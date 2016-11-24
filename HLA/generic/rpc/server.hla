@@ -1,0 +1,260 @@
+
+program rpcServer; 
+?@nodisplay := true; 
+?@noalignstack := true; 
+
+#include( "stdlib.hhf" )
+#include( "sleep.hhf" )
+
+#include( "sc.hhf" ) 
+#include( "rpc_server_implementation.hhf" )
+
+
+////////////////////////////////////////////////////
+//
+// Here is the server-side code:
+
+	 
+procedure proc1( i:dword; j:word; k:byte; s:string );
+begin proc1;
+
+	stdout.put( "proc1 was called, i=", i, ", j=", j, ", k=", k, ", s=", s, nl );
+	str.free( s );
+	
+end proc1;
+
+	 
+procedure proc2;
+begin proc2;
+
+
+	stdout.put( "proc2 was called", nl );
+	
+end proc2;
+
+procedure proc3( b:byte; c:char; bo:boolean; i8:int8; u8:uns8 );
+begin proc3;
+
+	stdout.put
+	( 
+		"proc3 was called, b=", b, 
+		", c=", c, 
+		", bo=", bo, 
+		", i8=", i8, 
+		", u8=", u8, 
+		nl 
+	);
+	
+end proc3;
+
+
+procedure proc4( w:word; i16:int16; u16:uns16 );
+begin proc4;
+
+	stdout.put
+	( 
+		"proc4 was called, w=", w, 
+		", i16=", i16, 
+		", u16=", u16, 
+		nl 
+	);
+	
+end proc4;
+
+
+procedure proc5( d:dword; i32:int32; u32:uns32; r32:real32 );
+begin proc5;
+
+	stdout.put
+	( 
+		"proc5 was called, d=", d, 
+		", i32=", i32, 
+		", u32=", u32, 
+		", r32=", r32, 
+		nl 
+	);
+	
+end proc5;
+
+
+procedure proc6( q:qword; i64:int64; u64:uns64; r64:real64 );
+begin proc6;
+
+	stdout.put
+	( 
+		"proc6 was called, q=", q, 
+		", i64=", i64, 
+		", u64=", u64, 
+		", r64=", r64, 
+		nl 
+	);
+	
+end proc6;
+
+
+procedure proc7( tb:tbyte; r80:real80 );
+begin proc7;
+
+	stdout.put
+	( 
+		"proc7 was called, tb=", tb, 
+		", r80=", r80, 
+		nl 
+	);
+	
+end proc7;
+
+
+procedure proc8( l:lword; i128:int128; u128:uns128; c:cset );
+begin proc8;
+
+	stdout.put
+	( 
+		"proc6 was called, l=", l, 
+		", i128=", i128, 
+		", u128=", u128, 
+		", c=", c, 
+		nl 
+	);
+	
+end proc8;
+
+
+
+
+
+
+procedure aproc1( i:dword; j:word; k:byte; s:string );
+begin aproc1;
+
+	stdout.put( "aproc1 was called, i=", i, ", j=", j, ", k=", k, ", s=", s, nl );
+	str.free( s );
+	
+end aproc1;
+
+	 
+procedure aproc2;
+begin aproc2;
+
+	stdout.put( "aproc2 was called", nl );
+	
+end aproc2;
+
+procedure aproc3( b:byte; c:char; bo:boolean; i8:int8; u8:uns8 );
+begin aproc3;
+
+	stdout.put
+	( 
+		"proc3 was called, b=", b, 
+		", c=", c, 
+		", bo=", bo, 
+		", i8=", i8, 
+		", u8=", u8, 
+		nl 
+	);
+	
+end aproc3;
+
+
+
+
+
+	 
+procedure bproc1( i:dword; j:word; k:byte; s:string );
+begin bproc1;
+
+	stdout.put( "bproc1 was called, i=", i, ", j=", j, ", k=", k, ", s=", s, nl );
+	str.free( s );
+	bproc1_return( "Hi World" );
+	
+end bproc1;
+
+
+procedure bproc2;
+begin bproc2;
+
+	stdout.put( "bproc2 was called", nl );
+	bproc2_return();
+	
+end bproc2;
+
+
+procedure bproc3;
+begin bproc3;
+
+	stdout.put( "bproc3 was called", nl );
+	bproc3_return( 54321 );
+	
+end bproc3;
+
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////
+//
+// Here is the server-side code:
+
+
+static
+	ipAdrs		:dword;
+	s			:string;
+	offs		:dword;
+	i			:dword;
+	success		:boolean;
+	quitServer	:boolean := false;
+	
+
+procedure serverConnected( parm:dword );
+begin serverConnected;
+
+	stdout.put( "Client connected with server" nl );
+
+	// Start the real server code:
+	
+	my_server.connected( parm );
+	
+	stdout.put( "Client disconnected from server" nl );
+	mov( true, quitServer );
+	
+end serverConnected;
+
+
+begin rpcServer;
+
+	mov( false, quitServer );
+	my_server.create
+	( 
+		$9998, 
+		&serverConnected,
+		thunk
+		#{			
+			// On entry to thunk, EAX contains the address of the timeout
+			// variable. Set this as desired for the timeout (1 second,
+			// in this case).
+			
+			if( eax <> NULL ) then
+			
+				// Timeout is 0.1 seconds while waiting for
+				// connection:
+				
+					mov( 100_000, (type hla.timeval [eax]).tv_usec ); 
+				
+			endif;
+	        movzx( quitServer, eax );
+				
+		}#
+	);
+	
+	// Short delay to allow all transmissions to complete before we bail:
+	
+	os.sleep( 2 );
+	
+	my_server.destroy();
+				
+end rpcServer;

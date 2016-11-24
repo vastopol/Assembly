@@ -1,0 +1,17 @@
+
+#if( !@defined( sc_hhf ))
+?sc_hhf := true;
+
+#include( "rpc.hhf" ) 
+
+
+
+remoteProcedures( profileRPC )
+
+	sync( rpc_sync )
+	async( rpc_async )
+	bisync( rpc_bisync )
+	
+endRemoteProcedures
+
+#endif

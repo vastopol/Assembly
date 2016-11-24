@@ -1,0 +1,21 @@
+#if( !@defined( unistd_hhf ))
+?unistd_hhf := true;
+
+namespace linux; @fast;
+
+const
+
+	// Constants for the lseek calls:
+	
+	seek_set	:= 0;
+	set_seek	:= seek_set;
+	
+	seek_cur	:= 1;
+	cur_seek	:= seek_cur;
+
+	seek_end	:= 2;
+	end_seek	:= seek_end;
+	
+	
+end linux;
+#endif //unistd_hhf

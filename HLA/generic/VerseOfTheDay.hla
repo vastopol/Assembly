@@ -1,0 +1,151 @@
+#if( false )
+
+Shalom all HLA programmers,
+
+I am not much past 'hello world' in HLA ... but
+am looking explicity for a quick jump start to the
+HLA code that will produce a much smaller .exe file
+that the over 100 kbyte .exe file produced from the 
+following C++ program ...
+
+
+/* ************************************************** */
+
+//to allow today's date (SYSTEMTIME st; getSystemTime(&st);)
+#include <Windows.h>
+
+#include <fstream>
+#include <string>
+
+// recall arrays always passed by ref
+void to_char_string(int i, char str[]) 
+{  
+   // itoa(int i, char str[], int d) 
+   // is a library function of <stdlib.h>
+   // int to alpa(numeric) via char str[] with (upto)10 digits
+   itoa(i, str, 10); 
+
+   // change all alphanumeric 1..9   to   01..09
+   if (str[1] == 0) 
+   {
+      str[1] = str[0]; //shift single digit one place to right
+      str[2] = 0; //put null in next spot to mark end of char string
+      str[0] = '0'; //put '0' in first position of char string
+   }
+}
+
+string int_to_string(int i)
+{
+   //set up char array to pass to itoa in function to_char_string
+   char dummy[25];
+   to_char_string(i, dummy);
+   return string(dummy);
+}
+
+
+int main()
+{
+   // GET TODAY'S DATE
+   SYSTEMTIME st;      // needs #include <Windows.h>
+   GetSystemTime(&st); // needs #include <Windows.h>
+   int year = (int)st.wYear;
+   int month = (int)st.wMonth;
+   int day = (int)st.wDay; // also st.wHour, st.wMinute, st.wSecond
+
+   // PRINT HEADER
+   cout << "Food for your heart, Randall, for " << year
+         << "-" << int_to_string(month)
+         << "-" << int_to_string(day) << endl << endl;
+
+   // OPEN FILE VERSES.DAT AND PRINT TODAY'S TEXT
+   // verses.dat has data structure as per following 
+   // example for December 31
+   /*
+      1231     "Ye have heard that it hath been said, Thou shalt love
+      1231      thy neighbor, and hate thine enemy. But I say unto
+      1231      you, Love your enemies, bless them that curse you, do
+      1231      good to them that hate you, and pray for them which
+      1231      despitefully use you, and persecute you;"
+      1231                                     Matthew 5:43,44
+   */
+   ifstream in("verses.dat");
+   string line;
+   getline(in,line);
+   string today = int_to_string(month) + int_to_string(day);
+   do
+   {
+      if (today == line.substr(0,4))
+         cout << "\t" << line.substr(4,line.length()-4) << endl;
+
+      getline (in,line);
+   }while(!in.eof());
+
+   cout << endl;
+   system("pause");
+   return 0;
+}
+
+
+/* ************************************************** */
+
+
+#endif
+
+
+program t;
+#include( "stdlib.hhf" )
+
+static
+	inpFile		:dword;
+	dateVal		:uns32;
+	verseDate	:uns32;
+	inpStr		:str.strvar(256);
+	dateStr		:str.strvar(256);
+	today		:date.daterec;
+
+	
+begin t;
+
+	date.today( today );
+
+	/////////////////////////////////////////////////////////////
+	//
+	// The following are for testing purposes only, remove them
+	// for the actual application
+
+	mov( 12, today.month );
+	mov( 31, today.day );
+
+	/////////////////////////////////////////////////////////////
+
+	movzx( today.month, eax );
+	intmul( 100, eax );
+	movzx( today.day, ebx );
+	add( ebx, eax );
+	mov( eax, dateVal );
+
+	date.setSeparator( '-' );
+	date.toString( today, dateStr );
+
+	stdout.put
+	(
+		"Food for your heart, Randall, for ",
+		dateStr, nl nl
+	);
+
+	fileio.open( "verses.dat", fileio.r );
+	mov( eax, inpFile );
+	while( !fileio.eof( inpFile )) do
+
+		fileio.get( inpFile, verseDate, inpStr );
+		mov( verseDate, eax );
+		if( eax = dateVal ) then
+
+			stdout.put( inpStr, nl );
+
+		endif;
+
+	endwhile;
+	fileio.close( inpFile );
+
+end t;

@@ -1,0 +1,128 @@
+/***********************************************************/
+/*                                                         */
+/* HLA Demo to check to see if you've got a command-line   */
+/* parameter that is an integer or a floating point value. */
+/*                                                         */
+/***********************************************************/
+
+
+program t;
+#include( "stdlib.hhf" )
+
+static
+    realVal :real80;
+    numType :enum{ NaN, integer, real };
+    
+readonly
+    digits  :cset := {'0'..'9'};
+            
+begin t;
+
+    if( arg.c() <> 2 ) then
+    
+        stdout.put( "usage: t <somenumber>" nl );
+        exit t;
+        
+    endif;
+    
+    // Get a pointer to the first cmdline arg in EAX:
+    
+    arg.v(1);
+    mov( NaN, numType );    // Assume it's not a number.
+    
+    // HLA Stdlib pattern matching library function call:
+    
+    pat.match( (type string eax) )
+    
+        // Handle things that look like integers:
+        
+        pat.zeroOrOneChar( '-' );
+        pat.oneOrMoreCset( digits );
+        mov( integer, numType );
+        
+        // See if there is an optional fractional section:
+        
+        pat.onePat
+        
+            pat.oneChar( '.' );
+            pat.zeroOrMoreCset( digits );
+            mov( real, numType );
+            
+          pat.alternate
+          
+            // Just allow anything if we don't have
+            // a fractional component.
+            
+        pat.endOnePat;
+        
+        // Now look for an optional exponent:
+        
+        pat.onePat
+        
+            // Look for an exponent:
+            
+            pat.oneiChar( 'e' );
+            pat.zeroOrOneCset( {'-', '+'} );
+            pat.oneOrMoreCset( digits );
+            mov( real, numType );
+            
+          pat.alternate
+          
+            // Allow anything if we don't have an exponent
+            
+        pat.endOnePat;
+        
+        // Okay, at this point we've parsed the whole
+        // number. Let's verify that it ends with something
+        // reasonable (i.e., the end of the string):
+        
+        pat.EOS();
+        
+      pat.if_failure
+      
+        mov( NaN, numType );
+        
+    pat.endmatch;
+    
+
+    // Display the type of the command line argument
+    // and convert it to an appropriate numeric form
+    // if it was some sort of number:
+    
+    if( numType = NaN ) then
+    
+        stdout.put( "It wasn't a valid numeric value" nl );
+        
+    elseif( numType = integer ) then
+    
+        conv.strToi32( arg.v(1), 0 );
+        stdout.put( "It was an integer value: ", (type int32 eax), nl );
+        
+    else // must be a real
+    
+        conv.strToFlt( arg.v(1), 0 );
+        fstp( realVal );
+        stdout.put( "It was a real value: ", realVal, nl );
+        
+    endif;  
+        
+            
+end t;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                    

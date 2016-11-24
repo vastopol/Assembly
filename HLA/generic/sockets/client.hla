@@ -1,0 +1,85 @@
+program wclient; 
+#include( "stdlib.hhf" )
+#include( "sockets.hhf" )
+
+static
+	s			:client_t;
+	ipStr		:string;
+	portStr		:string;
+	filename	:string;
+	ipAdrs		:dword;
+	
+	timeo		:hla.timeval;
+	
+	port		:word;
+	
+	ss			:str.strvar( 1024 );
+	exmsg		:str.strvar( 256 );
+	
+	
+begin wclient; 
+
+	sock.socketInit();
+	try
+	
+		s.create();
+		arg.c();
+		if( eax <> 4 ) then
+		
+			stderr.put( "client <<filename>> <<ipAddress>> <<port#>>" nl );
+			exit wclient;
+			
+		endif;
+		mov( arg.v(1), filename );
+		mov( arg.v(2), ipStr );
+		mov( arg.v(3), portStr );
+		sock.strToIP( ipStr );		// Comes back in network order.
+		mov( eax, ipAdrs );
+		conv.atou16( val portStr );
+		mov( ax, port );
+		stdout.put
+		( 
+			"Connecting to ipAddress: ", 
+			ipStr,
+			" (", ipAdrs, ")" 
+			", port= ", 
+			portStr,
+			"(", port, ")" 
+			nl 
+		);		
+				
+		s.connect
+		( 
+			ipAdrs, 
+			port
+		);
+		
+		s.setTimeout2( 1, 0 );
+		
+		
+		// Repeat the following until we time out (End of File on socket):
+		
+		forever
+		
+			s.gets( ss );
+			stdout.puts( ss );
+			stdout.newln();
+			
+		endfor;
+			
+	  exception( ex.EndOfFile )
+	  
+	  	// Normal exit from the above loop.
+	
+	  anyexception
+	  
+	  	ex.exceptionMsg( eax, exmsg );
+	  	stderr.put( "Client Exception: ", exmsg, nl );
+		stderr.put( "edx:", (type uns32 edx), ", edx:", edx, nl );
+		
+	endtry;
+	s.close();
+	s.destroy();
+	sock.socketCleanup();
+		 
+end wclient; 

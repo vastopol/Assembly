@@ -1,0 +1,49 @@
+/*
+I am currently working on a program that will add two lines of hexadecimal
+numbers.  Of course, you must check the ranges 0-9, and a-f.  I know there
+is some bit masking involved.  I think you must mask out the four upper bits
+with 0000 1111.  To make the program work, should I first check to see if
+each entered numbers are valid hexadecimal numbers.  If so add them, if not
+display "??".  This one has me at a loss!!!  If anyone has some advice, I
+could sure use it!!!
+
+*/
+
+program AddHex;
+#include( "stdlib.hhf" )
+
+static
+	UserInput1: dword;
+	UserInput2: dword;
+			
+begin AddHex;
+
+	forever
+
+		try
+		
+			stdout.put( "Input the first hexadecimal value: " );
+			stdin.get( UserInput1 );
+			stdout.put( "Input the second hexadecimal value: " );
+			stdin.flushInput();
+			stdin.get( UserInput2 );
+			mov( UserInput1, eax );
+			add( UserInput2, eax );
+			stdout.put( "Their sum is ", eax, nl );
+			
+		  unprotected break;
+		  
+		  exception( ex.ValueOutOfRange )
+		  
+		  	stdout.put( "Value was out of range, re-enter input" nl );
+			
+		  exception( ex.ConversionError )
+		  
+		  	stdout.put( "Illegal characters in input, please re-enter" nl );
+			
+		endtry;
+		
+	endfor;
+		
+			
+end AddHex;

@@ -1,0 +1,292 @@
+// A quick program to test out
+// some of the exception handling features.
+
+program s;
+#include( "stdlib.hhf" );
+
+	// The following procedures provide various ways
+	// of testing dynamic nesting of try..endtry blocks.
+
+	procedure dynamicNest1;
+	begin dynamicNest1;
+
+		try
+
+			stdout.put( "success: dynamic nest #1" nl );
+
+		  exception(4);
+
+			stdout.put( "failure(4): unexpected exception" nl );
+
+		endtry;
+
+	end dynamicNest1;
+
+	procedure dynamicNest2;
+	begin dynamicNest2;
+
+		try
+
+			raise( 6 );
+			stdout.put( "failure(6): did not raise" nl );
+
+		  exception( 6 )
+
+			stdout.put( "success: dynamic nest #2" nl );
+
+		endtry;
+
+	end dynamicNest2;
+
+
+	procedure dynamicNest3;
+	begin dynamicNest3;
+
+		try
+
+			raise( 8 );
+			stdout.put( "failure(8): dynamic nest #3" nl );
+
+		  exception( 9 )
+
+			stdout.put( "failure(9): did not raise" nl );
+
+		endtry;
+
+	end dynamicNest3;
+
+
+var
+	i:int32;
+
+begin s;
+
+	// Test try..endtry statements without an exception
+	// handler (should generate a warning).
+
+	try
+	endtry;
+
+	try
+
+		stdout.put( "Success: Protected block #1" nl );
+
+	unprotected
+
+		stdout.put( "Success: Unprotected block #1" nl );
+
+	endtry;
+
+
+
+
+	// Test the try..endtry statement with only an anyexception
+	// block as the handler.
+
+	try
+
+		stdout.put( "Success: Protected block #1" nl );
+
+	  unprotected
+
+		stdout.put( "Success: Unprotected block #1" nl );
+
+	  anyexception
+
+		stdout.put( "failure: Unexpected exception, eax=", eax, nl );
+
+	endtry;
+
+
+
+	try
+
+		raise( 100 );
+		stdout.put( "Failure: Protected block #1" nl );
+
+	  unprotected
+
+		stdout.put( "Failure: Unprotected block #1" nl );
+
+	  anyexception
+
+		stdout.put( "Success: eax=", eax, nl );
+
+	endtry;
+
+
+
+
+	// Test dynamic nesting of the try..endtry statements:
+
+	try
+
+		dynamicNest1();
+		stdout.put( "success: dynamic nest #1a" nl );
+
+	  exception( 5 )
+
+		stdout.put( "failure(5): unexpected exception" nl );
+
+	endtry;
+
+
+
+
+	try
+
+		dynamicNest2();
+		stdout.put( "success: dynamic nest #2a" nl );
+
+	  exception( 7 )
+
+		stdout.put( "failure(7): unexpected exception" nl );
+
+	endtry;
+
+
+
+
+
+	try
+
+		dynamicNest3();
+		stdout.put( "failure(8): unexpected exception" nl );
+
+	  exception( 8 )
+
+		stdout.put( "success: dynamic nest #3a" nl );
+
+	endtry;
+
+		
+
+
+
+	// Test try..except statements with one or more exception
+	// handlers:
+
+	try
+
+		mov( 0, eax );
+		stdout.put( "success: no exception" nl );
+
+	  exception( 1 );
+
+		stdout.put( "failure(1): unexpected exception" nl );
+
+	endtry;
+
+
+
+
+	try
+
+		mov( 0, eax );
+		stdout.put( "success: no exception" nl );
+
+	  exception( 2 );
+
+		stdout.put( "failure(2): unexpected exception" nl );
+
+	  exception( 3 );
+
+		stdout.put( "failure(3): unexpected exception" nl );
+
+	endtry;
+
+
+
+
+	try
+
+		raise( 10 );
+		stdout.put( "failure(10): unexpected exception" nl );
+
+	  anyexception
+
+		stdout.put( "success: anyexception, eax=", eax, nl );
+
+	endtry;
+
+
+
+
+
+	for( mov( 1, i ); i <= 6; inc( i )) do
+
+		try
+
+			raise( i );
+			stdout.put( "Failure, raising i=", i , nl );
+
+		  exception( 1 );
+
+			stdout.put( "Success: Multiple exceptions = 1", nl );
+
+		  exception( 2 );
+
+			stdout.put( "Success: Multiple exceptions = 2", nl );
+
+		  exception( 3 );
+
+			stdout.put( "Success: Multiple exceptions = 3", nl );
+
+		  exception( 4 );
+
+			stdout.put( "Success: Multiple exceptions = 4", nl );
+
+		  anyexception;
+
+			stdout.put( "Success: Multiple exceptions, eax=", eax, nl );
+
+		endtry;
+
+	endfor;
+
+
+
+
+
+	mov( 0, i );
+	forever
+
+		try
+
+			if( i < 6 ) then
+			
+				raise( i );
+
+			endif;
+
+		  unprotected
+
+			stdout.put( "Success: in unprotected section", nl );
+			break;
+
+		  exception( 1 );
+
+			stdout.put( "Success: Multiple exceptions = 1", nl );
+
+		  exception( 2 );
+
+			stdout.put( "Success: Multiple exceptions = 2", nl );
+
+		  exception( 3 );
+
+			stdout.put( "Success: Multiple exceptions = 3", nl );
+
+		  exception( 4 );
+
+			stdout.put( "Success: Multiple exceptions = 4", nl );
+
+		  anyexception;
+
+			stdout.put( "Success: Multiple exceptions, eax=", eax, nl );
+
+		endtry;
+		inc( i );
+
+	endfor;
+
+end s;

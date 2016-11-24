@@ -1,0 +1,68 @@
+/*
+
+Hi, I am learning assembly right now. But I want to know how to define words
+of size 10 (an array) with initial numeric values (in Hex). Then revert the
+array contents using the LOOP instruction. For example, 0A0F in array[0] and
+0B0C in array[9]. We need to swap them. So array[0] will contain 0B0Ch and
+array[9] will contain 0A0Fh. How? Please someone help me, thank you!
+
+
+*/
+
+
+program SwapArrayVals;
+
+#include( "stdlib.hhf" );
+
+const
+	ArraySize := 10;
+
+static
+
+	ary: uns32[ ArraySize ] := [1,2,3,4,5,6,7,8,9,10];
+
+	procedure PrintArray;
+	begin PrintArray;
+
+		push( eax );
+		push( ebx );
+
+		xor( ebx, ebx );
+		while( ebx < ArraySize ) do
+
+			stdout.put( ary[ebx*4]:4 );
+			inc( ebx );
+
+		endwhile;
+		stdout.newln();
+		
+		pop( ebx );
+		pop( eax );
+
+	end PrintArray;
+
+		
+begin SwapArrayVals;
+
+	stdout.put( "Original Array:" nl nl );
+	PrintArray();
+
+	// Swap the array values:
+
+	xor( esi, esi );
+	mov( ArraySize-1, edi );
+	while( esi < (ArraySize div 2) ) do
+
+		mov( ary[ esi*4 ], eax );
+		xchg( eax, ary[ edi*4 ] );
+		mov( eax, ary[ esi*4 ] );
+		inc( esi );
+		dec( edi );
+		
+	endwhile;
+
+	stdout.put( nl "Swapped Array: " nl nl );
+	PrintArray();
+	
+		
+end SwapArrayVals;

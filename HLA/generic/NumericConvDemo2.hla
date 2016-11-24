@@ -1,0 +1,993 @@
+// NumericConvDemo2-
+//
+//	This program demonstrates various algorithms that convert
+// a string of decimal digits to the corresponding 32-bit unsigned value.
+//
+//	These algorithms all allow the following delimiter characters before
+// and after the string of digits:
+//
+//		space, comma, semicolon, colon, linefeed, return, and tab
+//
+// In addition, a zero byte may also terminate the string of digits.
+// Any other character before or after the string of digits will cause
+// the code to raise an exception.
+//
+// This code also checks for numeric overflow and raises an
+// ex.ValueOutOfRange exception if the resultant number does not
+// fit into 32 bits.
+
+program  NumericConvDemo2;
+#include( "stdlib.hhf" )
+
+const
+	NumIterations := 1_000_000;
+	
+
+	// Delimiters_c is the set of characters that may legally
+	// surround a numeric value.  preDelimiters are the characters
+	// that may appear before the first digit, postDelimiters is
+	// the set of character that may follow the string of digits.
+	
+	Delimiters_c		:cset := 
+			{ stdio.tab, stdio.cr, stdio.lf,' ', ',', ';', ':' }; 
+	
+	
+static
+	preDelimiters	:cset := Delimiters_c;
+	postDelimiters	:cset := {#0} + Delimiters_c;
+	
+	
+// NumConv_1-	Converts a string to a number by successive
+//				multiplications by 10.
+//				The way most instructors probably expect you to do it.
+
+procedure NumConv_1( theString:string );
+	@nodisplay;
+	@noalignstack;
+	@returns( "eax" );
+
+begin NumConv_1;
+
+	push( ecx );
+	push( edx );
+	push( esi );
+	
+	mov( theString, esi );
+	
+	// Skip over any leading delimiter characters:
+	
+	dec( esi );
+	SkipDelims:
+		inc( esi );
+		mov( [esi], al );
+		
+		// (note that the #for loop expands to a sequence of compare
+		// and branch instructions that test each character in the set).
+
+		#for( delimChar in Delimiters_c )
+		
+			cmp( al, delimChar );
+			je SkipDelims;
+			
+		#endfor
+				
+	// Okay, if we don't have a numeric digit, then raise an
+	// exception indicating a conversion error.
+	
+	if( al not in '0'..'9' ) then
+	
+		raise( ex.ConversionError );
+		
+	endif;
+	
+	// We've got at least one digit, so start the conversion:
+
+	and( $f, eax );		//  Accumulate the result in EAX.
+	jmp EnterConvLoop;
+	
+	ForEachDigit:
+	
+		mul( 10, eax );		// Multiply accumulated result by 10
+		and( $f, ecx );		//  and add the the current character.
+		add( ecx, eax );
+		adc( 0, edx );		// Will be non-zero if there was an overflow.
+		je EnterConvLoop;
+		
+		// Whoops! We had an overflow.  Raise an exception.
+		
+		raise( ex.ValueOutOfRange );
+
+	// Okay, fetch the next character.  If it's a digit,
+	// then repeat the digit processing loop.
+		
+	EnterConvLoop:
+		inc( esi );
+		movzx( (type byte [esi]), ecx );
+		cmp( cl, '0' );
+		jb EndOfNumber;
+		cmp( cl, '9' );
+		jbe ForEachDigit;
+	
+	EndOfNumber:
+		
+	// If it wasn't a digit, make sure it's a valid delimiter
+	// character.  Raise an exception if it's not a valid char.
+	// (note that the #for loop expands to a sequence of compare
+	// and branch instructions that test each character in the set).
+	
+	#for( delimChar in {#0} + Delimiters_c )
+	
+		cmp( cl, delimChar );
+		je GoodDelim;
+		
+	#endfor
+	
+		raise( ex.ConversionError );
+		
+	GoodDelim:
+			
+	// At this point, the converted value is in EAX so return
+	// it to the caller. 
+		
+	pop( esi );
+	pop( edx );
+	pop( ecx );		 
+
+end NumConv_1;
+
+
+
+
+
+	
+	
+// NumConv_2-	Just like NumConv_1 except it uses character sets
+//				to check for valid delimiter characters.
+
+procedure NumConv_2( theString:string );
+	@nodisplay;
+	@noalignstack;
+	@returns( "eax" );
+
+begin NumConv_2;
+
+	push( ecx );
+	push( edx );
+	push( esi );
+	
+	mov( theString, esi );
+	
+	// Skip over any leading delimiter characters:
+	
+	dec( esi );
+	SkipDelims:
+		inc( esi );
+		movzx( (type byte [esi]), eax );
+		bt( eax, preDelimiters );
+		jc SkipDelims;
+		
+	// Okay, if we don't have a numeric digit, then raise an
+	// exception indicating a conversion error.
+	
+	if( al not in '0'..'9' ) then
+	
+		raise( ex.ConversionError );
+		
+	endif;
+	
+	// We've got at least one digit, so start the conversion:
+
+	and( $f, eax );		// Accumulate the result in EAX.
+	xor( ecx, ecx );	// Clear H.O. three bytes.
+	jmp EnterConvLoop;
+	
+	Overflow:
+	
+		// Whoops! We had an overflow.  Raise an exception.
+		
+		raise( ex.ValueOutOfRange );
+	
+	
+	// For each digit in the string, multiply the accumulated
+	// result by 10 and add in the numeric value of the current digit:
+	
+	ForEachDigit:
+	
+		mul( 10, eax );		// Multiply accumulated result by 10
+		jo Overflow;
+		add( ecx, eax );
+		jc Overflow;
+		
+
+	// Okay, fetch the next character.  If it's a digit,
+	// then repeat the digit processing loop.  Note that
+	// subtracting '0' from the current character sets any
+	// digit to a value in the range 0..9 and all other values
+	// are greater than this (using an unsigned comparison).
+		
+	EnterConvLoop:
+		inc( esi );
+		mov( [esi], cl );
+		sub( '0', cl );
+		cmp( cl, 10 );
+		jb ForEachDigit;
+	
+		
+	// If it wasn't a digit, make sure it's a valid delimiter
+	// character.  Raise an exception if it's not a valid char.
+
+	movzx( (type byte [esi]), ecx );	
+	bt( ecx, postDelimiters );
+	if( @nc ) then
+	
+		raise( ex.ConversionError );
+		
+	endif;  
+		
+	// At this point, the converted value is in EAX so return
+	// it to the caller. 
+		
+	pop( esi );
+	pop( edx );
+	pop( ecx );		 
+
+end NumConv_2;
+
+
+
+
+
+// NumConv_3-	Similar to NumConv_2 except it does the multiplication
+//				by 10 using shifts and adds rather than a MUL instruction.
+
+procedure NumConv_3( theString:string );
+	@nodisplay;
+	@noalignstack;
+	@returns( "eax" );
+
+begin NumConv_3;
+
+	push( ecx );
+	push( edx );
+	push( esi );
+	
+	mov( theString, esi );
+	
+	// Skip over any leading delimiter characters:
+	
+	dec( esi );
+	SkipDelims:
+		inc( esi );
+		movzx( (type byte [esi]), eax );
+		bt( eax, preDelimiters );
+		jc SkipDelims;
+		
+	// Okay, if we don't have a numeric digit, then raise an
+	// exception indicating a conversion error.
+	
+	if( al not in '0'..'9' ) then
+	
+		raise( ex.ConversionError );
+		
+	endif;
+	
+	// We've got at least one digit, so start the conversion:
+
+	and( $f, eax );		//  Accumulate the result in EAX.
+	jmp EnterConvLoop;
+	
+	ForEachDigit:
+	
+		shl( 1, eax );		// Multiply by 10 using 8*eax + 2*eax
+		jc EnterConvLoop;	// (implemented with shifts and adds).
+		mov( eax, edx );
+		shl( 2, eax );
+		jc EnterConvLoop;
+		add( edx, eax );
+		jc EnterConvLoop;
+		
+		and( $f, ecx );		//  Add the the current character.
+		add( ecx, eax );
+		jnc	EnterConvLoop;
+		
+		// Whoops! We had an overflow.  Raise an exception.
+		
+		raise( ex.ValueOutOfRange );
+
+	// Okay, fetch the next character.  If it's a digit,
+	// then repeat the digit processing loop.
+		
+	EnterConvLoop:
+		inc( esi );
+		movzx( (type byte [esi]), ecx );
+		cmp( cl, '0' );
+		jb EndOfNumber;
+		cmp( cl, '9' );
+		jbe ForEachDigit;
+	
+	EndOfNumber:
+		
+	// If it wasn't a digit, make sure it's a valid delimiter
+	// character.  Raise an exception if it's not a valid char.
+	
+	bt( ecx, postDelimiters );
+	if( @nc ) then
+	
+		raise( ex.ConversionError );
+		
+	endif;  
+		
+	// At this point, the converted value is in EAX so return
+	// it to the caller. 
+		
+	pop( esi );
+	pop( edx );
+	pop( ecx );		 
+
+end NumConv_3;
+
+
+
+// NumConv_4-	This version of the conversion code uses the FPU's
+//				fbld instruction to do the conversion.
+
+procedure NumConv_4( theString:string );
+	@nodisplay;
+	@noalignstack;
+	@returns( "eax" );
+	
+var
+	floatResult	:int64;
+	bcdValue	:byte[10];
+
+begin NumConv_4;
+
+	push( ecx );
+	push( edx );
+	push( edi );
+	push( esi );
+	
+	mov( theString, esi );
+	
+	// Skip over any leading delimiter characters:
+	
+	dec( esi );
+	SkipDelims:
+		inc( esi );
+		movzx( (type byte [esi]), eax );
+		bt( eax, preDelimiters );
+		jc SkipDelims;
+		
+	// Okay, if we don't have a numeric digit, then raise an
+	// exception indicating a conversion error.
+	
+	if( al not in '0'..'9' ) then
+	
+		raise( ex.ConversionError );
+		
+	endif;
+	
+	// Quickly skip over the digits so we can convert them to
+	// BCD two digits at a time:
+	
+	xor( ecx, ecx );		// Count the number of digits here.
+	while( al in '0'..'9' ) do
+	
+		inc( esi );
+		inc( ecx );
+		mov( [esi], al );
+		
+	endwhile;
+	
+	// Okay, working backwards through the string,
+	// convert each pair of digits to their BCD equivalent
+	// and store away the result into the bcdValue variable.
+	
+	xor( eax, eax );
+	mov( eax, (type dword bcdValue));
+	mov( eax, (type dword bcdValue[4]));
+	mov( ax, (type word bcdValue[8]));
+	
+	xor( edi, edi );
+	while( ecx >= 2 ) do
+	
+		sub( 2, esi );
+		mov( [esi], ax );
+		and( $f, ah );
+		shl( 4, al );
+		or( ah, al );
+		mov( al, bcdValue[ edi ] );
+		inc( edi );
+		sub( 2, ecx );
+		
+	endwhile;
+	if( ecx <> 0 ) then
+	
+		dec( esi );
+		mov( [esi], al );
+		and( $f, al );
+		mov( al, bcdValue[ edi ]);
+		
+	endif;
+	fbld( (type tbyte bcdValue) );
+	fistp( floatResult );
+	mov( (type dword floatResult), eax );	
+		
+	pop( esi );
+	pop( edi );
+	pop( edx );
+	pop( ecx );		 
+
+end NumConv_4;
+
+
+
+
+
+// NumConv_5-	Just like NumConv_2 except it uses the INTMUL instruction
+//				rather than MUL (in theory, only good to 31 bits).
+
+procedure NumConv_5( theString:string );
+	@nodisplay;
+	@noalignstack;
+	@returns( "eax" );
+
+begin NumConv_5;
+
+	push( ecx );
+	push( edx );
+	push( esi );
+	
+	mov( theString, esi );
+	
+	// Skip over any leading delimiter characters:
+	
+	dec( esi );
+	SkipDelims:
+		inc( esi );
+		movzx( (type byte [esi]), eax );
+		bt( eax, preDelimiters );
+		jc SkipDelims;
+		
+	// Okay, if we don't have a numeric digit, then raise an
+	// exception indicating a conversion error.
+	
+	if( al not in '0'..'9' ) then
+	
+		raise( ex.ConversionError );
+		
+	endif;
+	
+	// We've got at least one digit, so start the conversion:
+
+	and( $f, eax );		//  Accumulate the result in EAX.
+	jmp EnterConvLoop;
+	
+	ForEachDigit:
+	
+		intmul( 10, eax );		// Multiply accumulated result by 10
+		jo Overflow;
+		and( $f, ecx );			//  and add the the current character.
+		add( ecx, eax );
+		jnc EnterConvLoop;
+		
+		// Whoops! We had an overflow.  Raise an exception.
+		
+		Overflow:
+			raise( ex.ValueOutOfRange );
+
+	// Okay, fetch the next character.  If it's a digit,
+	// then repeat the digit processing loop.
+		
+	EnterConvLoop:
+		inc( esi );
+		movzx( (type byte [esi]), ecx );
+		cmp( cl, '0' );
+		jb EndOfNumber;
+		cmp( cl, '9' );
+		jbe ForEachDigit;
+	
+	EndOfNumber:
+		
+	// If it wasn't a digit, make sure it's a valid delimiter
+	// character.  Raise an exception if it's not a valid char.
+	
+	bt( ecx, postDelimiters );
+	if( @nc ) then
+	
+		raise( ex.ConversionError );
+		
+	endif;  
+		
+	// At this point, the converted value is in EAX so return
+	// it to the caller. 
+		
+	pop( esi );
+	pop( edx );
+	pop( ecx );		 
+
+end NumConv_5;
+
+
+
+// NumConv_6-	A modified version of NumConv_4 that does a slightly
+//				faster job of packing the BCD digits.
+
+procedure NumConv_6( theString:string );
+	@nodisplay;
+	@noalignstack;
+	@returns( "eax" );
+	
+var
+	floatResult	:int64;
+	bcdValue	:byte[10];
+
+begin NumConv_6;
+
+	push( ecx );
+	push( edx );
+	push( edi );
+	push( esi );
+	
+	mov( theString, esi );
+	
+	// Skip over any leading delimiter characters:
+	
+	dec( esi );
+	SkipDelims:
+		inc( esi );
+		movzx( (type byte [esi]), eax );
+		bt( eax, preDelimiters );
+		jc SkipDelims;
+		
+	// Okay, if we don't have a numeric digit, then raise an
+	// exception indicating a conversion error.
+	
+	if( al not in '0'..'9' ) then
+	
+		raise( ex.ConversionError );
+		
+	endif;
+	
+	// Quickly skip over the digits so we can convert them to
+	// BCD two digits at a time:
+	
+	xor( ecx, ecx );		// Put the BCD digits in EDX:ECX
+	xor( edx, edx );
+	
+	// Unroll the loop to grab up to 10 digits:
+	
+	mov( [esi], eax );
+	sub( $30303030, eax );	// '0000'
+
+	// We know the first position contains a digit from the test above:
+	
+	mov( al, cl );
+	
+	// Try the second digit:
+	
+	cmp( ah, 10 );
+	jae NumberDone;
+	shl( 4, ecx );
+	or( ah, cl );
+	
+	// Deal with the third digit:
+	
+	bswap( eax );
+	cmp( ah, 10 );
+	jae NumberDone;
+	shl( 4, ecx );
+	or( ah, cl );
+	
+	// Deal with the fourth digit:
+	
+	cmp( al, 10 );
+	jae NumberDone;
+	shl( 4, ecx );
+	or( al, cl );
+	
+	
+	// Get the fifth through eighth digits:
+	
+	mov( [esi+4], eax );
+	sub( $30303030, eax );	// '0000'
+
+	// Deal with the fifth digit:
+	
+	cmp( al, 10 );
+	jae NumberDone;
+	shl( 4, ecx );
+	or( al, cl );
+	
+	// Try the sixth digit:
+	
+	cmp( ah, 10 );
+	jae NumberDone;
+	shl( 4, ecx );
+	or( ah, cl );
+	
+	// Deal with the seventh digit:
+	
+	bswap( eax );
+	cmp( ah, 10 );
+	jae NumberDone;
+	shl( 4, ecx );
+	or( ah, cl );
+	
+	// Deal with the eighth digit:
+	
+	cmp( al, 10 );
+	jae NumberDone;
+	shl( 4, ecx );
+	or( al, cl );
+	
+	// Get the ninth and tenth digits:
+	
+	mov( [esi+8], eax );
+	sub( $3030, eax );	// '00'
+
+	// Deal with the nineth digit:
+	
+	cmp( al, 10 );
+	jae NumberDone;
+	shld( 4, ecx, edx );
+	shl( 4, ecx );
+	or( al, cl );
+	
+	// Try the tenth digit:
+	
+	cmp( ah, 10 );
+	jae NumberDone;
+	shld( 4, ecx, edx );
+	shl( 4, ecx );
+	or( ah, cl );
+	
+	// In theory, there could be an indefinite number of
+	// leading zeros and that wouldn't change the conversion.
+	// The following code handles the case where there are
+	// leading zeros and the number is more than 10 digits long.
+	// Since this is rare, we don't have to worry about it being fast.
+	
+	dec( esi );
+	MoreDigits:
+		inc( esi );
+		mov( [esi+10], al );
+		cmp( al, '0' );
+		jb NumberDone;
+		cmp( al, '9' );
+		ja NumberDone;
+		shld( 4, ecx, edx );
+		shl( 4, ecx );
+		and( $f, al );
+		or( al, cl );
+		cmp( edx, $100 );	// Overflow if more than 10 digits.
+		jb MoreDigits;
+		
+		// If we drop down here, then we've got more than 10 digits
+		// and the value is 10 billion or greater.
+		
+		raise( ex.ValueOutOfRange );
+	
+	// Okay, we've processed all the digits, make sure that the
+	// last character is a legal delimiter.
+		
+	NumberDone:
+		movzx( (type byte [esi+10]), eax );	// Get first non-digit char.
+		bt( eax, postDelimiters );			// See if legal delimiter.
+		jc ConvertNumber;
+
+		raise( ex.ConversionError );		// Whoops, ended with bad char.
+
+	// Okay, save away the BCD value and convert to an integer:
+	 
+	ConvertNumber:
+		mov( ecx, (type dword bcdValue) );
+		mov( edx, (type dword bcdValue[4]));
+		mov( 0, (type word bcdValue[8]));		
+		fbld( (type tbyte bcdValue) );
+		fistp( floatResult );
+		mov( (type dword floatResult), eax );	
+			
+		pop( esi );
+		pop( edi );
+		pop( edx );
+		pop( ecx );		 
+
+end NumConv_6;
+
+
+
+
+
+
+// NumConv_7-	This conversion routine uses the AAD instruction to
+//				produce the result.
+
+procedure NumConv_7( theString:string );
+	@nodisplay;
+	@noalignstack;
+	@returns( "eax" );
+	
+var
+	floatResult	:int64;
+	bcdValue	:byte[10];
+
+begin NumConv_7;
+
+	push( ecx );
+	push( edx );
+	push( edi );
+	push( esi );
+	
+	mov( theString, esi );
+	
+	// Skip over any leading delimiter characters:
+	
+	dec( esi );
+	SkipDelims:
+		inc( esi );
+		movzx( (type byte [esi]), eax );
+		bt( eax, preDelimiters );
+		jc SkipDelims;
+		
+	// Okay, if we don't have a numeric digit, then raise an
+	// exception indicating a conversion error.
+	
+	if( al not in '0'..'9' ) then
+
+		InvalidChar:
+			raise( ex.ConversionError );
+		
+	endif;
+	
+	xor( ecx, ecx );			// Accumulate result in ECX.
+	NumberLoop:
+		
+		// Process the number two digits at a time:
+		
+		movzx( (type word [esi]), eax );	
+		sub( $3030, ax );		// '0'..'9'->0..9, other values >=10.
+		cmp( al, 10 );			// Is the first character a digit?
+		jae EndOfNumber;
+		
+		cmp( ah, 10 );			// Is the second character a digit?
+		jae LastDigit;
+		
+		xchg( al, ah );			// H.O. digit is in AL, L.O. in AH, must swap.
+		aad();					// Convert the two digits to binary.
+	
+		// EAX contains a value in the range 0..99.  We need to multiply
+		// our accumulated value by 100 and add in the new value.
+		
+		xchg( eax, ecx );		// Add the digits into the value we're
+		mul( 100, eax );		//  accumulating in ECX.
+		jc Overflow;
+		add( eax, ecx );
+		jc Overflow;
+		add( 2, esi );
+		jmp NumberLoop;
+		
+	Overflow:
+		raise( ex.ValueOutOfRange );
+		
+	LastDigit:
+		inc( esi );
+		and( $f, eax );
+		xchg( eax, ecx );
+		mul( 10, eax );
+		test( edx, edx );
+		jnz Overflow;
+		add( eax, ecx );
+		jc Overflow;
+		
+	// At the end of the number, make sure we've got a valid delimiter
+	// character:
+	
+	EndOfNumber:
+		movzx( (type byte [esi]), eax );
+		bt( eax, postDelimiters );
+		jnc InvalidChar;
+		
+		mov( ecx, eax );	// Return result in EAX.
+			
+		pop( esi );
+		pop( edi );
+		pop( edx );
+		pop( ecx );		 
+
+end NumConv_7;
+
+
+
+
+
+
+static
+	tval:uns64;
+	t	:timer;
+
+begin NumericConvDemo2;
+
+	t.create();			// Initialize the timer.
+	
+	NumConv_7( "1234567890" );
+	stdout.put( "NumConv_7: ", (type uns32 eax), nl );
+	stdout.put( "Beginning timing of the conversion routines:" nl nl );
+	
+	t.start();
+	for( mov( NumIterations, ecx ); ecx > 0; dec( ecx )) do
+
+	endfor;
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );	
+	stdout.put
+	( 
+		"# iterations: ", 
+		NumIterations, 
+		" Empty loop time=", 
+		tval, 
+		" milliseconds" nl 
+	);
+	
+	t.start();
+	for( mov( NumIterations, ecx ); ecx > 0; dec( ecx )) do
+
+		NumConv_1( "0" );
+		NumConv_1( "1" );
+		NumConv_1( "12" );
+		NumConv_1( "123" );
+		NumConv_1( "1234" );
+		NumConv_1( "12345" );
+		NumConv_1( "123456" );
+		NumConv_1( "1234567" );
+		NumConv_1( "12345678" );
+		NumConv_1( "123456789" );
+		NumConv_1( "1234567890" );
+
+	endfor;
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );	
+	stdout.put( "NumConv_1: time=", tval, " milliseconds" nl );
+	
+	
+	t.start();
+	for( mov( NumIterations, ecx ); ecx > 0; dec( ecx )) do
+
+		NumConv_2( "0" );
+		NumConv_2( "1" );
+		NumConv_2( "12" );
+		NumConv_2( "123" );
+		NumConv_2( "1234" );
+		NumConv_2( "12345" );
+		NumConv_2( "123456" );
+		NumConv_2( "1234567" );
+		NumConv_2( "12345678" );
+		NumConv_2( "123456789" );
+		NumConv_2( "1234567890" );
+
+	endfor;
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );	
+	stdout.put( "NumConv_2: time=", tval, " milliseconds" nl );
+	
+	
+	
+	t.start();
+	for( mov( NumIterations, ecx ); ecx > 0; dec( ecx )) do
+
+		NumConv_3( "0" );
+		NumConv_3( "1" );
+		NumConv_3( "12" );
+		NumConv_3( "123" );
+		NumConv_3( "1234" );
+		NumConv_3( "12345" );
+		NumConv_3( "123456" );
+		NumConv_3( "1234567" );
+		NumConv_3( "12345678" );
+		NumConv_3( "123456789" );
+		NumConv_3( "1234567890" );
+
+	endfor;
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );	
+	stdout.put( "NumConv_3: time=", tval, " milliseconds" nl );
+	
+	
+	
+	t.start();
+	for( mov( NumIterations, ecx ); ecx > 0; dec( ecx )) do
+
+		NumConv_4( "0" );
+		NumConv_4( "1" );
+		NumConv_4( "12" );
+		NumConv_4( "123" );
+		NumConv_4( "1234" );
+		NumConv_4( "12345" );
+		NumConv_4( "123456" );
+		NumConv_4( "1234567" );
+		NumConv_4( "12345678" );
+		NumConv_4( "123456789" );
+		NumConv_4( "1234567890" );
+
+	endfor;
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );	
+	stdout.put( "NumConv_4: time=", tval, " milliseconds" nl );
+	
+	
+	
+	t.start();
+	for( mov( NumIterations, ecx ); ecx > 0; dec( ecx )) do
+
+		NumConv_5( "0" );
+		NumConv_5( "1" );
+		NumConv_5( "12" );
+		NumConv_5( "123" );
+		NumConv_5( "1234" );
+		NumConv_5( "12345" );
+		NumConv_5( "123456" );
+		NumConv_5( "1234567" );
+		NumConv_5( "12345678" );
+		NumConv_5( "123456789" );
+		NumConv_5( "1234567890" );
+
+	endfor;
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );	
+	stdout.put( "NumConv_5: time=", tval, " milliseconds" nl );
+	
+	
+	
+	t.start();
+	for( mov( NumIterations, ecx ); ecx > 0; dec( ecx )) do
+
+		NumConv_6( "0" );
+		NumConv_6( "1" );
+		NumConv_6( "12" );
+		NumConv_6( "123" );
+		NumConv_6( "1234" );
+		NumConv_6( "12345" );
+		NumConv_6( "123456" );
+		NumConv_6( "1234567" );
+		NumConv_6( "12345678" );
+		NumConv_6( "123456789" );
+		NumConv_6( "1234567890" );
+
+	endfor;
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );	
+	stdout.put( "NumConv_6: time=", tval, " milliseconds" nl );
+	
+	
+	
+	t.start();
+	for( mov( NumIterations, ecx ); ecx > 0; dec( ecx )) do
+
+		NumConv_7( "0" );
+		NumConv_7( "1" );
+		NumConv_7( "12" );
+		NumConv_7( "123" );
+		NumConv_7( "1234" );
+		NumConv_7( "12345" );
+		NumConv_7( "123456" );
+		NumConv_7( "1234567" );
+		NumConv_7( "12345678" );
+		NumConv_7( "123456789" );
+		NumConv_7( "1234567890" );
+
+	endfor;
+	t.stop();
+	mov( eax, (type dword tval) );
+	mov( edx, (type dword tval)[4] );	
+	stdout.put( "NumConv_7: time=", tval, " milliseconds" nl );
+	
+	
+
+end NumericConvDemo2; 

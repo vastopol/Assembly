@@ -1,0 +1,267 @@
+#if( ! @defined( filesys_hhf ))
+?filesys_hhf := true;
+
+#includeOnce( "os.hhf" )
+#includeOnce( "_hla.hhf" )
+#includeOnce( "stdio.hhf" )
+
+
+/*********************************************************************/
+/*                                                                   */
+/* 	                                                                 */
+/* 	filesys namespace                                                */
+/* 	                                                                 */
+/* 	                                                                 */
+/*********************************************************************/
+
+namespace filesys; @fast;
+
+
+proc
+	delete:
+		procedure( filename:string );
+		@global:_hla._ext( "FILESYS_DELETE" );
+
+	rename:
+		procedure( fromPath:string; toPath:string );
+		@global:_hla._ext( "FILESYS_RENAME" );
+
+	mkdir:
+		procedure( directory:string );
+		@global:_hla._ext( "FILESYS_MKDIR" );
+
+	rmdir:
+		procedure( directory:string );
+		@global:_hla._ext( "FILESYS_RMDIR" );
+
+	cd:
+		procedure( directory:string );
+		@global:_hla._ext( "FILESYS_CD" );
+
+	exists:
+		procedure( FileName:string ) {@returns( "EAX" )}; 
+		@global:_hla._ext( "FILESYS_EXISTS" );
+
+	isFile:
+		procedure( FileName:string ) {@returns( "EAX" )}; 
+		@global:_hla._ext( "FILESYS_ISFILE" );
+
+	isDir:
+		procedure( FileName:string ) {@returns( "EAX" )}; 
+		@global:_hla._ext( "FILESYS_ISDIR" );
+
+	gwd:
+		procedure( directory:string );
+		@global:_hla._ext( "FILESYS_GWD" );
+
+	#macro size( parameter );
+
+		#if( @typename( parameter ) = "string" )
+		
+			filesys._sizen_( parameter );
+
+		#elseif( @typename( parameter ) = "dword" )
+
+			filesys._sizeh_( parameter );
+
+		#elseif( @size( parameter ) = 4 )
+
+			#print
+			( 
+				"Warning: assuming '",
+				@string:parameter,
+				"' parameter is a handle" 
+			);
+			filesys._sizeh_( parameter );
+
+		#else
+
+			#error( "Illegal parameter type (expected dword or string)" );
+
+		#endif
+
+	#endmacro
+
+	_sizeh_:
+		procedure( handle:dword ) {@returns( "EAX" )};
+		@global:_hla._ext( "FILESYS_SIZEHANDLE" );
+
+	_sizen_:
+		procedure( filename:string ) {@returns( "EDX:EAX" )};
+		@global:_hla._ext( "FILESYS_SIZENAME" );
+
+
+	// Directory iterators:
+	
+	fileWithSuffix:
+		iterator( directory:string; suffix:string );
+		@global:_hla._ext( "FILESYS_FILEWITHSUFFIX" );
+	
+	fileIn:
+		iterator( directory:string );
+		@global:_hla._ext( "FILESYS_FILEIN" );
+	
+	fileInCwd:
+		iterator;
+		@global:_hla._ext( "FILESYS_FILEINCWD" );
+	
+	dirIn:
+		iterator( directory:string );
+		@global:_hla._ext( "FILESYS_DIRIN" );
+	
+	dirInCwd:
+		iterator;
+		@global:_hla._ext( "FILESYS_DIRINCWD" );
+	
+	itemInCwd:
+		iterator;
+		@global:_hla._ext( "FILESYS_ITEMINCWD" );
+	
+	itemWithSuffix:
+		iterator( directory:string; suffix:string );
+		@global:_hla._ext( "FILESYS_ITEMWITHSUFFIX" );
+	
+	
+	// Filename predicate functions:
+	
+	hasDriveLetter:
+		procedure( pathname:string ) {@returns( "@c" )};	// and AL
+		@global:_hla._ext( "FILESYS_HASDRIVELETTER" );
+		
+	hasExtension:
+		procedure( pathname:string ) {@returns( "@c" )};  // and EAX
+		@global:_hla._ext( "FILESYS_HASEXTENSION" );
+
+	hasUncName:
+		procedure( pathname:string ) {@returns( "@c" )};	// and EAX
+		@global:_hla._ext( "FILESYS_HASUNCNAME" );
+		
+	hasPath:
+		procedure( pathname:string ) {@returns( "@c" )};
+		@global:_hla._ext( "FILESYS_HASPATH" );
+		
+
+	// pathname component extraction functions:
+	
+	a_deleteExt:
+		procedure( pathname:string ) {@returns( "(type string eax)" )};
+		@global:_hla._ext( "FILESYS_A_DELETEEXT" );
+
+	a_extractBase:
+		procedure( pathname:string ) {@returns( "@c" )};	// and EAX
+		@global:_hla._ext( "FILESYS_A_EXTRACTBASE" );
+
+	a_extractExt:
+		procedure( pathname:string ) {@returns( "@c" )}; // and eax
+		@global:_hla._ext( "FILESYS_A_EXTRACTEXT" );
+		
+	a_extractFilename:
+		procedure( pathname:string ) {@returns( "@c" )};	// and EAX
+		@global:_hla._ext( "FILESYS_A_EXTRACTFILENAME" );
+		
+	a_extractPath:
+		procedure( pathname:string ) {@returns( "@c" )};	// and EAX
+		@global:_hla._ext( "FILESYS_A_EXTRACTPATH" );
+		
+	extractBase:
+		procedure( pathname:string; base:string ) {@returns( "@c" )};
+		@global:_hla._ext( "FILESYS_EXTRACTBASE" );
+		
+	extractExt:
+		procedure( pathname:string; dest:string ) {@returns( "@c" )};
+		@global:_hla._ext( "FILESYS_EXTRACTEXT" );
+
+	extractFilename:
+		procedure( pathname:string; fName:string ) {@returns( "@c" )};
+		@global:_hla._ext( "FILESYS_EXTRACTFILENAME" );
+		
+	extractPath:
+		procedure( pathname:string; dest:string ) {@returns( "@c" )};
+		@global:_hla._ext( "FILESYS_EXTRACTPATH" );
+		
+	deleteExt:
+		procedure( pathname:string; dest:string );
+		@global:_hla._ext( "FILESYS_DELETEEXT" );
+
+
+
+	// Pathname conversion and manipulation functions:
+	
+	a_joinPaths:
+		procedure( leftPath:string; rightPath:string ) {@returns( "eax" )};
+		@global:_hla._ext( "FILESYS_A_JOINPATHS" );
+
+	a_normalize:
+		procedure( path:string ) {@returns( "eax" )};
+		@global:_hla._ext( "FILESYS_A_NORMALIZE" );
+		
+	a_toUnixPath:
+		procedure( pathname:string ) {@returns( "eax" )};
+		@global:_hla._ext( "FILESYS_A_TOUNIXPATH" );
+
+	a_toWin32Path:
+		procedure( pathname:string ) {@returns( "eax" )};
+		@global:_hla._ext( "FILESYS_A_TOWIN32PATH" );
+ 
+	joinPaths:
+		procedure( leftPath:string; rightPath:string; dest:string );
+		@global:_hla._ext( "FILESYS_JOINPATHS" );
+
+	normalize1:
+		procedure( pathname:string ) {@returns( "@c" )};
+		@global:_hla._ext( "FILESYS_NORMALIZE1" );
+		
+	normalize2:
+		procedure( pathname:string; dest:string ) {@returns( "@c" )};
+		@global:_hla._ext( "FILESYS_NORMALIZE2" );
+		
+	toUnixPath1:
+		procedure( pathname:string );
+		@global:_hla._ext( "FILESYS_TOUNIXPATH1" );
+
+	toUnixPath2:
+		procedure( pathname:string; dest:string );
+		@global:_hla._ext( "FILESYS_TOUNIXPATH2" );
+
+	toWin32Path1:
+		procedure( pathname:string );
+		@global:_hla._ext( "FILESYS_TOWIN32PATH1" );
+
+	toWin32Path2:
+		procedure( pathname:string; dest:string );
+		@global:_hla._ext( "FILESYS_TOWIN32PATH2" );
+ 
+	#if( @global:os.win32 )
+		
+		const 
+			toNativePath1	:text := "filesys.toWin32Path1";
+			toNativePath2	:text := "filesys.toWin32Path2";
+	    	a_toNativePath	:text := "filesys.a_toWin32Path";
+
+	#else
+		
+		const 
+			toNativePath1	:text := "filesys.toUnixPath1";
+			toNativePath2	:text := "filesys.toUnixPath2";
+	    	a_toNativePath	:text := "filesys.a_toUnixPath";
+
+	#endif
+ 
+ proc
+	a_getFullPathName:
+		procedure( partialPath:string ) {@returns( "eax" )};
+		@global:_hla._ext( "FILESYS_A_GETFULLPATHNAME" );
+ 
+	getFullPathName:
+		procedure( partialPath:string; fullPath:string ) {@returns( "eax" )};
+		@global:_hla._ext( "FILESYS_GETFULLPATHNAME" );
+
+	
+
+end filesys;
+
+#endif
+
+
+
+

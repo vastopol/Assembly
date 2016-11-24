@@ -1,0 +1,5 @@
+procedure ExtProc; external;
+
+static
+		ExtVar: int32; external;
+

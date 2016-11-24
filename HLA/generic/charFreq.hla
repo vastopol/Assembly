@@ -1,0 +1,55 @@
+/*
+I have to write a procedure that constructs a 
+character frequency table the idea is to count 
+how many times a character appears in a string.
+*/
+
+program charFreq;
+#include( "stdlib.hhf" )
+static
+	input   :string;
+	freq    :uns32[256];
+	
+begin charFreq;
+
+	// Zero out the array (optional, as static vars
+	// automatically contain zero, but good to make
+	// this explicit).
+	
+	mov( &freq, edi );
+	mov( 256, ecx );
+	xor( eax, eax );
+	rep.stosd();
+	
+	// Read the string and count the chars:
+
+	stdout.put( "Enter a string: " );
+	stdin.a_gets();
+	mov( eax, input );
+	mov( eax, ebx );
+	while( (type char [ebx]) <> #0 ) do
+	
+		movzx( (type char [ebx]), eax );
+		inc( freq[eax*4] );
+		inc( ebx );
+		
+	endwhile;
+	
+	for( mov( 0, ecx ); ecx < 256; inc( ecx )) do
+	
+		if( (type dword freq[ecx*4]) <> 0 ) then
+		
+			stdout.put
+			( 
+				(type uns32 ecx):3, 
+				": ", 
+				(type uns32 freq[ecx*4]),
+				nl
+			);
+			
+		endif;
+		
+	endfor;
+	strfree( input );
+
+end charFreq;

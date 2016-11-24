@@ -1,0 +1,237 @@
+program count; 
+#include( "stdlib.hhf" ) 
+
+const 
+    uppervowels_set  := { 'A', 'E', 'I', 'O', 'U', 'Y' }; 
+    uppervowels_list := string( uppervowels_set ); 
+    lowervowels_list := @lowercase( uppervowels_list, 0 ); 
+    totalvowels_list := uppervowels_list + lowervowels_list; 
+    uppercons_list   := string( {'A'..'Z'} - uppervowels_set ); 
+    lowercons_list   := @lowercase( uppercons_list, 0 ); 
+    totalcons_list   := uppercons_list + lowercons_list; 
+    numbers_list     := "0123456789"; 
+    puncts_list      := "!""#$%&'()*+,-./:;<=>?@[\]^_`­{|}~"; 
+
+
+    separatorChars   := { #0..' ', #$7f}; 
+
+
+type 
+    charArray   :dword[256]; 
+
+
+static 
+    startTime   :qword; 
+    endTime     :qword; 
+    mmfile      :mmap; 
+    wordChars   :cset[2]; 
+    frequency   :charArray; 
+    transition  :byte[256,256]; 
+
+
+    procedure addEmUp( msg:string; set:string ); 
+    begin addEmUp; 
+
+
+        xor( eax, eax ); 
+        mov( set, ebx ); 
+        while( (type byte [ebx]) <> 0 ) do 
+
+
+            movzx( (type byte [ebx]), ecx ); 
+            add( frequency[ecx*4], eax ); 
+            add( 1, ebx ); 
+
+
+        endwhile; 
+        stdout.put( msg, ": ", (type uns32 eax), nl ); 
+
+
+    end addEmUp; 
+
+
+begin count; 
+
+
+    // Initialize wordChars with the character set corresponding 
+    // to all the characters that are legal in a "word": 
+
+
+    cs.cpy( -separatorChars, wordChars[0] ); 
+    cs.cpy( {}, wordChars[16] ); 
+
+
+    if( arg.c() <> 2 ) then 
+
+
+        stdout.put( "usage: count filename[.ext]" nl ); 
+        exit count; 
+
+
+    endif; 
+
+
+    // Initialize memory-mapped file object. 
+
+
+    mmfile.create(); 
+
+
+    // Open the mmap.asm file. 
+
+
+    mmfile.open( arg.v(1), fileio.r ); 
+
+
+    // Get pointer to file's data 
+
+
+    mov( mmfile.filePtr, esi ); 
+
+
+    // Zero out the transition array: 
+
+
+    xor( eax, eax ); 
+    mov( @size( transition ) div 4, ecx ); 
+    lea( edi, transition ); 
+    rep.stosd(); 
+
+
+    // Initialize appropriate entries in the transition 
+    // array to one. 1st index corresponds to the previous 
+    // character read, 2nd index corresponds to the current 
+    // character read, the entry is one if there is a 
+    // no_word -> word transition across the two characters. 
+
+
+    xor( ecx, ecx ); 
+    xor( eax, eax ); 
+    xor( ebx, ebx ); 
+    repeat 
+
+
+        mov( bh, al ); 
+        mov( 0, bl ); 
+        repeat 
+
+
+            mov( bl, cl ); 
+            bt( eax, wordChars[0] ); 
+            if( @nc ) then 
+
+
+                bt( ecx, wordChars[0] ); 
+                adc( 0, transition[ebx] ); 
+
+
+            endif; 
+
+
+            inc( bl ); 
+
+
+        until( @z ); 
+        inc( bh ); 
+
+
+    until( @z ); 
+
+
+    // Save time stamp information: 
+
+
+    rdtsc(); 
+    mov( eax, (type dword startTime)); 
+    mov( edx, (type dword startTime[4])); 
+
+
+    // Process the file (this is the time critical stuff): 
+
+
+    xor( ebx, ebx );    // word count 
+    xor( edx, edx );    // last char = dh, cur char = dl 
+    xor( ecx, ecx ); 
+    while( esi < mmfile.endFilePtr ) do 
+
+
+        movzx( (type byte [esi]), eax ); 
+        add( 1, frequency[ eax*4 ] ); 
+        mov( dl, dh ); 
+        mov( al, dl ); 
+        movzx( transition[edx], ecx ); 
+        add( ecx, ebx ); 
+
+
+//        bt( eax, (type dword wordChars) ); 
+//        setc( dh );     // New char a valid word char? 
+//        mov( dl, cl );  // Copy inword flag 
+//        xor( dh, cl );  // Transition in/out of word? 
+//        and( dl, cl ); 
+//        mov( dh, dl ); 
+//        add( ecx, ebx );    // Increment word cnt if 
+//                            // not word->word transition. 
+
+
+        add( 1, esi );      // Move on to next char 
+
+
+    endwhile; 
+
+
+    // Conclude the timing: 
+
+
+    rdtsc(); 
+
+
+    sub( (type dword startTime), eax ); 
+    sbb( (type dword startTime[4]), edx ); 
+    mov( eax, (type dword endTime)); 
+    mov( edx, (type dword endTime[4])); 
+
+
+    stdout.put( "Cycles: ", (type uns64 endTime), nl ); 
+    push( ebx ); 
+
+
+    addEmUp( "Upper case vowels", uppervowels_list ); 
+    addEmUp( "Lower case vowels", lowervowels_list ); 
+    addEmUp( "Total vowels", totalvowels_list ); 
+
+
+    addEmUp( "Upper case consonants", uppercons_list ); 
+    addEmUp( "Lower case consonants", lowercons_list ); 
+    addEmUp( "Total consonants", totalcons_list ); 
+
+
+    addEmUp( "Total alpha characters", string( {'A'..'Z', 'a'..'z'} )); 
+
+
+    addEmUp( "Numerals", numbers_list ); 
+    addEmUp( "Total punctuation", puncts_list ); 
+
+
+    pop( ebx ); 
+    stdout.put( "Total words: ", (type uns32 ebx), nl ); 
+    stdout.put( "Tabs: ", (type uns32 frequency[ 9*4 ]), nl ); 
+    stdout.put( "Spaces: ", (type uns32 frequency[ $20*4 ]), nl ); 
+    stdout.put( "Carriage Returns: ", (type uns32 frequency[ $d*4 ]), nl ); 
+    stdout.put( "Linefeeds: ", (type uns32 frequency[ $a*4 ]), nl ); 
+
+
+    // Close the file: 
+
+
+    mmfile.close(); 
+
+
+    // Clean up the associated object: 
+
+
+    mmfile.destroy(); 
+
+
+end count; 
+
+

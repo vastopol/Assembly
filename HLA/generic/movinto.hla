@@ -1,0 +1,94 @@
+/*
+This is an example of two things in HLA:
+1. mnemonic replacement via #id/#rw,
+2. Creating your own syntax for HLA instructions.
+
+This code was written based on an example of how to
+create a MOV macro that uses (dst,src) operand ordering
+rather than the HLA standard (src,dst) ordering.
+
+I'd posted the code for an HLA macro to do this, followed
+by this remark:
+
+> Now you can write "mov( mem, eax );" to store EAX into mem.
+>
+> Of course, the *danger* to this approach is that it will totally confuse
+> someone who knows HLA :-)
+> Cheers,
+> Randy Hyde
+>
+
+Someone in alt.lang.asm asked the following:
+
+> why not the option mov(mem into eax) and mov (into mem, eax) ??
+
+And here's the code that does this:
+*/
+
+program funny_moves;
+
+#id( mov )
+#id( into )
+
+#macro mov( op1, op2 ):op1tkns, op2tkns, op_1, op_2, in_to;
+
+	?op1tkns := @tokenize( @string( op1 ), 0, {' '}, {} );
+	?op2tkns := @tokenize( @string( op2 ), 0, {' '}, {} );
+	
+	?in_to := 0;
+	#if( @elements( op1tkns ) > 1 )
+	
+		#if( op1tkns[0] <> "into" )
+			#error( "expected 'into <operand>' for operand #1" )
+		#endif
+		?in_to := 1;
+		?op_1 := op1tkns[1];
+		
+	#else
+		
+		?op_1 := op1tkns[0];
+		
+	#endif
+	
+	#if( @elements( op2tkns ) > 1 )
+	
+		#if( in_to = 1 )
+			#error( "Both operands cannot have 'into' clause" )
+		#endif
+		#if( op2tkns[0] <> "into" )
+			#error( "expected 'into <operand>' for operand #2" )
+		#endif
+		?in_to := 2;
+		?op_2 := op2tkns[1];
+		
+	#else
+		
+		?op_2 := op2tkns[0];
+		
+	#endif
+	
+	#if( in_to != 1 )
+	
+		// Default, or mov( op1, into op2 ); is std HLA syntax.
+		
+		~mov( @text( op_1 ), @text( op_2 ));
+		
+	#else
+	
+		// mov( into op1, op2 ); -- uses dest,src
+		
+		~mov( @text( op_2 ), @text( op_1 )); 
+	
+	#endif
+	
+
+#endmacro
+
+begin funny_moves;
+
+	mov( eax, ebx );
+	mov( into eax, ebx );
+	mov( eax, into ebx );
+
+
+end funny_moves;

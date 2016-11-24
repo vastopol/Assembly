@@ -1,0 +1,1253 @@
+#if( ! @defined( hla_hhf ))
+?hla_hhf := true;
+	
+// The following tells the system the major version # of the HLA standard library.
+const
+	HLAstdlibVersion := 8;
+	
+#includeOnce( "_hla.hhf" )	
+	
+// Standard HLA namespace stuff available to everyone:
+
+namespace hla;
+
+	type
+		timeval:
+			record
+		
+				tv_sec	:dword;
+				tv_usec	:dword;
+				
+			endrecord;
+		
+		timespec:
+			record
+		
+				tv_sec	:dword;
+				tv_nsec	:dword;
+				
+			endrecord;
+		
+		coroutineDataStructure:
+			record
+			
+				theCoroutineVMT		:dword;
+				currentESP			:dword;
+				stackPointer		:dword;
+				exceptionContext	:dword;
+				pointerToLastCaller	:dword;
+				terminationCode		:dword;
+			
+			endrecord;
+			
+		vmtRec:
+			record := -12;
+			
+				vmtName		:string;
+				vmtSize		:uns32;
+				vmtParent	:pointer to dword;
+				
+			endrecord;		
+
+
+
+
+	// The following socket definitions appear here rather than in
+	// sockets.hhf because certain include files (e.g., bsd.hhf and mac.hhf)
+	// need these definitions, but we don't want to automatically include
+	// sockets.hhf because including sockets.hhf could cause the OS to load
+	// in extra code that isn't needed unless you're actually using sockets.
+
+	const
+		_sock_save_enumSize_	:= @enumSize;
+		max_fd_elements			:= 64;
+
+		type
+			bigEndianDW	:dword;
+			bigEndianW	:word;
+			
+			?@enumSize := 4;
+			socktype_t:
+				enum
+				{
+					server_c,
+					client_c
+				};
+			?@enumSize := _sock_save_enumSize_;	
+			
+			sa_family_t	:word;
+			socklen_t	:dword;
+			
+			fd_set_t	:record
+				
+				fd_count	:dword;
+				fd_array	:dword[ max_fd_elements ];
+				
+			endrecord;
+			
+			hostent	:record
+			
+				h_name		:zstring;
+				h_aliases	:dword;
+				h_addrtype	:sa_family_t;
+				padding0	:word;
+				h_length	:word;
+				padding1	:word;
+				h_addr_list	:dword;
+				
+			endrecord;
+			
+			sockaddr_in	:record
+				sa_family	:sa_family_t;
+				sin_port	:bigEndianW;
+				sin_addr	:bigEndianDW;
+			endrecord;
+			
+			sockaddr	:record
+			
+				sa_family: sa_family_t;
+				union
+				
+					sa_data	:byte[14];
+					record
+					
+						sin_port	:bigEndianW;
+						sin_addr	:bigEndianDW;
+						
+					endrecord;
+					
+				endunion;
+				
+			endrecord;
+		
+
+
+	const
+		
+		// ID character class used by the put macros:
+	
+		_idchars_:cset := {'a'..'z', 'A'..'Z', '0'..'9', '_', '.' };
+	
+
+		// SymClass constants.
+
+		cIllegal	:= 0;
+		cConstant	:= 1;	  
+		cValue		:= 2; 	  
+		cType		:= 3; 		  
+		cVar		:= 4;		  
+		cParm		:= 5;		  
+		cStatic		:= 6;	  
+		cLabel		:= 7;		  
+		cProc		:= 8;		  
+		cIterator	:= 9;	  
+		cClassProc	:= 10;
+		cClassIter  := 11;	  
+		cMethod		:= 12;
+		cMacro		:= 13;
+		cOverload	:= 14;		  
+		cKeyword	:= 15;	  
+		cTerminator	:= 16;
+		cRegEx		:= 17;  
+		cProgram	:= 18; 	  
+		cNamespace	:= 19;
+		cSegment    := 20;
+		cRegister	:= 21;	  
+		cNone		:= 22;		  
+
+
+
+		// pType constants.
+
+		ptIllegal	:= 0;		
+		ptBoolean	:= 1;		
+		ptEnum		:= 2;		
+						
+		ptUns8		:= 3;		
+		ptUns16		:= 4;		
+		ptUns32		:= 5;		
+		ptUns64		:= 6;		
+		ptUns128	:= 7;		
+						
+		ptByte		:= 8;		
+		ptWord		:= 9;		
+		ptDWord		:= 10;		
+		ptQWord		:= 11;		
+		ptTByte		:= 12;		
+		ptLWord		:= 13;		
+						
+		ptInt8		:= 14;			
+		ptInt16		:= 15;		
+		ptInt32		:= 16;		
+		ptInt64		:= 17;		
+		ptInt128	:= 18;		
+						
+		ptChar		:= 19;		
+		ptWChar		:= 20; 		
+						
+		ptReal32	:= 21;		
+		ptReal64	:= 22; 		
+		ptReal80	:= 23;		
+		ptReal128	:= 24;		
+		 						
+		ptString	:= 25;		
+		ptZString	:= 26;		
+		ptWString	:= 27;		
+		ptCset		:= 28;		
+						
+		ptArray		:= 29;		
+		ptRecord	:= 30;		
+		ptUnion		:= 31;		
+		ptRegex		:= 32;		
+		ptClass		:= 33;		
+		ptProcptr	:= 34;		
+		ptThunk		:= 35;		
+		ptPointer	:= 36;		
+						
+		ptLabel		:= 37;		
+		ptProc		:= 38;			
+		ptMethod	:= 39;		
+		ptClassProc	:= 40;		
+		ptClassIter := 41;		
+		ptIterator	:= 42;		
+		ptProgram	:= 43;		
+		ptMacro		:= 44;
+		ptOverload	:= 45;		
+		ptText		:= 46;		
+		ptRegExMac	:= 47;		
+								
+		ptNamespace	:= 48;		
+		ptSegment	:= 49;		
+		ptAnonRec	:= 50;		
+		ptAnonUnion := 51;		
+		ptVariant	:= 52;		
+		ptError		:= 53;			
+
+		// Total Number of ptypes we support:
+
+		sizePTypes	:= 54;
+			  		
+
+
+		// ParmClass constants
+
+		illegal_pc	:= 0;		
+		valp_pc		:= 1;		
+		refp_pc		:= 2;		
+		vrp_pc		:= 3;			
+		result_pc	:= 4;		
+		name_pc		:= 5;		
+		lazy_pc		:= 6;
+		
+
+
+		/*
+		** The following constants correspond to bits in the
+		** value returned by @section.  They denote the current
+		** position of the compiler in the code.
+		*/
+
+		inConst		:= 1;
+		inVal		:= 2;
+		inType		:= 4;
+		inVar		:= 8;
+		inStatic	:= $10;
+		inReadonly	:= $20;
+		inStorage	:= $40;
+		inData		:= $80;
+
+		inMain		:= $1000;
+		inProcedure	:= $2000;
+		inMethod	:= $4000;
+		inIterator	:= $8000;
+		//inMacro		:= $1_0000;
+		//inKeyword	:= $2_0000;
+		//inTerminator:= $4_0000;
+		inCTL		:= $4_0000;
+		inThunk		:= $8_0000;
+
+		inUnit		:= $80_0000;
+		inProgram	:= $100_0000;
+		inRecord	:= $200_0000;
+		inUnion		:= $400_0000;
+		inClass		:= $800_0000;
+		inNamespace := $1000_0000;
+
+
+
+
+
+
+
+	ptypeStrs :string[ sizePTypes ] :=
+		[
+			"invalid",		//0
+			"boolean",		//1
+			"enum",			//2
+			"uns8",			//3
+			"uns16",		//4
+			"uns32",		//5
+			"uns64",		//6
+			"uns128",		//7
+			"byte",			//8
+			"word",			//9
+			"dword",		//10
+			"qword",		//11
+			"tbyte",		//12
+			"lword",		//13
+			"int8",			//14
+			"int16",		//15
+			"int32",		//16
+			"int64",		//17
+			"int128",		//18
+			"char",			//19
+			"wchar",		//20
+			"real32",		//21
+			"real64",		//22
+			"real80",		//23
+			"real128",		//24
+			"string",		//25
+			"zstring",		//26
+			"wstring",		//27
+			"cset",			//28
+			"(array)",		//29
+			"(record)",		//30
+			"(union)",		//31
+			"regex",		//32
+			"(class)",		//33
+			"(procptr)",	//34
+			"thunk",		//35
+			"dword",		//36	-- Really POINTER!
+			"(label)",		//37
+			"(proc)",		//38
+			"(method)",		//39
+			"(classProc)",	//40
+			"(classIter)",	//41
+			"(iterator)",	//42
+			"(program)",	//43
+			"(macro)",		//44
+			"(overload)",	//45
+			"(text)",		//46
+			"(regex)",		//47
+			"(namespace)",	//48
+			"(segment)",	//49
+			"(anonRec)",	//50
+			"(anonUnion",	//51
+			"(variant",		//52
+			"(error)"		//53	Used to denote a cascading error.
+		];				
+
+
+
+	// The following macro generates a sequence of
+	// strings that are unique, legal, HLA identifiers
+	// (within the current compilation, do not use
+	// these as public symbols).
+
+	val
+		_hla_labelCnt_ := 0;
+
+
+	#macro genLabel;
+
+		"_genLabel_" + string( @global:hla._hla_labelCnt_ ) + "_"
+		?@global:hla._hla_labelCnt_ := @global:hla._hla_labelCnt_ + 1;
+
+	#endmacro
+
+
+
+	// This macro generates an appropriate overloads string for
+	// use in a class:
+	
+	#macro ovrldStr( string theFunc );
+	
+		"@text( @left( @curvar, @rindex( @curvar, 0, ""."")+1) + """ + theFunc +""" )" 
+
+	#endmacro
+
+
+	// Macros to test the (p)Type of an object:
+
+	#macro isUns( obj );
+
+		( @ptype( obj ) >= @global:hla.ptUns8 & @ptype( obj ) <= @global:hla.ptUns128 )
+
+	#endmacro
+
+
+	#macro isInt( obj );
+
+		( @ptype( obj ) >= @global:hla.ptInt8 & @ptype( obj ) <= @global:hla.ptInt128 )
+
+	#endmacro
+
+
+	#macro isHex( obj );
+
+		( @ptype( obj ) >= @global:hla.ptByte & @ptype( obj ) <= @global:hla.ptLWord )
+
+	#endmacro
+
+	#macro isNumber( obj );
+
+		( @ptype( obj ) >= @global:hla.ptUns8 & @ptype( obj ) <= @global:hla.ptInt128 )
+
+	#endmacro
+
+	#macro isOrdinal( obj );
+
+		( @ptype( obj ) >= @global:hla.ptBoolean & @ptype( obj ) <= @global:hla.ptChar )
+
+	#endmacro
+
+
+	#macro isNumeric( obj );
+
+		(
+				( 
+						@ptype( obj ) >= @global:hla.ptUns8 
+					&	@ptype( obj ) <= @global:hla.ptInt128 
+				)
+			|	(
+						@ptype( obj ) >= @global:hla.ptReal32 
+					&	@ptype( obj ) <= @global:hla.ptReal80
+				)
+		)
+
+	#endmacro
+
+
+	#macro isReal( obj );
+
+		(
+				@ptype( obj ) >= @global:hla.ptReal32 
+			&	@ptype( obj ) <= @global:hla.ptReal80
+		)
+
+	#endmacro
+
+
+	// Macros to treat 1-4 character strings as words or dword:
+
+	#macro asWord( s );
+		
+		#if( @length(s) > 2 )
+		
+			#error( "asWord allows a maximum 2-char string!" )
+			
+		#elseif( @length(s) = 0 )
+		
+			0
+			
+		#elseif( @length(s) = 1 )
+		
+			word( @uns8( char(s) ))
+			
+		#else
+		
+			(
+					word(@uns8( char(@substr( s, 0, 1 )))) 
+				+	word(@uns8( char(@substr( s, 1, 1 ))) << 8 )
+			)
+			
+		#endif
+		
+	#endmacro
+
+
+	#macro asDword( s );
+		
+		#if( @length(s) > 4 )
+		
+			#error( "asDword allows a maximum 2-char string!" )
+			
+		#elseif( @length(s) = 0 )
+		
+			0
+			
+		#elseif( @length(s) = 1 )
+		
+			dword( @uns8( char(s) ))
+			
+		#elseif( @length(s) = 2 )
+		
+			(
+					dword(@uns8( char(@substr( s, 0, 1 )))) 
+				+	dword(@uns8( char(@substr( s, 1, 1 ))) << 8 )
+			)
+			
+		#elseif( @length(s) = 3 )
+		
+			(
+					dword(@uns8( char(@substr( s, 0, 1 )))) 
+				+	dword(@uns8( char(@substr( s, 1, 1 ))) << 8 ) 
+				+	dword(@uns8( char(@substr( s, 2, 1 ))) << 16 )
+			)
+			
+		#else
+		
+			(
+					dword(@uns8( char(@substr( s, 0, 1 )))) 
+				+	dword(@uns8( char(@substr( s, 1, 1 ))) << 8 ) 
+				+	dword(@uns8( char(@substr( s, 2, 1 ))) << 16 ) 
+				+	dword(@uns8( char(@substr( s, 3, 1 ))) << 24 )
+			)
+			
+		#endif
+		
+	#endmacro
+
+	/////////////////////////////////////////////////////////////////////////
+	//
+	// Support macro for xxxxx.put:
+	//
+	// Generic put macro-
+	//
+	//	For stdout.out, stderr.put, fileio.put, str.put, etc...
+	//	
+	// Note: the following are made global rather than local in the macro
+	// in order to (vastly) speed up processing of the put macros.
+		
+	val
+		_pType_:string;
+		_arg_:string;
+		_width_:string;
+		_decpts_:string;
+		_parmArray_:string;
+		_id_:string;
+		_idLen_:string;
+		_fieldCnt_:string;
+		_valid_:string;
+		_func_:string;
+		_sizeParms_:string;
+		_realsize_:string;
+		_prefix_:string;
+		_typename_:string;
+		
+		
+	#macro put( _package_, _dest_, _parameter_[] );
+		
+
+		// The following loop repeats once for each PUT parameter
+		// we process.
+
+		// The following stmt frees up any storage
+		// currently in use by parmArray.
+
+		?@global:hla._parmArray_:uns32 := 0;
+
+		// Get the current parameter into parmArray.
+		// Parameter takes the form:
+		//
+		//	value_to_print : Field_Width : Fractional_Width
+		//
+		// the "Field_Width" and "Fractional_Width" components
+		// are optional (or may not be allowed for certain types).
+		//
+		// The following call to @tokenize puts "value_to_print"
+		// into parmArray[0].  If present, it puts the "Field_Width"
+		// and "Fractional_Width" values into parmArray[1] and
+		// parmArray[2], respectively.
+
+		?@global:hla._parmArray_ :=	
+			@tokenize
+			(
+				_parameter_[0],
+				0,
+				{':'},
+				{
+					'"', 
+					'''', 
+					'[', 
+					']', 
+					'(', 
+					')', 
+					'{', 
+					'}' 
+				}
+			);
+		
+
+		// If this parameter begins with an identifier,
+		// there are some problems to deal with.
+		// The symbol table functions (e.g., @ptype) don't
+		// allow address expression components after the
+		// symbol name.  Named constants, however, do allow
+		// such entities.  The following code determines
+		// (1) is this a symbol?  (2) if it is a symbol, is
+		// it a constant?
+		//
+		//	For non-constant symbols, we need to strip any
+		// trailing non-symbol characters from the string
+		// (e.g., "[0]" ).
+
+		?@global:hla._arg_ := @trim( @global:hla._parmArray_[ 0 ], 0 );
+		#if( char( @global:hla._arg_ ) in @global:hla._idchars_ )
+
+			// If this parameter begins with an id character,
+			// then strip away any non-ID symbols from the
+			// end of the string.  Then determine if we've
+			// got a constant or some other class (e.g.,
+			// variable or procedure).  If not a constant,
+			// keep only the name.  If a constant, we need
+			// to keep all trailing characters as well.
+
+			?@global:hla._id_ := @global:hla._arg_;
+			?@global:hla._idLen_ := 
+				@strspan( @global:hla._arg_, 0, @global:hla._idchars_ );
+				
+			#if( @global:hla._idLen_ > 0 )
+
+				?@global:hla._id_ := 
+					@substr
+					( 
+						@global:hla._arg_, 
+						0,
+						@global:hla._idLen_ 
+					);
+
+			#endif
+			#if
+			( 
+					@class( @global:hla._id_ ) = @global:hla.cConstant 
+				|	@class( @global:hla._id_ ) = @global:hla.cValue 
+			)
+
+				?@global:hla._id_ := @global:hla._arg_;
+
+			#endif
+
+
+		#else
+
+			// If it's not an ID, we need to keep everything.
+
+			?@global:hla._id_ := @global:hla._arg_;
+
+		#endif
+		
+		// Determine the type of this parameter so we can
+		// call the appropriate routine to print it.
+
+		?@global:hla._prefix_	:string := @string:_package_ + ".";
+		?@global:hla._pType_ := @pType(  @text( @global:hla._id_ ));
+		#if( @pType( @text( @global:hla._id_ )) <> @global:hla.ptPointer )
+
+			?@global:hla._pType_ := @basepType( @text( @global:hla._id_ ));
+
+		#endif
+
+		// Assume the result is valid.
+		
+		?@global:hla._valid_ := true;		
+
+		// Okay, determine if the caller supplied a field width
+		// value with this parameter.
+		
+		
+		?@global:hla._fieldCnt_ := @elements( @global:hla._parmArray_ );
+		?@global:hla._width_ := "-1";		// Default width value.
+		?@global:hla._decpts_ := "-1";		// Default fractional value.
+		?@global:hla._sizeParms_ := "";		// Assume no size parameter(s)
+		?@global:hla._typename_	 := @global:hla.ptypeStrs[ @global:hla._pType_ ];
+		?@global:hla._valid_ := true;		
+		
+		#if( @global:hla._fieldCnt_ = 1 )
+		
+			#if( !_package_.validPutType[ @global:hla._pType_ ] )
+			
+				?@global:hla._valid_ := false;		
+				#error( "This output type is not supported" )
+				
+			#else
+			
+				?@global:hla._func_	:string := 
+					@global:hla._prefix_ + 
+						_package_.putFunc[ @global:hla._pType_ ];
+						
+			#endif
+			
+		
+		#elseif( @global:hla._fieldCnt_ = 2 )
+
+			#if( !_package_.validPutSizeType[ @global:hla._pType_ ] )
+			
+				?@global:hla._valid_ := false;		
+				#error( "This type does not support an output width" )
+				
+			#else
+				
+				?@global:hla._func_	:string := 
+					@global:hla._prefix_ + 
+						_package_.putSizeFunc[ @global:hla._pType_ ];
+
+				?@global:hla._width_ := @trim( @global:hla._parmArray_[ 1 ], 0 );
+				?@global:hla._sizeParms_ := "," + @global:hla._width_ + ",' '";
+				
+			#endif
+
+		#elseif( @global:hla._fieldCnt_ = 3 )
+
+			// Determine if the user supplied a fractional width
+			// value with this parameter.
+	
+
+			#if( !_package_.validPutSize2Type[ @global:hla._pType_ ] )
+			
+				?@global:hla._valid_ := false;		
+				#error
+				( 
+					"This type does not support a second (decpts) output width" 
+				)
+				
+			#else
+			
+				?@global:hla._func_	:string := 
+					@global:hla._prefix_ + 
+						_package_.putSize2Func[ @global:hla._pType_ ];
+
+				?@global:hla._width_ := @trim( @global:hla._parmArray_[ 1 ], 0 );
+				?@global:hla._decpts_ := @trim( @global:hla._parmArray_[ 2 ], 0 );
+				?@global:hla._sizeParms_:string := 
+										"," 
+									+	@global:hla._width_ 
+									+	"," 
+									+	@global:hla._decpts_
+									+	", ' '";
+						
+			#endif
+
+		#else
+
+			?@global:hla._valid_ := false;		
+			#error
+			( 
+				"<<" + _parameter_[0] + ">>" +
+				" has too many width fields" 
+			);
+
+		#endif
+
+		// Based on the type, call the appropriate library
+		// routine to print this value.
+
+		?@global:hla._valid_ := 
+				@global:hla._valid_
+			&	(
+						(
+								@global:hla._pType_ >= @global:hla.ptBoolean 
+							&	@global:hla._pType_ <= @global:hla.ptPointer
+						)
+					|	@global:hla._pType_ = @global:hla.ptClass
+				);
+			
+
+		#if( @global:hla._valid_ )	
+
+			#if( @global:hla._pType_ = @global:hla.ptClass )
+			
+				#if( @defined( @text(@global:hla._arg_ + ".a_toString")))
+				
+					push( esi );
+					push( edi );
+					push( eax );
+					
+					@text( @global:hla._arg_ + ".a_toString();" )
+					@text
+					(
+						@global:hla._prefix_ + 
+						_package_.putFunc[ @global:hla.ptString ]
+						+ "("
+							#if( _dest_ <> "" )
+								+ _dest_ +","
+							#endif 
+							"(type string eax)" +
+						");"
+					)
+					str.free( eax );
+					pop( eax );
+					pop( edi );
+					pop( esi );
+				
+				#else
+				
+					#error( "Class does not have an 'a_toString' method/procedure" );
+					
+				#endif
+				
+			#elseif
+			( 
+					@isconst( @text( @global:hla._arg_ )) 
+				&	@global:hla._typename_ = "string"
+				&	@global:hla._arg_ = "#13 #10"
+				&	@defined( @text( @global:hla._prefix_ + "newln" ))
+			)
+				@text( @global:hla._prefix_ + "newln" )
+				(
+					#if( _dest_ <> "" )
+						@text( _dest_ )
+					#endif 
+				);
+
+			#elseif( @isconst( @text( @global:hla._arg_ )) )
+
+				@text( @global:hla._func_ )
+				(
+					#if( _dest_ <> "" )
+						@text( _dest_ ),
+					#endif 
+					@text( @global:hla._arg_ ) 
+					@text( @global:hla._sizeParms_ )
+				);
+
+			#else
+
+
+				@text
+				(
+					@global:hla._func_
+					+ "("
+						#if( _dest_ <> "" )
+							+ _dest_ +","
+						#endif 
+						"(type " + @global:hla._typename_ + 
+						" " + @global:hla._arg_ +
+						" )" + 
+						@global:hla._sizeParms_ +
+					");"
+				);
+			
+
+			#endif
+			
+
+		#else
+
+			#error
+			(
+				@string:_package_ + 
+				".put: Unknown data type "
+				nl
+				"(" +
+				_parameter_[0] +
+				" is type """ +
+				@typename( @text( @global:hla._id_ )) +
+				""")"
+			);
+
+		#endif
+
+	#endmacro
+	
+	
+	///////////////////////////////////////////////////////////////////////////////
+	//
+	// Macros used to handle overloaded procedures
+	//
+	// 
+	// #macro overloadingName( parms[] );
+	//
+	//		overload( parms )
+	//
+	//			signature( procname1( int32) );
+	//			signature( procname2( int32, int32 ) );
+	//			signature( procname1s( string ) );
+	//
+	//		endoverload;
+	//
+	// #endmacro
+	
+	
+	// Internal use only!
+				
+	val
+		_ps_parameters	:string := "";
+		_ps_parmArray	:string;
+		_ps_procName	:string := "";
+		_junk_			:string;
+		_ovld_count		:uns32;
+		_ovld_index		:uns32;
+		_ovld_curSig	:string;
+		_ovld_matched	:boolean;
+		_ovld_parmStr	:string;
+		_ptypeFormal	:byte;
+		_ptypeActual	:byte;
+		_typeStr		:string;
+	
+	// Internal use only!
+		
+	#macro _parseSignature_( string _parm_ );
+	
+		#if
+		( 
+			@uptoChar
+			( 
+				_parm_, 
+				'(', 
+				@global:hla._ps_parameters, 
+				@global:hla._ps_procName 
+			)
+		)
+			// Strip the leading '(' char:
+			
+			?@global:hla._ps_parameters :=
+				@substr
+				( 
+					@global:hla._ps_parameters, 
+					1, 
+					@length(@global:hla._ps_parameters)-1 
+				);
+			
+			// Ensure we have a trailing ')' char:
+				
+			#if
+			(
+				@upToChar
+				(
+					@global:hla._ps_parameters,
+					')',
+					@global:hla._junk_,
+					@global:hla._ps_parameters
+				)
+			)
+				// Return an array of strings with the last element
+				// containing the name of the procedure and the remaining
+				// elements containing the type signatures.
+				
+				?@global:hla._ps_parmArray := 
+					@tokenize( @global:hla._ps_parameters, 0, {" ,"}, {} );
+
+				[
+					#if
+					( 
+							@elements(@global:hla._ps_parmArray) <> 1
+						|	@global:hla._ps_parmArray[0] <> "" 
+					)
+						@global:hla._ps_parmArray,
+					#endif
+					@global:hla._ps_procName
+				]
+				
+			#else
+			
+				#error( "Ill-formed signature, expected ')'" )
+				[
+					@global:hla._ps_procName
+				]
+				
+			#endif
+			
+		#else
+				
+				#error( "Ill-formed signature, expected '('" )
+				[
+					""
+				]
+				
+		#endif
+		
+	#endmacro
+	
+	
+	// A special macro for HLA stdlib functions. Produces different
+	// external names for non-threaded versus threaded functions.
+	
+	#macro _ext( extStr );
+	
+		#if( @thread )
+		
+			external( extStr + "_SAFE" )
+			
+		#else
+		
+			external( extStr )
+			
+		#endif
+		
+	#endmacro
+	
+	
+	// Support functions and macros for GETxxx and PUTxxx functions:
+	
+proc				  
+	geth32:
+		procedure( getc:thunk ) { @returns( "eax" )};		// and @C (c=1 if EOF). 
+		_ext( "HLA_GETH32" );
+	
+	geth64:
+		procedure( getc:thunk ) { @returns( "edx:eax" )};	// and @C (c=1 if EOF). 
+		_ext( "HLA_GETH64" );
+	
+	geth128:
+		procedure( var l:lword; getc:thunk ) { @returns( "@c" )}; 
+		_ext( "HLA_GETH128" );
+	
+	geti32:
+		procedure( getc:thunk ) { @returns( "eax" )};		// and @C (c=1 if EOF). 
+		_ext( "HLA_GETI32" );
+	
+	geti64:
+		procedure( getc:thunk ) { @returns( "edx:eax" )};	// and @C (c=1 if EOF). 
+		_ext( "HLA_GETI64" );
+	
+	geti128:
+		procedure( var l:lword; getc:thunk ) { @returns( "@c" )}; 
+		_ext( "HLA_GETI128" );
+	
+	getu32:
+		procedure( getc:thunk ) { @returns( "eax" )};		// and @C (c=1 if EOF). 
+		_ext( "HLA_GETU32" );
+	
+	getu64:
+		procedure( getc:thunk ) { @returns( "edx:eax" )};	// and @C (c=1 if EOF). 
+		_ext( "HLA_GETU64" );
+	
+	getu128:
+		procedure( var l:lword; getc:thunk ) { @returns( "@c" )}; 
+		_ext( "HLA_GETU128" );
+	
+	getf:
+		procedure( getc:thunk ) { @returns( "st0" )};		// and @C (c=1 if EOF). 
+		_ext( "HLA_GETF" );
+	
+	
+	
+	
+	putbin8:
+		procedure( putstr:thunk; b:byte );
+		_ext( "HLA_PUTBIN8" );
+	
+	putbool:
+		procedure( putstr:thunk; b:boolean );
+		_ext( "HLA_PUTBOOL" );
+	
+	putcset:
+		procedure( putstr:thunk; c:cset );
+		_ext( "HLA_PUTCSET" );
+		
+	putz:
+		procedure( putstr:thunk; zs:zstring );
+		_ext( "HLA_PUTZSTR" );
+		
+	putzSize:
+		procedure( putstr:thunk; zs:zstring; width:int32; fill:char );
+		_ext( "HLA_PUTZSTRSIZE" );
+	
+	
+	
+	
+	putb:
+		procedure( putstr:thunk; b:byte );
+		_ext( "HLA_PUTB" );
+	
+	putw:
+		procedure( putstr:thunk; w:word );
+		_ext( "HLA_PUTW" );
+	
+	putd:
+		procedure( putstr:thunk; d:dword );
+		_ext( "HLA_PUTD" );
+	
+	putq:
+		procedure( putstr:thunk; q:qword );
+		_ext( "HLA_PUTQ" );
+	
+	puttb:
+		procedure( putstr:thunk; tb:tbyte );
+		_ext( "HLA_PUTTB" );
+	
+	putl:
+		procedure( putstr:thunk; l:lword );
+		_ext( "HLA_PUTL" );
+	
+	
+	
+	
+	pute32:
+		procedure( putstr:thunk; r:real32; width:uns32 );
+		_ext( "HLA_PUTE32" );
+	
+	pute64:
+		procedure( putstr:thunk; r:real64; width:uns32 );
+		_ext( "HLA_PUTE64" );
+				 
+	pute80:
+		procedure( putstr:thunk; r:real80; width:uns32 );
+		_ext( "HLA_PUTE80" );
+	
+	
+	putr32:
+		procedure
+		( 
+			putstr	:thunk; 
+			r		:real32; 
+			width	:uns32; 
+			decpts	:uns32; 
+			fill	:char 
+		);
+		_ext( "HLA_PUTR32" );
+	
+	putr64:
+		procedure
+		( 
+			putstr	:thunk; 
+			r		:real64; 
+			width	:uns32; 
+			decpts	:uns32; 
+			fill	:char 
+		);
+		_ext( "HLA_PUTR64" );
+	
+	putr80:
+		procedure
+		( 
+			putstr	:thunk; 
+			r		:real80; 
+			width	:uns32; 
+			decpts	:uns32; 
+			fill	:char 
+		);
+		_ext( "HLA_PUTR80" );
+	
+	
+	
+	puth8:
+		procedure( putstr:thunk; b:byte );
+		_ext( "HLA_PUTH8" );
+	
+	puth8size:
+		procedure( putstr:thunk; b:byte; width:dword; fill:char );
+		_ext( "HLA_PUTH8SIZE" );
+	
+	puth16:
+		procedure( putstr:thunk; w:word );
+		_ext( "HLA_PUTH16" );
+	
+	puth16size:
+		procedure( putstr:thunk; w:word; width:dword; fill:char );
+		_ext( "HLA_PUTH16SIZE" );
+	
+	puth32:
+		procedure( putstr:thunk; d:dword );
+		_ext( "HLA_PUTH32" );
+	
+	puth32size:
+		procedure( putstr:thunk; d:dword; width:dword; fill:char );
+		_ext( "HLA_PUTH32SIZE" );
+	
+	puth64:
+		procedure( putstr:thunk; q:qword );
+		_ext( "HLA_PUTH64" );
+	
+	puth64size:
+		procedure( putstr:thunk; q:qword; width:dword; fill:char );
+		_ext( "HLA_PUTH64SIZE" );
+	
+	puth80:
+		procedure( putstr:thunk; tb:tbyte );
+		_ext( "HLA_PUTH80" );
+	
+	puth80size:
+		procedure( putstr:thunk; tb:tbyte; width:dword; fill:char );
+		_ext( "HLA_PUTH80SIZE" );
+			
+	puth128:
+		procedure( putstr:thunk; l:lword );
+		_ext( "HLA_PUTH128" );
+	
+	puth128size:
+		procedure( putstr:thunk; l:lword; width:dword; fill:char );
+		_ext( "HLA_PUTH128SIZE" );
+
+	
+	
+	puti8:
+		procedure( putstr:thunk; i8:byte );
+		_ext( "HLA_PUTI8" );
+	
+	puti8size:
+		procedure( putstr:thunk; i8:byte; width:dword; fill:char );
+		_ext( "HLA_PUTI8SIZE" );
+	
+	puti16:
+		procedure( putstr:thunk; i16:word );
+		_ext( "HLA_PUTI16" );
+	
+	puti16size:
+		procedure( putstr:thunk; i16:word; width:dword; fill:char );
+		_ext( "HLA_PUTI16SIZE" );
+	
+	puti32:
+		procedure( putstr:thunk; i32:dword );
+		_ext( "HLA_PUTI32" );
+	
+	puti32size:
+		procedure( putstr:thunk; i32:dword; width:dword; fill:char );
+		_ext( "HLA_PUTI32SIZE" );
+	
+	puti64:
+		procedure( putstr:thunk; i64:qword );
+		_ext( "HLA_PUTI64" );
+	
+	puti64size:
+		procedure( putstr:thunk; i64:qword; width:dword; fill:char );
+		_ext( "HLA_PUTI64SIZE" );
+	
+	puti128:
+		procedure( putstr:thunk; i128:lword );
+		_ext( "HLA_PUTI128" );
+	
+	puti128size:
+		procedure( putstr:thunk; i128:lword; width:dword; fill:char );
+		_ext( "HLA_PUTI128SIZE" );
+
+	
+	
+	putu8:
+		procedure( putstr:thunk; u8:byte );
+		_ext( "HLA_PUTU8" );
+	
+	putu8size:
+		procedure( putstr:thunk; u8:byte; width:dword; fill:char );
+		_ext( "HLA_PUTU8SIZE" );
+	
+	putu16:
+		procedure( putstr:thunk; u16:word );
+		_ext( "HLA_PUTU16" );
+	
+	putu16size:
+		procedure( putstr:thunk; u16:word; width:dword; fill:char );
+		_ext( "HLA_PUTU16SIZE" );
+	
+	putu32:
+		procedure( putstr:thunk; u32:dword );
+		_ext( "HLA_PUTU32" );
+	
+	putu32size:
+		procedure( putstr:thunk; u32:dword; width:dword; fill:char );
+		_ext( "HLA_PUTU32SIZE" );
+	
+	putu64:
+		procedure( putstr:thunk; u64:qword );
+		_ext( "HLA_PUTU64" );
+	
+	putu64size:
+		procedure( putstr:thunk; u64:qword; width:dword; fill:char );
+		_ext( "HLA_PUTU64SIZE" );
+	
+	putu128:
+		procedure( putstr:thunk; u128:lword );
+		_ext( "HLA_PUTU128" );
+	
+	putu128size:
+		procedure( putstr:thunk; u128:lword; width:dword; fill:char );
+		_ext( "HLA_PUTU128SIZE" );
+
+
+				 
+end hla;
+
+#endif
+
+

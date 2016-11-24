@@ -1,0 +1,60 @@
+#if( ! @defined( stdio_hhf ))
+?stdio_hhf := true;
+
+#includeOnce( "os.hhf" )
+
+const
+	#if( os.linux | os.freeBSD | os.macOS )
+	
+		nl:text := """"" #10";
+		
+	#elseif( os.win32 )
+	
+		nl:text := "#13 #10";
+		
+	#endif
+
+
+
+namespace stdio; @fast;
+
+	const
+
+		bell:	text := "#$7";
+		bs:		text := "#$8";
+		tab:	text := "#$9";
+		eoln:	text := "#$a";
+		lf:		text := "#$a";
+		cr:		text := "#$d";
+		ff:		text := "#$c";
+
+
+		_idchars_:cset := {'a'..'z', 'A'..'Z', '0'..'9', '_', '.' };
+
+		#macro _GetID_( _fullID_ ):_lclID_, _idLen_;
+
+			?_lclID_ := @trim( _fullID_, 0 );
+			#if( char( _lclID_ ) in stdio._idchars_ )
+
+				?_idLen_ := @strspan( _lclID_, 0, stdio._idchars_ );
+				#if( _idLen_ < 0 )
+
+					?_idLen_ := @length( _lclID_ );
+
+				#endif
+				?_lclID_ := @substr
+							( 
+								_lclID_, 
+								0,
+								_idLen_ 
+							);
+
+			#endif
+			_lclID_
+
+		#endmacro
+
+end stdio;
+
+
+#endif

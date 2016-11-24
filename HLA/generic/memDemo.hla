@@ -1,0 +1,203 @@
+program t;
+#include( "stdlib.hhf" )
+
+static
+	allocation		:dword;
+	ptrs			:dword[65536];
+	
+begin t;
+
+	// test mem.alloc and mem.free:
+	
+	for( mov( 0, ebx ); ebx < 16; inc( ebx )) do
+	
+		// Allocate lots of storage:
+		
+		for( mov( 0, ecx ); ecx < 65536; inc( ecx )) do
+		
+			rand.range( 1, 256 );
+			malloc( eax );
+			mov( eax, ptrs[ ecx*4 ] );
+			
+		endfor;
+		
+		for( mov( 0, ecx ); ecx < 65536; inc( ecx )) do
+		
+			free( ptrs[ ecx*4 ] );
+			
+		endfor;
+		
+		
+		// Allocate and then free in reverse order:
+		
+		for( mov( 0, ecx ); ecx < 65536; inc( ecx )) do
+		
+			rand.range( 1, 256 );
+			malloc( eax );
+			mov( eax, ptrs[ ecx*4 ] );
+			
+		endfor;
+		
+		for( mov( 65535, ecx ); (type int32 ecx) >= 0; dec( ecx )) do
+		
+			free( ptrs[ ecx*4 ] );
+			
+		endfor;
+		
+		// Allocate and then free in random order:
+		
+		for( mov( 0, ecx ); ecx < 65536; inc( ecx )) do
+		
+			rand.range( 1, 256 );
+			malloc( eax );
+			mov( eax, ptrs[ ecx*4 ] );
+			
+		endfor;
+		
+		foreach rand.deal( 65536 ) do
+		
+			free( ptrs[ eax*4 ] );
+			
+		endfor;
+				
+	endfor;
+	
+	// At the end of all of the above, there had better be only one
+	// item on both the freeList and the block list.
+	
+	stdout.put( nl "All blocks:" nl );
+	mov( 0, edx );
+	foreach mem.blockInHeap() do
+	
+		stdout.put
+		( 
+			"Block with size ", 
+			(type uns32 eax), 
+			" found, refcnt:",
+			(type uns32 ecx),
+			" at address $",
+			ebx,
+			nl 
+		);
+		add( eax, edx );
+		
+	endfor;
+	stdout.put( "Total storage: ", (type uns32 edx), nl );
+	
+	
+	
+	// Test mem.realloc:	
+	// Allocate lots of storage:
+	
+	for( mov( 0, ecx ); ecx < 65536; inc( ecx )) do
+	
+		rand.range( 1, 256 );
+		mem.alloc( eax );
+		mov( eax, ptrs[ ecx*4 ] );
+		
+	endfor;
+
+	
+	// Randomly free a bunch of blocks in the
+	// heap so that some reallocs can grow into
+	// free'd space.
+	
+	rand.range( 1, 32767 );
+	foreach rand.deal( eax ) do
+
+		mem.free( ptrs[ eax*8] );
+		mov( NULL, ptrs[ eax*8 ] );
+		
+	endfor;
+	stdout.put( nl "Heap statistics after mem.alloc and random free:" nl );
+	mem.stat();
+	stdout.put
+	(
+		"Total heap space:      ", (type uns32 eax), nl,
+		"Total free space:      ", (type uns32 ebx), nl,
+		"Largest free block:    ", (type uns32 ecx), nl,
+		"Number of blocks:      ", (type uns32 edx), nl,
+		"Number of free blocks: ", (type uns32 edi), nl
+		nl
+	);
+		
+		
+
+	// Okay, go through the list and reallocate everything:
+			
+	for( mov( 0, ecx ); ecx < 65536; inc( ecx )) do
+	
+		if( ptrs[ ecx*4 ] <> NULL ) then
+		
+			mov( ptrs[ecx*4], eax );
+			rand.range( 1, 256 );
+			mem.realloc( ptrs[ ecx*4 ], eax );
+			mov( eax, ptrs[ ecx*4 ] );
+			
+		endif;
+		
+	endfor;
+	
+	stdout.put( "Heap statistics after realloc:" nl );
+	mem.stat();
+	stdout.put
+	(
+		"Total heap space:      ", (type uns32 eax), nl,
+		"Total free space:      ", (type uns32 ebx), nl,
+		"Largest free block:    ", (type uns32 ecx), nl,
+		"Number of blocks:      ", (type uns32 edx), nl,
+		"Number of free blocks: ", (type uns32 edi), nl
+		nl
+	);
+		
+		
+		
+	
+	for( mov( 0, ecx ); ecx < 65536; inc( ecx )) do
+	
+		if( ptrs[ecx*4] <> NULL ) then
+		
+			free( ptrs[ ecx*4 ] );
+			
+		endif;
+		
+	endfor;
+				
+	// After the mess above, print the heap statistics:
+	
+	stdout.put( "Heap statistics after realloc & free:" nl );
+	mem.stat();
+	stdout.put
+	(
+		"Total heap space:      ", (type uns32 eax), nl,
+		"Total free space:      ", (type uns32 ebx), nl,
+		"Largest free block:    ", (type uns32 ecx), nl,
+		"Number of blocks:      ", (type uns32 edx), nl,
+		"Number of free blocks: ", (type uns32 edi), nl
+		nl
+	);
+	
+	
+end t;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+									

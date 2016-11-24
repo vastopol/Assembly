@@ -1,0 +1,338 @@
+program stdioDemo;
+
+#include( "stdlib.hhf" );
+
+var
+	Handle: dword;
+	f:		pointer to file;
+
+	
+static
+
+	TrueVar:	boolean	:= true;
+	FalseVar:	boolean	:= false;
+
+	r80:		real80	:= 80.8080808080808080e80;
+	r64:		real64	:= 64.6464646464646464e64;
+	r32:		real32	:= 32.3232e-32;
+	
+	r80a:		real80	:= 80.8080808080808080;
+	r64a:		real64	:= 64.6464646464646464;
+	r32a:		real32	:= 32.3232;
+	
+	AlphaCset:	cset	:= { 'a'..'z', 'A'..'Z' };
+
+	
+
+	qWordVal: qword; @nostorage;
+		dword $8888_8888, $8888_8888;
+		
+	tByteVal: tbyte; @nostorage;
+		dword $1010_1010, $1010_1010;
+		word $1010;	
+
+	Hello:		byte; @nostorage;
+				byte "Hello";
+		
+begin stdioDemo;
+
+	// Demonstrate the GetStdOutHandle() routine.
+	
+	stdout.handle();
+	mov( eax, Handle );
+	fileio.puts( Handle, "This string goes to the standard output device" nl nl );
+	
+	// Demonstration of putbool routine:
+	
+	stdout.puts( "Putbool( TrueVar ) = " );
+	stdout.putbool( TrueVar );
+	stdout.puts( nl "Putbool( FalseVar ) = " );
+	stdout.putbool( FalseVar );
+	stdout.newln();
+	stdout.newln();
+	
+	// Demonstration of the putcset routine.
+	
+	stdout.puts( "Putcset( AlphaCset ) = {" );
+	stdout.putcset( AlphaCset );
+	stdout.puts( "}" nl nl );
+	
+	// Demonstration of the putc and putcsize routines:
+	
+	stdout.puts( "putc( 'c' ) = '" );
+	stdout.putc( 'c' );
+	stdout.puts( "'" nl "putcsize( 'c', -3, '+' ) = '" );
+	stdout.putcSize( 'c', -3, '+' );
+	stdout.puts( "'" nl nl );
+	
+	
+	// Already demo'd newln() and puts() !!!
+	// Demonstrate putssize here:
+	
+	stdout.put( "putssize( ""12345"",  10, '.' ) = <<" );
+	stdout.putsSize( "12345", 10, '.' );
+	stdout.put
+	(
+		">>" nl
+		"putssize( ""12345"", -10, '-' ) = <<"
+	);
+	stdout.putsSize( "12345", -10, '-' );
+	stdout.put( ">>" nl nl );
+	
+
+	// Demonstrate the put$ hex output routines here:
+	
+	stdout.puts( "puth( $12 ) = " );
+	stdout.putb( $12 );
+	stdout.puts( nl "putw( $1234 ) = " );
+	stdout.putw( $1234 );
+	stdout.puts( nl "putdw( $12_3456 ) = " );
+	stdout.putd( $12_3456 );
+	stdout.puts( nl "putqw( qWordVal ) = " );
+	stdout.putq( qWordVal );
+	stdout.puts( nl "puttb( tByteVal ) = "	);
+	stdout.puttb( tByteVal );
+	stdout.newln();
+	stdout.newln();
+
+
+	// Demonstrate the putiXX integer output routines here:
+
+	stdout.puts( "puti64( qWordVal ) = " );
+	stdout.puti64( qWordVal );
+	stdout.puts( nl "puti32( -1234567890 ) = " );
+	stdout.puti32( -1234567890 );
+	stdout.puts( nl "puti16( -12345 ) = " );
+	stdout.puti16( -12345 );
+	stdout.puts( nl "puti8( -123 ) = " );
+	stdout.puti8( -123 );
+	stdout.newln();
+	stdout.newln();
+
+	
+	
+	// Demonstrate the putiXXSize integer output routines here:
+
+
+	stdout.puts(         "puti64size( qWordVal, 22, '.' )    = <<" );
+	stdout.puti64Size( qWordVal, 22, '.' );
+	stdout.puts( ">>" nl "puti32size( -1234567890, 22, '.' ) = <<" );
+	stdout.puti32Size( -1234567890, 22, '.' );
+	stdout.puts( ">>" nl "puti16size( -12345, 22, '.' )      = <<" );
+	stdout.puti16Size( -12345, 22, '.' );
+	stdout.puts( ">>" nl "puti8size( -123, 22, '.' )         = <<" );
+	stdout.puti8Size( -123, 22, '.' );
+	stdout.puts( ">>" nl nl );
+
+
+	// Demonstrate the putuXX integer output routines here:
+
+	stdout.puts( "putu64( qWordVal ) = " );
+	stdout.putu64( qWordVal );
+	stdout.puts( nl "putu32( 1234567890 ) = " );
+	stdout.putu32( 1234567890 );
+	stdout.puts( nl "putu16( 12345 ) = " );
+	stdout.putu16( 12345 );
+	stdout.puts( nl "putu8( 123 ) = " );
+	stdout.putu8( 123 );
+	stdout.newln();
+	stdout.newln();
+
+	
+	
+	// Demonstrate the putuXXSize integer output routines here:
+
+
+	stdout.puts(         "putu64size( qWordVal, 22, '.' )    = <<" );
+	stdout.putu64Size( qWordVal, 22, '.' );
+	stdout.puts( ">>" nl "putu32size( 1234567890, 22, '.' ) = <<" );
+	stdout.putu32Size( 1234567890, 22, '.' );
+	stdout.puts( ">>" nl "putu16size( 12345, 22, '.' )      = <<" );
+	stdout.putu16Size( 12345, 22, '.' );
+	stdout.puts( ">>" nl "putu8size( 123, 22, '.' )         = <<" );
+	stdout.putu8Size( 123, 22, '.' );
+	stdout.puts( ">>" nl nl );
+
+
+	// Demonstrate the putrXX floating point output routines here:
+
+	stdout.puts(         "putr80( r80, 20, 12 ) = <<" );
+	stdout.putr80( r80a, 20, 12, ' ' );
+	stdout.puts( ">>" nl "putr64( r64, 20, 12 ) = <<" );
+	stdout.putr64( r64a, 20, 12, ' ' );
+	stdout.puts( ">>" nl "putr32( r32, 20, 12 ) = <<" );
+	stdout.putr32( r32a, 20, 12, ' ' );
+	stdout.puts( ">>" nl nl );
+
+	// Demonstrate the puteXX floating point output routines here:
+
+	stdout.puts(         "pute80( r80, 20 ) = <<" );
+	stdout.pute80( r80, 20 );
+	stdout.puts( ">>" nl "pute64( r64, 20 ) = <<" );
+	stdout.pute64( r64, 20 );
+	stdout.puts( ">>" nl "pute32( r32, 20 ) = <<" );
+	stdout.pute32( r32, 20 );
+	stdout.puts( ">>" nl nl );
+
+
+	
+	
+	
+
+
+
+	//*******************************************************************//
+	//
+	// Demonstration of the file class methods:
+	
+
+	file.create();
+	mov( esi, f );
+
+	// Open a new file:
+
+	f.openNew( "file.txt" );
+
+	// Test writing a block of bytes:
+
+	f.write( Hello, 5 ); 
+	f.newln();
+
+	// Test the various output routines:
+
+	f.putbool( true );
+	f.newln();
+	f.putbool( false );
+	f.newln();
+
+	f.putcset( AlphaCset );
+	f.newln();
+
+	f.putc( 'a' );
+	f.putcSize( 'b', 10, '.' );
+	f.newln();
+
+	f.puts( "Hello" );
+	f.putsSize( "Hello", 10, '.' );
+	f.newln();
+
+	f.puts( "f.putb( $12 ) = " );
+	f.putb( $12 );
+	f.newln();
+
+	f.puts( "f.putw( $1234 ) = " );
+	f.putw( $1234 );
+	f.newln();
+
+	f.puts( "f.putdw( $1234_5678 ) = " );
+	f.putd( $1234_5678 );
+	f.newln();
+
+	f.puts( "f.putqw( qWordVal ) = " );
+	f.putq( qWordVal );
+	f.newln();
+
+	f.puts( "f.puttb( tByteVal ) = " );
+	f.puttb( tByteVal );
+	f.newln();
+
+
+
+	f.puts( "f.puti64( qWordVal ) = " );
+	f.puti64( qWordVal );
+	f.newln();
+
+	f.puts( "f.puti32( -32323232 ) = " );
+	f.puti32( -32323232 );
+	f.newln();
+
+	f.puts( "f.puti16( -1616 ) = " );
+	f.puti16( -1616 );
+	f.newln();
+
+	f.puts( "f.puti8( -88 ) = " );
+	f.puti8( -88 );
+	f.newln();
+
+
+
+	f.puts( "f.puti64size( qWordVal, 24, '.' )  = " );
+	f.puti64Size( qWordVal, 24, '.' );
+	f.newln();
+
+	f.puts( "f.puti32size( -32323232, 24, '.' ) = " );
+	f.puti32Size( -32323232, 24, '.' );
+	f.newln();
+
+	f.puts( "f.puti16size( -1616, 24, '.' )     = " );
+	f.puti16Size( -1616, 24, '.' );
+	f.newln();
+
+	f.puts( "f.puti8size( -88, 24, '.' )        = " );
+	f.puti8Size( -88, 24, '.' );
+	f.newln();
+
+
+
+	f.puts( "f.putu64( qWordVal ) = " );
+	f.putu64( qWordVal );
+	f.newln();
+
+	f.puts( "f.putu32( 32323232 ) = " );
+	f.putu32( 32323232 );
+	f.newln();
+
+	f.puts( "f.putu16( 1616 ) = " );
+	f.putu16( 1616 );
+	f.newln();
+
+	f.puts( "f.putu8( -88 ) = " );
+	f.putu8( -88 );
+	f.newln();
+
+
+
+	f.puts( "f.putu64Size( qWordVal, 24, '.' )  = " );
+	f.putu64Size( qWordVal, 24, '.' );
+	f.newln();
+
+	f.puts( "f.putu32Size( 32323232, 24, '.' ) = " );
+	f.putu32Size( 32323232, 24, '.' );
+	f.newln();
+
+	f.puts( "f.putu16Size( 1616, 24, '.' )     = " );
+	f.putu16Size( 1616, 24, '.' );
+	f.newln();
+
+	f.puts( "f.putu8Size( 88, 24, '.' )        = " );
+	f.putu8Size( 88, 24, '.' );
+	f.newln();
+
+
+	f.puts(         "f.putr80( r80, 20, 12 ) = <<" );
+	f.putr80( r80a, 20, 12, ' ' );
+	f.puts( ">>" nl "f.putr64( r64, 20, 12 ) = <<" );
+	f.putr64( r64a, 20, 12, ' ' );
+	f.puts( ">>" nl "f.putr32( r32, 20, 12 ) = <<" );
+	f.putr32( r32a, 20, 12, ' ' );
+	f.puts( ">>" nl nl );
+
+
+	f.puts(         "f.pute80( r80, 20 ) = <<" );
+	f.pute80( r80, 20 );
+	f.puts( ">>" nl "f.pute64( r64, 20 ) = <<" );
+	f.pute64( r64, 20 );
+	f.puts( ">>" nl "f.pute32( r32, 20 ) = <<" );
+	f.pute32( r32, 20 );
+	f.puts( ">>" nl nl );
+
+
+	// Demo of f.put should go here.  That will come later.
+
+	f.close();
+
+
+	
+	
+		
+end stdioDemo;

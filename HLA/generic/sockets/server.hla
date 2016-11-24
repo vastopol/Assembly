@@ -1,0 +1,132 @@
+program server; 
+#include( "stdlib.hhf" )
+#includeOnce( "sockets.hhf" )
+#includeOnce( "sleep.hhf" )
+
+const
+	bufData_c : char[] :=
+				[
+					'a', #$d, #$a,
+					'b', 'c',  #$d, #$a,
+					'd', ' ', 'e', 'f', #$d, #$a,
+					#$d, #$a,
+					'1', '0', '0', #$d, #$a
+				];
+	
+
+	
+readonly
+	bufData		:char[ @elements( bufData_c )] := bufData_c;
+	
+static
+	quit			:dword := 0;
+	hostIPadrs		:dword;
+	s				:server_t;
+	timeout			:thunk;
+	calls			:dword := 0;
+	
+	hostAdrsStr		:str.strvar(256);
+	cmdLine			:str.strvar(256);
+	exmsg			:str.strvar(256);
+	
+	port			:word;
+	
+	
+	
+	procedure connected( parm:dword );
+		@nodisplay;
+		@nostackalign;
+		@noframe;
+	var
+		handle		:dword;
+		bufIndex	:dword;
+		object		:pointer to server_t;
+		ipAdrs		:hla.sockaddr;
+		
+		buffer		:char[64];
+		
+	begin connected;
+
+		push( ebp );
+		mov( esp, ebp );
+		sub( _vars_, esp );
+		
+		pushad();
+		pushfd();
+		
+		mov( eax, handle );
+		mov( esi, object );
+		
+		/*****************************************************************/
+		
+		object.putbool( true );
+		object.newln( );
+		object.putbool( false );
+		object.newln( );
+			
+		/*****************************************************************/
+		
+		object.close();
+		mov( 1, quit );
+		popfd();
+		popad();
+		leave();
+		ret( _parms_ );
+		
+	end connected;
+	
+begin server; 
+
+	arg.c();
+	if( eax <> 3 ) then
+	
+		stdout.put( "Usage: server <ipaddress> <port>" nl );
+		exit server;
+		
+	endif;
+	arg.a_v(1);
+	mov( eax, hostAdrsStr );
+	sock.strToAdrs( eax );		// Comes back in network order!
+	bswap( eax );
+	mov( eax, hostIPadrs );
+	
+	arg.v(2);
+	conv.strTou16( eax, 0 );
+	mov( ax, port );
+	
+	stdout.put( "Server: ", hostAdrsStr, ", $", hostIPadrs, ", port: $", port, nl );
+	
+	thunk timeout :=
+		#{
+			// On entry to thunk, EAX contains the address of the timeout
+			// variable. Set this as desired for the timeout (1 second,
+			// in this case).
+			
+			mov( 1, (type hla.timeval [eax]).tv_sec );
+			stderr.put( "server", nl );
+			mov( quit, eax );
+				
+		}#;
+	
+	try
+	
+		s.create();		
+		s.start
+		( 
+			hostIPadrs, 
+			port, 
+			timeout,
+			&connected,
+			0
+		);
+		
+	  anyexception
+	  
+	  	ex.exceptionMsg( eax, exmsg );
+	  	stdout.put( "Server Exception: ", exmsg, nl );
+		fileio.close( s.handle );
+		s.destroy();
+		
+	endtry;
+	 
+end server; 

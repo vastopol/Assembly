@@ -1,0 +1,805 @@
+// u32expr.hla
+//
+// This	program	demonstrates how to	write an "expression compiler"
+// using the HLA compile-time language.	 This code defines a macro
+// (u32expr) that accepts an arithmetic	expression as a	parameter.
+// This	macro compiles that	expression into	a sequence of HLA
+// machine language	instructions that will compute the result of
+// that	expression at run-time.
+//
+//	The	u32expr	macro does have	some severe	limitations.
+// First of	all, it	only support uns32 operands.
+// Second, it only supports	the	following arithmetic
+// operations:
+//
+//	+, -, *, /,	<, <=, >, >=, =, <>.
+//
+//	The	comparison operators produce zero (false) or
+// one (true) depending	upon the result	of the (unsigned)
+// comparison.
+//
+//	The	syntax for a call to u32expr is
+//
+//	u32expr( register, expression )
+//
+//	The	macro computes the result of the expression	and
+// leaves this result sitting in the register specified
+// as the first	operand.  This register	overwrites the
+// values in the EAX and EDX registers (though these
+// two registers are fine as the destination for the
+// result).
+//
+//	This macro also	returns	the	first (register) parameter
+// as its "returns"	value, so you may use u32expr anywhere
+// a 32-bit	register is	legal, e.g.,
+//
+//		if(	u32expr( eax, (i*3-2) <	j )) then
+//
+//			<< do something	if (i*3-2) < j >>
+//
+//		endif;
+//
+// The statement above computes	true or	false in EAX and the
+// "if"	statement processes	this result	accordingly.
+
+
+
+program	TestExpr;
+#include( "stdlib.hhf" )
+
+// Some	special	character classifications the lexical analyzer uses.
+
+const
+
+	// tok1stIDChar	is the set of legal	characters that
+	// can begin an	identifier.	 tokIDChars	is the set
+	// of characters that may follow the first character
+	// of an identifier.
+	
+	tok1stIDChar :=	{ 'a'..'z',	'A'..'Z', '_' };
+	tokIDChars := {	'a'..'z', 'A'..'Z',	'0'..'9', '_' };
+	
+	// digits, hexDigits, and binDigits	are	the	sets
+	// of characters that are legal	in integer constants.
+	// Note	that these definitions don't allow underscores
+	// in numbers, although	it would be	a simple fix to
+	// allow this.
+	
+	digits := {	'0'..'9' };
+	hexDigits := { '0'..'9', 'a'..'f', 'A'..'F'	};
+	binDigits := { '0'..'1'	};
+	
+	
+	// CmpOps, PlusOps,	and	MulOps are the sets	of
+	// operator	characters legal at	three levels
+	// of precedence that this parser supports.
+	
+	CmpOps	:= { '>', '<', '=',	'!'	};
+	PlusOps	:= { '+', '-' };
+	MulOps := {	'*', '/' };
+
+
+
+	
+type
+
+	// tokEnum-
+	//
+	// Data	values the lexical analyzer	returns	to quickly
+	// determine the classification	of a lexeme.  By
+	// classifying the token with one of these values, the
+	// parser can more quickly process the current token.
+	// I.e., rather	than having	to compare a scanned item
+	// against the two strings "+" and "-",	the	parser can
+	// simply check	to see if the current item is a	"plusOp"
+	// (which indicates	that the lexeme	is "+" or "-").
+	// This	speeds up the compilation of the expression	since
+	// only	half the comparisons are needed	and	they are
+	// simple integer comparisons rather than string comparisons.
+	
+	tokEnum:	enum
+				{ 
+					identifier,	
+					intconst, 
+					lparen,
+					rparen,
+					plusOp,
+					mulOp,
+					cmpOp
+				};
+		
+	// tokType-
+	//
+	//	This is	the	"token"	type returned by the lexical analyzer.
+	// The "lexeme"	field contains the string that matches the
+	// current item	scanned	by the lexer.  The "tokClass" field
+	// contains	a generic classifcation	for	the	symbol (see	the
+	// "tokEnum" type above).
+			
+	tokType:
+		record
+		
+			lexeme:string;
+			tokClass:tokEnum;
+			
+		endrecord;
+		
+
+
+// lexer-
+//
+// This	is the lexical analyzer.  On each call it extracts a
+// lexical item	from the front of the string passed	to it as a
+// parameter (it also removes this item	from the front of the
+// string).	 If	it successfully	matches	a token, this macro
+// returns a tokType constant as its return	value.
+
+#macro lexer( input ):theLexeme,boolResult;
+
+	?theLexeme:string;		// Holds the string	we scan.
+	?boolResult:boolean;	// Used	only as	a dummy	value.
+	
+	// Check for an	identifier.
+	
+	#if( @peekCset(	input, tok1stIDChar	))
+	
+		// If it began with	a legal	ID character, extract all
+		// ID characters that follow.  The extracted string
+		// goes	into "theLexeme" and this call also	removes
+		// those characters	from the input string.
+		
+		?boolResult	:= @oneOrMoreCset( input, tokIDChars, input, theLexeme );
+		
+		// Return a	tokType	constant with the identifier string	and
+		// the "identifier"	token value:
+		
+		tokType:[ theLexeme, identifier	]
+		
+		
+	
+	// Check for a decimal numeric constant.
+	
+	#elseif( @peekCset(	input, digits ))
+	
+		// If the current item began with a	decimal	digit, extract
+		// all the following digits	and	put	them into "theLexeme".
+		// Also	remove these characters	from the input string.
+		
+		?boolResult	:= @oneOrMoreCset( input, digits, input, theLexeme );
+		
+		// Return an integer constant as the current token.
+		
+		tokType:[ theLexeme, intconst ]
+	
+	
+	
+	// Check for a hexadecimal numeric constant.
+	
+	#elseif( @peekChar(	input, '$' ))
+	
+		// If we had a "$" symbol, grab	it and any following
+		// hexadecimal digits.	Set	boolResult true	if there
+		// is at least one hexadecimal digit.  As usual, extract
+		// the hex value to	"theLexeme"	and	remove the value
+		// from	the	input string:
+		
+		?boolResult	:= @oneChar( input,	'$', input ) &
+						@oneOrMoreCset(	input, hexDigits, input, theLexeme );
+		
+		// Returns the hex constant	string as an intconst object:
+		
+		tokType:[ '$' +	theLexeme, intconst	]
+	
+	
+	
+	// Check for a binary numeric constant.
+	
+	#elseif( @peekChar(	input, '%' ))
+	
+		// See the comments	for	hexadecimal	constants.	This boolean
+		// constant	scanner	works the same way.
+		
+		?boolResult	:= @oneChar( input,	'%', input ) &
+						@oneOrMoreCset(	input, binDigits, input, theLexeme );
+		tokType:[ '%' +	theLexeme, intconst	]
+	
+	
+	// Handle the "+" and "-" operators	here.
+	
+	#elseif( @peekCset(	input, PlusOps ))
+	
+		// If it was a "+" or "-" sign,	extract	it from	the	input
+		// and return it as	a "plusOp" token.
+		
+		?boolResult	:= @oneCset( input,	PlusOps, input,	theLexeme );
+		tokType:[ theLexeme, plusOp	]
+	
+	
+	
+	// Handle the "*" and "/" operators	here.
+	
+	#elseif( @peekCset(	input, MulOps ))
+	
+		// If it was a "*" or "/" sign,	extract	it from	the	input
+		// and return it as	a "mulOp" token.
+		
+		?boolResult	:= @oneCset( input,	MulOps,	input, theLexeme );
+		tokType:[ theLexeme, mulOp ]
+		
+		
+		
+	// Handle the "=" ("=="), "<>" ("!="), "<",	"<=", ">", and ">="
+	// operators here.
+	
+	#elseif( @peekCset(	input, CmpOps ))
+	
+		// Note	that we	must check for two-character operators
+		// first so	we don't confuse them with the single
+		// character opertors:
+		
+		#if
+		( 
+				@matchStr( input, ">=",	input, theLexeme ) 
+			|	@matchStr( input, "<=",	input, theLexeme )
+			|	@matchStr( input, "<>",	input, theLexeme )
+		)
+		
+			tokType:[ theLexeme, cmpOp ]
+			
+		#elseif( @matchStr(	input, "!=", input,	theLexeme ))
+	
+			tokType:[ "<>",	cmpOp ]
+
+		#elseif( @matchStr(	input, "==", input,	theLexeme ))
+	
+			tokType:[ "=", cmpOp ]
+
+		#elseif( @oneCset( input, {'>',	'<', '='}, input, theLexeme	))
+		
+			tokType:[ theLexeme, cmpOp ]
+		
+		#else
+		
+			#error(	"Illegal comparison	operator: "	+ input	)
+			
+		#endif
+
+
+	// Handle the parentheses down here.
+
+	#elseif( @oneChar( input, '(', input, theLexeme	))
+	
+		tokType:[ "(", lparen ]
+		
+	#elseif( @oneChar( input, ')', input, theLexeme	))
+	
+		tokType:[ ")", rparen ]
+		
+			
+	// Anything	else is	an illegal character.
+	
+	#else
+	
+		#error
+		( 
+			"Illegal character in expression: '" + 
+			@substr( input,	0, 1 ) + 
+			"' ($" + 
+			string(	dword( @substr(	input, 0, 1	)))	+ 
+			")"
+		)
+		?input := @substr( input, 1, @length(input)	- 1	);
+	
+	#endif
+	 
+#endmacro;
+		
+
+
+
+// Handle identifiers, constants, and sub-expressions within
+// paretheses within this macro.
+//
+//	terms->	identifier | intconst |	'('	CmpOps ')'
+//
+// This	compile	time function does the following:
+//
+//	(1)	If it encounters an	indentifier, it	emits the
+//		following instruction to the code stream:
+//
+//			push( identifier );
+//
+//	(2)	If it encounters an	(unsigned) integer constant, it	emits
+//		the	following instruction to the code stream:
+//
+//			pushd( constant_value );
+//
+//	(3)	If it encounters an	expression surrounded by parentheses,
+//		then it	emits whatever instruction sequence	is necessary
+//		to leave the value of that (unsigned integer) expression
+//		sitting	on the top of the stack.
+//
+//	(4)	If the current lexeme is none of the above,	then this
+//		macro prints an	appropriate	error message.
+//
+//	The	end	result of the execution	of this	macro is the emission
+//	of some	code that leaves a single 32-bit unsigned value	sitting
+//	on the top of the 80x86	stack (assuming	no error).
+
+#macro doTerms( expr	):termToken;
+
+	?expr := @trim(	expr, 0	);
+	?termToken:tokType := lexer( expr );
+	#if( termToken.tokClass	= identifier )
+	
+		// If we've	got	an identifier, emit	the	code to
+		// push	that identifier	onto the stack.
+
+		push( @text( termToken.lexeme ));
+									  
+	#elseif( termToken.tokClass	= intconst )
+	
+		// If we've	got	a constant,	emit the code to push
+		// that	constant onto the stack.
+		
+		pushd( @text( termToken.lexeme ) );
+		
+	#elseif( termToken.tokClass	= lparen )
+	
+		// If we've	got	a parenthetical	expression,	emit
+		// the code	to leave the parenthesized expression
+		// sitting on the stack.
+		
+		doCmpOps( expr );
+		?expr := @trim(	expr, 0	);
+		?termToken:tokType := lexer( expr );
+		#if( termToken.tokClass	<> rparen )
+		
+			#error(	"Expected closing parenthesis: " + termToken.lexeme	)
+			
+		#endif
+		
+		
+	#else
+	
+		#error(	"Unexpected	term: '" + termToken.lexeme	+ "'" )
+		
+	#endif
+	
+#endmacro;
+
+
+
+// Handle the multiplication, division,	and	modulo operations here.
+//
+// MulOps->	terms (	mulOp terms	)*
+//
+// The above grammar production	tells us that a	"MulOps" consists
+// of a	"terms"	expansion followed by zero or more instances of	a 
+// "mulop" followed	by a "terms" expansion (like wildcard filename
+// expansions, the "*" indicates zero or more copies of	the	things
+// inside the parentheses).
+//
+// This	code assumes that "terms" leaves whatever operands/expressions
+// it processes	sitting	on the 80x86 stack at run time.	 If	there is
+// a single	term (no optional mulOp/term following), then this code
+// does	nothing	(it	leaves the result on the stack that	was	pushed
+// by the "terms" expansion).  If one or more mulOp/terms pairs	are
+// present,	then for each pair this	code assumes that the two "terms"
+// expansions left some	value on the stack.	 This code will	pop
+// those two values	off	the	stack and multiply or divide them and
+// push	the	result back	onto the stack (sort of	like the way the
+// FPU multiplies or divides values	on the FPU stack).
+//
+// If there	are	three or more operands in a	row, separated by
+// mulops ("*" or "/") then	this macro will	process	them in
+// a left-to-right fashion,	popping	each pair of values	off	the
+// stack, operating	on them, pushing the result, and then processing
+// the next	pair.  E.g.,
+//
+//		i *	j *	k
+//
+//	yields:
+//
+//		push( i	);	// From	the	"terms"	macro.
+//		push( j	);	// From	the	"terms"	macro.
+//
+//		pop( eax );	// Compute the product of i*j
+//		mul( (type dword [esp]));
+//		mov( eax, [esp]);
+//
+//		push( k	);	// From	the	"terms"	macro.
+//
+//		pop( eax );					// Pop K
+//		mul( (type dword [esp]));	// Compute K* (i*j)	[i*j is	value on TOS].
+//		mov( eax, [esp]);			// Save	product	on TOS.
+
+
+#macro doMulOps(	sexpr ):opToken;
+	
+	// Process the leading term	(not optional).	 Note that
+	// this	expansion leaves an	item sitting on	the	stack.
+	
+	doTerms( sexpr );
+	
+	// Process all the MULOPs at the current precedence	level.
+	// (these are optional,	there may be zero or more of them.)
+	
+	?sexpr := @trim( sexpr,	0 );
+	#while(	@peekCset( sexpr, MulOps ))
+
+		// Save	the	operator so	we know	what code we should
+		// generate	later.
+		
+		?opToken :=	lexer( sexpr );
+		
+		// Get the term	following the operator.
+		
+		doTerms( sexpr );			
+		
+		// Okay, the code for the two terms	is sitting on
+		// the top of the stack	(left operand at [esp+4] and
+		// the right operand at	[esp]).	 Emit the code to
+		// perform the specified operation.
+		
+		#if( opToken.lexeme	= "*" )
+		
+			// For multiplication, compute
+			// [esp+4] = [esp] * [esp+4] and
+			// then	pop	the	junk off the top of	stack.
+			
+			pop( eax );
+			mul( (type dword [esp])	);
+			mov( eax, [esp]	);
+			
+		#elseif( opToken.lexeme	= "/" )
+		
+			// For division, compute
+			// [esp+4] = [esp+4] / [esp] and
+			// then	pop	the	junk off the top of	stack.
+			
+			mov( [esp+4], eax );
+			xor( edx, edx );
+			div( [esp],	edx:eax	);
+			pop( edx );
+			mov( eax, [esp]	);
+			
+		#endif
+		?sexpr := @trim( sexpr,	0 );
+		
+	#endwhile	
+	
+#endmacro;
+
+
+
+
+// Handle the addition,	and	subtraction	operations here.
+//
+// AddOps->	MulOps ( addOp MulOps )*
+//
+// The above grammar production	tells us that an "AddOps" consists
+// of a	"MulOps" expansion followed	by zero	or more	instances of an	
+// "addOp" followed	by a "MulOps" expansion.
+//
+// This	code assumes that "MulOps" leaves whatever operands/expressions
+// it processes	sitting	on the 80x86 stack at run time.	 If	there is
+// a single	MulOps item	then this code does	nothing.  If one or	more 
+// addOp/MulOps	pairs are present, then	for	each pair this code	
+// assumes that	the	two	"MulOps" expansions	left some value	on the 
+// stack.  This	code will pop those	two	values off the stack and 
+// add or subtract them	and	push the result	back onto the stack. 
+
+#macro doAddOps(	sexpr ):opToken;
+
+	// Process the first operand (or subexpression):
+	
+	doMulOps( sexpr	);
+	
+	// Process all the ADDOPs at the current precedence	level.
+	
+	?sexpr := @trim( sexpr,	0 );
+	#while(	@peekCset( sexpr, PlusOps ))
+	
+		// Save	the	operator so	we know	what code we should
+		// generate	later.
+		
+		?opToken :=	lexer( sexpr );
+
+		// Get the MulOp following the operator.
+		
+		doMulOps( sexpr	);
+		
+		// Okay, emit the code associated with the operator.
+		
+		#if( opToken.lexeme	= "+" )
+		
+			pop( eax );
+			add( eax, [esp]	);
+			
+		#elseif( opToken.lexeme	= "-" )
+		
+			pop( eax );
+			sub( eax, [esp] );
+			
+		#endif
+		
+	#endwhile
+			
+#endmacro;
+
+
+
+// Handle the comparison operations	here.
+//
+// CmpOps->	addOps ( cmpOp AddOps )*
+//
+// The above grammar production	tells us that a	"CmpOps" consists
+// of an "AddOps" expansion	followed by	zero or	more instances of an 
+// "cmpOp" followed	by an "AddOps" expansion.
+//
+// This	code assumes that "MulOps" leaves whatever operands/expressions
+// it processes	sitting	on the 80x86 stack at run time.	 If	there is
+// a single	MulOps item	then this code does	nothing.  If one or	more 
+// addOp/MulOps	pairs are present, then	for	each pair this code	
+// assumes that	the	two	"MulOps" expansions	left some value	on the 
+// stack.  This	code will pop those	two	values off the stack and 
+// add or subtract them	and	push the result	back onto the stack. 
+
+
+#macro doCmpOps(	sexpr ):opToken;
+
+	// Process the first operand:
+	
+	doAddOps( sexpr	);
+	
+	// Process all the CMPOPs at the current precedence	level.
+	
+	?sexpr := @trim( sexpr,	0 );
+	#while(	@peekCset( sexpr, CmpOps ))
+	
+		// Save	the	operator for the code generation task later.
+		
+		?opToken :=	lexer( sexpr );
+		
+		// Process the item	after the comparison operator.
+		
+		doAddOps( sexpr	);
+		
+		
+		// Generate	the	code to	compare	[esp+4]	against	[esp]
+		// and leave true/false	sitting	on the stack in	place
+		// of these	two	operands.
+		
+		#if( opToken.lexeme	= "<" )
+		
+			pop( eax );
+			cmp( [esp],	eax	);
+			setb( al );
+			movzx( al, eax );
+			mov( eax, [esp]	);
+			
+		#elseif( opToken.lexeme	= "<=" )
+		
+			pop( eax );
+			cmp( [esp],	eax	);
+			setbe( al );
+			movzx( al, eax );
+			mov( eax, [esp]	);
+			
+		#elseif( opToken.lexeme	= ">" )
+		
+			pop( eax );
+			cmp( [esp],	eax	);
+			seta( al );
+			movzx( al, eax );
+			mov( eax, [esp]	);
+			
+		#elseif( opToken.lexeme	= ">=" )
+		
+			pop( eax );
+			cmp( [esp],	eax	);
+			setae( al );
+			movzx( al, eax );
+			mov( eax, [esp]	);
+			
+		#elseif( opToken.lexeme	= "=" )
+		
+			pop( eax );
+			cmp( [esp],	eax	);
+			sete( al );
+			movzx( al, eax );
+			mov( eax, [esp]	);
+			
+		#elseif( opToken.lexeme	= "<>" )
+		
+			pop( eax );
+			cmp( [esp],	eax	);
+			setne( al );
+			movzx( al, eax );
+			mov( eax, [esp]	);
+			
+			
+		#endif
+		
+	#endwhile
+			
+#endmacro;
+
+
+
+// General macro that does the expression compliation.
+// The first parameter must	be a 32-bit	register where
+// this	macro will leave the result.  The second parameter
+// is the expression to	compile.  The expression compiler
+// will	destroy	the	value in EAX and may destroy the value
+// in EDX (though EDX and EAX make fine	destination	registers
+// for this	macro).
+//
+// This	macro generates	poor machine code.	It is more a
+// "proof of concept" rather than something	you	should use
+// all the time.  Nevertheless,	if you don't have serious
+// size	or time	constraints	on your	code, this macro can be
+// quite handy.	 Writing an	optimizer is left as an	exercise
+// to the interested reader.
+
+#macro u32expr( reg,	expr):sexpr;
+
+	// The "returns" statement processes the first operand
+	// as a	normal sequence	of statements and then returns
+	// the second operand as the "returns" value for this
+	// macro.
+	
+	returns
+	(
+		{
+		
+			?sexpr:string := @string:expr;
+			#if( !@IsReg32(	reg	) )
+			
+				#error(	"Expected a	32-bit register" )
+				
+			#else
+			
+				// Process the expression and leave	the
+				// result sitting in the specified register.
+				
+				doCmpOps( sexpr	);
+				pop( reg );
+					
+			#endif
+		},
+		
+		// Return the specified	register as	the	"returns"
+		// value for this compilation:
+		
+		@string:reg
+	)
+	
+		
+	
+#endmacro;
+
+
+
+// The following main program provides some	examples of	the
+// use of the above	macro:
+
+static
+	x:uns32;
+	v:uns32	:= 5;
+
+
+begin TestExpr;
+
+	mov( 10, x );
+	mov( 12, ecx );
+
+	// Compute:
+	//
+	//	edi	:= (x*3/v +	%1010 == 16) + ecx;
+	//
+	//	This is	equivalent to:
+	//
+	//	edi	:= (10*3/5 + %1010 == 16) +	12
+	//		:= ( 30/5 +	%1010 == 16) + 12
+	//		:= ( 6 + 10	== 16) + 12
+	//		:= ( 16	== 16) + 12
+	//		:= ( 1 ) + 12
+	//		:= 13
+	//
+	//	This macro invocation emits	the	following code:
+	//
+	//	push(x);
+	//	pushd(3);
+	//	pop(eax);
+	//	mul( (type dword [esp])	);
+	//	mov( eax, [esp]	);
+	//	push( v	);
+	//	mov( [esp+4], eax );
+	//	xor	edx, edx  
+	//	div( [esp],	edx:eax	);
+	//	pop( edx );
+	//	mov( eax, [esp]	);
+	//	pushd( 10 );
+	//	pop( eax );
+	//	add( eax, [esp]	);
+	//	pushd( 16 );
+	//	pop( eax );
+	//	cmp( [esp],	eax	);
+	//	sete( al );
+	//	movzx( al, eax );
+	//	mov( eax, [esp+0] );
+	//	push( ecx );
+	//	pop( eax );
+	//	add( eax, [esp]	);
+	//	pop( edi );
+
+
+	u32expr( edi, (x*3/v+%1010 == 16) +	ecx	);
+	stdout.put(	"Sum = ", (type	uns32 edi),	nl );
+	
+
+
+	// Now compute:
+	//
+	//	eax	:= x + ecx/2
+	//		:= 10 +	12/2
+	//		:= 10 +	6
+	//		:= 16
+	//
+	// This	macro emits	the	following code:
+	//
+	//	push( x	);
+	//	push( ecx );
+	//	pushd( 2 );
+	//	mov( [esp+4], eax );
+	//	xor( edx, edx );  
+	//	div( [esp],	edx:eax	);
+	//	pop( edx );
+	//	mov( eax, [esp]	);
+	//	pop( eax );
+	//	add( eax, [esp]	);
+	//	pop( eax );
+
+
+	u32expr( eax, x+ecx/2 );
+	stdout.put(	"x=", x, " ecx=", (type	uns32 ecx),	" v=", v, nl );
+	stdout.put(	"x+ecx/2 = ", (type	uns32 eax ), nl	);
+	
+
+	// Now determine if	(x+ecx/2) <	v 
+	//	(it	is not since (x+ecx/2)=16 and v	= 5.)
+	//
+	//	This macro invocation emits	the	following code:
+	//
+	//	push( x	);
+	//	push( ecx );
+	//	pushd( 2 );
+	//	mov( [esp+4], eax );
+	//	xor( edx, edx );  
+	//	div( [esp],	edx:eax	);
+	//	pop( edx );
+	//	mov( eax, [esp]	);
+	//	pop( eax );
+	//	add( eax, [esp]);
+	//	push( v	);
+	//	pop( eax );
+	//	cmp( eax, [esp+0] );
+	//	setb( al );
+	//	movzx( al, eax );
+	//	mov( eax, [esp+0] );
+	//	pop( eax );
+
+
+	if(	u32expr( eax, x+ecx/2 <	v )	) then
+	
+		stdout.put(	"x+ecx/2 < v" nl );
+		
+	else
+	
+		stdout.put(	"x+ecx/2 >=	v" nl );
+		
+	endif;
+	
+end	TestExpr;

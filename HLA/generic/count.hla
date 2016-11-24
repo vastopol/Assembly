@@ -1,0 +1,97 @@
+program count;
+#include( "stdlib.hhf" ) 
+        
+var
+    startTime   :qword;
+    endTime     :qword;
+    mmfile      :mmap;
+    wordChars   :cset[2];
+    frequency   :dword[256];
+
+begin count;
+
+    // Initialize wordChars with the character set corresponding
+    // to all the characters that are legal in a "word":
+    
+    cs.cpy( -{ #0..' ', #$7f}, wordChars[0] );
+    cs.cpy( {}, wordChars[16] );
+    
+    
+    if( arg.c() <> 2 ) then
+    
+        stdout.put( "usage: count filename[.ext]" nl );
+        exit count;
+        
+    endif;
+
+    // Initialize memory-mapped file object.
+
+    mmfile.create();                
+    
+    // Open the mmap.asm file.
+
+    mmfile.open( arg.v(1), fileio.r );  
+
+    // Get pointer to file's data
+
+    mov( mmfile.filePtr, esi );
+    while( esi < mmfile.endFilePtr ) do
+	
+		add( 1, esi );
+		
+	endwhile;
+    mov( mmfile.filePtr, esi );
+
+    // Save time stamp information:
+    
+    rdtsc();
+    mov( eax, (type dword startTime));
+    mov( edx, (type dword startTime[4]));
+    
+    
+	     
+    
+    // Process the file (this is the time critical stuff):
+
+    xor( ebx, ebx );    // word count
+    xor( edx, edx );    // "in word" flag.
+    xor( ecx, ecx );
+    while( esi < mmfile.endFilePtr ) do
+
+        movzx( (type byte [esi]), eax );
+        add( 1, frequency[ eax*4 ] );
+
+        bt( eax, (type dword wordChars) );
+        setc( dh );     // New char a valid word char?
+        mov( dl, cl );  // Copy inword flag
+        xor( dh, cl );  // Transition in/out of word?
+        and( dl, cl );
+        mov( dh, dl );
+        add( ecx, ebx );    // Increment word cnt if
+                            // not word->word transition.
+                
+        add( 1, esi );      // Move on to next char
+        
+    endwhile;
+
+    // Conclude the timing:
+    
+    rdtsc();
+    
+    sub( (type dword startTime), eax );
+    sbb( (type dword startTime[4]), edx );
+    mov( eax, (type dword endTime));
+    mov( edx, (type dword endTime[4]));
+    
+    stdout.put( "Cycles: ", (type uns64 endTime), nl );
+    stdout.put( "Word count = ", (type uns32 ebx), nl );
+
+    // Close the file:
+
+    mmfile.close();
+
+    // Clean up the associated object:
+
+    mmfile.destroy();
+
+end count;

@@ -1,0 +1,38 @@
+/*
+I have just recently begun using the FPU on my Pentium II  via 
+assembly language.  I have found it rather easy with one exception.
+If I load a real value, let's say 2.2 with FLD into FPU register ST(0) 
+and then multiply it by say 3.2 via FMUL [label] the correct real value 
+will be located in ST(0).  However; when I then issue FST [label] to 
+store the results from register ST(0) to a memory location (QWORD) the 
+memory location contains a value but, it sure isn't a real number.  It's 
+in Hex but it doesn't seem to translate to the result contained in ST(0).
+I would appreciate ANY assistance at all with this matter. Even if you 
+can point me towords a source of information on the subject of working 
+with real numbers and the IA FPU.  I have the processor manuals from 
+Intel but they really lack on examples.
+
+Thank You
+*/
+
+
+
+program DemoFPU;
+#include( "stdlib.hhf" );
+
+static
+    r:          real64;
+    TwoPtTwo:   real64 := 2.2;
+    ThreePtTwo: real64 := 3.2;
+    
+begin DemoFPU;
+
+    fld( TwoPtTwo );
+    fmul( ThreePtTwo );
+    fst( r );
+    
+    stdout.put( "r=", r, nl );
+    stdout.put( "Hex(r)= $", (type dword r[4] ), "_", (type dword r), nl );
+
+        
+end DemoFPU;

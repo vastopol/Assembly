@@ -1,0 +1,1899 @@
+#if( ! @defined( datetime_hhf ))
+?datetime_hhf := true;
+#includeonce( "hla.hhf" )
+#if( @thread )
+
+	#includeOnce( "cstdlib.hhf" )
+
+#endif
+
+
+namespace time; @fast;
+
+	type
+		OutputFormat: 	enum
+						{ 
+							hhmmssAMPM,
+							hhmmssAP,
+							hhmmss12,
+							hhmmss24,
+							
+							hhmmAMPM,
+							hhmmAP,
+							hhmm12,
+							hhmm24,
+							
+							badTimeFormat 
+						};
+	
+
+		timerec:
+			record;
+
+				secs	:uns8;
+				mins	:uns8;
+				hours	:uns16;
+
+			endrecord;
+
+		duration:			
+			record;
+
+				secs	:int8;
+				mins	:int8;
+				hours	:int16;
+
+			endrecord;
+			
+			
+end time;
+
+
+namespace date; @fast;
+
+	const
+		minYear := 1600;
+		maxYear := 3000;
+
+	type
+		daterec:  
+			record
+				day		:uns8;
+				month	:uns8;
+				year	:uns16;
+			endrecord;
+
+
+	type
+		OutputFormat: 	enum
+						{ 
+							mdyy,
+							mdyyyy,
+
+							mmddyy,
+							mmddyyyy,
+
+							yymd,
+							yyyymd,
+							yymmdd,
+							yyyymmdd, 
+
+							MONdyyyy, 
+							MONTHdyyyy,
+							
+							badDateFormat 
+						};
+
+
+	readonly
+
+		DaysToMonth		:uns32[13];			@global:_hla._ext( "DATE_DAYSTOMONTH" );
+		DaysInMonth		:uns32[13];			@global:_hla._ext( "DATE_DAYSINMONTH" );
+		DaysFromMonth	:uns32[13];			@global:_hla._ext( "DATE_DAYSFROMMONTH" );
+		Months			:string[13]; 		@global:_hla._ext( "DATE_MONTHS" );
+		shortMonths		:string[13]; 		@global:_hla._ext( "DATE_SHORTMONTHS" );
+		
+
+
+
+
+	// _isDateRec_-
+	//
+	//	This is a utility macro that returns true or false
+	//	depending upon whether the parameter is a date.daterec
+	//	object.  This is for internal use within this header file.
+	 
+	#macro _isDateRec_( _dr_ );
+
+		#if( @typename( _dr_ ) = "daterec" )
+
+			#if
+			( 
+					@defined( _dr_.month ) 
+				&	@defined( _dr_.day ) 
+				&	@defined( _dr_.year )
+			)
+
+				true
+
+			#else
+
+				false
+
+			#endif
+
+		#else
+
+			false
+
+		#endif
+
+	#endmacro
+
+
+	// _isMDY_
+	//
+	// This is another utility macro.  It checks its parameters
+	// to ensure that they are all valid m.d.y types.
+
+	#macro _isMDY_( _m_, _d_, _y_ ):_error_;
+
+		?_error_ :=
+				!hla.isNumber( _m_ ) 
+			|	!hla.isNumber( _d_)
+			|	!hla.isNumber( _y_);
+
+		#if( !_error_ )
+
+			?_error_ :=
+					( !@IsConst( _m_ ) & @size( _m_ ) <> 1 )
+				|	( !@IsConst( _d_ ) & @size( _d_ ) <> 1 )
+				|	( !@IsConst( _y_ ) & @size( _y_ ) <> 2 );
+
+		#endif
+		(!_error_)
+
+	#endmacro
+
+
+	// date.unpack-
+	//
+	//	The first parameter is a date.daterec object.  The remaining
+	//	parameters are dword objects.  This macro unpacks the date
+	//	in the daterec parameter into its constituent parts.
+	//	No range checking is done on the date value.
+
+	#macro unpack( _dr_, _y_, _m_, _d_ );
+
+		#if( !@global:date._isDateRec_( _dr_ ) )
+
+			#error( "Expected a date.daterec type as the 1st parameter" )
+
+		#elseif
+		( 
+				!( hla.IsNumber( _y_ ) & @size(_y_) = 4 )
+			&	!( hla.IsNumber( _m_ ) & @size(_m_) = 4 )
+			&	!( hla.IsNumber( _d_ ) & @size(_y_) = 4 )
+		)
+
+			#error( "Month, Day, and Year values must be dword objects" )
+
+		#else
+
+			push( eax );
+			movzx( dr.d, eax );
+			mov( eax, _d_ );
+			movzx( _dr_.m, eax );
+			mov( eax, _m_ );
+			movzx( _dr_.y, eax );
+			mov( eax, _y_ );
+			pop( eax );
+
+		#endif
+
+	#endmacro
+	
+
+	// date.pack-
+	//
+	//	This macro takes three dword objects representing the
+	//	month, day, and year and packs these values into a
+	//	daterec variable.  Minimal range checking is done on the
+	//	date value.
+
+	val
+		yStr	:string := "";;
+		mStr	:string := "";
+		dStr	:string := "";
+		
+	#macro pack( _m_, _d_, _y_, dr );
+	
+		?@global:date.yStr := @lowercase( @string:_y_, 0);
+		?@global:date.mStr := @lowercase( @string:_m_, 0);
+		?@global:date.dStr := @lowercase( @string:_d_, 0);
+
+		#if( !@global:date._isDateRec_( dr ))
+
+			#error( "Expected a date.daterec type as the 4th parameter" )
+
+
+		// Handle the special case where m and day are both constants:
+		
+		#elseif( @isconst(_d_) & @isconst(_m_))
+		
+			#if( (_d_) > 31 | (_d_) = 0 | (_m_) > 12 | (_m_) = 0 )
+
+				#error( "Month or Day value is out of range" )
+				
+			#endif
+			#if( @isconst( _y_ ))
+			
+				#if( (_y_) < @global:date.minYear | (_y_) > @global:date.maxYear )
+				
+					#error( "Year value is out of range" )
+					
+				#endif
+				mov( (_d_) + ((_m_) << 8) + ((_y_)<<16), dr );
+				
+			#elseif( @isreg16( _y_ ))
+			
+				mov( (_d_) + ((_m_) << 8), (type word dr));
+				mov( _y_, dr.year );
+				
+			#else
+			
+				push( eax );
+				mov( (_d_) + ((_m_) << 8), (type word dr));
+				mov( _y_, ax );
+				mov( ax, dr.year );
+				pop( eax );
+				
+			#endif
+
+		#elseif( @isreg8(_m_) & @isreg8(_d_))
+		
+			#if
+			( 
+					@substr( @global:date.dStr, 1, 1 ) = "l" 
+				&	@substr( @global:date.mStr, 1, 1 ) = "h"
+				&	@substr( @global:date.dStr, 0, 1 ) = 
+						@substr( @global:date.mStr, 0, 1 )
+			)
+				mov
+				( 
+					@text( @substr( @global:date.dStr, 0, 1) + "x"), 
+					(type word dr)
+				);
+				
+			#else
+			
+				mov( _d_, dr.day );
+				mov( _m_, dr.month );
+				
+			#endif
+			
+			#if( @isreg16(_y_) | @isconst(_y_) )
+			
+				mov( _y_, dr.year );
+				
+			#else
+			
+				push( eax );
+				mov( (type word _y_), ax );
+				mov( ax, dr.year );
+				pop( eax );
+				
+			#endif 
+			
+		#else
+		
+			push( eax );
+			#if( @isconst( _d_ ) )
+			
+				#if( (_d_) <= 31 & (_d_) > 0 )
+				
+					mov( _d_, al );
+					
+				#else
+				
+					#error( "Day value is out of range" );
+					
+				#endif
+				
+			#elseif( @global:date.dStr <> "al" )
+			
+				mov( (type byte _d_), al );
+				
+			#endif
+			#if( @isconst( _m_ ) )
+			
+				#if( (_m_) <= 12 & (_m_) > 0 )
+
+					mov( _m_, ah );
+					
+				#else
+				
+					#error( "Month value is out of range" );
+					
+				#endif
+				
+			#elseif( @global:date.mStr = "al" )
+			
+				mov( (type byte [esp]), ah );
+				
+			#elseif( @global:date.mStr <> "ah" )
+			
+				mov( (type byte _m_), ah );
+				
+			#endif
+			mov( ax, (type word dr));
+				
+			
+			#if( @isconst( _y_ ) )
+			
+				#if( (_y_) < @global:date.maxYear & (_y_) >= @global:minYear )
+				
+					mov( _y_, dr.year );
+					
+				#else
+				
+					#error( "Year value is out of range" );
+					
+				#endif
+				
+			#elseif( @isreg16( _y_ ))
+			
+				
+				#if( @global:date.yStr = "ax" )
+				
+					mov( [esp], ax );
+					mov( ax, dr.year );
+				
+				#else
+		
+					mov( _y_, dr.year );
+	
+				#endif
+					
+			#else
+			
+				mov( (type word _y_), ax );
+				mov( ax, dr.year );
+				
+			#endif
+			pop( eax );
+
+		#endif
+
+	#endmacro
+	
+
+proc
+	utc:
+		procedure( var todaysDate:daterec );
+		@global:_hla._ext( "DATE_UTC" );
+		
+	today:
+		procedure( var todaysDate:daterec );
+		@global:_hla._ext( "DATE_TODAY" );
+		
+	localDate:
+		procedure( var todaysDate:daterec );
+		@global:_hla._ext( "DATE_TODAY" );
+		
+	utcDate:
+		procedure( var todaysDate:daterec );
+		@global:_hla._ext( "DATE_UTC" );
+	
+	localDateTime:
+		procedure( var DMY:daterec; var HMS:@global:time.timerec );
+		@global:_hla._ext( "TIME_LOCALDATETIME" );
+
+	utcDateTime:
+		procedure( var DMY:daterec; var HMS:@global:time.timerec );
+		@global:_hla._ext( "TIME_UTCDATETIME" );
+
+	setSeparator:
+		procedure( c:char );
+		@global:_hla._ext( "DATE_SETSEPARATOR" );
+	setFormat:
+		procedure( f:OutputFormat );
+		@global:_hla._ext( "DATE_SETFORMAT" );
+
+	addDays:
+		procedure( days:uns32; var theDate:daterec );
+		@global:_hla._ext( "DATE_ADDDAYS" );
+
+	subDays:
+		procedure( days:uns32; var theDate:daterec );
+		@global:_hla._ext( "DATE_SUBDAYS" );
+
+	addMonths:
+		procedure( months:uns32; var theDate:daterec ) {@returns( "eax" )}; 
+		@global:_hla._ext( "DATE_ADDMONTHS" );
+
+	subMonths:
+		procedure( months:uns32; var theDate:daterec ) { @returns( "eax" )}; 
+		@global:_hla._ext( "DATE_SUBMONTHS" );
+
+	addYears:
+		procedure( years:uns32; var theDate:daterec );
+		@global:_hla._ext( "DATE_ADDYEARS" );
+
+	subYears:
+		procedure( years:uns32; var theDate:daterec );
+		@global:_hla._ext( "DATE_SUBYEARS" );
+
+	fromJulian:
+		procedure( Julian:uns32; var Gregorian:daterec );
+		@global:_hla._ext( "DATE_FROMJULIAN" ); 
+
+
+
+
+
+
+
+
+
+
+	// IsLeapYear-
+	//
+	//	Returns true in AL if the date/year passed as a parameter
+	//	is a leap year, false otherwise.
+	//
+	//	Note that IsLeapYear is a macro that overloads the _IsLeapYear
+	//	procedure allowing either a date.daterec, word, or dword parameter.
+
+	_isLeapYear:
+		procedure( Year:word ) { @returns( "al" )}; 
+		@global:_hla._ext( "DATE_ISLEAPYEAR" );
+
+	#macro isLeapYear( _y_ily_ );
+
+		#if( @global:date._isDateRec_( _y_ily_ ))
+
+			@global:date._isLeapYear( _y_ily_.year )
+
+		#elseif( @IsConst( _y_ily_ ))
+
+			@global:date._isLeapYear( #{ pushd( _y_ily_ ); }# )
+
+		#elseif( hla.isNumber( _y_ily_ ) & @size(_y_ily_) = 2 )
+		
+			@global:date._isLeapYear( #{ pushw(0); pushw( _y_ily_ ); }# )
+			 
+		#elseif( hla.isNumber( _y_ily_ ) & @size(_y_ily_) = 4 )
+		
+			@global:date._isLeapYear( #{ push( _y_ily_ ); }# )
+			 
+		#else
+
+			#error( "isLeapYear parameter error" )
+
+		#endif
+
+	#endmacro
+
+
+
+	// validate-
+	//
+	//	Checks the date passed as a parameter to see if it is valid.
+	//	Raises the "ex.InvalidDate" exception if it is not valid.
+	//
+	//	Note that date.validate is a macro that overloads the
+	//	date._validate procedure, allowing a daterec or (m,d,y)
+	//	parameters to be passed.
+
+	_validate:
+		procedure( dr:daterec );
+		@global:_hla._ext( "DATE_VALIDATE" );
+
+	#macro validate( _m_, _dy_[] );
+
+		#if( @elements( _dy_ ) = 0 )
+
+			// y had better be a daterec object
+			// if we had only one parameter.
+
+
+			#if( @global:date._isDateRec_( _m_ ))
+
+				@global:date._validate( _m_ )
+
+			#else
+
+				#error( "Expected a daterec type as the parameter" )
+
+			#endif
+
+		#elseif( @elements( _dy_ ) = 2 )
+
+
+			#if( @global:date._isMDY_( _m_, @text( _dy_[0]), @text( _dy_[1])))
+
+				@global:date._validate
+				(
+					#{
+						pushw( @text(_dy_[1]) );
+						push( ax );
+						push( eax );
+						mov( @text(_dy_[0]), al );
+						mov( _m_, ah );
+						mov( ax, [esp+4] );
+						pop( eax );
+					}#
+				)
+
+			#else
+
+				#error( "Syntax error in validate parameter list" );
+
+			#endif
+
+		#else
+
+			#error
+			( 
+				"Error in date.validate parameter list" nl
+				"Usage: date.validate( dr:daterec ) or " nl
+				"       date.validate( m:word; d:word; y:word )"
+			)
+
+		#endif
+
+	#endmacro
+
+
+
+
+
+	// isValid-
+	//
+	//	Checks the date passed as a parameter to see if it is valid.
+	//	Returns true/false in AL to denote the validity of the parameter.
+	//
+	//	Note that date.IsValid is a macro that overloads the
+	//	date._IsValid procedure, allowing a daterec or (m,d,y)
+	//	parameters to be passed.
+
+	_isValid:
+		procedure( dr:daterec ) { @returns( "al" )}; 
+		@global:_hla._ext( "DATE_ISVALID" );
+
+	#macro isValid( _m_, _dy_[] );
+
+		#if( @elements( _dy_ ) = 0 )
+
+			// y had better be a daterec object
+			// if we had only one parameter.
+
+
+			#if( @global:date._isDateRec_( _m_ ) )
+
+				@global:date._isValid( _m_ )
+
+			#else
+
+				#error( "Expected a daterec type as the parameter" )
+
+			#endif
+
+		#elseif( @elements( _dy_ ) = 2 )
+
+
+			#if( @global:date._isMDY_( _m_, @text( _dy_[0] ), @text( _dy_[1])))
+
+				@global:date._isValid
+				(
+					#{
+						pushw( @text(_dy_[1]) );
+						push( ax );
+						push( eax );
+						mov( @text(_dy_[0]), al );
+						mov( _m_, ah );
+						mov( ax, [esp+4] );
+						pop( eax );
+					}#
+				)
+
+			#else
+
+				#error( "Syntax error in IsValid parameter list" )
+
+			#endif
+
+		#else
+
+			#error
+			( 
+				"Error in date.isValid parameter list" nl
+				"Usage: date.isValid( dr:daterec ) or " nl
+				"       date.isValid( m:word; d:word; y:word )"
+			)
+
+		#endif
+
+	#endmacro
+
+
+
+
+
+
+
+
+	_toJulian:
+		procedure( dr:daterec ) { @returns( "eax" )};
+		@global:_hla._ext( "DATE_JULIAN" );
+
+	#macro toJulian( _m_, _dy_[] );
+
+		#if( @elements( _dy_ ) = 0 )
+
+			// m had better be a daterec object
+			// if we had only one parameter.
+
+			#if( @global:date._isDateRec_( _m_ ) )
+
+				@global:date._toJulian( _m_ )
+
+			#else
+
+				#error( "Julian expected a daterec type as the parameter" )
+
+			#endif
+
+		#elseif( @elements( _dy_ ) = 2 )
+
+			#if( @global:date._isMDY_( _m_, @text( _dy_[0] ), @text( _dy_[1])) )
+
+				@global:date._toJulian
+				(
+					#{
+						pushw( @text(_dy_[1]) );
+						push( ax );
+						push( eax );
+						mov( @text(_dy_[0]), al );
+						mov( _m_, ah );
+						mov( ax, [esp+4] );
+						pop( eax );
+					}#
+				)
+
+			#else
+
+				#error( "Syntax error in Julian parameter list" );
+
+			#endif
+
+		#else
+
+			#error
+			( 
+				"Error in toJulian parameter list" nl
+				"Usage: toJulian( dr:daterec ) or " nl
+				"       toJulian( m:word; d:word; y:word )"
+			)
+
+		#endif
+
+	#endmacro
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	_dayOfWeek:
+		procedure( dr:daterec ) { @returns( "eax" )};
+		@global:_hla._ext( "DATE_DAYOFWEEK" );
+
+	#macro dayOfWeek( _m_, _dy_[] );
+
+		#if( @elements( _dy_ ) = 0 )
+
+			// y had better be a daterec object
+			// if we had only one parameter.
+
+			#if( @global:date._isDateRec_( _m_ ) )
+
+				@global:date._dayOfWeek( _m_ )
+
+			#else
+
+				#error
+				( 
+					"dayOfWeek expected a daterec type as the parameter" 
+				)
+
+			#endif
+
+		#elseif( @elements( _dy_ ) = 2 )
+
+			#if( @global:date._isMDY_( _m_, @text( _dy_[0] ), @text( _dy_[1])) )
+
+				@global:date._dayOfWeek
+				(
+					#{
+						pushw( @text(_dy_[1]) );
+						push( ax );
+						push( eax );
+						mov( @text(_dy_[0]), al );
+						mov( _m_, ah );
+						mov( ax, [esp+4] );
+						pop( eax );
+					}#
+				)
+
+			#else
+
+				#error( "Syntax error in dayOfWeek parameter list" );
+
+			#endif
+
+		#else
+
+			#error
+			( 
+				"Error in dayOfWeek parameter list" nl
+				"Usage: dayOfWeek( dr:daterec ) or " nl
+				"       dayOfWeek( m:word; d:word; y:word )"
+			)
+
+		#endif
+
+	#endmacro
+
+
+
+
+
+
+
+
+
+
+
+
+
+	_dayNumber:
+		procedure( dr:daterec ) { @returns( "eax" )};
+		@global:_hla._ext( "DATE_DAYNUMBER" );
+
+	#macro dayNumber( _m_, _dy_[] );
+
+		#if( @elements( _dy_ ) = 0 )
+
+			// y had better be a daterec object
+			// if we had only one parameter.
+
+			#if( @global:date._isDateRec_( _m_ ) )
+
+				@global:date._dayNumber( _m_ )
+
+			#else
+
+				#error( "dayNumber expected a daterec type as the parameter" )
+
+			#endif
+
+		#elseif( @elements( _dy_ ) = 2 )
+
+			#if( @global:date._isMDY_( _m_, @text( _dy_[0] ), @text( _dy_[1])) )
+
+				@global:date._dayNumber
+				(
+					#{
+						pushw( @text(_dy_[1]) );
+						push( ax );
+						push( eax );
+						mov( @text(_dy_[0]), al );
+						mov( _m_, ah );
+						mov( ax, [esp+4] );
+						pop( eax );
+					}#
+				)
+
+			#else
+
+				#error( "Syntax error in dayNumber parameter list" );
+
+			#endif
+
+		#else
+
+			#error
+			( 
+				"Error in dayNumber parameter list" nl
+				"Usage: dayNumber( dr:daterec ) or " nl
+				"       dayNumber( m:word; d:word; y:word )"
+			)
+
+		#endif
+
+	#endmacro
+
+
+
+
+
+
+
+
+
+
+
+	_daysLeft:
+		procedure( dr:daterec ) { @returns( "eax" )};
+		@global:_hla._ext( "DATE_DAYSLEFT" );
+
+	#macro daysLeft( _m_, _dy_[] );
+
+		#if( @elements( _dy_ ) = 0 )
+
+			// y had better be a daterec object
+			// if we had only one parameter.
+
+			#if( @global:date._isDateRec_( _m_ ) )
+
+				@global:date._daysLeft( _m_ )
+
+
+			#else
+
+				#error( "daysLeft expected a daterec type as the parameter" )
+
+			#endif
+
+		#elseif( @elements( _dy_ ) = 2 )
+
+
+			#if( @global:date._isMDY_( _m_, @text( _dy_[0] ), @text( _dy_[1])) )
+
+				@global:date._daysLeft
+				(
+					#{
+						pushw( @text(_dy_[1]) );
+						push( ax );
+						push( eax );
+						mov( @text(_dy_[0]), al );
+						mov( _m_, ah );
+						mov( ax, [esp+4] );
+						pop( eax );
+					}#
+				)
+
+			#else
+
+				#error( "Syntax error in daysLeft parameter list" );
+
+			#endif
+
+		#else
+
+			#error
+			( 
+				"Error in daysLeft parameter list" nl
+				"Usage: daysLeft( dr:daterec ) or " nl
+				"       daysLeft( m:word; d:word; y:word )"
+			)
+
+		#endif
+
+	#endmacro
+
+
+
+
+
+
+
+
+	_daysBetween:
+		procedure( first:daterec; last:daterec ) { @returns( "eax" )};
+		@global:_hla._ext( "DATE_DAYSBETWEEN" );
+
+	#macro daysBetween( _m_, _dy_[] );
+
+		#if( @elements( _dy_ ) = 1 )
+
+			// _m_ and _dy_[0] had better be daterec objects
+			// if we had only one parameter.
+
+			#if
+			( 
+					@global:date._isDateRec_( _m_ ) 
+				&	@global:date._isDateRec_( @text(_dy_[0] ))
+			)
+
+				@global:date._daysBetween( _m_, @text(_dy_[0]))
+
+			#else
+
+				#error
+				( 
+					"daysBetween expected a daterec type "
+					"as the parameter" 
+				)
+
+			#endif
+
+		#elseif( @elements( _dy_ ) = 3 )
+
+			#if
+			( 
+					@global:date._isMDY_( _m_, @text( _dy_[0] ), @text( _dy_[1]))
+				&	@global:date._isDateRec_( @text( _dy_[2] ))
+			)
+
+				@global:date._daysBetween
+				(
+					#{
+						pushw( @text(_dy_[1]) );
+						push( ax );
+						push( eax );
+						mov( @text(_dy_[0]), al );
+						mov( _m_, ah );
+						mov( ax, [esp+4] );
+						pop( eax );
+					}#,
+					@text( _dy_[2] )
+				)
+
+			#elseif
+			( 
+					@global:date._isDateRec_( _m_ )
+				&	@global:date._isMDY_
+					( 
+						@text( _dy_[0] ), 
+						@text( _dy_[1]), 
+						@text( _dy[2] )
+					)
+			)
+
+				@global:date._daysBetween
+				(
+					_m_,
+					#{
+						pushw( @text(_dy_[2]) );
+						push( ax );
+						push( eax );
+						mov( @text(_dy_[1]), al );
+						mov( @text(_dy_[0]), ah );
+						mov( ax, [esp+4] );
+						pop( eax );
+					}#
+				)
+
+			#endif
+
+		#elseif( @elements( _dy_ ) = 5 )
+
+			#if
+			( 
+					@global:date._isMDY_( _m_, @text( _dy_[0] ), @text( _dy_[1]))
+				&	@global:date._isMDY_
+					( 
+						@text( _dy_[2] ), 
+						@text( _dy_[3]), 
+						@text( _dy_[4] )
+					)
+			)
+
+				@global:date._daysBetween
+				(
+					#{
+						pushw( @text(_dy_[1]) );
+						push( ax );
+						push( eax );
+						mov( @text(_dy_[0]), al );
+						mov( _m_, ah );
+						mov( ax, [esp+4] );
+						pop( eax );
+					}#,
+					#{
+						pushw( @text(_dy_[4]) );
+						push( ax );
+						push( eax );
+						mov( @text(_dy_[3]), al );
+						mov( @text(_dy_[2]), ah );
+						mov( ax, [esp+4] );
+						pop( eax );
+					}#
+				)
+
+			#else
+
+				#error( "Syntax error in daysBetween parameter list" );
+
+			#endif
+
+		#else
+
+			#error
+			( 
+				"Error in daysBetween parameter list"
+			)
+
+		#endif
+
+	#endmacro
+
+
+
+
+
+
+
+
+
+	_toString:
+		procedure( dr:daterec; s:string );
+		@global:_hla._ext( "DATE_TOSTRING" );
+
+	#macro toString( _m_, _dys_[] );
+
+		#if( @elements( _dys_ ) = 1 )
+
+			// _m_ had better be a daterec object
+			// if we had only one parameter.
+
+			#if( @global:date._isDateRec_( _m_ ) )
+
+				@global:date._toString( _m_, @text( _dys_[0] ) )
+
+			#else
+
+				#error( "toString expected a daterec type as the parameter" )
+
+			#endif
+
+		#elseif( @elements( _dys_ ) = 3 )
+
+			#if( @global:date._isMDY_( _m_, @text( _dy_[0] ), @text( _dy_[1])) )
+
+				@global:date._toString
+				(
+					#{
+						pushw( @text(_dys_[1]) );
+						push( ax );
+						push( eax );
+						mov( @text(_dys_[0]), al );
+						mov( _m_, ah );
+						mov( ax, [esp+4] );
+						pop( eax );
+					}#,
+					@text( _dys_[2] )
+				)
+
+			#else
+
+				#error( "Syntax error in toString parameter list" );
+
+			#endif
+
+		#else
+
+			#error
+			( 
+				"Error in toString parameter list" nl
+				"Usage: toString( dr:daterec; s:string ) or " nl
+				"       toString( m:word; d:word; y:word; s:string )"
+			)
+
+		#endif
+
+	#endmacro
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	_a_toString:
+		procedure( dr:daterec ) { @returns( "(type string eax)" )}; 
+		@global:_hla._ext( "DATE_A_TOSTRING" );
+
+
+
+
+
+	#macro a_toString( _m_, _dy_[] );
+
+		#if( @elements( _dy_ ) = 0 )
+
+			// y had better be a daterec object
+			// if we had only one parameter.
+
+			#if( @global:date._isDateRec_( _m_ ) )
+
+				@global:date._a_toString( _m_ )
+
+			#else
+
+				#error
+				( 
+					"a_toString expected a daterec type "
+					"as the parameter" 
+				)
+
+			#endif
+
+		#elseif( @elements( _dy_ ) = 2 )
+
+			#if( @global:date._isMDY_( _m_, @text( _dy_[0] ), @text( _dy_[1])) )
+
+				@global:date._toString
+				(
+					#{
+						pushw( @text(_dy_[1]) );
+						push( ax );
+						push( eax );
+						mov( @text(_dy_[0]), al );
+						mov( _m_, ah );
+						mov( ax, [esp+4] );
+						pop( eax );
+					}#
+				)
+
+			#else
+
+				#error( "Syntax error in a_toString parameter list" );
+
+			#endif
+
+		#else
+
+			#error
+			( 
+				"Error in a_toString parameter list" nl
+				"Usage: a_toString( dr:daterec ) or " nl
+				"       a_toString( m:word; d:word; y:word )"
+			)
+
+		#endif
+
+	#endmacro
+
+
+
+
+
+
+
+	_print:
+		procedure( dr:daterec );
+		@global:_hla._ext( "DATE_PRINT" );
+
+	#macro print( _m_, _dy_[] );
+
+		#if( @elements( _dy_ ) = 0 )
+
+			// y had better be a daterec object
+			// if we had only one parameter.
+
+			#if( @global:date._isDateRec_( _m_ ) )
+
+				@global:date._print( _m_ )
+
+			#else
+
+				#error
+				( 
+					"print expected a daterec type "
+					"as the parameter" 
+				)
+
+			#endif
+
+		#elseif( @elements( _dy_ ) = 2 )
+
+			#if( @global:date._isMDY_( _m_, @text( _dy_[0] ), @text( _dy_[1])) )
+
+				@global:date._print
+				(
+					#{
+						pushw( @text(_dy_[1]) );
+						push( ax );
+						push( eax );
+						mov( @text(_dy_[0]), al );
+						mov( _m_, ah );
+						mov( ax, [esp+4] );
+						pop( eax );
+					}#
+				)
+
+			#else
+
+				#error( "Syntax error in print parameter list" );
+
+			#endif
+
+		#else
+
+			#error
+			( 
+				"Error in print parameter list" nl
+				"Usage: print( dr:daterec ) or " nl
+				"       print( m:word; d:word; y:word )"
+			)
+
+		#endif
+
+	#endmacro
+
+
+
+
+
+
+end date;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+
+
+
+namespace time; @fast;
+
+	// _isTimeRec_-
+	//
+	//	This is a utility macro that returns true or false
+	//	depending upon whether the parameter is a time.timerec
+	//	object.  This is for internal use within this header file.
+	 
+	#macro _isTimeRec_( _tr_ );
+
+		#if( @typename( _tr_ ) = "timerec" )
+
+			#if
+			( 
+					@defined( _tr_.hours ) 
+				&	@defined( _tr_.mins ) 
+				&	@defined( _tr_.secs )
+			)
+
+				true
+
+			#else
+
+				false
+
+			#endif
+
+		#else
+
+			false
+
+		#endif
+
+	#endmacro
+	
+	
+	
+	// _isHMS_
+	//
+	// This is another utility macro.  It checks its parameters
+	// to ensure that they are all valid h:m:s types.
+
+	#macro _isHMS_( _h_, _m_, _s_ ):_error_;
+
+		?_error_ :=
+				!hla.isNumber( _h_ ) 
+			|	!hla.isNumber( _m_)
+			|	!hla.isNumber( _s_);
+
+		#if( !_error_ )
+
+			?_error_ :=
+					( !@IsConst( _m_ ) & @size( _m_ ) <> 1 )
+				|	( !@IsConst( _s_ ) & @size( _s_ ) <> 1 )
+				|	( !@IsConst( _h_ ) & @size( _h_ ) <> 2 );
+
+		#endif
+		(!_error_)
+
+	#endmacro
+	
+	
+	// validate-
+	//
+	//	Checks the time passed as a parameter to see if it is valid.
+	//	Raises the "ex.InvalidTime" exception if it is not valid.
+	//
+	//	Note that time.validate is a macro that overloads the
+	//	time._validate procedure, allowing a timerec or (h,m,s)
+	//	parameters to be passed.
+
+proc
+	_validate:
+		procedure( tm:timerec );
+		@global:_hla._ext( "TIME_VALIDATE" );
+
+	#macro validate( _h_, _ms_[] );
+
+		#if( @elements( _ms_ ) = 0 )
+
+			// _h_ had better be a timerec object
+			// if we had only one parameter.
+
+
+			#if( @global:time._isTimeRec_( _h_ ))
+
+				@global:time._validate( _h_ )
+
+			#else
+
+				#error( "Expected a timerec type as the parameter" )
+
+			#endif
+
+		#elseif( @elements( _ms_ ) = 2 )
+
+
+			#if( @global:time._isHMS_( _h_, @text( _ms_[0]), @text( _ms_[1])))
+
+				pushw( @text(_h_) );
+				sub( 2, esp );
+				push( eax );
+				mov( @text(_ms_[0]), al );
+				mov( @text(_ms_[1]), ah );
+				mov( ax, [esp+4] );
+				pop( eax );
+				call @global:time._validate;
+
+			#else
+
+				#error( "Syntax error in time.validate parameter list" );
+
+			#endif
+
+		#else
+
+			#error
+			( 
+				"Error in time.validate parameter list" nl
+				"Usage: time.validate( tm:timerec ) or " nl
+				"       time.validate( h:word; m:byte; s:byte )"
+			)
+
+
+		#endif
+
+	#endmacro
+
+
+
+	// time.unpack-
+	//
+	//	The first parameter is a time.timerec object.  The remaining
+	//	parameters are dword objects.  This macro unpacks the time
+	//	in the timerec parameter into its constituent parts.
+	//	No range checking is done on the date value.
+
+	#macro unpack( tm, _h_, _m_, _s_ );
+
+		#if( !@global:time._isTimeRec_( tm ) )
+
+			#error( "Expected a time.timerec type as the 1st parameter" )
+
+		#elseif
+		( 
+				!( hla.IsNumber( _h_ ) & @size(_h_) = 4 )
+			&	!( hla.IsNumber( _m_ ) & @size(_m_) = 4 )
+			&	!( hla.IsNumber( _s_ ) & @size(_s_) = 4 )
+		)
+
+			#error( "Hours, Mins, and Secs values must be dword objects" )
+
+		#else
+
+			push( eax );
+			movzx( tm.hours, eax );
+			mov( eax, _h_ );
+			movzx( tm.mins, eax );
+			mov( eax, _m_ );
+			movzx( tm.secs, eax );
+			mov( eax, _s_ );
+			pop( eax );
+
+		#endif
+
+	#endmacro
+	
+
+	// time.pack-
+	//
+	//	This macro takes three dword objects representing the
+	//	hours, minutes, and seconds and packs these values into a
+	//	timerec variable.  Minimal range checking is done on the
+	//	time value.
+
+	val
+		hoursStr	:string := "";
+		minsStr		:string := "";
+		secsStr		:string := "";
+		
+	#macro pack( _hrs_, _mins_, _secs_, _tm_ );
+	
+		?@global:time.hoursStr := @lowercase( @string:_hrs_, 0);
+		?@global:time.minsStr := @lowercase( @string:_mins_, 0);
+		?@global:time.secsStr := @lowercase( @string:_secs_, 0);
+
+		#if( !@global:time._isTimeRec_( _tm_ ))
+
+			#error( "Expected a time.timerec type as the 4th parameter" )
+
+
+		// Handle the special case where _mins_ and _secs_ are both constants:
+		
+		#elseif( @isconst(_secs_) & @isconst(_mins_))
+		
+			#if( (_secs_) > 59 | (_mins_) > 59 )
+
+				#error( "Minutes or Seconds value is out of range" )
+				
+			#endif
+			#if( @isconst( _hrs_ ))
+			
+				#if( (_hrs_) > 23 )
+				
+					#error( "Hours value is out of range" )
+					
+				#endif
+				mov( (_secs_) + ((_mins_) << 8) + ((_hrs_)<<16), _tm_ );
+				
+			#elseif( @isreg16( _hrs_ ))
+			
+				mov( (_secs_) + ((_mins_) << 8), (type word _tm_));
+				mov( _hrs_, _tm_.hours );
+				
+			#else
+			
+				push( eax );
+				mov( (_secs_) + ((_mins_) << 8), (type word _tm_));
+				mov( _hrs_, ax );
+				mov( ax, _tm_.hours );
+				pop( eax );
+				
+			#endif
+
+		#elseif( @isreg8(_mins_) & @isreg8(_secs_))
+		
+			#if
+			( 
+					@substr( @global:time.secsStr, 1, 1 ) = "l" 
+				&	@substr( @global:time.minsStr, 1, 1 ) = "h"
+				&	@substr( @global:time.secsStr, 0, 1 ) =
+							 @substr( @global:time.minsStr, 0, 1 )
+			)
+				mov
+				( 
+					@text
+					( 
+						@substr
+						( 
+							@global:time.secsStr, 
+							0, 
+							1
+						) + "x"
+					), 
+					(type word _tm_));
+				
+			#else
+			
+				mov( _secs_, _tm_.secs );
+				mov( _mins_, _tm_.mins );
+				
+			#endif
+			
+			#if( @isreg16(_hrs_) | @isconst(_hrs_) )
+			
+				mov( _hrs_, _tm_.hours );
+				
+			#else
+			
+				push( eax );
+				mov( (type word _hrs_), ax );
+				mov( ax, _tm_.hours );
+				pop( eax );
+				
+			#endif 
+			
+		#else
+		
+			push( eax );
+			
+			// Special case -- we might use EAX
+			// for the minutes and seconds stuff, so
+			// if the hours was passed in AX, store
+			// that away first.
+			
+			#if( @global:time.hoursStr = "ax" )
+			
+				mov( ax, _tm_.hours );
+
+			#endif
+			
+			// Okay, deal with the seconds:
+			
+			#if( @isconst( _secs_ ) )
+			
+				#if( (_secs_) <= 31 & (_secs_) > 0 )
+				
+					mov( _secs_, al );
+					
+				#else
+				
+					#error( "Seconds value is out of range" );
+					
+				#endif
+				
+			#elseif( @global:time.secsStr <> "al" )
+			
+				mov( (type byte _secs_), al );
+				
+			#endif
+			#if( @isconst( _mins_ ) )
+			
+				#if( (_mins_) <= 12 & (_mins_) > 0 )
+
+					mov( _mins_, ah );
+					
+				#else
+				
+					#error( "Minutes value is out of range" );
+					
+				#endif
+				
+			#elseif( @global:time.minsStr = "al" )
+			
+				mov( (type byte [esp]), ah );
+				
+			#elseif( @global:time.minsStr <> "ah" )
+			
+				mov( (type byte _mins_), ah );
+				
+			#endif
+			mov( ax, (type word _tm_));
+				
+			
+			#if( @isconst( _hrs_ ) )
+			
+				#if( (_hrs_) < 24 )
+				
+					mov( _hrs_, _tm_.hours );
+					
+				#else
+				
+					#error( "Hours value is out of range" );
+					
+				#endif
+				
+			#elseif( @isreg16( _hrs_ ))
+			
+				// Note: the case where the hours was
+				// passed in AX was handled earlier.
+				
+				#if( @global:time.hoursStr <> "ax" )
+						
+					mov( _hrs_, _tm_.hours );
+	
+				#endif
+					
+			#else
+			
+				mov( (type word _hrs_), ax );
+				mov( ax, _tm_.hours );
+				
+			#endif
+			pop( eax );
+
+		#endif
+
+	#endmacro
+	
+	
+
+
+
+	// IsValid-
+	//
+	//	Checks the time passed as a parameter to see if it is valid.
+	//	Returns true/false in AL to denote the validity of the parameter.
+	//
+	//	Note that time.IsValid is a macro that overloads the
+	//	time._IsValid procedure, allowing a timerec or (h,m,s)
+	//	parameters to be passed.
+
+proc
+	_isValid:
+		procedure( tm:timerec ) { @returns( "al" )}; 
+		@global:_hla._ext( "TIME_ISVALID" );
+
+	#macro isValid( _h_, _ms_[] );
+
+		#if( @elements( _ms_ ) = 0 )
+
+			// _h_ had better be a timerec object
+			// if we had only one parameter.
+
+
+			#if( @global:time._isTimeRec_( _h_ ) )
+
+				@global:time._isValid( _h_ )
+
+			#else
+
+				#error( "Expected a time.timerec type as the parameter" )
+
+			#endif
+
+		#elseif( @elements( _ms_ ) = 2 )
+
+
+			#if( @global:time._isHMS_( _h_, @text( _ms_[0] ), @text( _ms_[1])))
+
+				@global:time._isValid
+				(
+					#{
+						pushw( @text(_h_) );
+						sub( 2, esp );
+						push( eax );
+						mov( @text(_ms_[0]), al );
+						mov( @text(_ms_[1]), ah );
+						mov( ax, [esp+4] );
+						pop( eax );
+					}#
+				)
+
+			#else
+
+				#error( "Syntax error in IsValid parameter list" )
+
+			#endif
+
+		#else
+
+			#error
+			( 
+				"Error in time.isValid parameter list" nl
+				"Usage: time.isValid( tm:timerec ) or " nl
+				"       time.isValid( h:word; m:byte; s:byte )"
+			)
+
+		#endif
+
+	#endmacro
+
+
+
+	
+	durationToSecs:
+		procedure( hours:word; mins:byte; secs:byte ) { @returns( "eax" )}; 
+		@global:_hla._ext( "TIME_DURATIONTOSECS" );
+		
+	secsToDuration:
+		procedure
+	( 
+			seconds	:uns32; 
+		var hours	:word; 
+		var mins	:byte; 
+		var secs	:byte 
+	);	@global:_hla._ext( "TIME_SECSTODURATION" );
+		
+	
+
+	addSecs:
+		procedure( seconds:uns32; var HMS:timerec ) { @returns( "eax" )};
+		@global:_hla._ext( "TIME_ADDSECS" );
+			
+	addMins:
+		procedure( minutes:uns32; var HMS:timerec ) { @returns( "eax" )};
+		@global:_hla._ext( "TIME_ADDMINS" );
+			
+	addHours:
+		procedure( hours:uns32; var HMS:timerec ) { @returns( "eax" )};
+		@global:_hla._ext( "TIME_ADDHOURS" );
+		
+			
+	subSecs:
+		procedure( seconds:uns32; var HMS:timerec );
+		@global:_hla._ext( "TIME_SUBSECS" );
+			
+	subMins:
+		procedure( minutes:uns32; var HMS:timerec );
+		@global:_hla._ext( "TIME_SUBMINS" );
+			
+	subHours:
+		procedure( hours:uns32; var HMS:timerec );
+		@global:_hla._ext( "TIME_SUBHOURS" );
+		
+			
+	secsBetweenTimes:
+		procedure( time1:timerec; time2:timerec ) { @returns( "eax" )};
+		@global:_hla._ext( "TIME_SECSBETWEENTIMES" );
+		
+	toString:
+		procedure( HMS:timerec; dest:string );
+		@global:_hla._ext( "TIME_TOSTRING" );
+		
+	a_toString:
+		procedure( HMS:timerec ) { @returns( "eax" )};
+		@global:_hla._ext( "TIME_A_TOSTRING" );
+			
+
+	toWinFileTime:
+		procedure( DMY:@global:date.daterec; HMS:timerec ) { @returns( "edx:eax" )};
+		@global:_hla._ext( "TIME_TOWINFILETIME" );
+		
+	fromWinFileTime:
+		procedure
+	( 
+			winTime:qword; 
+		var HMS:timerec; 
+		var DMY:@global:date.daterec 
+	);
+		@global:_hla._ext( "TIME_FROMWINFILETIME" );
+			
+
+	toUnixTime:
+		procedure( DMY:@global:date.daterec; HMS:timerec ) { @returns( "edx:eax" )};
+		@global:_hla._ext( "TIME_TOUNIXTIME" );
+		
+	fromUnixTime:
+		procedure
+	( 
+			unixTime	:qword; 
+		var HMS			:timerec; 
+		var DMY			:@global:date.daterec 
+	);
+		@global:_hla._ext( "TIME_FROMUNIXTIME" );
+		
+		
+		
+	setFormat:
+		procedure( f:OutputFormat );
+		@global:_hla._ext( "TIME_SETFORMAT" );
+		
+	setTimeZone:
+		procedure( tz:int32 );
+		@global:_hla._ext( "TIME_SETTIMEZONE" );
+		
+	getTimeZone:
+		procedure {@returns( "eax" )};
+		@global:_hla._ext( "TIME_GETTIMEZONE" );
+		
+	curTime:
+		procedure( var HMS:timerec );
+		@global:_hla._ext( "TIME_CURTIME" );
+		
+	localTime:
+		procedure( var HMS:timerec );
+		@global:_hla._ext( "TIME_CURTIME" );
+		
+	utcTime:
+		procedure( var HMS:timerec );
+		@global:_hla._ext( "TIME_UTCTIME" );
+		
+	unixTime:
+		procedure { @returns( "edx:eax" )};
+		@global:_hla._ext( "TIME_UNIXTIME" );
+		
+
+	localDateTime:
+		procedure( var DMY:@global:date.daterec; var HMS:timerec );
+		@global:_hla._ext( "TIME_LOCALDATETIME" );
+
+	utcDateTime:
+		procedure( var DMY:@global:date.daterec; var HMS:timerec );
+		@global:_hla._ext( "TIME_UTCDATETIME" );
+
+	fromSecs:
+		procedure( seconds:uns32; var HMS:timerec );
+		@global:_hla._ext( "TIME_FROMSECS" );
+
+	_toSecs:
+		procedure( HMS:timerec ) { @returns( "eax" )};
+		@global:_hla._ext( "TIME_TOSECS" );
+
+
+	#macro toSecs( _h_, _ms_[] );
+
+		#if( @elements( _ms_ ) = 0 )
+
+			// _h_ had better be a timerec object
+			// if we had only one parameter.
+
+			#if( @global:time._isTimeRec_( _h_ ) )
+
+				@global:time._toSecs( _h_ )
+
+			#else
+
+				#error
+				( 
+					"toSecs expected a timerec type as the parameter" 
+				)
+
+			#endif
+
+		#elseif( @elements( _ms_ ) = 2 )
+
+			@global:time._toSecs
+			(
+				#{
+					pushw( _h_ );
+					sub( 2, esp );
+					push( eax );
+					mov( @text(_ms_[0]), ah );
+					mov( @text(_ms_[1]), al );
+					mov( ax, [esp+4] );
+					pop( eax );
+				}#
+			)
+
+		#else
+
+			#error
+			( 
+				"Error in hmsToSecs parameter list" 
+			)
+
+		#endif
+
+	#endmacro
+
+end time;
+
+
+#endif
+

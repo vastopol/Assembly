@@ -1,0 +1,88 @@
+#if( false )
+	Given the code:
+
+	type MyRecord:
+	   record
+	     field1 :dword;
+	     field2 :dword;
+	     field3 :dword;
+	     buffer :byte[50];
+	   endrecord;
+
+	static mr  :MyRecord := MyRecord:[20,32,300,?????];
+
+
+	How do I initialize the buffer?
+
+	Is it possible to do something like [20,32,300,"This String"];  like
+	in MASM?
+#endif
+
+
+program t;
+
+// The following macro converts its first parameter,
+// which must be a string, to an array of bytes padded out
+// to _bufSize_ bytes with zeros.
+ 
+#macro strToBA( _theStr_, _bufSize_ ): _i_, _ch_;
+ 
+ #if( @length( _theStr_ ) <= _bufSize_ )
+ 
+  ?_i_ := 0;
+  [
+   #for( _ch_ in _theStr_ )
+ 
+    @byte( _ch_ )
+    #if( _i_ < (_bufSize_-1) )
+     ,
+    #endif
+    ?_i_ += 1;
+ 
+   #endfor
+  
+   #while( _i_ < (_bufSize_-1) )
+    0,
+    ?_i_ += 1;
+   #endwhile
+ 
+   #if( @length( _theStr_ ) < _bufSize_ )
+    0
+   #endif
+  ]
+ 
+ #else
+ 
+  #error
+  ( 
+   "String constant must be less than ", 
+   _bufSize_, 
+   " chars long" 
+  )
+  [ _bufSize_ dup [0]]
+ 
+ #endif
+ 
+#endmacro
+
+
+// Demonstration of the use of this macro:
+    
+type 
+ MyRecord:
+    record
+      field1 :dword;
+      field2 :dword;
+      field3 :dword;
+      buffer :byte[50];
+    endrecord;
+ 
+static 
+ mr  :MyRecord := 
+  MyRecord:[ 20, 32, 300, strToBA( "Hello", 50 ) ];
+ 
+begin t;
+ 
+
+end t;
+

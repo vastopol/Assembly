@@ -1,0 +1,88 @@
+
+program Demo_while;
+#include( "stdlib.hhf" )
+
+#macro _while( expr ):falseLbl, breakLbl, topOfLoop, hasOnBreak;
+
+	?hasOnBreak:boolean:=false;
+	topOfLoop:
+		jf( expr ) falseLbl;
+		
+  #keyword _do;
+  
+  #keyword _break;
+		jmp breakLbl;
+		
+  #keyword _breakif( expr2 );
+		jt( expr2 ) breakLbl;
+		
+  #keyword _onbreak;
+	#if( hasOnBreak )
+
+		#error( "Extra _onbreak clause encountered" )
+		
+	#else
+
+			jmp topOfLoop;
+			?hasOnBreak := true;
+			
+		breakLbl:
+		
+	#endif
+	
+  #terminator _endwhile;
+
+	#if( !hasOnBreak )
+	
+		jmp topOfLoop;
+		breakLbl:
+		
+	#endif
+	falseLbl:
+	
+#endmacro;
+
+
+static
+	i:int32;
+	
+begin Demo_while;
+
+	// Demonstration of standard while loop
+	
+	mov( 0, i );
+	_while( i < 10 ) _do
+	
+		stdout.put( "1: i=", i, nl );
+		inc( i );
+		
+	_endwhile;
+	
+	// Demonstration with BREAKIF:
+	
+	mov( 5, i );
+	_while( i < 10 ) _do
+	
+		stdout.put( "2: i=", i, nl );
+		_breakif( i = 7 );
+		inc( i );
+		
+	_endwhile
+	
+	// Demonstration with BREAKIF and _ONBREAK:
+	
+	mov( 0, i );
+	_while( i < 10 ) _do
+	
+		stdout.put( "3: i=", i, nl );
+		_breakif( i = 4 );
+		inc( i );
+		
+	  _onbreak
+	  
+	  	stdout.put( "Breakif was true at i=", i, nl );
+		
+	_endwhile
+	stdout.put( "All Done" nl );
+	
+end Demo_while;

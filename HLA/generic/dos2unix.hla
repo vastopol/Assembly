@@ -1,0 +1,30 @@
+program Dos2Unix;
+#include( "stdlib.hhf" );
+
+static
+	f:file;
+	filename:string;
+	inputLine: string;
+    
+begin Dos2Unix;
+
+	if( arg.c() <> 2 ) then
+	
+		stdout.put( "Usage dos2unix infile >outfile" );
+		exit Dos2Unix;
+		
+	endif;
+	mov( arg.v(1), filename );
+	f.create();		// Constructor for file class.
+	f.open( filename, fileio.r );
+	while( !f.eof() ) do
+	
+		f.a_gets();
+		mov( eax, inputLine );
+		stdout.put( inputLine, stdio.lf );
+		strfree( inputLine );		
+	
+	endwhile;
+	f.close();
+	
+end Dos2Unix;

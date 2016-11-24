@@ -1,0 +1,34 @@
+program DemoNestedMatch;
+#include( "patterns.hhf" );
+#include( "stdout.hhf" );
+
+
+begin DemoNestedMatch;
+
+	pat.match( "Hello There" );
+	
+		pat.matchStr( "Hello" );
+		
+		// Nested match invocation.
+		
+		pat.match( esi, edi );
+		
+			pat.oneChar( '.' );
+			stdout.put( "Success 1=failure" nl );
+			
+		  pat.if_failure;
+		  
+		  	stdout.put( "Failure 1= success" nl );
+			pat.fail();	// "fail" here causes outside match to fail.
+			
+		pat.endmatch;
+		
+		stdout.put( "Success 2=failure" nl );
+		
+	  pat.if_failure;
+	  
+	  	stdout.put( "Failure 2= success" nl );
+		
+	pat.endmatch;
+	
+end DemoNestedMatch;

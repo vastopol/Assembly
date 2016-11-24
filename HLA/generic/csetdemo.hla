@@ -1,0 +1,489 @@
+ 
+program csetDemo;
+
+#include( "stdio.hhf" );
+#include( "stdout.hhf" );
+#include( "strings.hhf" );
+#include( "memory.hhf" );
+#include( "cset.hhf" );
+
+static
+    cst:cset := { 'a'..'z' };
+	EmptySet:cset := {};
+	NonEmptySet: cset := {'0'..'9'};
+	
+        
+begin csetDemo;
+
+	stdout.newln();
+	stdout.put( "cset cst      = {", cst, "}", nl );
+	stdout.put( "cset EmptySet = {", EmptySet, "}", nl, nl );
+	
+	
+	// Demo of IsEmpty function:
+	
+	cs.isEmpty( EmptySet );
+	stdout.put( "IsEmpty( EmptySet ) = ", (type boolean al), nl );
+	
+	cs.isEmpty( cst );
+	stdout.put( "IsEmpty( cst ) = ", (type boolean al), nl, nl );
+	
+	
+	
+	// Demo of member function:
+	
+	cs.member( 'a', cst );
+	stdout.put( "member( 'a', cst ) = ", (type boolean al), nl );
+	
+	cs.member( 'A', cst );
+	stdout.put( "member( 'A', cst ) = ", (type boolean al), nl, nl );
+	
+	
+	
+	// Demo of Empty function:
+
+	stdout.put
+	( 
+		"Test of Empty( NonEmptySet ) function:", nl 
+		"NonEmptySet (before) = {", 
+		NonEmptySet, 
+		"}", 
+		nl 
+	);
+	cs.empty( NonEmptySet );
+	stdout.put( "NonEmptySet (after) = {", NonEmptySet, "}", nl, nl );
+	
+	
+	
+	// Demo of cpy function:
+	
+	cs.cpy( cst, NonEmptySet );
+	stdout.put( "cpy( cst, NonEmptySet) = {", NonEmptySet, "}", nl, nl );
+	
+	
+	// Demo of SetUnion function:
+	
+	cs.setunion( {'A'..'F'}, NonEmptySet );
+	stdout.put
+	( 
+		"setunion({'A'..'F'}, NonEmptySet) = {", 
+		NonEmptySet, 
+		"}", 
+		nl, 
+		nl 
+	); 
+	
+	
+	
+	// Demo of intersection function:
+	
+	cs.intersection( {'A'..'F','a'..'f'}, NonEmptySet );
+	stdout.put
+	( 
+		"intersection( {'A'..'F','a'..'f'}, NonEmptySet ) = {", 
+		NonEmptySet, 
+		"}", 
+		nl, 
+		nl 
+	);
+	
+	
+	// Demo of difference function:
+	
+	cs.difference( {'a'..'f'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"difference( {'a'..'f'}, NonEmptySet ) = {", 
+		NonEmptySet, 
+		"}", 
+		nl, 
+		nl 
+	);
+	
+	
+	
+	// Demo of subset function:
+	
+	stdout.put( "NonEmptySet = {", NonEmptySet, "}", nl );
+	
+	cs.subset( {'A'..'F'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'A'..'F'} <= NonEmptySet = ", 
+		(type boolean AL), 
+		nl 
+	);
+	
+	cs.subset( {'A'..'B'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'A'..'B'} <= NonEmptySet = ", 
+		(type boolean AL), 
+		nl 
+	);
+	
+	cs.subset( {'E'..'G'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'E'..'G'} <= NonEmptySet = ", 
+		(type boolean AL), 
+		nl 
+	);
+	
+	cs.subset( {'a'..'f'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'a'..'f'} <= NonEmptySet = ", 
+		(type boolean AL), 
+		nl,
+		nl 
+	);
+	
+	
+	
+	
+	// Demo of psubset function:
+	
+	stdout.put( "NonEmptySet = {", NonEmptySet, "}", nl );
+	
+	cs.psubset( {'A'..'F'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'A'..'F'} < NonEmptySet = ", 
+		(type boolean AL), 
+		nl 
+	);
+	
+	cs.psubset( {'A'..'B'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'A'..'B'} < NonEmptySet = ", 
+		(type boolean AL), 
+		nl 
+	);
+	
+	cs.psubset( {'E'..'G'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'E'..'G'} < NonEmptySet = ", 
+		(type boolean AL), 
+		nl 
+	);
+	
+	cs.psubset( {'a'..'f'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'a'..'f'} < NonEmptySet = ", 
+		(type boolean AL), 
+		nl,
+		nl 
+	);
+	
+	
+	
+	
+	
+	
+	// Demo of superset function:
+	
+	stdout.put( "NonEmptySet = {", NonEmptySet, "}", nl );
+	
+	cs.superset( {'A'..'F'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'A'..'F'} >= NonEmptySet = ", 
+		(type boolean AL), 
+		nl 
+	);
+	
+	cs.superset( {'A'..'B'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'A'..'B'} >= NonEmptySet = ", 
+		(type boolean AL), 
+		nl 
+	);
+	
+	cs.superset( {'A'..'G'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'A'..'G'} >= NonEmptySet = ", 
+		(type boolean AL), 
+		nl 
+	);
+	
+	cs.superset( {'a'..'f'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'a'..'f'} >= NonEmptySet = ", 
+		(type boolean AL), 
+		nl,
+		nl 
+	);
+	
+	
+	
+	
+	// Demo of psuperset function:
+	
+	stdout.put( "NonEmptySet = {", NonEmptySet, "}", nl );
+	
+	cs.psuperset( {'A'..'F'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'A'..'F'} > NonEmptySet = ", 
+		(type boolean AL), 
+		nl 
+	);
+	
+	cs.psuperset( {'A'..'B'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'A'..'B'} > NonEmptySet = ", 
+		(type boolean AL), 
+		nl 
+	);
+	
+	cs.psuperset( {'A'..'G'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'A'..'G'} > NonEmptySet = ", 
+		(type boolean AL), 
+		nl 
+	);
+	
+	cs.psuperset( {'a'..'f'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'a'..'f'} > NonEmptySet = ", 
+		(type boolean AL), 
+		nl,
+		nl 
+	);
+	
+	
+	
+	
+	// Demo of eq function:
+	
+	stdout.put( "NonEmptySet = {", NonEmptySet, "}", nl );
+	
+	cs.eq( {'A'..'F'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'A'..'F'} = NonEmptySet = ", 
+		(type boolean AL), 
+		nl 
+	);
+	
+	cs.eq( {'A'..'B'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'A'..'B'} = NonEmptySet = ", 
+		(type boolean AL), 
+		nl 
+	);
+	
+	cs.eq( {'A'..'G'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'A'..'G'} = NonEmptySet = ", 
+		(type boolean AL), 
+		nl 
+	);
+	
+	cs.eq( {'a'..'f'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'a'..'f'} = NonEmptySet = ", 
+		(type boolean AL), 
+		nl,
+		nl 
+	);
+	
+	
+	// Demo of ne function:
+	
+	stdout.put( "NonEmptySet = {", NonEmptySet, "}", nl );
+	
+	cs.ne( {'A'..'F'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'A'..'F'} <> NonEmptySet = ", 
+		(type boolean AL), 
+		nl 
+	);
+	
+	cs.ne( {'A'..'B'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'A'..'B'} <> NonEmptySet = ", 
+		(type boolean AL), 
+		nl 
+	);
+	
+	cs.ne( {'A'..'G'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'A'..'G'} <> NonEmptySet = ", 
+		(type boolean AL), 
+		nl 
+	);
+	
+	cs.ne( {'a'..'f'}, NonEmptySet ); 
+	stdout.put
+	( 
+		"{'a'..'f'} <> NonEmptySet = ", 
+		(type boolean AL), 
+		nl,
+		nl 
+	);
+	
+
+
+
+	// Demo of charToCset function:
+	
+	
+	cs.charToCset( 'a', NonEmptySet ); 
+	stdout.put
+	( 
+		"charToCset( 'a', NonEmptySet ) = {", 
+		NonEmptySet, 
+		"}",
+		nl,
+		nl 
+	);
+	
+	
+	
+
+	// Demo of unionChar function:
+	
+	
+	cs.unionChar( 'b', NonEmptySet ); 
+	stdout.put
+	( 
+		"unionChar( 'b', NonEmptySet ) = {", 
+		NonEmptySet, 
+		"}",
+		nl 
+	);
+	
+	cs.unionChar( 'a', NonEmptySet ); 
+	stdout.put
+	( 
+		"unionChar( 'a', NonEmptySet ) = {", 
+		NonEmptySet, 
+		"}",
+		nl,
+		nl 
+	);
+	
+	
+
+	// Demo of removeChar function:
+	
+	
+	cs.removeChar( 'c', NonEmptySet ); 
+	stdout.put
+	( 
+		"removeChar( 'c', NonEmptySet ) = {", 
+		NonEmptySet, 
+		"}",
+		nl 
+	);
+	
+	cs.removeChar( 'a', NonEmptySet ); 
+	stdout.put
+	( 
+		"removeChar( 'a', NonEmptySet ) = {", 
+		NonEmptySet, 
+		"}",
+		nl,
+		nl 
+	);
+	
+	
+	
+
+	// Demo of rangeChar function:
+	
+	
+	cs.rangeChar( 'a','z', NonEmptySet ); 
+	stdout.put
+	( 
+		"rangeChar( 'a', 'z', NonEmptySet ) = {", 
+		NonEmptySet, 
+		"}",
+		nl,
+		nl 
+	);
+	
+	
+	
+
+	// Demo of strToCset function:
+	
+	
+	cs.strToCset( "abcd", NonEmptySet ); 
+	stdout.put
+	( 
+		"strToCset( ""abcd"", NonEmptySet ) = {", 
+		NonEmptySet, 
+		"}",
+		nl,
+		nl 
+	);
+	
+
+	// Demo of unionStr function:
+	
+	
+	cs.unionStr( "cdef", NonEmptySet ); 
+	stdout.put
+	( 
+		"unionStr( ""cdef"", NonEmptySet ) = {", 
+		NonEmptySet, 
+		"}",
+		nl,
+		nl 
+	);
+	
+
+	// Demo of removeStr function:
+	
+	
+	cs.removeStr( "cd", NonEmptySet ); 
+	stdout.put
+	( 
+		"removeStr( ""cd"", NonEmptySet ) = {", 
+		NonEmptySet, 
+		"}",
+		nl,
+		nl 
+	);
+	
+	// Demo of extract function:
+	
+	stdout.put( "NonEmptySet={", NonEmptySet, "}", nl );
+	forever
+	
+		cs.isEmpty( NonEmptySet );
+		breakif( al = true );
+	
+		cs.extract( NonEmptySet );
+		stdout.put
+		( 
+			"Extracted '", 
+			(type char al), 
+			"', NonEmptySet = {",
+			NonEmptySet,
+			"}",
+			nl
+		);
+		
+	endfor;
+		        
+end csetDemo;
+                        
