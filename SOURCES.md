@@ -7,9 +7,11 @@
 * http://www.plantation-productions.com/Webster/HighLevelAsm/HLADoc/index.html
 
 
+To use the UCR STDLIB: needs MASM, TASM, etc (WIN macro assemblers)...
+
 As a side note, both of these projects were developed by Randal Hyde.
-HLA seems to be a more developed version/replacement of the ucr stblib.
-They both have a standard library and shell. Both have high level macros to make coding easier.
+HLA is a more developed replacement of the ucr stblib.
+They both have a standard library, shell, and high level macros to make coding easier.
 
 Note a very unique thing about HLA:  
 Carefully written (console) applications will compile and run on all supported operating systems without change.  

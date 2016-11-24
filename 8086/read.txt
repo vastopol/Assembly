@@ -20,9 +20,7 @@ ucrasm.arc
 //----------------------------------------------------------
 
 folders:
-- ver2 = unar ucrasm.arc
 - ucrasm = unzip ucrasm.zip
-
 
 inside of ucrasm folder:
     subfolder's .ZIP contain unmodified code
