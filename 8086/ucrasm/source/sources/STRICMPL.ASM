@@ -130,4 +130,3 @@ sl_stricmpl	endp
 ;
 stdlib		ends
 		end
-

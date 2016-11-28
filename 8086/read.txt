@@ -3,31 +3,18 @@ Provides a slate of useful high-level assembly language routines.
 
 //---------------------------------------------------------
 
-useful online descriptions:
-http://www.drdobbs.com/parallel/the-ucr-standard-assembly-language-libra/parallel/the-ucr-standard-assembly-language-libra/184408724#0086_000a
-http://collaboration.cmc.ec.gc.ca/science/rpn/biblio/ddj/Website/articles/DDJ/1992/9203/9203a/9203a.htm
+Folders:
+* originals = Archived files 
+* ucrasm  = unzip ucrasm.zip
 
-files:
-http://files.mpoli.fi/unpacked/software/programm/general/ddj0392.zip/
-package name:
-ucrasm.zip
-
-files:
-http://www.vectorbd.com/bfd/8086/index.html
-package name:
-ucrasm.arc
-
-//----------------------------------------------------------
-
-folders:
-- ucrasm = unzip ucrasm.zip
-
-inside of ucrasm folder:
-    subfolder's .ZIP contain unmodified code
+subfolders inside of ucrasm folder:
+    
     - lib = {STDLIB.A, STDLIB.LIB, STDLIB6.A}
     - source
-        -- src = { *.ASM }
+        -- sources = { *.ASM }
         -- {SOURCE.ZIP, STDLIB.TXT}
-    - tests
-        -- tsts = { *.ASM }
+    - test
+        -- tests = { *.ASM }
         -- {TESTS.ZIP}
+    
+    note: (*.ZIP contain unmodified code)

@@ -33,4 +33,3 @@ stddata		ends
 stdlib		segment	para public 'slcode'
 stdlib		ends
 		end
-

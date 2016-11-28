@@ -1,13 +1,22 @@
 ## The UCR Standard Library for Assembly Language 
+### Sources:
 * http://files.mpoli.fi/unpacked/software/programm/general/ddj0392.zip/
 * http://www.vectorbd.com/bfd/8086/index.html
 
+### Documentation:
+* http://www.drdobbs.com/parallel/the-ucr-standard-assembly-language-libra/parallel/the-ucr-standard-assembly-language-libra/184408724#0086_000a
+* http://collaboration.cmc.ec.gc.ca/science/rpn/biblio/ddj/Website/articles/DDJ/1992/9203/9203a/9203a.htm
+
+To use the UCR STDLIB: needs MASM, TASM, etc (WIN macro assemblers)...
+
 ## High Level Assembly
+### Source:
 * http://www.plantation-productions.com/Webster/HighLevelAsm/LInuxDownload.html
+
+### Documentation:
 * http://www.plantation-productions.com/Webster/HighLevelAsm/HLADoc/index.html
 
 
-To use the UCR STDLIB: needs MASM, TASM, etc (WIN macro assemblers)...
 
 As a side note, both of these projects were developed by Randal Hyde.
 HLA is a more developed replacement of the ucr stblib.
