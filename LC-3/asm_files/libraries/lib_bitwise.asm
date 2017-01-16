@@ -1,6 +1,5 @@
 ; LC-3 BITWISE OPERATION LIBRARY
-; 16-BIT 2'S COMPLIMENT INTEGERS
-;==============================
+;===============================
 
 ; SUBROUTINE SYNTAX
 ;;;;;;;;;;;;;;;;;;;;;;;

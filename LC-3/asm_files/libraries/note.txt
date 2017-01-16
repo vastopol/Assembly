@@ -1,0 +1,25 @@
+LC3 Subroutine Libraies
+-----------------------
+- Bitwise -> {OR, XOR, NOR, XNOR}
+- Math    -> {SUB, MUL, DIV, MOD} 
+
+SUBROUTINE SYNTAX:
+---------------------
+R1: SUBROUTINE POINTER
+R2: VARIABLE A
+R3: VARIABLE B
+R4: RESULT
+
+What this means:
+- "Return values" are to be expected in register R4
+- computation will happen mostly in registers R4, R5, and R6
+- register R7 is used for return address only
+- for math routines numbers are 16 bit 2's compliment integers
+    
+*** IMPORTANT ***
+- These libraries are probably not portable.
+- They are presented as is (may contain defects, etc...)
+- Don't expect any values to be preserved in their registers (only returns goto R4)
+- Currently most of the routines don't backup anything except the return address
+- Don't expect error checking
+- etc

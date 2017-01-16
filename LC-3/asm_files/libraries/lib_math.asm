@@ -1,6 +1,6 @@
 ; LC-3 MATH LIBRARY
 ; 16-BIT 2'S COMPLIMENT INTEGERS
-;==============================
+;===============================
 
 ; SUBROUTINE SYNTAX
 ;;;;;;;;;;;;;;;;;;;;;;;
