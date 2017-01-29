@@ -1,0 +1,1 @@
+The program "bin_manip.asm" requires the extention library "lib_bitwise.asm"
