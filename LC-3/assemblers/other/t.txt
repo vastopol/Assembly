@@ -1,10 +1,5 @@
 ON Assembly Code for LC-3
 
-SEE folder "/asmblr"
-
-BEST ASSEMBLER : simpLC
-all these programs assemble correctly for the simpLC assembler on Centos OS
-
 =====================================================================================
 STUFF from "lc3-master.zip"
 

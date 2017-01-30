@@ -9,3 +9,9 @@ Requirements:
 What you get:
 - centOS 6.6 (modified)
 - simpl assembler
+
+----------------------------
+
+AFTER VM SETUP:
+
+the bashrc file included will make the circut design program "logisim" available from inside of the vm,.
