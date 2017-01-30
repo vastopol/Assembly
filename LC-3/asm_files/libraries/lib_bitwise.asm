@@ -1,14 +1,6 @@
 ; LC-3 BITWISE OPERATION LIBRARY
 ;===============================
 
-; SUBROUTINE SYNTAX
-;;;;;;;;;;;;;;;;;;;;;;;
-; R1 SUBROUTINE POINTER
-; R2 VARIABLE A
-; R3 VARIABLE B
-; R4 RESULT
-;;;;;;;;;;;;;;;;;;;;;;;;
-
 ; SUBROUTINE LOCATION
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; x5100 = BITWISE OR

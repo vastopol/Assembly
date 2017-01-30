@@ -87,8 +87,8 @@ _REV_LOOP
   
   NOT R5, R2	   ; INVERT BEGIN POINT
   ADD R5, R5, #1   ; 2'S COMP
-  ADD R5, R5, R1   ; IF END - BEGIN = -NUM
-BRzp _REV_LOOP
+  ADD R5, R5, R1   ; CHECK END - BEGIN
+BRzp _REV_LOOP     ; IF NEGATIVE BREAK LOOP
 ;-----------------------------------------------------
 
 LD R1, VPTR	  ; LOAD R1 POINTER TO BLOCK WORD
