@@ -1,1 +1,32 @@
+Program Descriptions
+--------------------
+
+prgm/
+    * bin_manip.asm
+        Takes strings of binary from user and performs bitwise operations on them
+        
+    * dec_to_bin.asm
+        Takes in a signed 5 digit decimal number and prints the corresponding binary version
+
+prgm/small/
+    * array_rev.asm
+        Takes in chars from user saves to array, physically reverses the array content, then prints
+    
+    * fib.asm
+        Calculate the nth fibonacci number
+    
+    * multiply.asm
+        Demonstrates multiplication by repetitive addition
+    
+    * not.asm
+        Demonstrates 2's complement
+    
+    * print_rev.asm
+        Takes in chars from user saves to array, then prints array in reverse order
+
+
+============================================================================
+
+Also:
+
 The program "bin_manip.asm" requires the extention library "lib_bitwise.asm"

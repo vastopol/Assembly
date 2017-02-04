@@ -15,3 +15,11 @@ What you get:
 AFTER VM SETUP:
 
 the bashrc file included will make the circut design program "logisim" available from inside of the vm,.
+
+----------------------------
+
+ALSO:
+
+CS61_Files.tgz = mac/*nix
+
+CS61_Files.zip = windows

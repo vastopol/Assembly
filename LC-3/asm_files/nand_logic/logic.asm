@@ -1,15 +1,15 @@
-;LOGICAL OPERATIONS
-;Based on: NOT, AND
-;==================
+; LOGICAL OPERATIONS
+; Based on: NOT, AND
+;===================
 
 .ORIG x3000
 
-;INSTRUCTIONS
+; INSTRUCTIONS
 ;-----------------
 
-LD R1, var_A    ;VALUE
-LD R2, var_B    ;VALUE
-LD R6, ptr      ;ADDRESS
+LD R1, var_A    ; VALUE
+LD R2, var_B    ; VALUE
+LD R6, ptr      ; ADDRESS
 
 STR R1, R6, #0  ; store: A
 STR R2, R6, #1  ; store: B
@@ -78,28 +78,28 @@ AND R3, R4, R5  ; not(A and not(A and B)) AND not(B and not(A and B))
 ;NOT R3, R3     ; not(not(not(not(A and not(A and B)) AND not(B and not(A and B)))))
 STR R3, R6, #9  ; store: A xnor B
 
-;*** last two NOT on XNOR are redundant, still shown as comments
+; *** last two NOT on XNOR are redundant, still shown as comments
 
 HALT
 
-;DATA
+; DATA
 ;---------------------
-var_A .FILL xC  ;1100
-var_B .FILL xA  ;1010
+var_A .FILL xC  ; 1100
+var_B .FILL xA  ; 1010
 ptr .FILL x4000 ; store answers as remote data in x4000's
 
 .END
 
 
-;IN MEMORY
+; IN MEMORY
 ;---------------------------------------------
-;x4000 = A
-;x4001 = B
-;x4002 = A and B
-;x4003 = A or B
-;x4004 = A xor B
-;x4005 = not(A)
-;x4006 = not(B)
-;x4007 = A nand B
-;x4008 = A nor B
-;x4009 = A xnor B
+; x4000 = A
+; x4001 = B
+; x4002 = A and B
+; x4003 = A or B
+; x4004 = A xor B
+; x4005 = not(A)
+; x4006 = not(B)
+; x4007 = A nand B
+; x4008 = A nor B
+; x4009 = A xnor B

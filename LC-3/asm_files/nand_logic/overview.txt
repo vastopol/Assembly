@@ -3,7 +3,7 @@ Logic operations on {A,B}
 0 = FALSE
 1 = TRUE
 
-A = 1100 = x0a
+A = 1100 = x0c
 B = 1010 = x0a
 
 
@@ -46,7 +46,7 @@ NOR  = NOT{NOT[NOT(A AND A) AND NOT(B AND B)] AND NOT[NOT(A AND A) AND NOT(B AND
 
 XNOR = NOT(NOT{NOT[A AND NOT(A AND B)] AND NOT[B AND NOT(A AND B)]})
 
-** NOR is also functionally complete... NOR Logic
+** NOR is also functionally complete **
 
 ==================================================================
 HEX  BINARY
