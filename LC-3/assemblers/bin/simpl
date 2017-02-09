@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# Run dcopserver for this user if it isn't already running.
+ps -u ${LOGNAME} | grep -q dcopserver || dcopserver
+
+# Run simpl, now that it's verified that dcopserver is running.
+/usr/csshare/bin/simpl-2.0.3.bin "$@"
