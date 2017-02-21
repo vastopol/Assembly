@@ -24,3 +24,6 @@ They both have a standard library, shell, and high level macros to make coding e
 
 Note a very unique thing about HLA:  
 Carefully written (console) applications will compile and run on all supported operating systems without change.  
+
+
+READ: the material contained in the MIPS and LC-3 folders was taken out of a customized CentOS image used to teach CS61 at UCR

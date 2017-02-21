@@ -1,0 +1,2 @@
+#!/bin/bash
+java -jar /usr/csshare/pkgs/Mars4_4/Mars4_4.jar
