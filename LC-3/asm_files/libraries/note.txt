@@ -1,6 +1,6 @@
 LC3 Subroutine Libraies
 -----------------------
-- Bitwise -> {OR, XOR, NOR, XNOR}
+- Bitwise -> {OR, XOR, NOR, XNOR} 
 - Math    -> {SUB, MUL, DIV, MOD} 
 
 SUBROUTINE SYNTAX:
@@ -23,3 +23,19 @@ What this means:
 - Currently most of the routines don't backup anything except the return address
 - Don't expect error checking
 - etc
+
+
+------------
+** Eventually Write a core I/O library containing
+   modified versions of Trap routines && also fancy I/O
+
+Trap x20 GETC read a single character (no echo)
+Trap x21 OUT  output a character to the monitor
+Trap x22 PUTS write a string to the console
+Trap x23 IN   print prompt to console, read and echo character from keyboard
+Trap x25 HALT halt the program
+
+get_bin = input a string of binary upto 16 bits
+out_bin = print a string of binary 16 bits
+get_dec = input signed 5 digit number 
+out_dec = print a signed 5 digit number
