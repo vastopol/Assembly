@@ -1,6 +1,6 @@
 LC3 Subroutine Libraies
 -----------------------
-- I/O     -> {BIN_IN, NIN_OUT, DEC_IN, DEC_OUT}
+- I/O     -> {BIN_IN, BIN_OUT, DEC_IN, DEC_OUT}
 - Bitwise -> {OR, XOR, NOR, XNOR} 
 - Math    -> {SUB, MUL, DIV, MOD} 
 
@@ -12,6 +12,9 @@ R1: SUBROUTINE POINTER
 R2: VALUE
 
 What this means:
+- The expected input value will be returned in R2
+- output value must be in R2 before subroutine call
+
 BIN_IN  = input a string of binary upto 16 bits
 BIN_OUT = print a string of binary 16 bits
 DEC_IN  = input signed 5 digit number 
@@ -42,10 +45,16 @@ What this means:
 - Don't expect error checking
 - etc
 
+Locations in memory space:
+--------------------------
+* I/O  x4000 to x4300
+* Bits x5000 to x5300
+* Math x6000 to x6300
 
-------------
+=============================================================
+
 ** Eventually Write a core I/O library containing
-   modified versions of Trap routines && also fancy I/O
+   modified versions of Trap routines
 
 Trap x20 GETC read a single character (no echo)
 Trap x21 OUT  output a character to the monitor

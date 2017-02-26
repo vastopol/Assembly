@@ -12,10 +12,10 @@ BR begin
 ; BUILD LIBRARY POINT LIST && need SOME vars upfront: 9-Bit pcoffset
 ptr_subr_1   .FILL x4000  ; BINARY INPUT SEQUENCE
 ptr_subr_2   .FILL x4100  ; BINARY OUTPUT SEQUENCE
-sub_ptr_or   .fill x5100  ; BITWISE OR
-sub_ptr_xor  .fill x5200  ; BITWISE XOR
-sub_ptr_nor  .fill x5300  ; BITWISE NOR
-sub_ptr_xnor .fill x5400  ; BITWISE XNOR
+sub_ptr_or   .fill x5000  ; BITWISE OR
+sub_ptr_xor  .fill x5100  ; BITWISE XOR
+sub_ptr_nor  .fill x5200  ; BITWISE NOR
+sub_ptr_xnor .fill x5300  ; BITWISE XNOR
 
 prompt .STRINGZ "1= NOT 2= AND 3= OR 4= XOR \n5= NAND 6= NOR 7= XNOR \n" 
 prompt2 .STRINGZ "Choose op: "
