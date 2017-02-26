@@ -1,7 +1,7 @@
 ;===========================================
 ; BINARY MANIPULATION OPERATION
 ; must be linked to lib_bitwise.asm
-; RUN: simpl bin_manip.asm lib_bitwise.asm
+; RUN: simpl bin_manip.asm lib_bitwise.asm lib_io.asm
 ;===========================================
 
 .ORIG x3000
@@ -9,22 +9,16 @@
 ;-----------------
 BR begin
 
-; BUILD LIBRARY POINT LIST && need vars upfront: 9-Bit pcoffset
-sub_ptr_or .fill x5100    ; BITWISE OR
-sub_ptr_xor .fill x5200   ; BITWISE XOR
-sub_ptr_nor .fill x5300   ; BITWISE NOR
+; BUILD LIBRARY POINT LIST && need SOME vars upfront: 9-Bit pcoffset
+ptr_subr_1   .FILL x4000  ; BINARY INPUT SEQUENCE
+ptr_subr_2   .FILL x4100  ; BINARY OUTPUT SEQUENCE
+sub_ptr_or   .fill x5100  ; BITWISE OR
+sub_ptr_xor  .fill x5200  ; BITWISE XOR
+sub_ptr_nor  .fill x5300  ; BITWISE NOR
 sub_ptr_xnor .fill x5400  ; BITWISE XNOR
 
-no_1	.FILL #-49  ; numerics ascii for the checks
-no_2	.FILL #-50
-no_3	.FILL #-51
-no_4	.FILL #-52
-no_5	.FILL #-53
-no_6	.FILL #-54
-no_7	.FILL #-55
-op_ch .BLKW #1    ; operation holder
-nl .STRINGZ "\n"
-intro .STRINGZ "Bitwise operations on 2's comp 16-bit binary \n"
+prompt .STRINGZ "1= NOT 2= AND 3= OR 4= XOR \n5= NAND 6= NOR 7= XNOR \n" 
+prompt2 .STRINGZ "Choose op: "
 
 begin  ;<<-------------------------------------------------START_HERE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -41,8 +35,6 @@ PUTS
 LEA R0, prompt
 PUTS
 LEA R0, prompt2
-PUTS
-LEA R0, prompt3
 PUTS
 
 GETC
@@ -265,197 +257,28 @@ BR _savin
 
 ;LOCAL DATA
 ;-----------------
-prompt .STRINGZ "1= NOT 2= AND 3= OR 4= XOR \n" 
-prompt2 .STRINGZ "5= NAND 6= NOR 7= XNOR \n"
-prompt3 .STRINGZ "Choose op: "
+no_1	.FILL #-49  ; negative values of numeric ascii for the checks
+no_2	.FILL #-50
+no_3	.FILL #-51
+no_4	.FILL #-52
+no_5	.FILL #-53
+no_6	.FILL #-54
+no_7	.FILL #-55
+op_ch .BLKW #1    ; operation holder
+
+nl .STRINGZ "\n"
+intro .STRINGZ "Bitwise operations on 2's comp 16-bit binary \n"
 error .STRINGZ "ERROR: UNDEF INPUT\n"
 run_again .STRINGZ "Again? y=1 n=0\n"
 
 ptr_remote .FILL x3500	; DATA STORAGE
-ptr_subr_1 .FILL x4000	; INPUT SEQUENCE
-ptr_subr_2 .FILL x4500	; OUTPUT SEQUENCE
 ;=============================================================
 
+;=============================================================
 .ORIG x3500
 ;REMOTE DATA
 ;----------------
 vals .BLKW #3
-
-;x4000 :: A
-;x4001 :: B
-;x4002 :: RESULT
-;=============================================================
-
-.ORIG x4000
-;SUBROUTINE #1 : INPUT_SEQUENCE_BIN, end on \n
-;---------------------------------------------
-; MOD: R1, R2, R6
-; R1: INPUT CHECK
-; R2: FINAL USER VALUE
-; R6: CHECK AGAINST VALUE
-; R4: conversion factor
-; R5: looping index
-
-ST R7, backup_R7      ; SAVE RETURN ADDRESS
-
-LEA R0, msg           ; DISPLAY MESSAGE
-PUTS
-
-and r2, r2, #0        ; init binary sum = 0
-
-and r5, r5, #0
-ld r5, indx           ; LOOP index
-ld r4, nt_0
-
-INPUT_LOOP            ; ONLY ACCEPT { '0', '1', ' '}
-  GETC
-  OUT                 ; CAPTURE AND ECHO INPUT
-
-  ;check SPACE 
-  LD R6, nt_spc
-  AND R1, R1, #0      ; CLEAR R1
-  ADD R1, R0, #0      ; COPY R1 <-- R0
-  ADD R1, R1, R6      ; CHECK
-  BRz INPUT_LOOP      ; GO START AGAIN
-
-  ;check 0
-  LD R6, nt_0
-  AND R1, R1, #0      ; CLEAR R1
-  ADD R1, R0, #0      ; COPY R1 <-- R0
-  ADD R1, R1, R6      ; CHECK
-  BRz GOOD_INPUT_VAL
-
-  ;check 1
-  LD R6, nt_1
-  AND R1, R1, #0      ; CLEAR R1
-  ADD R1, R0, #0      ; COPY R1 <-- R0
-  ADD R1, R1, R6      ; CHECK
-  BRz GOOD_INPUT_VAL
-
-  ;check \n
-  LD R6, convert_nl
-  AND R1, R1, #0      ; CLEAR R1
-  ADD R1, R0, #0      ; COPY R1 <-- R0
-  ADD R1, R1, R6      ; CHECK
-  BRz END_INPUT_LOOP  ; END ON newline
-   
-    LEA R0, err       ; INPUT ERROR
-    PUTS
-    BR INPUT_LOOP     ; GO START AGAIN
-  
-  GOOD_INPUT_VAL
-
-  ADD R2, R2, R2      ; LEFT SHIFT R2
-  add r0, r0, r4      ; convert from ascii to numeric value of digit
-  ADD R2, R2, R0      ; ADD NEW VAL TO EXISTING VAL
-
-  add r5, r5, #-1
-  BRz END_INPUT_LOOP  ; max input of 16 bit
-
-BR INPUT_LOOP
-END_INPUT_LOOP        ; R2 CONTAINS USER INPUT
-
-AND R0, R0, #0
-ADD R0, R0, #10       ; OUTPUT \n
-OUT
-
-AND R6, R6, #0        ; REG CLEAN 
-and r4, r4, #0        ; REG CLEAN 
-and r5, r5, #0        ; REG CLEAN 
-
-LD R7, backup_R7
-RET                   ;RETURN FROM SUBROUTINE
-
-;LOCAL DATA :: SUBROUTINE #1
-;-------------------
-msg .STRINGZ "ENTER MAX 16-BITS, STOPS ON newline\n"
-err .STRINGZ "\n ERROR: NOT '0' , '1' , OR 'space' \n "
-
-convert_nl .FILL #-10
-nt_spc	.FILL #-32
-nt_0	.FILL #-48
-nt_1	.FILL #-49
-
-indx .fill #16
-
-backup_R7 .BLKW #1
-;=============================================================
-
-.ORIG x4500
-;SUBROUTINE #2: PRINT_SEQUENCE_BIN
-;----------------------------------
-; MOD: R2, R3, R4, R5
-; R2: USER INPUT
-; R3: # OF SPACES COUNTER
-; R4: SPACING INDEX
-; R5: LOOP INDEX
-
-ST R7, backup2_R7   ; SAVE RETURN ADDRESS
-
-LD R5, num_xx       ; INDEX LOOP LOAD
-
-and r4, r4, #0
-ld R4, num_4        ; WORD SPACING_INDEX RESET IN l3
-
-and r3, r3, #0
-ld R3, num_4        ; number of spaces = 3
-
-LOOP_START
-  ADD R2, R2, #0    ; DUMMY INSTRUCTION TO REPRESENT R2
-  BRzp poz
-  BRn  neg
-
-  neg
-    LD R0, num_01   ; OUT '1'
-    OUT
-    BR gggg
-
-  poz
-    LD R0, num_00	  ; OUT '0'
-    OUT
-
-  gggg
-    
-    ADD R4, R4, #-1 ; SPACE HANDLE
-    BRz helper
-    return_zone
-
-    ADD R2, R2, R2  ; LEFT SHIFT BITS
-
-    ADD R5, R5, #-1 ; DECREMENT INNER LOOP
-  BRp LOOP_START
-
-AND R0, R0, #0      ;\n
-ADD R0, R0, #10
-OUT
-
-AND R6, R6, #0      ; REG CLEAN 
-
-LD R7, backup2_R7	
-RET                 ; RETURN FROM SUBROUTINE
-
-  
-  ; HELPER_CODE
-  ;--------------------------------------------
-  helper
-      ADD R3, R3, #-1 ;NUM SPACE HANDLER
-      BRz return_zone
-    LD R0, space
-    OUT
-    ADD R4, R4, #4    ;WORD SPACING_INDEX RESET IN l3
-  BR return_zone
-  
-
-;LOCAL DATA :: SUBROUTINE #2
-;-------------------
-num_00 .FILL #48    ; 0
-num_01 .FILL #49    ; 1
-space  .STRINGZ " " ; ' '
-
-num_xx .FILL #16    ;INDEX BITS
-num_4  .FILL #4     ;INDEX SPACES
-
-backup2_R7 .BLKW #1
 ;=============================================================
 
 .END
