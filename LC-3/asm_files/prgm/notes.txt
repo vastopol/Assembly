@@ -4,9 +4,6 @@ Program Descriptions
 prgm/
     * bin_manip.asm
         Takes strings of binary from user and performs bitwise operations on them
-        
-    * dec_to_bin.asm
-        Takes in a signed 5 digit decimal number and prints the corresponding binary version
 
 prgm/small/
     * array_rev.asm
@@ -29,7 +26,5 @@ prgm/small/
 
 Also:
 
-The program "bin_manip.asm" requires the extention library "lib_bitwise.asm"
+The program "bin_manip.asm" requires the libraries "lib_bitwise.asm" and "lib_io.asm" 
 
-"bin_manip.asm" && "dec_to_bin.asm" both have their input/output subroutines built into the main files.
-Eventually if an I/O library is written these 2 programs will be refactored.

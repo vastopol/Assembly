@@ -1,9 +1,25 @@
 LC3 Subroutine Libraies
 -----------------------
+- I/O     -> {BIN_IN, NIN_OUT, DEC_IN, DEC_OUT}
 - Bitwise -> {OR, XOR, NOR, XNOR} 
 - Math    -> {SUB, MUL, DIV, MOD} 
 
-SUBROUTINE SYNTAX:
+====================================================
+
+INPUT/OUTPUT SUBROUTINE SYNTAX:
+------------------------------
+R1: SUBROUTINE POINTER
+R2: VALUE
+
+What this means:
+BIN_IN  = input a string of binary upto 16 bits
+BIN_OUT = print a string of binary 16 bits
+DEC_IN  = input signed 5 digit number 
+DEC_OUT = print a signed 5 digit number
+
+=====================================================
+
+BITWISE && MATH SUBROUTINE SYNTAX:
 ---------------------
 R1: SUBROUTINE POINTER
 R2: VARIABLE A
@@ -15,6 +31,8 @@ What this means:
 - computation will happen mostly in registers R4, R5, and R6
 - register R7 is used for return address only
 - for math routines numbers are 16 bit 2's compliment integers
+
+===========================================================
     
 *** IMPORTANT ***
 - These libraries are probably not portable.
@@ -35,7 +53,3 @@ Trap x22 PUTS write a string to the console
 Trap x23 IN   print prompt to console, read and echo character from keyboard
 Trap x25 HALT halt the program
 
-get_bin = input a string of binary upto 16 bits
-out_bin = print a string of binary 16 bits
-get_dec = input signed 5 digit number 
-out_dec = print a signed 5 digit number
