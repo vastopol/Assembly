@@ -1,0 +1,8 @@
+The file "stack.asm" is an implementation of the operations PUSH and POP for a stack.
+
+The file "calc.asm" uses modified versions of the PUSH and POP algorithms, and other subroutines to make an RPN calculator.
+
+There still are some problems with the RPN calculator
+- supposed to be from x3FFF to x3FFB, however it looks off...
+- stack it can only hold 3 vals
+- If an error like add with only one operand on stack, it will lose the operand, stack will be reset

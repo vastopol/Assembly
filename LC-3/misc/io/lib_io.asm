@@ -1,0 +1,475 @@
+;=================================================
+;I/O LIBRARY
+;=================================================
+
+
+;===========================================================
+.ORIG x4000
+;SUBROUTINE: INPUT_SEQUENCE_BINARY, END ON \N
+;		VALUE WILL BE STORED INTO R2
+;---------------------------------------------
+; MOD: R1, R2, R6
+; R1: INPUT CHECK
+; R2: FINAL USER VALUE
+; R6: CHECK AGAINST VALUE
+; R4: CONVERSION FACTOR
+; R5: LOOPING INDEX
+;--------------------------------------------
+
+ST R7, I_B_BACKUP_R7      ; SAVE RETURN ADDRESS
+
+LEA R0, MSG           ; DISPLAY MESSAGE
+PUTS
+
+AND R2, R2, #0        ; INIT BINARY SUM = 0
+
+AND R5, R5, #0
+LD R5, INDX           ; LOOP INDEX
+LD R4, NT_0
+
+INPUT_LOOP            ; ONLY ACCEPT { '0', '1', ' '}
+  GETC
+  OUT                 ; CAPTURE AND ECHO INPUT
+
+  ;CHECK SPACE 
+  LD R6, NT_SPC
+  AND R1, R1, #0      ; CLEAR R1
+  ADD R1, R0, #0      ; COPY R1 <-- R0
+  ADD R1, R1, R6      ; CHECK
+  BRz INPUT_LOOP      ; GO START AGAIN
+
+  ;CHECK 0
+  LD R6, NT_0
+  AND R1, R1, #0      ; CLEAR R1
+  ADD R1, R0, #0      ; COPY R1 <-- R0
+  ADD R1, R1, R6      ; CHECK
+  BRz GOOD_INPUT_VAL
+
+  ;CHECK 1
+  LD R6, NT_1
+  AND R1, R1, #0      ; CLEAR R1
+  ADD R1, R0, #0      ; COPY R1 <-- R0
+  ADD R1, R1, R6      ; CHECK
+  BRz GOOD_INPUT_VAL
+
+  ;CHECK \N
+  LD R6, CONVERT_NL
+  AND R1, R1, #0      ; CLEAR R1
+  ADD R1, R0, #0      ; COPY R1 <-- R0
+  ADD R1, R1, R6      ; CHECK
+  BRz END_INPUT_LOOP  ; END ON NEWLINE
+   
+    LEA R0, ERR       ; INPUT ERROR
+    PUTS
+    BR INPUT_LOOP     ; GO START AGAIN
+  
+  GOOD_INPUT_VAL
+
+  ADD R2, R2, R2      ; LEFT SHIFT R2
+  ADD R0, R0, R4      ; CONVERT FROM ASCII TO NUMERIC VALUE OF DIGIT
+  ADD R2, R2, R0      ; ADD NEW VAL TO EXISTING VAL
+
+  ADD R5, R5, #-1
+  BRz END_INPUT_LOOP  ; MAX INPUT OF 16 BIT
+
+BR INPUT_LOOP
+END_INPUT_LOOP        ; R2 CONTAINS USER INPUT
+
+AND R0, R0, #0
+ADD R0, R0, #10       ; OUTPUT \N
+OUT
+
+AND R6, R6, #0        ; REG CLEAN 
+AND R4, R4, #0        ; REG CLEAN 
+AND R5, R5, #0        ; REG CLEAN 
+
+LD R7, I_B_BACKUP_R7
+RET                   ;RETURN FROM SUBROUTINE
+
+;LOCAL DATA :: SUBROUTINE #1
+;-------------------
+MSG .STRINGZ "ENTER MAX 16-BITS, STOPS ON NEWLINE \n"
+ERR .STRINGZ "\n ERROR: NOT '0' , '1' , OR 'SPACE' \n "
+
+CONVERT_NL .FILL #-10
+NT_SPC	.FILL #-32
+NT_0	.FILL #-48
+NT_1	.FILL #-49
+
+INDX .FILL #16
+
+I_B_BACKUP_R7 .BLKW #1
+;=============================================================
+
+;=============================================================
+.ORIG x4100
+;SUBROUTINE #2: PRINT_SEQUENCE_BIN, VALUE WILL BE STORED INTO R2
+;----------------------------------
+; MOD: R2, R3, R4, R5
+; R2: USER INPUT
+; R3: # OF SPACES COUNTER
+; R4: SPACING INDEX
+; R5: LOOP INDEX
+;---------------------------------
+
+ST R7, BACKUP2_R7   ; SAVE RETURN ADDRESS
+
+LD R5, NUM_XX       ; INDEX LOOP LOAD
+
+AND R4, R4, #0
+LD R4, NUM_4        ; WORD SPACING_INDEX RESET IN L3
+
+AND R3, R3, #0
+LD R3, NUM_4        ; NUMBER OF SPACES = 3
+
+LOOP_START
+  ADD R2, R2, #0    ; DUMMY INSTRUCTION TO REPRESENT R2
+  BRzp POZ
+  BRn  NEG
+
+  NEG
+    LD R0, NUM_01   ; OUT '1'
+    OUT
+    BR GGGG
+
+  POZ
+    LD R0, NUM_00	  ; OUT '0'
+    OUT
+
+  GGGG
+    
+    ADD R4, R4, #-1 ; SPACE HANDLE
+    BRz HELPER
+    RETURN_ZONE
+
+    ADD R2, R2, R2  ; LEFT SHIFT BITS
+
+    ADD R5, R5, #-1 ; DECREMENT INNER LOOP
+  BRp LOOP_START
+
+AND R0, R0, #0      ;\n
+ADD R0, R0, #10
+OUT
+
+AND R6, R6, #0      ; REG CLEAN 
+
+LD R7, BACKUP2_R7	
+RET                 ; RETURN FROM SUBROUTINE
+
+  
+  ; HELPER_CODE
+  ;--------------------------------------------
+  HELPER
+      ADD R3, R3, #-1 ;NUM SPACE HANDLER
+      BRz RETURN_ZONE
+    LD R0, SPACE
+    OUT
+    ADD R4, R4, #4    ;WORD SPACING_INDEX RESET IN L3
+  BR RETURN_ZONE
+  
+
+;LOCAL DATA :: SUBROUTINE #2
+;-------------------
+NUM_00 .FILL #48    ; 0
+NUM_01 .FILL #49    ; 1
+SPACE  .STRINGZ " " ; ' '
+
+NUM_XX .FILL #16    ;INDEX BITS
+NUM_4  .FILL #4     ;INDEX SPACES
+
+BACKUP2_R7 .BLKW #1
+;=============================================================
+
+
+;=============================================
+; SUBROUTINE: INPUT SIGNED 5 DIGIT DECIMAL 
+;=============================================
+.ORIG x4200
+;==========================
+; STORES NUMBER INTO R2
+; IT WILL INTERPRET + OR - SIGN 
+;  FOLOWED BY NO NUMBERS AS DECIMAL 0
+;==========================
+
+ST R7, I_D_BKUPR7	; SAVE R7
+
+BR _GO
+
+BAD_LOOP
+  AND R0, R0, #0
+  ADD R0, R0, x0A	;\N
+  OUT
+
+  LEA R0, ERRORMESSAGE  ;OUTPUT ERROR MESSAGE
+  PUTS
+
+  AND R0, R0, #0	;FLAG RESET
+  ST R0, FLAG
+
+_GO	; START   <<***************************************************************
+
+LEA R0, INTROMESSAGE  	;OUTPUT INTRO MESSAGE
+PUTS
+
+AND R5, R5, #0		; CLEAR R5
+
+LD R6, COUNTER5		; COUNTER GET 5 NUMS
+LD R2, CONV		; ASCII CONVERT
+
+;GET INPUT FIRST NUM || SIGN
+GETC
+OUT
+
+;IF \N: BR BAD_LOOP
+AND R4, R4, #0
+ADD R4, R4, #-10
+ADD R4, R4, R0	; BREAK ON \N
+BRz BAD_LOOP
+
+
+;IF +: BR LOOP_1_START
+AND R4, R4, #0
+LD R4, PLUS
+ADD R4, R4, R0
+BRz LOOP_1_START
+
+
+;IF - THEN STORE FACT AND 2'S COMP LATER && BR LOOP_1_START
+AND R4, R4, #0
+LD R4, MINUS
+ADD R4, R4, R0
+BRz MAKRO
+
+;CHECK IF WAS NUMBER
+AND R4, R4, #0
+LD R4, CONV
+ADD R4, R4, R0	; CHECK NAN < 0
+BRn BAD_LOOP
+
+AND R4, R4, #0
+LD R4, NANMORE9
+ADD R4, R4, R0	; CHECK NAN > 9
+BRp BAD_LOOP
+
+BR SPECIAL_GOTO  ; GOTO LOOP MULTIPLY BY 10
+
+MAKRO
+  AND R0, R0, #0
+  ADD R0, R0, #1
+  ST R0, FLAG
+
+
+;//////////////////////////////////////////////////////////////////
+; MAIN INPUT SEQUENCE
+;//////////////////////////////////////////////////////////////////
+
+LOOP_1_START
+  GETC			; GET INPUTS
+  OUT
+
+  AND R4, R4, #0
+  ADD R4, R4, #-10
+  ADD R4, R4, R0	; BREAK ON \N
+  BRz LOOP_1_END
+
+  AND R4, R4, #0
+  LD R4, CONV
+  ADD R4, R4, R0	; CHECK NAN < 0
+  BRn BAD_LOOP
+
+  AND R4, R4, #0
+  LD R4, NANMORE9
+  ADD R4, R4, R0	; CHECK NAN > 9
+  BRp BAD_LOOP
+  
+
+  SPECIAL_GOTO ; NOW MUL BY 10 TO SHIFT POSITIONAL VALUE OF DIGIT
+  
+    ADD R0, R0, R2	; CONVERT R0 TO DECIMAL VAL
+
+    LD R4, COUNTER10
+
+    AND R3, R3, #0	; CLEAR FOR THE MULTIPLICATION
+
+    LOOP_MUL_10
+      ADD R3, R3, R5	;  OLD *10
+
+      ADD R4, R4, #-1	; DECREMENT
+    BRzp LOOP_MUL_10
+
+    ADD R5, R3, R0	; ADD INPUT + OLD, RESULT TO R5
+
+  ADD R6, R6, #-1	; DECREMENT OUTER LOOP
+BRp LOOP_1_START
+LOOP_1_END
+
+ADD R6, R6, #-5
+BRz BAD_LOOP		; CHECK FOR SIGN ONLY, NO NUMS, EG. +||-
+
+;IF FLAG == 1 TAKE 2'S COMP
+AND R4, R4, #0
+LD R4, FLAG
+ADD R4, R4, #-1
+BRz _2_COMPER
+
+_END_I_D  		;NOW R5 HAS VAL... END ON \N
+
+AND R0, R0, #0
+ADD R0, R0, x0A ; \N
+OUT
+
+AND R2, R2, #0
+ADD R2, R5, #0 ; MOVE R5 TO R2
+
+LD R7, I_D_BKUPR7
+RET		       ; THE END OF THE RUN  <<********************************************************
+
+_2_COMPER	; HELPER TAKES 2'S COMP
+  NOT R5, R5
+  ADD R5, R5, #1
+  BR _END_I_D ; GOTO RETURN AREA
+
+;---------------	
+;DATA
+;---------------
+INTROMESSAGE .STRINGZ	"INPUT A POSITIVE OR NEGATIVE DECIMAL NUMBER (MAX 5 DIGITS), FOLLOWED BY ENTER \n"
+ERRORMESSAGE .STRINGZ	"ERROR INVALID INPUT \n"
+
+COUNTER5 .FILL #5	; 5 DIGITS COUNTER
+COUNTER10 .FILL #9	; 10 TIMES FOR MULTIPLY
+FLAG .BLKW #1		; FLAG FOR NEGATIVES
+CONV .FILL #-48		; ASCII CHECKS
+NANMORE9 .FILL #-57
+MINUS .FILL #-45
+PLUS .FILL #-43
+
+I_D_BKUPR7 .BLKW #1
+;================================================
+
+
+;================================================
+; SUBROUTINE: OUTPUT SIGNED 5 DIGIT DECIMAL
+;================================================
+.ORIG x4300
+;========================
+; EXPECT NUMBER IN R2..
+; R1 - TEMP
+; R2 - CONVERT TO ASCII
+; R3 - COUNTER
+; R4 - ANTI ASCII #-48
+; R5 - VAL
+; R6 CHECKER REG FOR NO LEAD 0'S
+;========================
+
+ST R2, O_D_BACKUP_R2	; SAVE R2
+ST R7, O_D_BACKUP_R7	; SAVE R7
+
+AND R5, R5, #0
+ADD R5, R2, #0		; MOVE VAL TO R5
+
+ADD R5, R5, #0		; DUMMY TO CHECK IF + || - NUMBER
+BRzp _POZNUM		; IF POSITIVE GO TO PRINT NUMBER
+LD R0, NEGSIN
+OUT
+NOT R5, R5
+ADD R5, R5, #1		; TAKES 2'S COMP OF NEG #
+
+_POZNUM
+
+LD R4, ASCIINO
+ADD R1, R5, #0		; COPY VAL IN R5 TO R0
+
+_BEGIN10000	LD R2, ASCIIGO  ;BEGIN PRINTING
+		LD R3, NEG10000
+_LOOP10000	ADD R1, R1, R3
+		BRn _END10000	; END LOOP
+		ADD R2, R2, #1
+		BR _LOOP10000	; LOOP AGAIN
+_END10000	AND R6, R6,#0
+		ADD R6, R2, R4	; CHECK IF 0 FOR SKIP
+		BRz _SKIP10000
+		ADD R0, R2, #0	; MOVE COUNT TO R0 FOR OUTPUT
+		OUT
+		_SKIP10000	; SKIP TO
+		LD R3, POS10000
+ 		ADD R1, R1, R3	; RESTORE LAST SUBTRACT
+
+_BEGIN1000	LD R2, ASCIIGO
+		LD R3, NEG1000
+_LOOP1000	ADD R1, R1, R3
+		BRn _END1000	; END LOOP
+		ADD R2, R2, #1
+		BR _LOOP1000	; LOOP AGAIN
+_END1000	AND R6, R6,#0
+		ADD R6, R2, R4	; CHECK IF 0 FOR SKIP
+		BRz _SKIP1000
+		ADD R0, R2, #0	; MOVE COUNT TO R0 FOR OUTPUT
+		OUT
+		_SKIP1000	; SKIP TO
+		LD R3, POS1000
+ 		ADD R1, R1, R3	; RESTORE LAST SUBTRACT
+
+_BEGIN100	LD R2, ASCIIGO
+		LD R3, NEG100
+_LOOP100	ADD R1, R1, R3
+		BRn _END100	; END LOOP
+		ADD R2, R2, #1
+		BR _LOOP100	; LOOP AGAIN
+_END100		AND R6, R6,#0
+		ADD R6, R2, R4	; CHECK IF 0 FOR SKIP
+		BRz _SKIP100
+		ADD R0, R2, #0	; MOVE COUNT TO R0 FOR OUTPUT
+		OUT
+		_SKIP100	; SKIP TO
+		LD R3, POS100
+ 		ADD R1, R1, R3	; RESTORE LAST SUBTRACT
+
+_BEGIN10	LD R2, ASCIIGO
+		LD R3, NEG10
+_LOOP10 	ADD R1, R1, R3
+		BRn _END10	; END LOOP
+		ADD R2, R2, #1
+		BR _LOOP10	; LOOP AGAIN
+_END10  	AND R6, R6,#0
+		ADD R6, R2, R4	; CHECK IF 0 FOR SKIP
+		BRz _SKIP10
+		ADD R0, R2, #0	; MOVE COUNT TO R0 FOR OUTPUT
+		OUT
+		_SKIP10		; SKIP TO
+		LD R3, POS10
+		ADD R1, R1, R3	; RESTORE LAST SUBTRACT
+
+		LD R2, ASCIIGO  ; LAST OUTPUT
+		ADD R0, R1, R2
+		OUT
+
+		AND R0, R0, #0
+		ADD R0, R0, x0A ; \n
+		OUT
+
+LD R2, O_D_BACKUP_R2	; RELOAD R2
+LD R7, O_D_BACKUP_R7	; RELOAD R7
+RET
+
+;ROUTINE DATA
+;-----------------------
+O_D_BACKUP_R7 .BLKW #1
+O_D_BACKUP_R2 .BLKW #1
+NEGSIN .STRINGZ "-"
+
+ASCIINO  .FILL #-48
+ASCIIGO  .FILL x30
+NEG10000 .FILL xD8F0
+NEG1000  .FILL xFC18
+NEG100   .FILL xFF9C
+NEG10    .FILL xFFF6
+POS10000 .FILL #10000
+POS1000  .FILL #1000
+POS100	 .FILL #100
+POS10	 .FILL #10
+;===================================================
+
+
+
+.END
+
