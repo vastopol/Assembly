@@ -1,0 +1,14 @@
+extern exo__new:FAR
+extern exo__constructor:FAR
+extern exo__destructor:FAR
+extern exo__printself:FAR
+extern exo__nameof:FAR
+extern exo__engine:FAR
+extern exo__createwin:FAR
+extern exo__destroywin:FAR
+extern exo__movewin:FAR
+extern exo__resizewin:FAR
+extern exo__floatwin:FAR
+extern exo__sinkwin:FAR
+extern exo__update:FAR
+extern exo__clear:FAR

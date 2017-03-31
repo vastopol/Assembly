@@ -1,0 +1,45 @@
+#data
+
+; The following code sequence tests checks the amount of time required
+; to load word variables from even and odd addresses.
+;
+; Note that this code assumes that IBM/L inserts all user variables
+; at the beginning of the data segment.  If you modify the sources
+; to IBMLINC.A and insert stuff before the marker, this code may
+; not work properly.
+;
+; The three bytes between I and J make sure that J's address is at
+; an address where (adrs mod 4) = 3 to guarantee slow performance
+; on a 386/486.
+
+I		dw	?	;Variable at even address
+		db	0
+J		dw	?	;Variable at odd address.
+
+#enddata
+
+#repetitions 1000000
+#unravel 128
+
+#code ("MOV AX, EVENADRS")
+%do
+		mov	ax, i
+#endcode
+
+#code ("MOV AX, ODDADRS")
+%do
+		mov	ax, j
+#endcode
+
+#code ("MOV BX, EVENADRS")
+%do
+		mov	bx, i
+#endcode
+
+#code ("MOV BX, ODDADRS")
+%do
+		mov	bx, j
+#endcode
+
+#end
+

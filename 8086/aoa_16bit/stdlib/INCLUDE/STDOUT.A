@@ -1,0 +1,263 @@
+StdGrp		group	stdlib, stddata
+;
+stddata		segment	para public 'sldata'
+stddata		ends
+
+stdlib		segment	para public 'slcode'
+;
+; Standard Output Stuff:
+;
+;---------------------------------------------------------------------------
+;
+
+slcall	macro	adrs
+	db	09ah			;Far call
+	dd	stdgrp:adrs		;Address of routine to call
+	endm
+
+;
+Putc		macro
+		ifndef	sl_putc
+stdlib		segment	para public 'slcode'
+		extrn	sl_putc:far
+stdlib		ends                
+		endif
+		slcall	sl_putc
+		endm
+;
+;
+Putcr		macro
+		ifndef	sl_putcr
+stdlib		segment	para public 'slcode'
+		extrn	sl_putcr:far
+stdlib		ends
+		endif
+		slcall	sl_putcr
+		endm
+;
+;
+;
+PutcStdOut	macro
+		ifndef	sl_putcStdOut
+stdlib		segment	para public 'slcode'
+		extrn	sl_putcStdOut:far
+stdlib		ends                
+		endif
+		slcall	sl_putcStdOut
+		endm
+;
+;
+;
+PutcBIOS	macro
+		ifndef	sl_putcBIOS
+stdlib		segment	para public 'slcode'
+		extrn	sl_putcBIOS:far
+stdlib		ends
+		endif
+		slcall	sl_putcBIOS
+		endm
+;
+;
+;
+SetOutAdrs	macro
+		ifndef	sl_SetOutAdrs
+stdlib		segment	para public 'slcode'
+		extrn	sl_SetOutAdrs:far
+stdlib		ends                
+		endif
+		slcall	sl_SetOutAdrs
+		endm
+;
+;
+GetOutAdrs	macro
+		ifndef	sl_GetOutAdrs
+stdlib		segment	para public 'slcode'
+		extrn	sl_GetOutAdrs:far
+stdlib		ends
+		endif
+		slcall	sl_GetOutAdrs
+		endm
+;
+;
+PushOutAdrs	macro
+		ifndef	sl_PushOutAdrs
+stdlib		segment	para public 'slcode'
+		extrn	sl_PushOutAdrs:far
+stdlib		ends                
+		endif
+		slcall	sl_PushOutAdrs
+		endm
+;
+;
+PopOutAdrs	macro
+		ifndef	sl_PopOutAdrs
+stdlib		segment	para public 'slcode'
+		extrn	sl_PopOutAdrs:far
+stdlib		ends                
+		endif
+		slcall	sl_PopOutAdrs
+		endm
+;
+;
+PutISize	macro
+		ifndef	sl_putisize
+stdlib		segment	para public 'slcode'
+		extrn	sl_putisize:far
+stdlib		ends                
+		endif
+		slcall	sl_putisize
+		endm
+;
+;
+PutUSize	macro
+		ifndef	sl_putusize
+stdlib		segment	para public 'slcode'
+		extrn	sl_putusize:far
+stdlib		ends                
+		endif
+		slcall	sl_putusize
+		endm
+;
+;
+;
+PutLSize	macro
+		ifndef	sl_putlsize
+stdlib		segment	para public 'slcode'
+		extrn	sl_putlsize:far
+stdlib		ends                
+		endif
+		slcall	sl_putlsize
+		endm
+;
+;
+PutULSize	macro
+		ifndef	sl_putulsize
+stdlib		segment	para public 'slcode'
+		extrn	sl_putulsize:far
+stdlib		ends                
+		endif
+		slcall	sl_putulsize
+		endm
+;
+;
+;---------------------------------------------------------------------------
+;
+;
+Puts		macro
+		ifndef	sl_puts
+stdlib		segment	para public 'slcode'
+		extrn	sl_puts:far
+stdlib		ends                
+		endif
+		slcall	sl_puts
+		endm
+;
+;
+;----------------------------------------------------------------------------
+;
+;
+Puth		macro
+		ifndef	sl_puth
+stdlib		segment	para public 'slcode'
+		extrn	sl_puth:far
+stdlib		ends                
+		endif
+		slcall	sl_puth
+		endm
+;
+;
+Putw		macro
+		ifndef	sl_putw
+stdlib		segment	para public 'slcode'
+		extrn	sl_putw:far
+stdlib		ends                
+		endif
+		slcall	sl_putw
+		endm
+;
+;---------------------------------------------------------------------------
+;
+Puti		macro
+		ifndef	sl_puti
+stdlib		segment	para public 'slcode'
+		extrn	sl_puti:far
+stdlib		ends                
+		endif
+		slcall	sl_puti
+		endm
+;
+;
+Putu		macro
+		ifndef	sl_putu
+stdlib		segment	para public 'slcode'
+		extrn	sl_putu:far
+stdlib		ends                
+		endif
+		slcall	sl_putu
+		endm
+;
+;
+;
+Putl		macro
+		ifndef	sl_putl
+stdlib		segment	para public 'slcode'
+		extrn	sl_putl:far
+stdlib		ends                
+		endif
+		slcall	sl_putl
+		endm
+;
+;
+PutUL		macro
+		ifndef	sl_putul
+stdlib		segment	para public 'slcode'
+		extrn	sl_putul:far
+stdlib		ends                
+		endif
+		slcall	sl_putul
+		endm
+;
+;
+;-----------------------------------------------------------------------
+;
+;
+Print		macro
+		ifndef	sl_print
+stdlib		segment	para public 'slcode'
+		extrn	sl_print:far
+stdlib		ends
+		endif
+		slcall	sl_print
+		endm
+;
+;---------------------------------------------------------------------------
+;
+;
+Printf		macro
+		ifdef	sl_printff
+		%out	Warning: You're using both PRINTFF and PRINTF, just use PRINTFF
+		endif
+		ifndef	sl_printf
+stdlib		segment	para public 'slcode'
+		extrn	sl_printf:far
+stdlib		ends
+		endif
+		slcall	sl_printf
+		endm
+;
+;
+printff		macro
+		ifdef	sl_printf
+		%out	Warning: You're using both PRINTFF and PRINTF, just use PRINTFF
+		endif
+		ifndef	sl_Printff
+stdlib		segment	para public 'slcode'
+		extrn	sl_Printff:far
+stdlib		ends
+		endif
+		slcall	sl_Printff
+		endm
+;
+
+stdlib		ends
+

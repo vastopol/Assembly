@@ -1,0 +1,9 @@
+ex11.exe:ex11_1a.obj ex11_1.obj
+ link ex11_1+ex11_1a,ex11;
+
+ex11_1a.obj:ex11_1a.asm
+ ml -c ex11_1a.asm
+
+ex11_1.obj:ex11_1.cpp
+ bcc -c -mc ex11_1.cpp
+

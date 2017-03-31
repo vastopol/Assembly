@@ -1,0 +1,252 @@
+; Patterns.a- 	This file contains all the patterns and strings which the
+;		program uses.  It is included rather than compiled separately
+;		only because these patterns are only used in the main
+;		program.  These patterns appear in a separate file because
+;		they cause too much of a distraction in the main program.
+;
+;
+;
+;
+; The following macro generates a pattern which will match a single word
+; which appears anywhere on a line:
+
+MatchWord	macro		Name, WordStr
+		local		WS1, WS2, WS3, WS4
+
+Name		Pattern		{MatchStr, WordStr, WS2, MatchSpc}
+WS2		Pattern		{arb,0,0,WS3}
+WS3		Pattern		{Matchchar, ' ',0, WS4}
+WS4		Pattern		{MatchStr, WordStr, 0, MatchEOS}
+		endm
+
+
+; Generic patterns which most of the patterns use:
+
+MatchEOS	Pattern		{EOS,0,MatchSpc,0}
+MatchSpc	Pattern		{MatchChar,' '}
+
+
+; Okay, set up the patterns to match GO, NORTH, SOUTH, EAST, WEST:
+
+GoStr		byte		"GO",0
+NorthStr	byte		"NORTH",0
+SouthStr	byte		"SOUTH",0
+EastStr		byte		"EAST",0
+WestStr		byte		"WEST",0
+
+		MatchWord	MatchGO, GoStr
+		MatchWord	MatchNorth, NorthStr
+		MatchWord	MatchSouth, SouthStr
+		MatchWord	MatchEast, EastStr
+		MatchWord	MatchWest, WestStr
+
+; Okay, set up the patterns to match GET, DROP, LIME, BEER, CARD, SIGN,
+; PROGRAM, HOMEWORK, MONEY, FORM, and COUPON.
+
+GetStr		byte		"GET",0
+DropStr		byte		"DROP",0
+LimeStr		byte		"LIME",0
+BeerStr		byte		"BEER",0
+CardStr		byte		"CARD",0
+SignStr		byte		"SIGN",0
+PgmStr		byte		"PROGRAM",0
+HWStr		byte		"HOMEWORK",0
+MoneyStr	byte		"MONEY",0
+FormStr		byte		"FORM",0
+CouponStr	byte		"COUPON",0
+
+		MatchWord	MatchGet, GetStr
+		MatchWord	MatchDrop, DropStr
+		MatchWord	MatchLime, LimeStr
+		MatchWord	MatchBeer, BeerStr
+		MatchWord	MatchCard, CardStr
+		MatchWord	MatchSign, SignStr
+		MatchWord	MatchPgm,  PgmStr
+		MatchWord	MatchHW,   HWStr
+		MatchWord	MatchMoney, MoneyStr
+		MatchWord	MatchForm,  FormStr
+		MatchWord	MatchCoupon, CouponStr
+
+; Okay, set up the patterns for INVENTORY, QUIT, and HELP here:
+
+InventoryStr	byte		"INVENTORY",0
+QuitStr		byte		"QUIT",0
+HelpStr		byte		"HELP",0
+
+		MatchWord	MatchInv, InventoryStr
+		MatchWord	MatchQuit, QuitStr
+		MatchWord	MatchHelp, HelpStr
+
+
+
+
+
+; Data structures for the "maze":
+
+Room1		room		{Room1, Room5, Room4, Room2,
+				 {Item1,0,0,0},
+				 Room1Desc}
+
+Room1Desc	byte		"at the Commons",0
+
+Item1		item		{10,2,Room3,GS1,GS2,GS3}
+GS1		byte		"a big sign",0
+GS2		byte		"a big sign made of styrofoam with funny "
+		byte		"letters on it.",0
+GS3		byte		"The ETA PI Fraternity thanks you for return"
+		byte		"ing their sign, they",cr,lf
+		byte		"make you an honorary life member, as long as "
+		byte		"you continue to pay",cr,lf
+		byte		"your $300 monthly dues, that is.",0
+
+
+
+
+Room2		room		{NULL, Room5, Room1, Room3,
+				 {Item2,0,0,0},
+				 Room2Desc}
+
+Room2Desc	byte		'at the "C"',0
+
+Item2		item		{10,1,Room1,LC1,LC2,LC3}
+LC1		byte		"a lunch card",0
+LC2		byte		"a lunch card which someone must have "
+		byte		"accidentally dropped here."
+LC3		byte		"You get a big meal at the Commons cafeteria"
+		byte		cr,lf
+		byte		"It would be a good idea to go visit the "
+		byte		"student health center",cr,lf
+		byte		"at this time.",0
+
+
+
+
+Room3		room		{NULL, Room6, Room2, Room2,
+				 {Item3,0,0,0},
+				 Room3Desc}
+
+Room3Desc	byte		"at ETA PI Frat House",0
+
+Item3		item		{10,2,Room2,BL1,BL2,BL3}
+BL1		byte		"a bag of lime",0
+BL2		byte		"a bag of baseball field lime which someone "
+		byte		"is obviously saving for",cr,lf
+		byte		"   a special occasion.",0
+BL3		byte		"You spread the lime out forming a big '++' "
+		byte		"after the 'C'",cr,lf
+		byte		"Your friends in Computer Science hold you "
+		byte		"in total awe.",0
+
+
+
+
+Room4		room		{Room1, Room7, Room7, Room5,
+				 {Item4,0,0,0},
+				 Room4Desc}
+
+Room4Desc	byte		"in Tom Payne's Office",0
+
+Item4		item		{10,1,Room7,HW1,HW2,HW3}
+HW1		byte		"a homework assignment",0
+HW2		byte		"a homework assignment which appears to "
+		byte		"to contain assembly language",0
+HW3		byte		"The CS 13 reader notes that your homework "
+		byte		"assignment looks quite",cr,lf
+		byte		"similar to someone else's assignment in the "
+		byte		"class and reports you",cr,lf
+		byte		"to the instructor.",0
+
+
+
+
+Room5		room		{Room1, Room9, Room7, Room2,
+				 {Item5,0,0,0},
+				 Room5Desc}
+
+Room5Desc	byte		 "in the CSLD",0
+
+Item5		item		{10,1,Room9,M1,M2,M3}
+M1		byte		"some money",0
+M2		byte		"several dollars in an envelop in the "
+		byte		"trashcan",0
+M3		byte		"The waitress thanks you for your generous "
+		byte		"tip and gets you",cr,lf
+		byte		"another pitcher of beer.  Then she asks for "
+		byte		"your ID.",cr,lf
+		byte		"You are at least 21 aren't you?",0
+
+
+
+
+
+Room6		room		{Room3, Room9, Room5, NULL,
+				 {Item6,0,0,0},
+				 Room6Desc}
+
+Room6Desc	byte		 "at the book store",0
+
+Item6		item		{10,1,Room8,AD1,AD2,AD3}
+AD1		byte		"an add/drop/change form",0
+AD2		byte		"an add/drop/change form filled out for "
+		byte		"CS 13 to get a letter grade",0
+AD3		byte		"You got the form in just in time.  It would "
+		byte		"have been a shame to",cr,lf
+		byte		"have had to retake CS 13 because you didn't "
+		byte		"realize you needed to ",cr,lf
+		byte		"get a letter grade in the course.",0
+
+
+
+Room7		room		{Room1, Room7, Room4, Room8,
+				 {Item7,0,0,0},
+				 Room7Desc}
+
+Room7Desc	byte		 "in the CS 13 lecture",0
+
+Item7		item		{10,1,Room5,AP1,AP2,AP3}
+AP1		byte		"an assembly language program",0
+AP2		byte		"an assembly language program due in CS13",0
+AP3		byte		"The sample program the instructor gave you "
+		byte		"provided all the information",cr,lf
+		byte		"you needed to complete your assignment.  You "
+		byte		"finish your work and",cr,lf
+		byte		"head to the Bull & Mouth to celebrate."
+		byte		cr,lf,0
+
+
+
+
+Room8		room		{Room5, Room6, Room7, Room9,
+				 {Item8,0,0,0},
+				 Room8Desc}
+
+Room8Desc	byte		 "at the Registrar's office",0
+
+Item8		item		{10,1,Room6,C1,C2,C3}
+C1		byte		"a coupon",0
+C2		byte		"a coupon good for a free text book",0
+C3		byte		'You get a free copy of "Cliff Notes for '
+		byte		'The Art of Assembly',cr,lf
+		byte		'Language Programming"  Alas, it does not '
+		byte		"provide all the",cr,lf
+		byte		"information you need for the class, so you "
+		byte		"sell it back during",cr,lf
+		byte		"the book buy-back period.",0
+
+
+
+Room9		room		{Room6, Room9, Room8, Room3,
+				 {Item9,0,0,0},
+				 Room9Desc}
+
+Room9Desc	byte		 "at The Barn",0
+Item9		item		{10,2,Room4,B1,B2,B3}
+B1		byte		"a pitcher of beer",0
+B2		byte		"an ice cold pitcher of imported beer",0
+B3		byte		"Dr. Payne thanks you profusely for your "
+		byte		"good taste in brews.",cr,lf
+		byte		"He then invites you to the Barn for a good "
+		byte		"round of pool and",cr,lf
+		byte		"some heavy duty hob-nobbing, CS Department "
+		byte		"style.",0
+

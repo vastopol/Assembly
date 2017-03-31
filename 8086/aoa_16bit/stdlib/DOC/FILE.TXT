@@ -1,0 +1,375 @@
+File I/O Routines
+-----------------
+
+Although MS-DOS provides some fairly decent file I/O facilities, the MS-DOS
+file routines are all block oriented.  That is, there is no simple routine
+you can call to read a single character from a file (the most common case).
+Although you can create a buffer consisting of a single byte and call MS-DOS
+to read a single character into that buffer, this is very slow.  The standard
+library file I/O routines provide a set of buffered I/O routines for sequent-
+ially accessed files.  These routines are suitable only for files which you
+sequentially read or sequentially write.  They do not work with random access
+files nor can you alternately read and write to the file.  However, most file
+accesses fall into the category of sequential read or write so the Standard
+Library routines will work fine in most cases.  In other cases, MS-DOS
+provides a reasonable API so there really isn't a need for augmentation in
+the Standard Library.
+
+The Standard Library provides routines to OPEN a file (for reading or writing
+only), CREATE a new file and open it for writing, CLOSE a file, FLUSH the file
+buffers associated with a file, GET a character from a file, READ a block of
+bytes from a file, PUT a single character to a file, or write a block of chars
+to a file.
+
+Note that you can use the standard I/O redirection operations to redirect the
+standard input and output to routines which read and write bytes through a
+file.  Consider the following short routine:
+
+Redir2File	proc	far
+		push	ds
+		push	es
+		push	di
+		mov	di, seg MyFileVar
+		mov	ds, di
+
+		les	di, ds:MyFileVar
+		fputc
+
+		pop	di
+		pop	es
+		pop	ds
+		ret
+Redir2File	endp
+
+This routine, when called, writes the character in AL to the file specified
+by the file variable "MyFileVar" (see an explanation of the FPUTC routine
+for more details).  You can selectively redirect all of the standard output
+routines through this procedure (hence sending all standard output to the
+file) using the Standard Library SetOutAdrs routine:
+
+		lesi	Redir2File
+		SetOutAdrs
+
+		<use print, printf, puts, puti, etc. here, all output
+		 goes to the file rather than to the screen.>
+
+		lesi	PutcStdOut	;Default DOS output
+		SetOutAdrs
+
+		<Now all output goes back to the DOS standard output>
+
+You can also preserve the previous output address using the code:
+
+		lesi	Redir2File
+		PushOutAdrs
+
+		<use print, printf, puts, puti, etc. here, all output
+		 goes to the file rather than to the screen.>
+
+		PopOutAdrs
+
+		<Now all output goes back to the previous handler.>
+
+
+You can do the same thing with the standard input routines when redirecting
+input from a file, though this is less useful.
+
+
+All file I/O routines in the library use a "File Variable" to keep track of
+the specified file.  *THIS IS NOT THE SAME THING AS A DOS FILE HANDLE!*
+"FileVar" is a structure defined in the "file.a" include file.  For each file
+you open/close, you must create a unique file variable.
+
+
+Routine:  FOPEN
+---------------
+
+Category:             File I/O
+
+Registers on Entry:	AX contains file open mode
+				(0=open for read, 1=open for write)
+			ES:DI points at a file variable.
+			DX:SI points at a file name.
+
+Registers on return:	Carry is set/clear for error/no error.
+			AX contains (DOS) error code if carry is set.
+
+Flags affected:
+			Carry denotes error.
+
+Example of Usage:
+
+MyFileVar		FileVar	<>
+MyFileName		db	"file.nam"
+			.
+			.
+			.
+			mov	ax, 0			;Open for reading
+			lesi	MyFileVar		;Ptr to file variable.
+			ldxi	MyFileName		;Ptr to file name.
+			fopen
+			jc	Error
+
+Description:
+
+fopen opens a sequential file for reading or writing.  It calls DOS to 
+actually open the file and then sets up appropriate internal variables (in
+the FileVar variable) to provide efficient blocked I/O.
+
+Include:              stdlib.a or file.a
+
+Routine:  FCREATE
+-----------------
+
+Category:             File I/O
+
+Registers on Entry:	
+			ES:DI points at a file variable.
+			DX:SI points at a file name.
+
+Registers on return:	Carry is set/clear for error/no error.
+			AX contains (DOS) error code if carry is set.
+
+Flags affected:
+			Carry denotes error.
+
+Example of Usage:
+
+MyFileVar		FileVar	<>
+MyFileName		db	"file.nam"
+			.
+			.
+			.
+			lesi	MyFileVar		;Ptr to file variable.
+			ldxi	MyFileName		;Ptr to file name.
+			fcreate
+			jc	Error
+
+Description:
+
+fcreate opens a new file for reading.  If the file already exists, fcreate
+will delete it and create a new one.  Other than this, the behavior is
+quite similar to fopen.
+
+Include:              stdlib.a or file.a
+
+Routine:  FCLOSE
+----------------
+
+Category:             File I/O
+
+Registers on Entry:	
+			ES:DI points at a file variable.
+
+Registers on return:	Carry is set/clear for error/no error.
+			AX contains (DOS) error code if carry is set.
+
+Flags affected:
+			Carry denotes error.
+
+Example of Usage:
+
+MyFileVar		FileVar	<>
+			.
+			.
+			.
+			lesi	MyFileVar		;Ptr to file variable.
+			fclose
+			jc	Error
+
+Description:
+
+fclose closes a file opened by fcreate or fopen.  Note that you *must* use
+this call to close the file (rather than using DOS' close call).  There may
+be "hot" data present in internal buffers.  This call flushes such data to
+the file.
+
+Note that you must make this call before quitting your application.  DOS will
+automatically close all files upon quitting, but DOS will not automatically
+flush any hot data to disk upon program termination.
+
+Include:              stdlib.a or file.a
+
+Routine:  FFLUSH
+----------------
+
+Category:             File I/O
+
+Registers on Entry:	
+			ES:DI points at a file variable.
+
+Registers on return:	Carry is set/clear for error/no error.
+			AX contains (DOS) error code if carry is set.
+
+Flags affected:
+			Carry denotes error.
+
+Example of Usage:
+
+Ptr2FileVar		dd	MyFileVar
+			.
+			.
+			.
+			les	di, Ptr2FileVar		;Ptr to file variable.
+			fflush
+			jc	Error
+
+Description:
+
+fflush will write any "hot" data (data written to the file by an application
+which is currently sitting in internal buffers) to the file.  It is a good
+idea to occassionally flush files to disk if you do not write the data to
+the file all at once.  This helps prevents loss of data in the event of an
+abnormal termination.
+
+Include:              stdlib.a or file.a
+
+Routine:  FGETC
+---------------
+
+Category:             File I/O
+
+Registers on Entry:	
+			ES:DI points at a file variable.
+
+Registers on return:	AL contains byte read (if no error, C=0).
+			AX contains (DOS) error code if carry is set.
+
+Flags affected:
+			Carry denotes error.
+
+Example of Usage:
+
+Ptr2FileVar		dd	MyFileVar
+			.
+			.
+			.
+			les	di, Ptr2FileVar		;Ptr to file variable.
+			fgetc
+			jc	Error
+			<AL contains byte read at this point>
+
+Description:
+
+fgetc reads a single byte from a file opened for reading.  On EOF the carry
+flag will be set and AX will contain zero.
+
+Include:              stdlib.a or file.a
+
+Routine:  FREAD
+---------------
+
+Category:             File I/O
+
+Registers on Entry:	
+			ES:DI points at a file variable.
+			DX:SI points at the destination block.
+			CX contains the number of bytes to read.
+
+Registers on return:	AX contains actual # of bytes read (if no error, C=0).
+			AX contains (DOS) error code if carry is set (AX=0
+				denotes EOF).
+
+Flags affected:
+			Carry denotes error.
+
+Example of Usage:
+
+MyFileVar		FileVar	<>
+MyBlock			db	256 dup (?)
+			.
+			.
+			.
+			lesi	MyFileVar		;Ptr to file variable.
+			ldxi	MyBlock			;Place to put data.
+			mov	cx, 256			;# of bytes to read.
+			fread
+			jc	Error
+
+Description:
+
+fread lets you read a block of bytes from a file opened for reading.  This
+call is generally *much* faster than reading a string of single bytes if you
+want to read a large number of bytes at one time.
+
+Include:              stdlib.a or file.a
+
+Routine:  FPUTC
+---------------
+
+Category:             File I/O
+
+Registers on Entry:	
+			ES:DI points at a file variable.
+			AL    contains the character to write to the file.
+
+Registers on return:
+			AX contains (DOS) error code if carry is set.
+
+Flags affected:
+			Carry denotes error.
+
+Example of Usage:
+
+Ptr2FileVar		dd	MyFileVar
+			.
+			.
+			.
+			les	di, Ptr2FileVar		;Ptr to file variable.
+			mov	al, Char2Write
+			fputc
+			jc	Error
+
+Description:
+
+fputs writes a single byte to a file opened for writing (or opened via the
+fcreate call).  It writes the byte in AL to the output file.  Note that data
+written via this call may not be written directly to the file.  For performance
+reasons the fputc routine buffers up the data in memory and writes large blocks
+of data to the file.  If you need to ensure that the data is properly written
+to the file you will need to make a call to fclose or fflush.
+
+Include:              stdlib.a or file.a
+
+Routine:  FWRITE
+----------------
+
+Category:             File I/O
+
+Registers on Entry:	
+			ES:DI points at a file variable.
+			DX:SI points at the source block.
+			CX contains the number of bytes to write.
+
+Registers on return:	AX contains actual # of bytes written (if no error).
+			AX contains (DOS) error code if carry is set (AX=0
+				denotes EOF).
+
+Flags affected:
+			Carry denotes error.
+
+Example of Usage:
+
+MyFileVar		FileVar	<>
+MyBlock			db	256 dup (?)
+			.
+			.
+			.
+			lesi	MyFileVar		;Ptr to file variable.
+			ldxi	MyBlock			;Place to put data.
+			mov	cx, 256			;# of bytes to read.
+			fwrite
+			jc	Error
+
+Description:
+
+fwrite lets you write a block of bytes to a file opened for writing.  This
+call is generally *much* faster than writing a string of single bytes if you
+want to read a large number of bytes at one time.  Note that fwrite, like
+fputc, buffers up data before writing it to disk.  If you need to commit
+data to the disk surface at some point, you must call the fflush or fclose
+routines.
+
+Include:              stdlib.a or file.a
+
+

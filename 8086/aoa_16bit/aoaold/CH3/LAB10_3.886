@@ -1,0 +1,19 @@
+a 0
+load ax, [fff8]
+store ax, [ffe0]
+add ax, 1
+store ax, [ffe8]
+load ax, [fffa]
+store ax, [ffe2]
+add ax, 1
+store ax, [ffea]
+load ax, [fffc]
+store ax, [ffe4]
+add ax, 1
+store ax, [ffec]
+load ax, [fffe]
+store ax, [ffe6]
+add ax, 1
+store ax, [ffee]
+goto 0
+

@@ -1,0 +1,421 @@
+Standard Input Routines:
+Character Input Routines
+------------------------
+
+
+	The character input routines take input from either a standard
+device (keyboard, etc.) or a standard library.  After the character input
+routines receive the characters they either place the characters on the stack
+and/or return.  The character input routines work similar to the "C" character
+input routines.
+
+
+
+Routine:  Getc
+--------------
+
+
+Category:             Character Input Routine
+
+
+Registers on Entry:   None
+
+
+Registers on Return:  AL- Character from input device.
+                      AH- 0 if eof, 1 if not eof.
+
+
+Flags Affected:       Carry- 0 if no error, 1 if error.  If error occurs, AX
+                             contains DOS error code.
+
+
+Example of Usage:  
+                      getc
+                      mov     KbdChar, al
+                      putc
+
+
+Description:  This routine reads a character from the standard input device.
+              This call is synchronous, that is, it does not return until a
+              character is available.  The Default input device is DOS
+              standard input.
+
+              Getc returns two types of values: extended ASCII (codes 1-255)
+              and IBM keyboard scan codes.  If Getc returns a non-zero value,
+              you may interpret this value as an ASCII character.  If Getc
+              returns zero, you must call Getc again to get the actual
+              keypress.
+
+              The second call returns an IBM PC keyboard scan code.
+
+              Since the user may redirect input from the DOS command line,
+              there is the possibility of encountering end-of-file (eof)
+              when calling getc.  Getc uses the AH register to return eof
+              status.  AH contains the number of characters actually read
+              from the standard input device.  If it returns one, then
+              you've got a valid character.  If it returns zero, you've
+              reached end of file.  Note that pressing control-z forces an
+              end of file condition when reading data from the keyboard.
+
+              This routine returns the carry flag clear if the operation
+              was successful.  It returns the carry flag set if some sort
+	      of error occurred while reading the character.  Note that eof
+              is not an error condition.  Upon reaching the end of file,
+              Getc returns with the carry flag clear.  If getc is seen from
+              a file the control-z is not seen as an end-of-file marker,
+              but just read in as a character of the file.
+
+              Control-c if read from a keyboard device aborts the program.
+              However if when reading something other than a keyboard
+	      (files, serial ports), control-c from the input source
+              returns control-c.  However when pressing control-break
+              the program will abort regardless of the input source.
+
+              Regarding CR/LF, if the input is from a device, (eg. keyboard
+              serial port) getc returns whatever that device driver returns,
+              (generally CR without a LF).  However if the input is from
+              a file, getc stripes a single LF if it immediately follows
+              the CR.
+
+              When using getc files operate in "cooked" mode.  While
+              devices operate in "pseudo-cooked" mode, which means no
+	      buffering, no CR -> CR/LF, but it handles control-c, and
+              control-z.
+
+	      See the sources for more information about GETC's internal
+	      operation.
+
+Include:	stdlib.a or stdin.a
+
+
+
+
+Routine:   GetcStdIn
+--------------------
+
+
+Category:             Character Input Routine
+
+Register on entry:    None.
+
+Register on return:   AL- Character from input device.
+
+Flags affected:       AH- 0 if eof, 1 if not eof.
+                      Carry- 0 if no error, 1 if error
+                      (AX contains DOS error code if error occurs).
+
+
+Example of Usage:
+                      GetcStdIn
+                      mov     InputChr, al
+                      putc
+
+
+Description:    This routine reads a character from the DOS standard input
+                device.  This call is synchronous, that is, it does not return
+                until a character is available.  See the description of Getc
+                above for more details.
+
+		The difference between Getc and GetcStdIn is that your
+		program can redirect Getc using other calls in this library.
+		GetcStdIn calls DOS directly without going through this
+		redirection mechanism.
+
+
+Include:		stdlib.a or stdin.a
+
+
+
+
+
+
+Routine:   GetcBIOS
+-------------------
+
+
+Category:             Character Input Routine
+
+Register on entry:    None
+
+Register on return:   AL- Character from the keyboard.
+
+Flags affected:       AH- 1 (always).  Carry- 0 (always).
+
+Example of Usage:   
+		      GetcBIOS
+                      mov     CharRead, al
+                      putc
+
+
+Description:   This routine reads a character from the keyboard.  This call is
+               synchronous, that is it does not return until a character is
+               available.
+
+		Note that there is no special character processing.  This
+		code does *not* check for EOF, control-C, or anything
+		else like that.
+
+
+
+Include:		stdlib.a or stdin.a
+
+
+
+Routine:  SetInAdrs
+-------------------
+
+Category:               Character Input Routine
+
+Registers on Entry:     ES:DI - address of new input routine
+
+Registers on return:    None 
+
+Flags affected:
+
+Examples of Usage:
+
+                        mov     es, seg NewInputRoutine
+                        mov     di, offset NewInputRoutine
+                        SetInAdrs
+
+
+
+                        les     di, RoutinePtr
+                        SetInAdrs
+
+
+Description:    This routine redirects the stdlib standard input so that it 
+                calls the routine who's address you pass in es:di.  The
+		routine (whose address appears in es:di) should be a "getc"
+		routine which reads a character from somewhere and returns
+		that character in AL.  It should also return EOF status in
+		the AH register and error status in the carry flag (see
+		the description of GETC for more details).
+
+
+Include:                stdlib.a or stdin.a
+
+
+
+
+
+Routine:   GetInAdrs
+--------------------
+
+Category:             Character Input Routine
+
+Register on entry:    None
+
+Register on return:   ES:DI - address of current input routine (called by Getc).
+
+Flags affected:       None
+
+
+Example of Usage:   
+                      GetInAdrs
+		      mov     word ptr SaveInAdrs, di
+		      mov     word ptr SaveInAdrs+2, es
+
+
+Description:   You can use this function to get the address of the current
+	       input routine, perhaps so you can save it or see if it is
+	       currently pointing at some particular piece of code.
+	       If you want to temporarily redirect the input and then restore
+	       the original input or outline, consider using
+	       PushInAdrs/PopInAdrs described later.
+
+
+Include:		stdlib.a or stdin.a
+
+
+
+Routine:   PushInAdrs
+---------------------
+
+Category:             Character Input Routine
+
+Register on entry:    ES:DI - Address of new input routine.
+
+Register on return:   Carry=0 if operation successful.
+                      Carry=1 if there were already 16 items on the stack.
+                         
+Example of Usage:
+                      mov     es, seg NewInputRoutine
+                      mov     di, offset NewInputRoutine
+                      PushInAdrs
+                        .
+                        .
+                        .
+                      les     di, RoutinePtr
+                      PushInAdrs
+
+
+Description:   This routine "pushes" the current input address onto an
+               internal stack and then copies the value in es:di into the
+               current input routine pointer.  The PushInAdrs and PopInAdrs
+               routines let you easily save and redirect the standard output
+               and then restore the original output routine address later on.
+               If you attempt to push more than 16 items on the stack,
+               PushInAdrs will ignore your request and return with the
+               carry flag set.  If PushInAdrs is successful, it will
+               return with the carry flag clear.
+
+
+Include:	stdlib.a or stdin.a
+
+
+
+
+
+Routine:   PopInAdrs
+--------------------
+
+Category:             Character Input Routine
+
+Register on entry:    None
+
+Register on return:   ES:DI - Points at the previous stdout routine before
+                      the pop.
+
+Example of Usage:   
+                      mov     es, seg NewInRoutine
+		      mov     di, offset NewInputRoutine
+                      PushInAdrs
+                        .
+                        .
+                        .
+                      PopInAdrs
+
+
+Description:   PopInAdrs undoes the effects of PushInAdrs.  It pops an item
+               off the internal stack and stores it into the input routine
+               pointer.  The previous value in the output pointer is returned
+               in es:di.
+
+Include:	stdlib.a or stdin.a
+
+
+
+
+
+Routine:  Gets, Getsm
+---------------------
+
+Category:             Character Input Routine
+
+Register on entry:    ES:DI- Pointer to input buffer (gets only).
+
+Register on return:   ES:DI - address of input of text.
+                      carry-  0 if no error, 1 if error.
+                      If error, AX contains: 0- End of
+                      file encountered in middle of
+                      string.  1- Memory allocation error (getsm only).
+                      Other- DOS error code.
+
+
+Flags affected:       None
+
+Example of usage:    
+                      getsm           ;Read a string from the
+                                      ;keyboard
+                      puts            ;Print it
+		      putcr           ;Print a new line
+                      free            ;Deallocate storage for
+                                      ;string.
+
+		      mov	di, seg buffer
+		      mov	es, di
+		      lea	di, buffer
+		      gets
+		      puts
+		      putcr
+
+
+Description:   	Reads a line of text from the stdlib standard input device.
+		You must pass a pointer to the recipient buffer in es:di to
+		the GETS routine.  GETSM automatically allocates storage for
+		the string on the heap (up to 256 bytes) and returns a pointer
+		to this block in es:di.
+
+		Gets(m) returns all characters typed by the user except for the
+		carriage return (ENTER) key code.  These routines return a
+		zero-terminated string (with es:di pointing at the string).
+		Exactly how Gets(m) treats the incoming data depends upon
+		the source device, however, you can usually count on Gets(m)
+		properly handling backspace (erases previous character),
+		escape (erase entire line), and ENTER (accept current line).
+
+		Other keys may affect Gets(m) as well.  For example, Gets(m),
+		by default, calls Getc which, in turn, usually calls DOS'
+		standard input routine.  If you type control-C or break while
+		read from DOS' standard input it may abort the program.
+
+		If an error occurs during input (e.g., EOF encountered in
+		the middle of a line) Gets(m) returns the error code in
+		AX.  If no error occurs, Gets(m) preserves AX.
+
+Include:              	stdlib.a or stdin.a
+
+
+
+
+
+Routine:  Scanf
+---------------
+
+Category:             Character Input Routine
+
+Register on entry:    None
+
+Register on return:   None
+
+Flags affected:       None
+
+Example of usage:   
+                      scanf
+                      db      "%i  %h  %^s",0
+                      dd      i, x, sptr
+
+Description:   * Formatted input from stdlib standard input.
+               * Similar to C's scanf routine.
+               * Converts ASCII to integer, unsigned, character, string, hex,
+		 and long values of the above.
+               Scanf provides formatted input in a fashion analogous to
+               printf's output facilities.  Actually, it turns out that scanf
+               is considerably less useful than printf because it doesn't
+               provide reasonable error checking facilities (neither does C's
+               version of this routine).  But for quick and dirty programs 
+               whose input can be controlled in a rigid fashion (or if you're
+               willing to live by "garbage in, garbage out")  scanf provides 
+               a convenient way to get input from the user.  Like printf, the
+               scanf routine expects you to follow the call with a format 
+               string and then a list of (far pointer) memory addresses.  The
+               items in the scanf format string take the following form: %^f,
+               where f represents d, i, x, h, u, c, x, ld, li, lx, or lu.  
+               Like printf, the "^" symbol tells scanf that the address
+               following the format string is the address of a (far) pointer
+               to the data rather than the address of the data location itself.
+               By default, scanf automatically skips any leading whitespace 
+               before attempting to read a numeric value.  You can instruct
+               scanf to skip other characters by placing that character in the
+               format string.  For example, the following call instructs scanf
+	       to read three integers separated by commas (and/or whitespace):
+
+                       	      scanf  
+			      db                "%i,%i,%i",0
+                              dd                 i1,i2,i3
+
+               Whenever scanf encounters a non-blank character in the format
+               string, it will skip that character (including multiple
+               occurrences of that character) if it appears next in the input
+               stream.  Scanf always calls gets to read a new line of text 
+               from stdlib's standard input.  If scanf exhausts the format 
+               list, it ignores any remaining characters on the line.  If
+               scanf exhausts the input line before processing all of the
+               format items, it leaves the remaining variables unchanged.
+               Scanf always deallocates the storage allocated by gets.
+
+
+Include:                stdlib.a or stdin.a
+
+

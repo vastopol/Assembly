@@ -1,0 +1,252 @@
+StdGrp		group	stdlib, stddata
+
+stddata		segment	para public 'sldata'
+stddata		ends
+
+stdlib		segment	para public 'slcode'
+;
+; lists.a:	Important data structures and equates used by all the
+;		list routines.
+
+
+slcall	macro	adrs
+	db	09ah			;Far call
+	dd	stdgrp:adrs		;Address of routine to call
+	endm
+
+
+List		struc
+ListSize	dw	?
+Head		dd	0		;Ptr to start of list
+Tail		dd	0		;Ptr to end of list
+CurrentNode	dd	0		;Ptr to current node
+List		ends
+
+Node		struc
+Next		dd	?		;Ptr to next node in list
+Prev		dd	?		;Ptr to prev node in list
+Node		ends
+
+
+CreateList	macro
+		ifndef	sl_CreateList
+stdlib		segment	para public 'slcode'
+		extrn	sl_CreateList:far
+stdlib		ends
+		endif
+		slcall	sl_CreateList
+		endm
+
+AppendLast	macro
+		ifndef	sl_AppendLast
+stdlib		segment	para public 'slcode'
+		extrn	sl_AppendLast:far
+stdlib		ends
+		endif
+		slcall	sl_AppendLast
+		endm
+
+AppendLastm	macro
+		ifndef	sl_AppendLastm
+stdlib		segment	para public 'slcode'
+		extrn	sl_AppendLastm:far
+stdlib		ends
+		endif
+		slcall	sl_AppendLastm
+		endm
+
+Remove1st	macro
+		ifndef	sl_Remove1st
+stdlib		segment	para public 'slcode'
+		extrn	sl_Remove1st:far
+stdlib		ends
+		endif
+		slcall	sl_Remove1st
+		endm
+
+Peek1st		macro
+		ifndef	sl_Peek1st
+stdlib		segment	para public 'slcode'
+		extrn	sl_Peek1st:far
+stdlib		ends
+		endif
+		slcall	sl_Peek1st
+		endm
+
+
+Insert1st	macro
+		ifndef	sl_Insert1st
+stdlib		segment	para public 'slcode'
+		extrn	sl_Insert1st:far
+stdlib		ends
+		endif
+		slcall	sl_Insert1st
+		endm
+
+Insert1stm	macro
+		ifndef	sl_Insert1stm
+stdlib		segment	para public 'slcode'
+		extrn	sl_Insert1stm:far
+stdlib		ends
+		endif
+		slcall	sl_Insert1stm
+		endm
+
+RemoveLast	macro
+		ifndef	sl_RemoveLast
+stdlib		segment	para public 'slcode'
+		extrn	sl_RemoveLast:far
+stdlib		ends
+		endif
+		slcall	sl_RemoveLast
+		endm
+
+PeekLast	macro
+		ifndef	sl_PeekLast
+stdlib		segment	para public 'slcode'
+		extrn	sl_PeekLast:far
+stdlib		ends
+		endif
+		slcall	sl_PeekLast
+		endm
+
+InsertCur	macro
+		ifndef	sl_InsertCur
+stdlib		segment	para public 'slcode'
+		extrn	sl_InsertCur:far
+stdlib		ends
+		endif
+		slcall	sl_InsertCur
+		endm
+
+
+InsertCurm	macro
+		ifndef	sl_InsertCurm
+stdlib		segment	para public 'slcode'
+		extrn	sl_InsertCurm:far
+stdlib		ends
+		endif
+		slcall	sl_InsertCurm
+		endm
+
+AppendCur	macro
+		ifndef	sl_AppendCur
+stdlib		segment	para public 'slcode'
+		extrn	sl_AppendCur:far
+stdlib		ends
+		endif
+		slcall	sl_AppendCur
+		endm
+
+
+AppendCurm	macro
+		ifndef	sl_AppendCurm
+stdlib		segment	para public 'slcode'
+		extrn	sl_InsertCurm:far
+stdlib		ends
+		endif
+		slcall	sl_AppendCurm
+		endm
+
+
+RemoveCur	macro
+		ifndef	sl_RemoveCur
+stdlib		segment	para public 'slcode'
+		extrn	sl_RemoveCur:far
+stdlib		ends
+		endif
+		slcall	sl_RemoveCur
+		endm
+
+PeekCur		macro
+		ifndef	sl_PeekCur
+stdlib		segment	para public 'slcode'
+		extrn	sl_PeekCur:far
+stdlib		ends
+		endif
+		slcall	sl_PeekCur
+		endm
+
+
+Insert		macro
+		ifndef	sl_Insert
+stdlib		segment	para public 'slcode'
+		extrn	sl_Insert:far
+stdlib		ends
+		endif
+		slcall	sl_Insert
+		endm
+
+
+Insertm		macro
+		ifndef	sl_Insertm
+stdlib		segment	para public 'slcode'
+		extrn	sl_Insertm:far
+stdlib		ends
+		endif
+		slcall	sl_Insertm
+		endm
+
+Append		macro
+		ifndef	sl_Append
+stdlib		segment	para public 'slcode'
+		extrn	sl_Append:far
+stdlib		ends
+		endif
+		slcall	sl_Append
+		endm
+
+
+Appendm		macro
+		ifndef	sl_Appendm
+stdlib		segment	para public 'slcode'
+		extrn	sl_Insertm:far
+stdlib		ends
+		endif
+		slcall	sl_Appendm
+		endm
+
+
+
+Remove		macro
+		ifndef	sl_Remove
+stdlib		segment	para public 'slcode'
+		extrn	sl_Remove:far
+stdlib		ends
+		endif
+		slcall	sl_Remove
+		endm
+
+SetCur		macro
+		ifndef	sl_SetCur
+stdlib		segment	para public 'slcode'
+		extrn	sl_SetCur:far
+stdlib		ends
+		endif
+		slcall	sl_SetCur
+		endm
+
+
+PrevNode	macro
+		ifndef	sl_PrevNode
+stdlib		segment	para public 'slcode'
+		extrn	sl_PrevNode:far
+stdlib		ends
+		endif
+		slcall	sl_PrevNode
+		endm
+
+
+NextNode	macro
+		ifndef	sl_NextNode
+stdlib		segment	para public 'slcode'
+		extrn	sl_NextNode:far
+stdlib		ends
+		endif
+		slcall	sl_NextNode
+		endm
+
+
+
+stdlib		ends
+

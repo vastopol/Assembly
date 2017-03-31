@@ -1,0 +1,28 @@
+a:	mov	ax, [fff0]
+	mov	bx, [fff2]
+
+	mov	cx, ax
+	and	cx, bx
+	mov	[fff8], cx
+
+	mov	cx, ax
+	or	cx, bx
+	mov	[fffa], cx
+
+	mov	cx, ax
+	mov	dx, bx
+	not	cx
+	not	dx
+	and	cx, bx
+	and	dx, ax
+	or	cx, dx 
+	mov	[fffc], cx
+
+	not	cx
+	mov	[fffe], cx
+
+	mov	ax, [fff4]
+	cmp	ax, 0
+	je	a
+	halt
+

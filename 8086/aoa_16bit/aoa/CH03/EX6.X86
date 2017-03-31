@@ -1,0 +1,28 @@
+	sub	ax, ax
+	mov	[100], ax
+
+a:	mov	ax, [100]
+	cmp	ax, 0
+	je	b
+	halt
+
+b:	mov	ax, 00c6
+	mov	[100], ax
+	mov	ax, 0710
+	mov	[102], ax
+	mov	ax, a6a0
+	mov	[104], ax
+	mov	ax, 1000
+	mov	[106], ax
+	mov	ax, 8007
+	mov	[108], ax
+	mov	ax, 00e6
+	mov	[10a], ax
+	mov	ax, 0e10
+	mov	[10c], ax
+	mov	ax, 4
+	mov	[10e], ax
+	jmp	100
+
+
+

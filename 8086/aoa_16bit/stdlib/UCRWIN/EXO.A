@@ -1,0 +1,97 @@
+include stdlib.a
+include baseobj.a 
+include baseobj.aa
+
+;
+; exo: baseobj  A MASM++ object that represents a generalized screen manager. 
+;
+;		Written by Michael A. Griffith and Todd D. Vender		;
+; Modification List:
+;
+; 25 Oct 91  Michael A. Griffith & Todd D. Vender:
+;            Created.
+;
+; 26 Oct 91  Michael A. Griffith:
+;
+; 1 Nov 91   Michael A. Griffith & Todd D. Vender:
+;            Converted to baseobj format		
+;
+; 19 Dec 91  Michael A. Griffith:
+;            Added top element to data, added error method
+;
+; 27 Dec 91  Michael A. Griffith:
+;	     Revised object ordering so that parent is a pointer.
+;          
+; 5 Jan 91   Michael A. Griffith
+;	     Added VSMsize to reduce number of mulitplications required.
+;	     Added equates for border characters in VSM.
+; 	     UNIFIED SCREEN AND EXO OBJECTS.
+;
+; 30 Jan 92  Todd D. Vender
+; 	     Made the pointer to video ram a long to standardize the routines.
+;
+; 31 Jan 92  Todd D. Vender
+;  	     Added equates for border corners.
+
+
+IFNDEF	EXO__
+EXO__		EQU	1
+
+exo__WINNUM	EQU	32d				;Number of windows
+
+exo__TOPB	EQU	0FFFFh				;Border representations
+exo__RIGHTB	EQU	0FFFEh	
+exo__BOTTOMB	EQU 	0FFFDh	
+exo__LEFTB	EQU	0FFFCh	
+exo__ULCB	EQU	0FFFBh				;Upper Left Corner
+exo__URCB	EQU	0FFFAh				;Upper Right Corner
+exo__LRCB	EQU	0FFF9h				;Lower Right Corner
+exo__LLCB	EQU	0FFF8h				;Lower Left Corner
+exo__MONO	EQU	0B000h				;Video RAM addresses
+exo__COLOR	EQU	0B800h
+
+
+exo__methods	STRUC
+			new		DD	PROC PTR exo__new
+			constructor	DD	PROC PTR exo__constructor
+			destructor	DD	PROC PTR exo__destructor
+			delete		DD	PROC PTR baseobj__delete
+			printself	DD	PROC PTR exo__printself
+			nameof		DD	PROC PTR exo__nameof
+			error		DD	PROC PTR baseobj__error
+			regs		DD	PROC PTR baseobj__regs
+			engine		DD	PROC PTR exo__engine
+			createwin	DD	PROC PTR exo__createwin
+			destroywin	DD	PROC PTR exo__destroywin
+			movewin		DD	PROC PTR exo__movewin
+			resizewin	DD	PROC PTR exo__resizewin
+			floatwin	DD	PROC PTR exo__floatwin
+			sinkwin		DD	PROC PTR exo__sinkwin
+			clear		DD	PROC PTR exo__clear
+			update		DD	PROC PTR exo__update
+exo__methods	ENDS
+
+
+
+exo__data		STRUC
+			classname	DB	"exo", 0
+			winnum		DB   	exo__WINNUM	
+			wintbl		DD 	exo__WINNUM DUP (?)
+			bottom		DB 	1	
+			top		DB 	?	
+			videoRAM	DD	?	
+			attr		DB	2Ah
+			hsize		DW	80d
+			vsize		DB	25d
+			VSMsize		DW	?	
+			VSM		DD	? 
+exo__data		ENDS
+
+
+exo			STRUC
+			parent	  	DD 	0 
+			methods		exo__methods <>
+			data		exo__data <>
+exo			ENDS
+
+ENDIF	;EXO__

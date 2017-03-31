@@ -1,0 +1,15 @@
+a:	mov	ax, [1000]
+	cmp	ax, [1002]
+	je	b
+	put
+	mov	[1002], ax
+
+b:	mov	ax, [fff0]
+	cmp	ax, 0
+	je	a
+	halt
+
+
+	
+
+

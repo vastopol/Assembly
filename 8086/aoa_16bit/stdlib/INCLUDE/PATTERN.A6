@@ -1,0 +1,48 @@
+
+Pattern		struc
+MatchFunction	dd	?
+MatchParm	dd	?
+MatchAlternate	dd	0
+NextPattern	dd	0
+EndPattern	dw	?
+StartPattern	dw	?		;StartPattern/StrSeg must be in
+StrSeg		dw	?		; this order!
+Pattern		ends
+
+
+
+StdGrp		group	stdlib, stddata
+
+stddata		segment	para public 'sldata'
+stddata		ends
+stdlib		segment	para public 'slcode'
+
+;# 21 routines in this package (counting the matching functions).
+
+externdef	sl_Match:far, sl_Match2:far, sl_grab:far,
+		Spancset:far, Brkcset:far, MatchStr:far, MatchiStr:far,
+		MatchToStr:far,	MatchChar:far, 	MatchToChar:far,
+		MatchChars:far, MatchToPat:far, Anycset:far,
+		NotAnycset:far, EOS:far, ARB:far,
+		ARBNUM:far, Skip:far, POS:far, RPOS:far,
+		GOTOpos:far, RGOTOpos:far
+
+Match		macro
+		call	sl_Match
+		endm
+
+
+
+Match2		macro
+		call	sl_Match2
+		endm
+
+
+
+
+patgrab		macro
+		call	sl_grab
+		endm
+
+
+stdlib		ends

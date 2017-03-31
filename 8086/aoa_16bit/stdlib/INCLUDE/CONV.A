@@ -1,0 +1,485 @@
+StdGrp		group	stdlib, stddata
+;
+stddata		segment	para public 'sldata'
+stddata		ends
+stdlib		segment	para public 'slcode'
+;
+; Conversions and test routines:
+;
+
+slcall	macro	adrs
+	db	09ah			;Far call
+	dd	stdgrp:adrs		;Address of routine to call
+	endm
+
+;
+atol		macro
+		ifndef	sl_atol
+stdlib		segment	para public 'slcode'
+		extrn	sl_atol:far
+stdlib		ends
+		endif
+		slcall	sl_atol
+		endm
+;
+atoul		macro
+		ifndef	sl_atoul
+stdlib		segment	para public 'slcode'
+		extrn	sl_atoul:far
+stdlib		ends
+		endif
+		slcall	sl_atoul
+		endm
+;
+;
+;
+atol2		macro
+		ifndef	sl_atol2
+stdlib		segment	para public 'slcode'
+		extrn	sl_atol2:far
+stdlib		ends
+		endif
+		slcall	sl_atol2
+		endm
+;
+atoul2		macro
+		ifndef	sl_atoul2
+stdlib		segment	para public 'slcode'
+		extrn	sl_atoul2:far
+stdlib		ends                
+		endif
+		slcall	sl_atoul2
+		endm
+;
+;
+; atoi and atou from atoi.asm
+;
+atoi		macro
+		ifndef	sl_atoi
+stdlib		segment	para public 'slcode'
+		extrn	sl_atoi:far
+stdlib		ends                
+		endif
+		slcall	sl_atoi
+		endm
+;
+atou		macro
+		ifndef	sl_atou
+stdlib		segment	para public 'slcode'
+		extrn	sl_atou:far
+stdlib		ends                
+		endif
+		slcall	sl_atou
+		endm
+;
+;
+atoi2		macro
+		ifndef	sl_atoi2
+stdlib		segment	para public 'slcode'
+		extrn	sl_atoi2:far
+stdlib		ends                
+		endif
+		slcall	sl_atoi2
+		endm
+;
+atou2		macro
+		ifndef	sl_atou2
+stdlib		segment	para public 'slcode'
+		extrn	sl_atou2:far
+stdlib		ends                
+		endif
+		slcall	sl_atou2
+		endm
+;
+;
+;
+atoh		macro
+		ifndef	sl_atoh
+stdlib		segment	para public 'slcode'
+		extrn	sl_atoh:far
+stdlib		ends                
+		endif
+		slcall	sl_atoh
+		endm
+;
+;
+atolh		macro
+		ifndef	sl_atolh
+stdlib		segment	para public 'slcode'
+		extrn	sl_atolh:far
+stdlib		ends                
+		endif
+		slcall	sl_atolh
+		endm
+;
+;
+atoh2		macro
+		ifndef	sl_atoh2
+stdlib		segment	para public 'slcode'
+		extrn	sl_atoh2:far
+stdlib		ends                
+		endif
+		slcall	sl_atoh2
+		endm
+;
+;
+atolh2		macro
+		ifndef	sl_atolh2
+stdlib		segment	para public 'slcode'
+		extrn	sl_atolh2:far
+stdlib		ends                
+		endif
+		slcall	sl_atolh2
+		endm
+;
+;
+;------------------------------------------------
+;
+;
+ISize		macro
+		ifndef	sl_ISize
+stdlib		segment	para public 'slcode'
+		extrn	sl_ISize:far
+stdlib		ends
+		endif
+		slcall	sl_Isize
+		endm
+;
+USize		macro
+		ifndef	sl_USize
+stdlib		segment	para public 'slcode'
+		extrn	sl_USize:far
+stdlib		ends                
+		endif
+		slcall	sl_USize
+		endm
+;
+;
+;
+LSize		macro
+		ifndef	sl_LSize
+stdlib		segment	para public 'slcode'
+		extrn	sl_LSize:far
+stdlib		ends
+		endif
+		slcall	sl_Lsize
+		endm
+;
+ULSize		macro
+		ifndef	sl_ULSize
+stdlib		segment	para public 'slcode'
+		extrn	sl_ULSize:far
+stdlib		ends                
+		endif
+		slcall	sl_ULSize
+		endm
+;
+;
+SPrintf		macro
+		ifndef	sl_sprintf
+stdlib		segment	para public 'slcode'
+		extrn	sl_sprintf:far
+		ifndef	sp_BufSize
+		extrn	sp_BufSize:word
+		endif
+stdlib		ends
+		endif
+		slcall	sl_sprintf
+		endm
+;
+;
+SPrintfm	macro
+		ifndef	sl_sprintfm
+stdlib		segment	para public 'slcode'
+		extrn	sl_sprintfm:far
+stdlib		ends
+		endif
+		slcall	sl_sprintfm
+		endm
+;
+;
+SScanf		macro
+		ifndef	sl_sscanf
+stdlib		segment	para public 'slcode'
+		extrn	sl_sscanf:far
+stdlib		ends
+		endif
+		slcall	sl_sscanf
+		endm
+;
+;
+;--------------------------------------------------------------------------
+;
+;
+itoa		macro
+		ifndef	sl_itoa
+stdlib		segment	para public 'slcode'
+		extrn	sl_itoa:far
+stdlib		ends
+		endif
+		slcall	sl_itoa
+		endm
+;
+;
+itoam		macro
+		ifndef	sl_itoam
+stdlib		segment	para public 'slcode'
+		extrn	sl_itoam:far
+stdlib		ends
+		endif
+		slcall	sl_itoam
+		endm
+;
+itoa2		macro
+		ifndef	sl_itoa2
+stdlib		segment	para public 'slcode'
+		extrn	sl_itoa2:far
+stdlib		ends
+		endif
+		slcall	sl_itoa2
+		endm
+;
+;
+utoa		macro
+		ifndef	sl_utoa
+stdlib		segment	para public 'slcode'
+		extrn	sl_utoa:far
+stdlib		ends
+		endif
+		slcall	sl_utoa
+		endm
+;
+utoam		macro
+		ifndef	sl_utoam
+stdlib		segment	para public 'slcode'
+		extrn	sl_utoam:far
+stdlib		ends
+		endif
+		slcall	sl_utoam
+		endm
+;
+utoa2		macro
+		ifndef	sl_utoa2
+stdlib		segment	para public 'slcode'
+		extrn	sl_utoa2:far
+stdlib		ends
+		endif
+		slcall	sl_utoa2
+		endm
+;
+;
+;
+htoa		macro
+		ifndef	sl_htoa
+stdlib		segment	para public 'slcode'
+		extrn	sl_htoa:far
+stdlib		ends
+		endif
+		slcall	sl_htoa
+		endm
+;
+htoam		macro
+		ifndef	sl_htoam
+stdlib		segment	para public 'slcode'
+		extrn	sl_htoam:far
+stdlib		ends
+		endif
+		slcall	sl_htoam
+		endm
+;
+htoa2		macro
+		ifndef	sl_htoa2
+stdlib		segment	para public 'slcode'
+		extrn	sl_htoa2:far
+stdlib		ends
+		endif
+		slcall	sl_htoa2
+		endm
+;
+;
+wtoa		macro
+		ifndef	sl_wtoa
+stdlib		segment	para public 'slcode'
+		extrn	sl_wtoa:far
+stdlib		ends
+		endif
+		slcall	sl_wtoa
+		endm
+;
+wtoam		macro
+		ifndef	sl_wtoam
+stdlib		segment	para public 'slcode'
+		extrn	sl_wtoam:far
+stdlib		ends
+		endif
+		slcall	sl_wtoam
+		endm
+;
+wtoa2		macro
+		ifndef	sl_wtoa2
+stdlib		segment	para public 'slcode'
+		extrn	sl_wtoa2:far
+stdlib		ends
+		endif
+		slcall	sl_wtoa2
+		endm
+;
+;
+;
+ltoa		macro
+		ifndef	sl_ltoa
+stdlib		segment	para public 'slcode'
+		extrn	sl_ltoa:far
+stdlib		ends
+		endif
+		slcall	sl_ltoa
+		endm
+;
+ltoam		macro
+		ifndef	sl_ltoam
+stdlib		segment	para public 'slcode'
+		extrn	sl_ltoam:far
+stdlib		ends
+		endif
+		slcall	sl_ltoam
+		endm
+;
+ltoa2		macro
+		ifndef	sl_ltoa2
+stdlib		segment	para public 'slcode'
+		extrn	sl_ltoa2:far
+stdlib		ends
+		endif
+		slcall	sl_ltoa2
+		endm
+;
+;
+;
+ultoa		macro
+		ifndef	sl_ultoa
+stdlib		segment	para public 'slcode'
+		extrn	sl_ultoa:far
+stdlib		ends
+		endif
+		slcall	sl_ultoa
+		endm
+;
+ultoam		macro
+		ifndef	sl_ultoam
+stdlib		segment	para public 'slcode'
+		extrn	sl_ultoam:far
+stdlib		ends
+		endif
+		slcall	sl_ultoam
+		endm
+;
+ultoa2		macro
+		ifndef	sl_ultoa2
+stdlib		segment	para public 'slcode'
+		extrn	sl_ultoa2:far
+stdlib		ends
+		endif
+		slcall	sl_ultoa2
+		endm
+;
+;---------------------------------------------------------------------------
+;
+IsAlNum		macro
+		ifndef	sl_IsAlNum
+stdlib		segment	para public 'slcode'
+		extrn	sl_IsAlNum:far
+stdlib		ends
+		endif
+		slcall	sl_IsAlNum
+		endm
+;
+;
+; IsxDigit- Checks al to see if it is a hex digit.
+;
+IsxDigit	macro
+		ifndef	sl_IsxDigit
+stdlib		segment	para public 'slcode'
+		extrn	sl_IsxDigit:far
+stdlib		ends
+		endif
+		slcall	sl_IsxDigit
+		endm
+;
+;
+;
+ToLower		macro
+		local	NoCnvrt
+		cmp	al, 'A'
+		jb	NoCnvrt
+		cmp	al, 'Z'
+		ja	NoCnvrt
+		or	al, 20h
+NoCnvrt:
+		endm
+;
+;
+;
+ToUpper		macro
+		local	NoCnvrt
+		cmp	al, 'a'
+		jb	NoCnvrt
+		cmp	al, 'z'
+		ja	NoCnvrt
+		and	al, 05fh
+NoCnvrt:
+		endm
+;
+;
+;
+IsDigit		macro
+		local	NotDigit, IsDigit
+		cmp	al, '0'
+		jb	NotDigit 		;Note: this also clears ZF.
+		cmp	al, '9'
+		ja	NotDigit		;Also clears ZF.
+		cmp	al, al			;Set Zero flag
+NotDigit:
+		endm
+;
+;
+;
+IsAlpha		macro
+		local	IsAl, NotAlpha
+		cmp	al, 'A'
+		jb	NotAlpha		;Also clears ZF.
+		cmp	al, 'Z'
+		jbe	IsAl
+		cmp	al, 'a'
+		jb	NotAlpha
+		cmp	al, 'z'
+		ja	NotAlpha
+IsAl:		cmp	al, al			;Set ZF.
+NotAlpha:
+		endm
+;
+;
+IsLower		macro
+		local	NotLower
+		cmp	al, 'a'
+		jb	NotLower
+		cmp	al, 'z'
+		ja	NotLower
+		cmp	al, al			;Set ZF.
+NotLower:
+		endm
+;
+;
+; IsUpper-	Checks to see if the character in al is upper case.
+;
+IsUpper		macro
+		local	NotUpper
+		cmp	al, 'A'
+		jb	NotUpper
+		cmp	al, 'Z'
+		ja	NotUpper
+		cmp	al, al			;Set ZF.
+NotUpper:
+		endm
+;
+stdlib		ends
+

@@ -1,0 +1,65 @@
+StdGrp		group	stdlib, stddata
+;
+stddata		segment	para public 'sldata'
+stddata		ends
+stdlib		segment	para public 'slcode'
+
+
+;# 12 routines in this package.
+
+externdef	sl_getc:far, sl_GetcStdIn:far, sl_GetcBIOS:far,
+		sl_SetInBIOS:far, sl_SetInStd:far, sl_SetInAdrs:far,
+		sl_GetInAdrs:far, sl_PushInAdrs:far, sl_PopInAdrs:far,
+		sl_gets:far, sl_getsm:far, sl_scanf:far
+
+
+getc		macro
+		call	sl_getc
+		endm
+
+GetcStdIn	macro
+		call	sl_GetcStdIn
+		endm
+
+GetcBIOS	macro
+		call	sl_GetcBIOS
+		endm
+
+SetInBIOS	macro
+		call	sl_SetInBIOS
+		endm
+
+SetInStd	macro
+		call	sl_SetInStd
+		endm
+
+SetInAdrs	macro
+		call	sl_SetInAdrs
+		endm
+
+GetInAdrs	macro
+		call	sl_GetInAdrs
+		endm
+
+PushInAdrs	macro
+		call	sl_PushInAdrs
+		endm
+
+PopInAdrs	macro
+		call	sl_PopInAdrs
+		endm
+
+gets		macro
+		call	sl_gets
+		endm
+
+getsm		macro
+		call	sl_getsm
+		endm
+
+Scanf		macro
+		call	sl_scanf
+		endm
+
+stdlib		ends
+

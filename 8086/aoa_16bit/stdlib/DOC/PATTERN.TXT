@@ -1,0 +1,1387 @@
+Pattern Matching Routines
+-------------------------
+
+The UCR Standard Library contains a very rich set of (character string)
+pattern matching routines.  These routines were designed to mimic the
+pattern matching primitives found in the SNOBOL4 programming language, so
+they are very powerful indeed.
+
+These routines are actually quite simple.  They derive their power through
+the use of a recursive, backtracking pattern matching algorithm and a
+properly specified data structure: the "pattern".  The data type for a
+pattern is the following:
+
+Pattern		struc
+MatchFunction	dd	?
+MatchParm	dd	0
+MatchAlternate	dd	0
+NextPattern	dd	0
+EndPattern	dw	?
+StartPattern	dw	?
+StrSeg		dw	?
+Pattern		ends
+
+
+The "MatchFunction" field is a pointer to a (far) procedure which tests the
+current characters in the string.  You could write your own functions for
+this purpose if you choose, however, several important routines are already
+provided in this package.
+
+"MatchParm" represents a four-byte value which the pattern matching algorithm
+passes to the MatchFunction routine.  Typically it is a pointer to a string
+or a character set though it could be any four-byte value.
+
+"MatchAlternate" is a pointer to an alternate pattern to try if the current
+pattern fails to match the string.
+
+"NextPattern" is a pointer to another pattern in the current pattern list.
+This lets you concatenate patterns to form more complex patterns.
+
+"EndPattern", "StartPattern", and "StrSeg" are words filled in by the pattern
+matching routine so other code can locate the characters matched by this
+particular pattern.  In general, you should not modify these values.
+
+
+The MatchFunction is where most of the work actually takes place.  Currently
+the standard library provides 18 different MatchFunctions:
+
+			Spancset
+			Brkcset
+			MatchStr
+			MatchiStr
+			MatchToStr
+			MatchChar
+			MatchToChar
+			MatchChars
+			MatchToPat
+			Anycset
+			NotAnycset
+			EOS
+			ARB
+			ARBNUM
+			Skip
+			POS
+			RPOS
+			GOTOpos
+		and	RGOTOpos
+
+
+Note: in order to gain access to these match functions you must place the
+statement:
+
+			matchfuncs
+
+somewhere in your program after including "pattern.a" or "stdlib.a".  This
+macro defines the externals for the match functions.  Since these match
+functions do not get called in the same manner as other standard library
+routines, they do not get automatically linked with your programs.  There
+is a comment in the "shell.asm" file which activates this macro.  Uncomment
+this line and you'll be in great shape.
+
+
+A brief description of the matching functions:
+
+Spancset will match any number of characters belonging to a character set.
+(This includes zero characters.)  You specify the character set via a pointer
+to a UCR Stdlib CSET.  The pointer to this character set goes in the
+"MatchParm" field of the above structure.
+
+Brkcset will match any number of characters which are *not* in a character
+set.  That is, it will match up to a character in the specified character
+set or until the end of the string, whichever comes first.  Once again,
+"MatchParm" contains a pointer to the character set to use.
+
+MatchStr matches a specified string (something like the strcmp routine).
+The "MatchParm" field points at the zero terminated string to match.
+
+MatchiStr is like MatchStr except it converts the input string to uppercase
+before comparing against the specified string (the specified string should
+contain all upper case characters or it will not match).
+
+MatchToStr matches all characters in a string up to and including the
+string specified by the "MatchParm" field.
+
+MatchChar matches a single character.  This character must appear in the
+L.O. byte of the "MatchParm" field.  Note that this routine must match
+exactly one character.
+
+MatchChars matches zero or more occurrences of the same character.  Again,
+the character appears in the L.O. byte of the "MatchParm" field.
+
+MatchToChar matches all characters up to, and including, the character
+specified in the L.O. byte of the "MatchParm" field.
+
+MatchToPat matches all characters up to, and including, the characters
+matched by the pattern specified in the "MatchParm" field.
+
+Anycset matches a single character from a character set.  As usual, the
+"MatchParm" field points at the character set to test.
+
+NotAnycset matches a single character which is *not* in the specified
+character set.  Once again, "MatchParm" points at the character set to use.
+
+EOS matches the end of the string (that is, the zero terminating byte).
+
+ARB matches an arbitrary number of characters.
+
+ARBNUM matches an arbitrary (zero or more) number of strings matching the
+pattern specified in the "MatchParm" field.
+
+Skip matches "n" arbitrary characters.  The number of characters to skip is
+specified in the L.O. word of the "MatchParm" field.
+
+POS matches if the matching routine is currently at position "n" in the
+string.  "n" is given by the L.O. word of the "MatchParm" field.
+
+RPOS matches if the matching routine is currently at position "n" from the
+end of the string.  Again, "n" is the L.O. word of the "MatchParm" field.
+
+GOTOpos moves to the position in the string specified by the L.O. word of
+the "MatchParm" field.  This routine fails if it tries to move backwards in
+the string or it attempts to move beyond the end of the string.
+
+RGOTOpos moves to the position in the string "n" chars from the end of the
+string ("n" being the L.O. word of "MatchParm").  Fails if this moves you
+backwards in the string.
+
+To understand how to use these routines, a little pattern matching theory
+is in order.  Pattern matching is quite similar to string comparison except
+you don't need to match an exact string.  Instead, you can specify arbitrary
+*patterns* of characters to match.  For example, an indentifier in a high
+level language like Pascal consists of an alphabetic character following by
+zero or more alphanumeric characters.  You cannot perform a single string
+comparison which will accept all possible Pascal identifiers (indeed, that
+single comparison would only accept a single Pascal identifier).  However,
+you can easily create a pattern which will accept all Pascal ids:
+
+	Anycset(A-Za-z) Spancset(A-Za-z0-9)
+
+Anycset above matches a single character from the specified set (alphabetic)
+and the Spancset function matches zero or more characters from the alpha-
+numeric character set.  If you were to take a character string and *match*
+it against the above pattern, the match would __succeed__ if the string is a
+valid Pascal identifier, it would __fail__ if the string is not a valid
+Pascal identifier.
+
+Note, by the way, that the above pattern actually matches any string which
+*begins* with a valid Pascal identifier.  If the match routine exhausts
+the pattern before exhausting characters in the string, it considers the
+match successful.  If you wanted to match *only* a Pascal identifier you
+would use a pattern like the following:
+
+	Anycset(A-Za-z) Spancset(A-Za-z0-9) EOS
+
+The "EOS" pattern matches the end of the string, so this pattern matches Pascal
+identifiers only.
+
+Of course, you can use pattern matching to perform string comparisons using
+the MatchStr function:
+
+	MatchStr("Hello world") EOS
+
+However, this is a frightfully expensive way to do a simple string comparison.
+(Okay, it really isn't that bad, but it does take several times longer than,
+say, strcmp.)
+
+Although you wouldn't match character strings this way, using strings within
+patterns is quite useful.  Consider the following which matches
+		"value=<fp number>"
+where "<fp number>" denotes a decimal value:
+
+	MatchStr("value=") Spancset(0-9) MatchChar('.') Spancset(0-9)
+
+This pattern requires that the string begin with "value=<fp number>" though
+anything could follow the decimal value in the string.  If you wanted the
+string to exactly match the above pattern, you could put an EOS at the end
+of the pattern.
+
+What if you wanted to test for the presence of the above pattern *anywhere*
+in the string (not necessarily at the beginning)?  This is easily accomplished
+by the pattern:
+
+	ARB MatchStr("value=") Spancset(0-9) MatchChar('.') Spancset(0-9)
+
+ARB matches an arbitrary number of characters.  At first you might think
+"gee, if it matches any number of characters, what's to prevent it from
+matching everything to the end of the string and causing the rest of the
+pattern to fail?"  Well, simply put, the pattern matching algorithm tries
+its absolute best to succeed.  So ARB will match must enough characters
+so that the string "value=<fp number>" will match the rest of the pattern,
+if it is present in the string.  To achieve this, the matching algorithm
+usings *backtracking*.  In a nutshell, backtracking works as follows:
+the current pattern matches as many characters as it can (all of them in the
+case of ARB).  It then tries to match the remaining characters against the
+rest of the pattern.  If that fails, then it backs up and tries again
+(logically you can think of ARB giving up one character at a time from the
+end of the string until the remaining patterns match).  If there is no match
+after backing up back to the starting point, the whole pattern fails.
+If this sounds expensive (slow), well, it is.  That's why you would never
+try and use the pattern matching primitives for simple string comparisons.
+That's also why you should try to avoid two adjacent patterns which match
+the same set of characters (since ARB matches anything, it will match the
+same characters as any adjacent pattern, hence it may be slow).
+
+Another important feature to this pattern matching system is the ability
+to do *alternation*.  Consider the following:
+
+	MatchStr("black") | MatchStr("blue")
+
+The "|" symbol above denotes alternation, and is read as "or".  This pattern
+matches the string "black" *or* the string "blue".  Okay, now consider the
+following (very typical example in pattern matching):
+
+[MatchStr("black") | MatchStr("blue")] [MatchStr("bird") | MatchStr("berry")]
+
+The above pattern matches the strings "blackbird", "bluebird", "blackberry",
+or "blueberry".  The alternation operator lets you choose "black" or "blue"
+from the first pattern and "bird" or "berry" from the second pattern.
+
+This description of pattern matching theory could go on for quite some time,
+but this is not the place for it.  This discussion is intended to serve as
+only an appetizer for you.  If you want additional information on pattern
+matching theory, pick up any SNOBOL4 manual, especially "Algorithms in
+SNOBOL4" (by Gimpel, if I remember correctly).  Also, copies of Vanilla
+SNOBOL are floating around with an electronic manual.  Among other things,
+this contains the phone number and all of Catspaw which sells SNOBOL4 and
+ICON products for various systems.  They sell several texts on SNOBOL4 and
+ICON (which are pattern matching languages).  Since these library routines
+are based on SNOBOL4, taking a look at SNOBOL4 will provide some insight
+into these routines.
+
+Now let's talk about how to actually specify a pattern in assembly language
+using the pattern matching routines.  As you probably figured out already,
+you don't get to use the nice (SNOBOL4-like) syntax used the preceding
+examples.  Indeed, if there is any pain associated with pattern matching
+in this package, it's setting up the patterns in the first place.
+
+A pattern is a linked list of objects all of type "PATTERN" (see the
+structure definition earlier).  You must fill in all but the last three
+fields of this structure (or live with the default value of zero).
+The Pascal identifier pattern mentioned above would look something
+like the following:
+
+pasid		pattern	<Anycset,alphabetic,0,pasid2>
+pasid2  	pattern	<Spanscet,alphanum>
+
+(note: alphabetic and alphanum are standard character sets available in
+       UCR standard library.  See the section on character sets for details).
+
+The first pattern matches a single character from the "alphabetic" character
+set.  The second pattern matches zero or more characters from the "alphanum"
+character set.  In both cases the alternate field is zero (NULL/NIL) because
+there is no alternate to match.  In the first pattern above, the NextPattern
+field contains the link to the "pasid" pattern which concatenates the two
+patterns.  Pasid2 has no link field since it is the last pattern in the
+list (if the field is not present, it defaults to zero/NIL/NULL).
+
+To actually match a string against a pattern you load ES:DI with the address
+of the string to test and DX:SI with the address of the first pattern in
+your pattern list.  CX contains the offset of the last character you wish
+to check in the string (set CX to zero if you want to match all characters
+in the string). Then you execute the "match" procedure.  On return, the
+carry flag denotes success (C=1) or failure (C=0), AX contains the offset
+of the character in the string immediately after the match.
+
+		lesi	MyString
+		ldxi	MyPattern
+		mov	cx, 0
+		match
+		jc	TheyMatched
+
+By default, all patterns match characters at the beginning of the string.
+As you've seen earlier in the document, you can use ARB to allow the
+pattern to match at some other point in the string.  For example, the following
+matches any string which contains one or more alphabetic characters followed
+by one or more decimal digits:
+
+HasAnAlpha	pattern	<ARB,0,0,HAA2>
+HAA2		pattern	<Anycset,alphabetic,0,HAA3>
+HAA3		pattern	<Spancset,alphabetic,0,HAA4>
+HAA4		pattern	<Anycset,digits>
+
+Since ARB does not require any parameters, you can use any value for the
+second parameter to "pattern".  Zero is as good a value as any other.
+Note that "Spancset" by itself would not be sufficient for the alphabetic
+matches.  Spancset matches zero or more characters.  We need to match one
+or more characters.  That is why the pattern above needs the Anycset and
+Spancset patterns.
+
+The above pattern data type matches its pattern *anywhere* in the target
+string.  If you wanted to force a match at the end of the string, you could
+use the following pattern:
+
+HasAnAlpha	pattern	<ARB,0,0,HAA2>
+HAA2		pattern	<Anycset,alphabetic,0,HAA3>
+HAA3		pattern	<Spancset,alphabetic,0,HAA4>
+HAA4		pattern	<Anycset,digits,0,HAA5>
+HAA5		pattern	<Spancset,digits,0,HAA6>
+HAA6		pattern	<EOS>
+
+EOS doesn't require a parameter, so the above lets all the fields except the
+function name default to zero.
+
+The MatchAlternate field contains the address of a pattern to match if the
+current pattern fails (and *only* if the current pattern fails).  Consider
+the blue/blackbird/berry pattern described earlier.  You can easily implement
+that pattern with the following statements:
+
+BB		pattern	<MatchString,black,bluepat,BB2>
+BB2		pattern	<MatchString,berry,birdpat>
+bluepat		pattern	<MatchString,blue,0,BB2>
+birdpat		pattern	<MatchString,bird>
+
+black		db	"black",0
+blue		db	"blue",0
+bird		db	"bird",0
+berry		db	"berry",0
+
+If you match BB against the string "blackberry" BB will match the black,
+then it will go to BB2 which matches the berry.  This string doesn't use
+either alternate.
+
+If you match BB against the string "blueberry" BB immediately fails, so
+it tries the alternate pattern, bluepat. Bluepat matches blue and then
+goes on to the BB2 pattern which matches the berry.
+
+If you match BB against the string "blackbird", BB matches black and then
+tries to match BB2 against bird.  BB2 fails and tries its alternate (birdpat)
+with matches the characters "bird".
+
+If you match BB against the string "bluebird", BB fails and tries its alter-
+nate, bluepat.  Bluepat matches "blue" and passes control to its next pattern,
+which is BB2.  BB2 tries to match "bird" and fails, so it passes control to
+its alternate, birdpat, which matches bird.
+
+The example above is pretty straightforward as far as alternation is concerned.
+You can create some very sophisticated patterns with the alternation field.
+For example, consider the following generic pattern:
+
+	[pat1 | ] [pat2 | pat3]
+
+"[pat1 | ]" is an easy way of saying that pat1 is optional.  You can easily
+create this pattern as follows:
+
+Pat1		pattern	<pat1func,pat1parm,pat2,pat2>
+Pat2		pattern	<pat2func,pat2parm,pat3>
+Pat3		pattern	<pat3func,pat3parm>
+
+If you match a string against Pat1 and the beginning of the string does not
+match Pat1, then it tries Pat2 instead (and if that fails, it tries Pat3
+before failing).  If the string begins with a pattern matched by Pat1, the
+matching algorithm then looks to see if the characters matching Pat1 are
+followed by some character matching Pat2 or, alternately, Pat3.
+
+There are all kinds of tricky ways you can use the alternation field to
+create complex patterns and control the precendence of the pattern matching
+algorithm.  This short document cannot even begin to describe the
+possibilities.  You will need to experiment with this capability to discover
+its true potential.
+
+
+Creating Your Own Pattern Functions
+-----------------------------------
+
+Although the UCR Stdlib pattern matching routines include many of the
+functions you'll typically want to use for pattern matching, it's quite
+possible you'll want to write your own pattern matching functions.  This
+is actually quite easy to do.  The matching functions are all far procedures
+which the Match procedure calls with the following parameters:
+
+ES:DI- Points at the first character of the character string the function
+       should match against.  The match function should never look at
+       characters before this string and it should not look beyond the end
+       of the string (which is marked by a zero terminating byte).
+
+DS:SI- Contains the four-byte parameter found the the MatchParm field.
+
+CX-    Contains the last position plus one in the string you're allowed
+       to compare.  Note that this may or may not point at the zero term-
+       inating byte.  You must not scan beyond this character.  Generally,
+       you can assume the zero terminating byte is at or after this location
+       in the string.
+
+On return, AX must contain the address (offset into the string) of the last
+character matched *plus one*.  After your pattern matches, additional patterns
+following in the pattern list will begin their matching at location ES:AX.
+You must also return the carry set if your match succeeded, you must return
+the carry clear if your match failed.
+
+Note that the MATCH procedure is fully recursive and rentrant.  So you can
+call MATCH recursively from inside your match function.  This helps make
+writing your own match routines much easier.  (note: actually, you need to
+call MATCH2, which is the reentrant version, from inside your match functions.)
+
+As an example, let's consider the example above where we wanted to match
+a string of one or more alphabetic characters following by one or more
+digits anywhere in a string.  Consider the following pattern:
+
+HAA		pattern	<ARB,0,0,HAA2>
+HAA2		pattern	<MatchAlpha,0,0,HAA3>
+HAA2		pattern	<MatchDigits>
+
+The MatchAlpha and MatchDigits pattern functions are not provided in the
+standard library, we will have to write them.  MatchAlpha matches one or
+more alphabetic characters, MatchDigits matches one or more decimal digits.
+Here's the routines that implement these two functions:
+
+
+; Note that ES:DI & CX are already set up for these routines by the
+; Match procedure.
+
+MatchAlpha	proc	far		;Must be a far proc!
+		push	dx
+		push	si		;Preserve modified registers.
+		ldxi	Alpha1		;Get pointer to "Match one or more
+		match2			; alpha" pattern and match it.
+		pop	si
+		pop	dx
+		ret
+MatchAlpha	endp
+
+MatchDigits	proc	far		;Must be a far proc!
+		push	dx
+		push	si		;Preserve modified registers.
+		ldxi	Digits1		;Get pointer to "Match one or more
+		match2			; digits" pattern and match it.
+		pop	si
+		pop	dx
+		ret
+MatchDigits	endp
+
+Alpha1		pattern	<Anycset,alpha,0,Alpha2>
+Alpha2		pattern	<Spancset,alpha>
+
+Digits1		pattern	<Anycset,digits,0,Digits2>
+Digits2		pattern	<Spancset,digits>
+
+
+Note that the MatchAlpha and MatchDigits patterns do not require any
+parameters from the MatchParm field, they intrinsically know what they
+need to use.
+
+Another way to accomplish the above is to write a generic "one or more
+occurrences of a pattern" type of pattern.  The following code implements
+this:
+
+; Assume the "MatchParm" field contains a pointer to the pattern we
+; want to repeat one or more times:
+
+OneOrMore	proc	far
+		push	dx
+		push	di
+		mov	dx, ds			;Point DX:SI at pattern.
+		match2				;Make sure we get at least 1.
+		jnc	Fails
+MatchMore:      mov	di, ax			;Move on in string.
+		match2
+		jc	MatchMore
+		pop	di
+		pop	dx
+		stc				;Return success
+		ret
+
+Fails:		pop	di
+		pop	dx
+		clc				;Return failure
+		ret
+OneOrMore	endp
+
+
+A pattern which would match one or more alphabetics with this would be:
+
+Alpha1ormore	pattern	<OneOrMore,alphaset>
+AlphaSet	pattern	<Anycset,alpha>
+
+You would specify the "Alpha1ormore" pattern to match one or more alphabetic
+characters.
+
+
+Of course, you can write any arbitrary function you choose for your match
+function, you do not need to call MATCH2 from within your match function.
+For example, a simple routine which matches one or more alphabetics followed
+by one or more digits could be written as follows:
+
+AlphaDigits	proc	far
+		push	di
+
+		cmp	di, cx
+		jae	Failure
+		mov	al, es:[di]
+		and	al, 5fh			;Convert l.c. -> U.C.
+		cmp	al, 'A'
+		jb	Failure
+		cmp	al, 'Z'
+		ja	Failure
+DoTheMore0:	inc	di
+		cmp	di, cx
+		jae	Failure
+		mov	al, es:[di]
+		and	al, 5fh
+		cmp	al, 'A'
+		jb	TryDigits
+		cmp	al, 'Z'
+		jbe	DoTheMore0
+
+TryDigits:	mov	al, es:[di]
+		xor	al, '0'			;See if in range '0'..'9'
+		cmp	al, 10
+		jae	Failure
+DoTheMore1:	inc	di
+		cmp	di, cx
+		jae	Success
+		mov	al, es:[di]
+		xor	al, '0'
+		cmp	al, 10
+		jb	DoTheMore1
+Success:	mov	ax, di			;Return ending posn in AX.
+		pop	di
+		stc				;Success!
+		ret
+
+Failure:	mov	ax, di			;Return failure position.
+		pop	di
+		clc				;Return failure.
+		ret
+AlphaDigits	endp
+
+
+Note that the pattern matching function must return the failure position in
+AX.  Also note that the routine must *not* search beyond the point specified
+in the CX register.  These points did not appear in the previous code because
+all of that was handled automatically by the MATCH2 routine.  Of course,
+the matching function must set or clear the carry flag depending upon the
+success of the operation.
+
+There is a really sneaky way to simulate the use of parentheses in a pattern
+to override the normal left-to-right evaluation of a pattern.  The SL_MATCH2
+routine (which is what MATCH2 winds up calling) works quite well as a pattern
+matching function.  Consider the following pattern:
+
+	ParenPat	pattern	<sl_match2,HAA>
+
+Now the ParenPat pattern will match anything the HAA pattern matches, however,
+the system treats all of HAA as a single pattern (inside ParenPat) rather
+than as a list of concatenated patterns.  This is real important when using
+PATGRAB to extract portions of a pattern.  Patgrab can only extract the
+characters belonging to a single pattern data structure (not a list).  However,
+ParenPat above is a single pattern data structure which maintains the infor-
+mation for the entire string matched by HAA.  Therefore, using patgrab on
+ParenPat will extract the entire string matched by HAA.
+
+Parenthetical operations can also simplify other patterns.  Keep in mind,
+however, that the Alternate pointer field in the pattern structure can
+also be used to simulate parenthetical patterns without the expense of
+generating new patterns (see the previous examples).
+
+
+A Note About Performance:
+
+There are two aspects to efficiency programmers worry about: speed and memory
+usage.  In the worst case, this pattern matching package does not fare well
+in either category.  It is possible that the routines in this package could
+consume several kilobytes of stack space while matching a string;  it is also
+possible that the matching would take so long that it's impractical to use
+this package.  Fortunately, these worst case scenerios are pathological
+cases which rarely (if ever except in synthetic programs) occur.
+
+Space is the first issue to address.  Each call to Match/Match2 can push
+upwards of fifty bytes onto the stack.  This is in addition to the stack
+space required by the low-level matching function.  Few of the built-in
+matching functions push more than six or eight bytes, but you could write
+your own matching function which pushes more.  It is very easy to design
+a (synthetic) pattern which forces a nested, recursive, call of MATCH2 for
+each character in the string you are going to match.  In such a case, this
+package could require upwards of n*50 bytes on the stack where "n" is the
+length of the string.  For a string with 100 characters, you'd probably
+need 5K of stack space for the pattern matching routines alone.
+
+In general, patterns would rarely exhibit this type of behavior.  Most low-
+level pattern matching functions match several characters at once.  Further-
+more, you almost never encounter patterns in real life which require a
+recursive call for each character in the string.  Instead, most complex
+patterns consist of simpler patterns concatenated together in a list.  This
+does not require a nested recursive call for each character in the string,
+rather, the package makes a call, matches some characters, then returns;  next,
+the routines call the next sub-pattern in a similar fashion.  Note however,
+that the state (stack space) for the previous sub-pattern has been reclaimed
+from the stack at that point.
+
+In practice, a typical pattern might require as much as 1K free stack space.
+However, keep in mind that this is a "typical worst case value" not an
+absolute worst case value.  Of course, you can control the amount of stack
+space the pattern matching algorithms use by avoiding recursive pattern
+definitions and avoiding parenthetical patterns (which stack up machine
+state recursively) in complex patterns.  Of course, limiting the size of
+the strings you're matching the pattern against will help as well.
+
+Generally, the stack space used by the pattern matching algorithm is of
+little concern.  Setting aside an extra kilobyte of memory, even five
+kilobytes of memory, isn't a big problem for most programmers.  Speed,
+on the other hand, can be a problem.  This pattern matching package uses
+a generalized backtracking pattern matching algorithm.  You can easily
+devise a pattern which runs in O(x**n) time where "x" is an arbitrary value
+you get to pick (basically the number of possible alternations on each
+sub-pattern in the pattern) and "n" is the length of the string you match.
+The "O()" function notation simply means that if it takes "m" units of time
+with a string of length "n", it will take "m*x" units of time for a string
+of length "x+1".  Not very good.  For some patterns it could easily take
+longer than your lifetime to match a string whose length is 100 characters.
+
+Once again, we're fortunate in the sense that this terrible performance occurs
+so rarely you need not be too concerned about it.  To achieve such bad per-
+formance requires a specially prepared pattern matching a specially prepared
+string.  Such combinations do not normally exist in nature!  However, while
+100 year matching times may not occur much, most programmers are interested
+in having their patterns match in milliseconds.  It is very easy to devise
+a pattern which takes seconds, minutes, or possibly even hours, to match
+some types of strings (second timing is very likely for some common strings
+and patterns, minutes is rather rare, hours is very rare, but still much
+more possible than the 100 year problem).  The really sad part is that slow
+matching times is almost always due to a poor choice of pattern rather than
+an intrinsic problem with the pattern matching algorithm.
+
+Typically, all performance problems are directly related to the amount of
+backtracking which must occur to match a pattern.  Backtracking almost always
+occurs which you have two adjacent sub-patterns in a pattern where the
+end of the first sub-pattern matches strings from the same set as the front
+of the second sub-pattern.  Consider the following pattern:
+
+		 spancset(a-z " " ",") matchstr("hello")
+
+If you match this pattern against the string "hi there, hello" the first
+spancset pattern matches the entire string.  The matchstr function would then
+fail.  At this point, backtracking kicks in and backs up one character in the
+string.  To the spancset function matches "hi there, hell" and the matchstr
+function fails on "o".  So the algorithm backs up one more character and
+tries again.  It keeps doing this until it backs up all the way to the
+point where spancset matches "hi there, " and matchstr finally matches
+"hello".  To get around this problem, a better choice of pattern is probably
+in order.  Consider the following which generally does the same thing:
+
+		matchtostr("hello")
+
+Matchtostr skips over all characters in a string up to the string "hello"
+and leaves the "match cursor" pointing just beyond the "o" in "hello".
+This matches almost what the previous pattern will match but it does it a
+whole lot faster.  It doesn't exactly match the previous pattern because
+matchtostr matches any characters, not just (a-z " " ",") but for most
+purposes this is exactly what you want anyway.
+
+ARB is probably one of the worst offenders.  Anytime you use ARB (with
+a sub-pattern following it in the pattern list), you are almost guaranteed
+that backtracking will occur.  Therefore, you should attempt to avoid the
+use of ARB in patterns where performance is a consideration.
+
+In general, you can often redesign a pattern data structure to avoid
+overlaps in adjacent sub-patterns.  Patterns which do not have such conflicts
+will generally have reasonable performance.  Of course, designing such patterns
+takes more effort and testing;  so it may not be worth the effort for quick
+and dirty projects.  On the other hand, if you execute the pattern match more
+than a few times (or the pattern matching starts to take minutes rather than
+seconds) its probably worthwhile to redo the pattern.
+
+Of course, this pattern matching package is not suitable for all pattern
+matching tasks.  The whole purpose of this package was to make pattern
+matching in assembly language easy, not fast.  You would never, for example,
+want to write a lexical analyzer for a compiler using this package.  It
+would be too slow and using languages like LEX and FLEX produce faster
+(much faster) lexical analyzers and it's easier to create them with LEX/FLEX
+as well.  Ditto for parsers using BISON or YACC.  Likewise, there are many
+times when pattern matching languages like AWK, ICON, SNOBOL4, etc., are
+more appropriate than using the routines in this package.  This package is
+really intended for small pattern matching tasks inside a larger assembly
+language program.  For example, parsing command line parameters or
+parsing input lines typed by the user to request some activity in your
+assembly language program.  While it's certainly possible to write a program
+whose sole purpose is to perform some pattern matching problem, using this
+package may not provide any better performance than, say, a SPITBOL (compiled
+SNOBOL4) program and it would probably take you longer to write than the
+comparable SNOBOL4 program.
+
+Routine:  MATCH
+---------------
+
+Category:             Pattern Matching Routine
+Author:		      Randall Hyde
+
+Registers on Entry:   ES:DI - pointer to source string
+		      DX:SI - pointer to pattern
+		      CX-     offset of last valid position+1 in string.
+			      Zero to match entire string.
+
+
+Registers on return:  AX-     Position in string where the pattern stopped
+			      matching.
+
+
+Flags affected:	      carry-	0 denotes failure to match pattern.
+				1 denotes success.
+
+
+Example of Usage:
+
+		lesi	StringToTest
+		ldxi	PatternToMatch
+		mov	cx, 0		;Match entire string.
+		MATCH
+		jnc	DidNotMatch
+
+Description:
+
+MATCH is the general purpose matching subroutine provided in the standard
+library to perform pattern matching.  On entry, DX:SI must point at a
+pattern (list) data structure.  See the pattern.a include file (and the
+documentation preceeding this page) for more details on this data structure.
+
+Also on entry, ES:DI should point at the first character where the pattern
+matching is to begin.  This need not be the beginning of a string, ES:DI could
+point into the middle of a string;  however, the pattern matching begins at
+location ES:DI.
+
+ES:CX, on entry, must point at the last byte to check *plus one*.  This
+typically points at the zero terminating byte of a string, but it could
+point at some character in the string before the zero terminating byte.
+If CX contains zero upon entry to the MATCH routine, the MATCH code will
+automatically point CX at the zero byte in the string pointed at by ES:DI.
+
+Include:              stdlib.a or pattern.a
+
+Routine:  MATCH2
+----------------
+
+Category:             Pattern Matching Routine
+Author:		      Randall Hyde
+
+Registers on Entry:   ES:DI - pointer to source string
+		      DX:SI - pointer to pattern
+		      CX-     offset of last valid position+1 in string.
+
+
+Registers on return:  AX-     Position in string where the pattern stopped
+			      matching.
+
+
+Flags affected:	      carry-	0 denotes failure to match pattern.
+				1 denotes success.
+
+
+Example of Usage:
+			;Typical usage in a matching function:
+
+				ldxi	NewPattern
+				MATCH2
+
+Description:
+
+MATCH2 is a special, reentrant, version of MATCH.  You would normally *not*
+call this routine to perform pattern matching from your main program.
+Instead, this routine is intended for use inside pattern matching functions
+you write yourself.  Please see the accompanying documentation for more
+details.
+
+Include:              stdlib.a or pattern.a
+
+Routine:  patgrab
+-----------------
+
+Category:             Pattern Matching Routine
+Author:		      Randall Hyde
+
+Registers on Entry:   ES:DI - pointer to a pattern structure
+
+Registers on return:  ES:DI - String (on heap) corresponding to the chars
+			      matched by the pattern.
+
+Flags affected:	      carry-  set if insufficient space on heap to allocate
+			      the string.
+
+Example of Usage:
+
+		lesi	SomeString
+		ldxi	SomePattern
+		Match
+		lesi	SomePattern
+		patgrab
+
+Description:
+
+You use patgrab to extract the substring matched by some particular pattern.
+You always call this routine *after* calling MATCH.  Match stores pointer
+information away in the pattern data structure, patgrab extracts this infor-
+mation and builds a string to your specifications.
+
+To grab a string which spans several sub-patterns, you can use strcat to
+combine the strings or a parenthetical pattern (see the documentation
+preceding these routine descriptions for details).
+
+Include:              stdlib.a or pattern.a
+
+Routine:  spancset
+------------------
+
+Category:             Pattern Matching Primitive
+Author:		      Randall Hyde
+
+Registers on Entry:   N/A
+Registers on return:  N/A
+Flags affected:	      N/A
+
+Example of Usage:
+
+	(Note: 	Generally, spancset is only invoked in a pattern data structure.
+		You would not normally call this code directly from your
+		program [though it is possible, see the source listings for
+		details].)
+
+	SCexample	pattern	<spancset,alpha>
+
+Description:
+
+Spancset will skip over zero or more characters from the character set (cset)
+specified by the "matchparm" field (the second operand above).  This routine
+always succeeds and returns the "match cursor" pointing at the first character
+position beyond the matched characters in the source string.
+
+Include:	stdlib.a or patterns.a (and then invoke the "matchfuncs"
+		macro to obtain the external declaration for this function).
+
+
+Routine:  brkcset
+-----------------
+
+Category:             Pattern Matching Primitive
+Author:		      Randall Hyde
+
+Registers on Entry:   N/A
+Registers on return:  N/A
+Flags affected:	      N/A
+
+Example of Usage:
+
+	(Note: 	Generally, brkcset is only invoked in a pattern data structure.
+		You would not normally call this code directly from your
+		program [though it is possible, see the source listings for
+		details].)
+
+	BCexample	pattern	<brkcset,alpha>
+
+Description:
+
+Brkcset skips over all characters which are *not* in the character set passed
+in the "MatchParm" parameter.  This routine always succeeds.  It stops with
+the match cursor pointing at the first character found in the specified char-
+acter set (it does not "eat" that character).  This routine always succeeds.
+
+Include:	stdlib.a or patterns.a (and then invoke the "matchfuncs"
+		macro to obtain the external declaration for this function).
+
+
+Routine:  matchstr
+------------------
+
+Category:             Pattern Matching Primitive
+Author:		      Randall Hyde
+
+Registers on Entry:   N/A
+Registers on return:  N/A
+Flags affected:	      N/A
+
+Example of Usage:
+
+	(Note: 	Generally, matchstr is only invoked in a pattern data structure.
+		You would not normally call this code directly from your
+		program [though it is possible, see the source listings for
+		details].)
+
+	MSexample	pattern	<matchstr,str2match>
+	Str2Match	db	"String to match",0
+
+Description:
+
+Matchstr compares the next characters in the source string against the
+string pointed at by the "MatchParm" parameter.  If the next set of char-
+acters in the source string match, this routine succeeds and returns the
+match cursor pointing one character beyond the matched string in the
+source string.  If the characters do not match, this routine fails and
+does not modify the match cursor.
+
+Include:	stdlib.a or patterns.a (and then invoke the "matchfuncs"
+		macro to obtain the external declaration for this function).
+
+Routine:  matchtostr
+--------------------
+
+Category:             Pattern Matching Primitive
+Author:		      Randall Hyde
+
+Registers on Entry:   N/A
+Registers on return:  N/A
+Flags affected:	      N/A
+
+Example of Usage:
+
+	(Note: 	Generally, matchtostr is only invoked in a pattern data struct-
+		ure.  You would not normally call this code directly from your
+		program [though it is possible, see the source listings for
+		details].)
+
+	MTSexample	pattern	<matchtostr,str2match>
+	Str2Match	db	"String to match",0
+
+Description:
+
+MatchToStr matches all characters in a string up to *and including* the
+string specified by the "MatchParm" parameter.  Note that this is a very
+fast (comparatively) routine and is much faster than something like
+ARB followed by MatchStr (or some other combination which will force
+backtracking).  This routine fails if it cannot find the specified string
+in the source string (beyond the match cursor position).
+
+Include:	stdlib.a or patterns.a (and then invoke the "matchfuncs"
+		macro to obtain the external declaration for this function).
+
+Routine:  matchchar
+-------------------
+
+Category:             Pattern Matching Primitive
+Author:		      Randall Hyde
+
+Registers on Entry:   N/A
+Registers on return:  N/A
+Flags affected:	      N/A
+
+Example of Usage:
+
+	(Note: 	Generally, matchchar is only invoked in a pattern data struct-
+		ure.  You would not normally call this code directly from your
+		program [though it is possible, see the source listings for
+		details].)
+
+	MCexample	pattern	<matchchar, 'a'>
+
+Description:
+
+Matchchar tests a single character at the current match cursor position.
+If the character in the L.O. byte of "MatchParm" is equal to the current
+character in the source string, this routine passes over that character
+in the string and returns success.  Otherwise, it does not advance the
+match cursor and returns failure.
+
+Include:	stdlib.a or patterns.a (and then invoke the "matchfuncs"
+		macro to obtain the external declaration for this function).
+
+Routine:  matchtochar
+---------------------
+
+Category:             Pattern Matching Primitive
+Author:		      Randall Hyde
+
+Registers on Entry:   N/A
+Registers on return:  N/A
+Flags affected:	      N/A
+
+Example of Usage:
+
+	(Note: 	Generally, matchtochar is only invoked in a pattern data struct-
+		ure.  You would not normally call this code directly from your
+		program [though it is possible, see the source listings for
+		details].)
+
+	MTCexample	pattern	<matchtochar, 'a'>
+
+Description:
+
+MatchToChar matches all characters up to *and including* the character
+specified by the L.O. byte of "MatchParm".  It succeeds if it finds the
+character in the string (in which case it returns the match cursor pointing
+just beyond the specified character).  It fails otherwise.
+
+This is a relatively fast matching routine and should be used in place of
+something like ARB followed by MATCHCHAR.
+
+Include:	stdlib.a or patterns.a (and then invoke the "matchfuncs"
+		macro to obtain the external declaration for this function).
+
+Routine:  matchchars
+--------------------
+
+Category:             Pattern Matching Primitive
+Author:		      Randall Hyde
+
+Registers on Entry:   N/A
+Registers on return:  N/A
+Flags affected:	      N/A
+
+Example of Usage:
+
+	(Note: 	Generally, matchchars is only invoked in a pattern data struct-
+		ure.  You would not normally call this code directly from your
+		program [though it is possible, see the source listings for
+		details].)
+
+	MCsexample	pattern	<matchchars, 'a'>
+
+Description:
+
+This routine matches zero or more occurrences of the specified character
+starting at the match cursor position.  It always returns success.  If it
+matches one or more characters it leaves the match cursor pointing beyond
+the last matched character.
+
+Include:	stdlib.a or patterns.a (and then invoke the "matchfuncs"
+		macro to obtain the external declaration for this function).
+
+Routine:  matchtopat
+--------------------
+
+Category:             Pattern Matching Primitive
+Author:		      Randall Hyde
+
+Registers on Entry:   N/A
+Registers on return:  N/A
+Flags affected:	      N/A
+
+Example of Usage:
+
+	(Note: 	Generally, matchtopat is only invoked in a pattern data struct-
+		ure.  You would not normally call this code directly from your
+		program [though it is possible, see the source listings for
+		details].)
+
+	MTPexample	pattern	<matchtopat, somepat>
+	SomePat		pattern	<arbitrary_pattern....>
+
+Description:
+
+Matchtopat matches an arbitrary number of characters up to *and including*
+the characters matched by the pattern specified by the "MatchParm" parameter.
+Success or failure on return depends entirely on whether or not the pattern
+specified as a parameter matches at some point or another.
+
+MatchToPat uses "shy" pattern matching.  That is, it first attempts to match
+zero characters (the empty string) followed by the parameter pattern.  If
+this succeeds, it quits.  Otherwise MatchToPat matches a single character
+and tries to match the parameter pattern again.  Each time it fails it matches
+one additional character and tries again until there are no more characters
+in the source string, at which point it fails.
+
+SNOBOL4+ programmers- MatchToPat is the pattern which is most comparble to
+the ARB PAT pattern in SNOBOL4+.
+
+Whether or not MatchToPat is faster than ARB (stdlib version) followed by
+some other pattern depends entirely on the location of the second pattern.
+ARB uses a greedy algorithm and backtracks to match any following patterns.
+MatchToPat uses a shy algorithm which tries the parameter pattern first and
+eats characters from the source string only if the parameter pattern fails.
+If the match generally occurs earlier in the source string, MatchToPat will
+be faster.  If the match occurs later in the source string, ARB/PAT will
+probably be faster.  If matching generally fails, MatchToPat is marginally
+faster.
+
+Include:	stdlib.a or patterns.a (and then invoke the "matchfuncs"
+		macro to obtain the external declaration for this function).
+
+Routine:  anycset
+-----------------
+
+Category:             Pattern Matching Primitive
+Author:		      Randall Hyde
+
+Registers on Entry:   N/A
+Registers on return:  N/A
+Flags affected:	      N/A
+
+Example of Usage:
+
+	(Note: 	Generally, anycset is only invoked in a pattern data struct-
+		ure.  You would not normally call this code directly from your
+		program [though it is possible, see the source listings for
+		details].)
+
+	ACexample	pattern	<anycset, alpha>
+
+Description:
+
+Anycset matches a single character from the character set (cset) specified
+by the "MatchParm" parameter.  If the character at the match cursor position
+is in this set, anycset advances the match cursor and succeeds.  Otherwise
+it does not advance the match cursor and anycset fails.
+
+Include:	stdlib.a or patterns.a (and then invoke the "matchfuncs"
+		macro to obtain the external declaration for this function).
+
+Routine:  notanycset
+--------------------
+
+Category:             Pattern Matching Primitive
+Author:		      Randall Hyde
+
+Registers on Entry:   N/A
+Registers on return:  N/A
+Flags affected:	      N/A
+
+Example of Usage:
+
+	(Note: 	Generally, notanycset is only invoked in a pattern data struct-
+		ure.  You would not normally call this code directly from your
+		program [though it is possible, see the source listings for
+		details].)
+
+	NACexample	pattern	<notanycset, alpha>
+
+Description:
+
+NotAnycset matches a single character which is *not* in character set (cset)
+specified by the "MatchParm" parameter.  If the character at the match cursor
+position is not in this set, notanycset advances the match cursor and succeeds.
+Otherwise it does not advance the match cursor and notanycset fails.
+
+Include:	stdlib.a or patterns.a (and then invoke the "matchfuncs"
+		macro to obtain the external declaration for this function).
+
+Routine:  EOS
+-------------
+
+Category:             Pattern Matching Primitive
+Author:		      Randall Hyde
+
+Registers on Entry:   N/A
+Registers on return:  N/A
+Flags affected:	      N/A
+
+Example of Usage:
+
+	(Note: 	Generally, EOS is only invoked in a pattern data struct-
+		ure.  You would not normally call this code directly from your
+		program [though it is possible, see the source listings for
+		details].)
+
+	EOSexample	pattern	<EOS>
+
+Description:
+
+EOS matches the end of the source string (that is, the zero terminating byte
+of the source string).  The standard library pattern matching package does
+not require that a source string completely match a pattern for that pattern
+to succeed.  Instead, the pattern need only specify a prefix of that string.
+If you want the pattern to match the entire string you must stick the EOS
+pattern at the end of your pattern list.
+
+Whether EOS succeeds or fails, it does *not* advance the match cursor.
+
+Include:	stdlib.a or patterns.a (and then invoke the "matchfuncs"
+		macro to obtain the external declaration for this function).
+
+Routine:  ARB
+-------------
+
+Category:             Pattern Matching Primitive
+Author:		      Randall Hyde
+
+Registers on Entry:   N/A
+Registers on return:  N/A
+Flags affected:	      N/A
+
+Example of Usage:
+
+	(Note: 	Generally, ARB is only invoked in a pattern data struct-
+		ure.  You would not normally call this code directly from your
+		program [though it is possible, see the source listings for
+		details].)
+
+	ARBexample	pattern	<ARB>
+
+Description:
+
+ARB matches an arbitrary number of characters in a string (up to EOS).
+It always succeeds.
+
+SNOBOL4+ users- Stdlib's ARB function isn't exactly like SNOBOL4's.  This
+ARB function uses a "greedy" algorithm.  It immediately grabs as many char-
+acters as it can.  If there is a pattern following ARB (and there generally
+is) backtracking *will* occur.  If you want an ARB operation which uses a
+"shy" matching algorithm, take a look at the "MatchToPat" function.
+
+Include:	stdlib.a or patterns.a (and then invoke the "matchfuncs"
+		macro to obtain the external declaration for this function).
+
+Routine:  ARBNUM
+----------------
+
+Category:             Pattern Matching Primitive
+Author:		      Randall Hyde
+
+Registers on Entry:   N/A
+Registers on return:  N/A
+Flags affected:	      N/A
+
+Example of Usage:
+
+	(Note: 	Generally, ARBNUM is only invoked in a pattern data struct-
+		ure.  You would not normally call this code directly from your
+		program [though it is possible, see the source listings for
+		details].)
+
+	ANexample	pattern	<ARBNUM, SomePattern>
+	SomePattern	pattern	<some_other_pattern....>
+
+Description:
+
+ARBNUM matches zero or more occurrences of the pattern specified by the
+"MatchParm" pattern.  It always succeeds and leaves the match cursor pointing
+beyond the last character matched in the source string.  If it matches zero
+occurrences of the specified pattern, it still succeeds and returns the
+match cursor unchanged.
+
+Include:	stdlib.a or patterns.a (and then invoke the "matchfuncs"
+		macro to obtain the external declaration for this function).
+
+Routine:  Skip
+--------------
+
+Category:             Pattern Matching Primitive
+Author:		      Randall Hyde
+
+Registers on Entry:   N/A
+Registers on return:  N/A
+Flags affected:	      N/A
+
+Example of Usage:
+
+	(Note: 	Generally, Skip is only invoked in a pattern data struct-
+		ure.  You would not normally call this code directly from your
+		program [though it is possible, see the source listings for
+		details].)
+
+	Sexample	pattern	<Skip, 5, 0, NextPat>
+
+Description:
+
+Skip matches (skips over) the next "n" characters in the source string.
+"n" is the L.O. word of the "MatchParm" parameter.
+
+Skip succeeds if there were at least "n" characters in the string.  It fails
+if there were less than "n" characters in the string.  If you want Skip to
+succeed even if there are less than "n" characters in the string you can
+use ARB as the alternate pattern for Skip:
+
+	SARBexample	pattern	<Skip, 5, 0, ArbPat>
+	ARBPat		pattern	<ARB>
+
+Include:	stdlib.a or patterns.a (and then invoke the "matchfuncs"
+		macro to obtain the external declaration for this function).
+
+Routine:  POS
+-------------
+
+Category:             Pattern Matching Primitive
+Author:		      Randall Hyde
+
+Registers on Entry:   N/A
+Registers on return:  N/A
+Flags affected:	      N/A
+
+Example of Usage:
+
+	(Note: 	Generally, POS is only invoked in a pattern data struct-
+		ure.  You would not normally call this code directly from your
+		program [though it is possible, see the source listings for
+		details].)
+
+	Pexample	pattern	<POS, 5, 0, NextPat>
+
+Description:
+
+POS (position) succeeds if the match cursor is currently at the location
+specified by the "MatchParm" parameter.  It fails otherwise.  Note: the
+first character in the source string is at position zero.
+
+Include:	stdlib.a or patterns.a (and then invoke the "matchfuncs"
+		macro to obtain the external declaration for this function).
+
+Routine:  RPOS
+--------------
+
+Category:             Pattern Matching Primitive
+Author:		      Randall Hyde
+
+Registers on Entry:   N/A
+Registers on return:  N/A
+Flags affected:	      N/A
+
+Example of Usage:
+
+	(Note: 	Generally, RPOS is only invoked in a pattern data struct-
+		ure.  You would not normally call this code directly from your
+		program [though it is possible, see the source listings for
+		details].)
+
+	RPexample	pattern	<RPOS, 5, 0, NextPat>
+
+Description:
+
+RPOS (position) succeeds if the match cursor is currently at the specified
+location *from the end of the string*.  The last character in the string is
+RPOS one (EOS is at position zero).
+
+Include:	stdlib.a or patterns.a (and then invoke the "matchfuncs"
+		macro to obtain the external declaration for this function).
+
+Routine:  GotoPOS
+-----------------
+
+Category:             Pattern Matching Primitive
+Author:		      Randall Hyde
+
+Registers on Entry:   N/A
+Registers on return:  N/A
+Flags affected:	      N/A
+
+Example of Usage:
+
+	(Note: 	Generally, GotoPOS is only invoked in a pattern data struct-
+		ure.  You would not normally call this code directly from your
+		program [though it is possible, see the source listings for
+		details].)
+
+	GPexample	pattern	<GotoPOS, 5, 0, NextPat>
+
+Description:
+
+GotoPos moves the match cursor *forward* to the specified position.  It fails
+if that position does not exist in the string or if you attempt to move the
+match cursor backwards in the string.
+
+Include:	stdlib.a or patterns.a (and then invoke the "matchfuncs"
+		macro to obtain the external declaration for this function).
+
+Routine:  RGotoPOS
+-----------------
+
+Category:             Pattern Matching Primitive
+Author:		      Randall Hyde
+
+Registers on Entry:   N/A
+Registers on return:  N/A
+Flags affected:	      N/A
+
+Example of Usage:
+
+	(Note: 	Generally, RGotoPOS is only invoked in a pattern data struct-
+		ure.  You would not normally call this code directly from your
+		program [though it is possible, see the source listings for
+		details].)
+
+	RGPexample	pattern	<RGotoPOS, 5, 0, NextPat>
+
+Description:
+
+RGotoPos moves the match cursor *forward* in the string to the point specified
+by the "MatchParm" parameter.  This value is the position in the string from
+the *end* of the string.  This function fails if you attempt to move the
+match cursor backwards in the string or if the position does not exist in
+the string.
+
+Include:	stdlib.a or patterns.a (and then invoke the "matchfuncs"
+		macro to obtain the external declaration for this function).
+

@@ -1,0 +1,136 @@
+include stdlib.a
+
+;
+; baseobj :	A MASM++ object that is the parent of all objects.
+;		Written by Michael A. Griffith and Todd D. Vender		;
+; Modification List:
+;
+; 25 Oct 91  Michael A. Griffith & Todd D. Vender:
+;            Created.
+;
+; 26 Oct 91  Michael A. Griffith:
+;
+; 3 Nov 91   Michael A. Griffith:
+;	     Added public directives and changed constants.
+;
+; 19 Dec 91  Michael A. Griffith:
+;	     Added error method.
+;
+; 22 Dec 91  Michael A. Griffith:
+;	     ldxsi, CR & LF added.
+;
+; 27 Dec 91  Michael A. Griffith:
+;	     Revised object ordering so that parent is a pointer.
+;            Removed ldxsi and converted all dx:[si]'s to ds:[si].
+
+IFNDEF BASEOBJ__
+BASEOBJ__		EQU	0
+
+;
+;
+; es2ds- macro to do a "mov ds:si, es:di"
+;
+es2ds		macro
+		push	es
+		pop	ds
+		mov	si, di
+		endm
+
+;
+;
+; ds2es- macro to do a "mov es:di, ds:si"
+;
+ds2es		macro
+		push	ds
+		pop	es
+		mov	di, si
+		endm
+;
+;
+; esXds- macro to do a "xchg es:di, ds:si" 
+;
+esXds		macro
+		push	es
+		push	ds
+		pop	es
+		pop	ds
+		xchg	di, si
+		endm
+
+;
+;
+; dsXes- macro to do a "xchg ds:si, es:di" 
+;
+dsXes		macro
+		push	es
+		push	ds
+		pop	es
+		pop	ds
+		xchg	di, si
+		endm
+
+;
+;
+; lesi- macro to do a "les di, constant"
+;
+lesi		macro	adrs
+		mov     di, seg adrs
+		mov	es, di
+		lea	di, adrs
+		endm
+
+;
+; ldsi- macro to do a "lds si, constant" operation.
+;
+
+ldsi		macro 	adrs
+		mov	si, seg adrs
+		mov	ds, si
+		lea	si, adrs
+		endm
+
+
+;
+; ldxi- macro to do a "ldx si, constant" operation.
+;
+
+ldxi		macro	adrs
+		mov	dx, seg adrs
+		lea	si, adrs
+		endm
+
+CR			EQU	0Dh
+LF			EQU	0Ah
+
+baseobj__methods	STRUC
+			new		DD	PROC PTR baseobj__new
+			constructor	DD	PROC PTR baseobj__constructor
+			destructor	DD	PROC PTR baseobj__destructor
+			delete		DD	PROC PTR baseobj__delete
+			printself	DD	PROC PTR baseobj__printself
+			nameof		DD	PROC PTR baseobj__nameof	
+			error		DD	PROC PTR baseobj__error
+			regs		DD	PROC PTR baseobj__regs
+			; This is the set of primitive functions which
+			; are common to all objects.  Do not change the
+			; order of these functions.  In objects inheriting
+			; the baseobj class, added functions will be
+			; placed here.
+baseobj__methods	ENDS
+
+
+
+baseobj__data		STRUC
+			classname	DB	"baseobj", 0
+			dynamic		DB	0	
+baseobj__data		ENDS
+
+
+
+baseobj			STRUC
+			parent	 	DD	0		;NULL PARENT
+			methods		baseobj__methods <>
+			data		baseobj__data <>
+baseobj			ENDS
+
+ENDIF ;BASEOBJ__

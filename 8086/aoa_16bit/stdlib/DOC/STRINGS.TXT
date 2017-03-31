@@ -1,0 +1,922 @@
+String Handling Routines
+------------------------
+
+Manipulating text is a major part of many computer applications. Typically,
+strings are inputed and interpreted. This interpretation may involve some
+chores such as extracting certain part of the text, copying it, or comparing
+with other strings.
+
+The string manipulation routines in C provides various functions. Therefore,
+the stdlib has some C-like string handling functions (e.g. strcpy, strcmp).
+In C a string is an array of characters; similarly, the string are terminated
+by a "0" as a null character. In general, the input strings of these routines
+are pointed by ES:DI. In some routines, the carry flag will be set to indicate
+an error.
+
+The following string routines take as many as four different forms: strxxx,
+strxxxl, strxxxm, and strxxxlm.  These routines differ in how they store
+the destination string into memory and where they obtain their source strings.
+
+Routines of the form strxxx generally expect a single source string address
+in ES:DI or a source and destination string in ES:DI & DX:SI.  If these
+routines produce a string, they generally store the result into the buffer
+pointed at by ES:DI upon entry.  They return with ES:DI pointing at the
+first character of the destination string.
+
+Routines of the form strxxxl have a "literal source string".  A literal
+source string follows the call to the routine in the code stream.  E.g.,
+
+			strcatl
+			db	"Add this string to ES:DI",0
+
+Routines of the form strxxxm automatically allocate storage for a source
+string on the heap and return a pointer to this string in ES:DI.
+
+Routines of the form strxxxlm have a literal source string in the code
+stream and allocate storage for the destination string on the heap.
+
+
+
+Routine:  Strcpy (l)
+--------------------
+
+Category:             String Handling Routine
+
+Registers on Entry:   ES:DI - pointer to source string (Strcpy only)
+		      CS:RET - pointer to  source  string (Strcpy1 only)
+		      DX:SI - pointer to destination string
+
+
+Registers on return:  ES:DI - points at the destination string
+
+
+Flags affected:	      None
+
+
+Example of Usage:
+		      mov     dx, seg Dest
+		      mov     si, offset Dest
+		      mov     di, seg Source
+		      mov     es, di
+		      mov     si, offset Source
+		      Strcpy
+
+		      mov     dx, seg Dest
+		      mov     si, offset Dest
+		      Strcpyl
+		      db      "String to copy",0
+
+
+Description:  Strcpy is used to copy a zero-terminated string from one
+	      location to another.  ES:DI points at the source string,
+	      DX:SI points at the destination address.  Strcpy copies all
+	      bytes, up to and including the zero byte, from the source
+	      address to the destination address.  The target buffer must
+	      be large enough to hold the string.  Strcpy performs no error
+	      checking on the size of the destination buffer.
+
+	      Strcpyl copies the  zero-terminated string immediately following
+	      the call instruction to the destination address specified by
+	      DX:SI.  Again, this routine expects you to ensure that the
+	      taraget buffer is large enough to hold the result.
+
+	      Note: There are no "Strcpym" or "Strcpylm" routines.  The
+	      reason is simple: "StrDup" and "StrDupl" provide these functions
+	      using names which are familiar to MSC and Borland C users.
+
+Include:              stdlib.a or strings.a
+
+
+Routine:  StrDup (l)
+--------------------
+
+Category:            String Handling Routine
+
+Register on entry:   ES:dI - pointer to source string (StrDup
+		     only).  CS:RET - Pointer to source string
+		     (StrDupl only).
+
+Register on return:  ES:DI - Points at the destination string
+		     allocated on heap.  Carry=0 if operation
+		     successful.  Carry=0 if insufficient
+		     memory for new string.
+
+Flags affected:      Carry flag
+
+Example of usage:
+		     StrDupl
+		     db "String for StrDupl",0
+		     jc  MallocError
+		     mov word ptr Dest1, di
+		     mov word ptr Dest1+2, es  ;create another
+					       ;copy of this
+					       ;string. Note
+					       ;that es:di points
+					       ;at Dest1 upon
+					       ;entry to StrDup,
+					       ;but it points at
+					       ;the new string on
+					       ;exit
+		     StrDup
+		     jc MallocError
+		     mov word ptr Dest2, di
+		     mov word ptr Dest2+2, es
+
+
+Description:  StrDup and StrDupl duplicate strings.  You pass them
+	      a pointer to the string (in es:di for strdup, via
+	      the return address for strdupl) and they allocate
+	      sufficient storage on the heap for a copy of this
+	      string.  Then these two routines copy their source
+	      strings to the newly allocated storage and return
+	      a pointer to the new string in ES:DI.
+
+
+Include:             stdlib.a or strings.a
+
+
+Routine:  Strlen
+----------------
+
+Category:            String Handling Routine
+
+Registers on entry:  ES:DI - pointer to source string.
+
+Register on return:  CX - length of specified string.
+
+Flags Affected:      None
+
+Examples of Usage:
+		     les   di, String
+		     strlen
+		     mov   sl, cx
+		     printf
+		     db   "Length of '%s' is %d\n",0
+		     dd   String, sl
+
+
+Description:  Strlen computes the length of the string whose address
+	      appears in ES:DI.  It returns the number of characters
+	      up to, but not including, the zero terminating byte.
+
+Include:             stdlib.a or strings.a
+
+
+Routine:  Strcat (m,l,ml)
+-------------------------
+
+Category:             String Handling Routine
+
+Registers on Entry:   ES:DI- Pointer to first string
+		      DX:SI- Pointer to second string (Strcat and Strcatm only)
+
+
+Registers on Return:  ES:DI- Pointer to new string (Strcatm and Strcatml only)
+
+Flags Affected:       Carry = 0 if no error
+		      Carry = 1 if insufficient memory (Strcatm and Strcatml
+							only)
+
+
+Example of Usage:     les  DI, String1
+		      mov  DX, seg String2
+		      lea  SI, String2
+		      Strcat                   ; String1 <- String1 + String2
+
+		      les  DI, String1
+		      Strcatl                  ; String1 <- String1 +
+		      db  "Appended String",0  ;            "Appended String",0
+
+
+		      les  DI, String1
+		      mov  DX, seg String2
+		      lea  SI, String2
+		      Strcatm                  ; NewString <- String1 + String2
+		      puts
+		      free
+
+		      les  DI, String1
+		      Strcatml                 ; NewString <- String1 +
+		      db  "Appended String",0  ;         "Appended String",0
+		      puts
+		      free
+
+
+Description:  These routines concatenate two strings together.  They differ
+	      mainly in the location of their source and destination operands.
+
+	      Strcat concatenates the string pointed at by DX:SI to the end of
+	      the string pointed at by ES:DI in memory.  Both strings must be
+	      zero-terminated.  The buffer pointed at by ES:DI must be large
+	      enough to hold the resulting string.  Strcat does NOT perform
+	      bounds checking on the data.
+
+	      ( continued on next page )
+
+
+
+
+
+
+
+Routine:  Strcat (m,l,ml)   ( continued )
+-----------------------------------------
+
+
+	      Strcatm computes the length of the two strings pointed at by ES:DI
+	      and DX:SI and attempts to allocate this much storage on the heap.
+	      If it is not successful, Strcatm returns with the Carry flag set,
+	      otherwise it copies the string pointed at by ES:DI to the heap,
+	      concatenates the string DX:SI points at to the end of this string
+	      on the heap, and returns with the Carry flag clear and ES:DI
+	      pointing at the new (concatenated) string on the heap.
+
+	      Strcatl and Strcatml work just like Strcat and Strcatm except you
+	      supply the second string as a literal constant immediately AFTER
+	      the call rather than pointing DX:SI at it (see examples above).
+
+
+Include:             stdlib.a or strings.a
+
+
+Routine:  Strchr
+----------------
+
+Category:            String Handling Routine
+
+Register on entry:   ES:DI- Pointer to string.
+			AL- Character to search for.
+
+Register on return:  CX- Position (starting at zero)
+			 where Strchr found the character.
+
+Flags affected:      Carry=0 if Strchr found the character.
+		     Carry=1 if the character was not present
+			     in the string.
+
+Example of usage:
+		     les di, String
+		     mov al, Char2Find
+		     Strchr
+		     jc  NotPresent
+		     mov CharPosn, cx
+
+
+Description:  Strchr locates the first occurrence of a character within a
+	      string.  It searches through the zero-terminated string pointed
+	      at by es:di for the character passed in AL. If it locates the
+	      character, it returns the position of that character to the CX
+	      register.  The first character in the string corresponds to the
+	      location zero.  If the character is not in the string, Strchr
+	      returns the carry flag set.  CX's value is undefined in that
+	      case.  If Strchr locates the character in the string, it
+	      returns with the carry clear.
+
+
+Include:             stdlib.a or strings.a
+
+
+Routine:  Strstr (l)
+--------------------
+
+Category:            String Handling Routine
+
+Register on entry:   ES:DI - Pointer to string.
+		     DX:SI - Pointer to substring(strstr).
+		     CS:RET - Pointer to substring (strstrl).
+
+Register on return:  CX - Position (starting at zero)
+		     where Strstr/Strstrl found the
+		     character.  Carry=0 if Strstr/
+		     Strstrl found the character.
+		     Carry=1 if the character was not
+		     present in the string.
+
+Flags affected:      Carry flag
+
+Example of usage :
+		     les di, MainString
+		     lea si, Substring
+		     mov dx, seg Substring
+		     Strstr
+		     jc NoMatch
+		     mov i, cx
+		     printf
+		     db "Found the substring '%s' at location %i\n",0
+		     dd Substring, i
+
+
+Description:  Strstr searches for the position of a substring
+	      within another string.  ES:DI points at the
+	      string to search through, DX:SI points at the
+	      substring.  Strstr returns the index into ES:DI's
+	      string where DX:SI's string is found.  If the
+	      string is found, Strstr returns with the carry
+	      flag clear and CX contains the (zero based) index
+	      into the string.  If Strstr cannot locate the
+	      substring within the string ES:DI points at, it
+	      returns the carry flag set.  Strstrl works just
+	      like Strstr except it excepts the substring to
+	      search for immediately after the call instruction
+	      (rather than passing this address in DX:SI).
+
+
+Include:              stdlib.a or strings.a
+
+
+Routine:  Strcmp (l)
+--------------------
+
+Category:            String Handling Routine
+
+Registers on entry:  ES:DI contains the address of the first string
+		     DX:SI contains the address of the second string (strcmp)
+		     CS:RET (contains the address of the substring (strcmpl)
+
+Register on return:  CX (contains the position where the two strings differ)
+
+Flags affected:      Carry flag and zero flag (string1 > string2 if C + Z = 0)
+					 (string1 < string2 if C = 1)
+
+Example of Usage:
+		     les 	di, String1
+		     mov 	dx, seg String2
+		     lea 	si, String2
+		     strcmp
+		     ja		OverThere
+
+		     les 	di, String1
+		     strcmpl
+		     db 	"Hello",0
+		     jbe 	elsewhere
+
+
+
+Description:  Strcmp compares the first strings pointed by ES:DI with
+	      the second string pointed by DX:SI. The carry and zero flag
+	      will contain the corresponding result. So unsigned branch
+	      instructions such as JA or JB is recommended. If string1
+	      equals string2, strcmp will return with CX containing the
+	      offset of the zero byte in the two strings.
+
+	      Strcmpl compares the first string pointed by ES:DI with
+	      the substring pointed by CS:RET. The carry and zero flag
+	      will contain the corresponding result. So unsigned branch
+	      instructions such as JA or JB are recommended. If string1
+	      equals to the substring, strcmp will return with CX
+	      containing the offset of the zero byte in the two strings.
+
+Include:             stdlib.a or strings.a
+
+
+Routine:  Stricmp (l)
+---------------------
+
+Category:            String Handling Routine
+
+Registers on entry:  ES:DI contains the address of the first string
+		     DX:SI contains the address of the second string (stricmp)
+		     CS:RET (contains the address of the substring (stricmpl)
+
+Register on return:  CX (contains the position where the two strings differ)
+
+Flags affected:      Carry flag and zero flag (string1 > string2 if C + Z = 0)
+					 (string1 < string2 if C = 1)
+
+Example of Usage:
+		     les 	di, String1
+		     mov 	dx, seg String2
+		     lea 	si, String2
+		     stricmp
+		     ja		OverThere
+
+		     les 	di, String1
+		     stricmpl
+		     db 	"Hello",0
+		     jbe 	elsewhere
+
+
+
+Description:	This routine is virtually identical to strcmp (l) except it
+		ignores case when comparing the strings.
+
+Include:             stdlib.a or strings.a
+
+
+Routine:  Strupr (m)
+--------------------
+
+Category:            String Handling Routine
+		     Conversion Routine
+
+Register on entry:   ES:DI (contains the pointer to input string)
+
+Register on return:  ES:DI (contains the pointer to input string
+			   with characters converted to upper case)
+			   Note: struprm allocates storage for a new
+			   string on the heap and returns the pointer
+			   to this routine in ES:DI.
+
+Flags affected:      Carry = 1 if memory allocation error (Struprm only).
+
+Example of Usage:
+		     les 	di, lwrstr1
+		     strupr
+		     puts
+
+		     mov        di, seg StrWLwr
+		     mov	es, di
+		     lea	di, StrWLwr
+		     struprm
+		     puts
+		     free
+
+
+Description:  Strupr converts the input string pointed by ES:DI to
+	      upper case.  It will actually modify the string you pass
+	      to it.
+
+	      Struprm first makes a copy of the string on the heap and
+	      then converts the characters in this new string to upper
+	      case.  It returns a pointer to the new string in ES:DI.
+
+Include:             stdlib.a or strings.a
+
+
+Routine:  Strlwr (m)
+--------------------
+
+Category:            String Handling Routine
+		     Conversion Routine
+
+Register on entry:   ES:DI (contains the pointer to input string)
+
+Register on return:  ES:DI (contains the pointer to input string
+			   with characters converted to lower case).
+
+Flags affected:      Carry = 1 if memory allocation error (strlwrm only)
+
+
+Example of Usage:
+		     les di, uprstr1
+		     strlwr
+		     puts
+
+		     mov        di, seg StrWLwr
+		     mov	es, di
+		     lea	di, StrWLwr
+		     strlwrm
+		     puts
+		     free
+
+
+
+
+Description:  Strlwr converts the input string pointed by ES:DI to
+	      lower case. It will actually modify the string you pass
+	      to it.
+
+	      Strlwrm first copies the characters onto the heap and then
+	      returns a pointer to this string after converting all the
+	      alphabetic characters to lower case.
+
+
+Include:             stdlib.a or strings.a
+
+
+
+Routine:  Strset (m)
+--------------------
+
+Category:            String Handling Routine
+
+Register on entry:   ES:DI contains the pointer to input string (StrSet only)
+		     AL    contains the character to copy
+		     CX    contains number of characters to allocate for
+			   the string (Strsetm only)
+
+Register on return:  ES:DI pointer to newly allocated string (Strsetm only)
+
+Flags affected:      Carry set if memory allocation error (Strsetm only)
+
+Example of Usage:
+		     les 	di, string1
+		     mov	al, " "		;Blank fill string.
+		     Strset
+
+		     mov 	cx, 32
+		     mov	al, "*"		;Create a new string w/32
+		     Strsetm			; asterisks.
+		     puts
+		     free
+
+
+Description:  Strset overwrites the data on input string pointed by
+	      ES:DI with the character on AL.
+
+	      Strsetm creates a new string on the heap with the number
+	      of characters specified in CX.  All characters in the string
+	      are initialized with the value in AL.
+
+Include:             stdlib.a or strings.a
+
+
+Routine:  Strspan (l)
+---------------------
+
+Category:             String Handling Routine
+
+Registers on Entry:   ES:DI - Pointer to string to scan
+		      DX:SI - Pointer to character set (Strspan only)
+		      CS:RET- Pointer to character set (Strspanl only)
+
+Registers on Return:  CX- First position in scanned string which does not
+			  contain one of the characters in the character set
+
+Flags Affected:       None
+
+Example of Usage:
+		      les  DI, String
+		      mov  DX, seg CharSet
+		      lea  SI, CharSet
+		      Strspan           ; find first position in String with a
+		      mov i, CX         ;                  char not in CharSet
+		      printf
+		      db  "The first char which is not in CharSet "
+		      db  "occurs at position %d in String.\n",0
+		      dd  i
+
+		      les  DI, String
+		      Strspanl          ; find first position in String which
+		      db   "aeiou",0    ; is not a vowel
+		      mov  j, CX
+		      printf
+		      db  "The first char which is not a vowel "
+		      db  "occurs at position %d in String.\n",0
+		      dd  j
+
+
+Description:  Strspan(l) scans a string, counting the number of characters which
+	      are present in a second string (which represents a character set).
+	      ES:DI points at a zero-terminated string of characters to scan.
+	      DX:SI (strspan) or CS:RET (strspanl) points at another zero-
+	      terminated string containing the set of characters to compare
+	      against.  The position of the first character in the string
+	      pointed to by ES:DI which is NOT in the character set is returned.
+	      If all the characters in the string are in the character set, the
+	      position of the zero-terminating byte will be returned.
+
+	      Although strspan and (especially) strspanl are very compact and
+	      convenient to use, they are not particularly efficient.  The
+	      character set routines provide a much faster alternative at the
+	      expense of a little more space.
+
+
+Include:               stdlib.a or strings.a
+
+
+Routine:  Strcspan, Strcspanl
+-----------------------------
+
+Category:             String Handling Routine
+
+Registers on Entry:   ES:DI - Pointer to string to scan
+		      DX:SI - Pointer to character set (Strcspan only)
+		      CS:RET- Pointer to character set (Strcspanl only)
+
+Registers on Return:  CX- First position in scanned string which contains one
+			  of the characters in the character set
+
+Flags Affected:       None
+
+Example of Usage:
+		      les  DI, String
+		      mov  DX, seg CharSet
+		      lea  SI, CharSet
+		      Strcspan          ; find first position in String with a
+		      mov i, CX         ;                      char in CharSet
+		      printf
+		      db  "The first char which is in CharSet "
+		      db  "occurs at position %d in String.\n",0
+		      dd  i
+
+		      les  DI, String
+		      Strcspanl         ; find first position in String which
+		      db   "aeiou",0	; is a vowel.
+		      mov  j, CX
+		      printf
+		      db  "The first char which is a vowel occurs "
+		      db  "at position %d in String.\n",0
+		      dd  j
+
+
+Description:  Strcspan(l) scans a string, counting the number of characters
+	      which are NOT present in a second string (which represents a
+	      character set).  ES:DI points at a zero-terminated string of
+	      characters to scan.  DX:SI (strcspan) or CS:RET (strcspanl) points
+	      at another zero-terminated string containing the set of characters
+	      to compare against.  The position of the first character in the
+	      string pointed to by ES:DI which is in the character set is
+	      returned.  If all the characters in the string are not in the
+	      character set, the position of the zero-terminating byte will be
+	      returned.
+
+	      Although strcspan and strcspanl are very compact and convenient to
+	      use, they are not particularly efficient.  The character set
+	      routines provide a much faster alternative at the expense of a
+	      little more space.
+
+Include:              stdlib.a or strings.a
+
+
+Routine:  StrIns (m,l,ml)
+-------------------------
+
+Category:             String Handling Routine
+
+Registers on Entry:   ES:DI - Pointer to destination string (to insert into)
+		      DX:SI - Pointer to string to insert
+					  (StrIns and StrInsm only)
+		      CX    - Insertion point in destination string
+
+Registers on Return:  ES:DI - Pointer to new string (StrInsm and StrInsml only)
+
+Flags Affected:       Carry = 0 if no error
+		      Carry = 1 if insufficient memory
+				   (StrInsm and StrInsml only)
+
+
+Example of Usage:
+		      les  DI, DestStr
+		      mov  DX, word ptr SrcStr+2
+		      mov  SI, word ptr SrcStr
+		      mov  CX, 5
+		      StrIns     ; Insert SrcStr before the 6th char of DestStr
+
+		      les  DI, DestStr
+		      mov  CX, 2
+		      StrInsl    ; Insert "Hello" before the 3rd char of DestStr
+		      db  "Hello",0
+
+		      les  DI, DestStr
+		      mov  DX, word ptr SrcStr+2
+		      mov  SI, word ptr SrcStr
+		      mov  CX, 11
+		      StrInsm      ; Create a new string by inserting SrcStr
+				   ;         before the 12th char of DestStr
+		      puts
+		      putcr
+		      free
+
+
+Description:  These routines insert one string into another string.  ES:DI
+	      points at the string into which you want to insert another.  CX
+	      contains the position (or index) where you want the string
+	      inserted.  This index is zero-based, so if CX contains zero, the
+	      source string will be inserted before the first character in the
+	      destination string.  If CX contains a value larger than the size
+	      of the destination string, the source string will be appended to
+	      the destination string.
+
+	      StrIns inserts the string pointed at by DX:SI into the string
+	      pointed at by ES:DI at position CX.  The buffer pointed at by
+	      ES:DI must be large enough to hold the resulting string.  StrIns
+	      does NOT perform bounds checking on the data.
+
+     ( continued on next page )
+
+
+Routine:  StrIns (m,l,ml)   ( continued )
+-----------------------------------------
+
+	      StrInsm does not modify the source or destination strings, but
+	      instead attempts to allocate a new buffer on the heap to hold the
+	      resulting string.  If it is not successful, StrInsm returns with
+	      the Carry flag set, otherwise the resulting string is created and
+	      its address is returned in the ES:DI registers.
+
+	      StrInsl and StrInsml work just like StrIns and StrInsm except you
+	      supply the second string as a literal constant immediately AFTER
+	      the call rather than pointing DX:SI at it (see examples above).
+
+
+
+Routine:  StrDel, StrDelm
+-------------------------
+
+Category:              String Handling Routine
+
+Registers on Entry:    ES:DI -  pointer to string
+		       CX - deletion point in  string
+		       AX - number of characters to delete
+
+Registers on return:   ES:DI - pointer to new string (StrDelm only)
+
+Flags  affected:       Carry = 1 if memory allocation error,  0 if okay
+		       (StrDelm only).
+
+Example of Usage:
+		       les     di,  Str2Del
+		       mov     cx,  3          ; Delete starting at 4th char
+		       mov     ax,  5          ; Delete five characters
+		       StrDel                  ; Delete in place
+
+		       les     di,  Str2Del2
+		       mov     cx,  5
+		       mov     ax,  12
+		       StrDelm
+		       puts
+		       free
+
+
+Description:  StrDel deletes characters from a string.  It works by computing
+	      the beginning and end of the deletion point.  Then it copies all
+	      the characters from the end of the deletion point to the end of
+	      the string (including the zero byte) to the beginning of the
+	      deletion point.  This covers up (thereby effectively deleting)
+	      the undesired characters in the string.
+
+	      Here are two degenerate cases to worry about -- 1) when you
+	      specify a deletion point which is beyond the end of the string;
+	      and 2) when the deletion point is within the string but the
+	      length of the deletion takes you beyond the end of the string.
+	      In the first case StrDel simply ignores the deletion request.  It
+	      does not modify the original string.  In the second case,
+	      StrDel simply deletes everything from the deletion point to the
+	      end of the string.
+
+	      StrDelm works just like StrDel except it does not delete the
+	      characters in place.  Instead, it creates a new string on the
+	      heap consisting of the characters up to the deletion point and
+	      those following the characters to delete.  It returns a pointer
+	      to the new string on the heap in ES:DI, assuming that it
+	      properly allocated the storage on the heap.
+
+Include:               stdlib.a or strings.a
+
+
+Routine:  StrTrim (m)
+---------------------
+
+Category:              String Handling Routine
+
+Registers on Entry:    ES:DI -  pointer to string
+
+Registers on return:   ES:DI - pointer to string (new string if StrTrimm)
+
+Flags  affected:       Carry = 1 if memory allocation error,  0 if okay
+		       (StrTrimm only).
+
+Example of Usage:
+		       les     di,  Str2Trim
+		       StrTrim                 ; Delete in place
+		       puts
+
+		       les     di,  Str2Trim2
+		       StrTrimm
+		       puts
+		       free
+
+
+Description:	StrTrim (m) removes trailing spaces from a string.  StrTrim
+		removes the space in the specified string (by backing up the
+		zero terminating byte in the string.  StrTrimm creates a new
+		copy of the string (on the heap) without the trailing spaces.
+
+Include:               stdlib.a or strings.a
+
+
+Routine:  StrBlkDel (m)
+-----------------------
+
+Category:              String Handling Routine
+
+Registers on Entry:    ES:DI -  pointer to string
+
+Registers on return:   ES:DI - pointer to string (new string if StrBlkDelm)
+
+Flags  affected:       Carry = 1 if memory allocation error,  0 if okay
+		       (StrBlkDelm only).
+
+Example of Usage:
+		       les     di,  Str2Trim
+		       StrBlkDel		; Delete in place
+		       puts
+
+		       les     di,  Str2Trim2
+		       StrBlkDelm
+		       puts
+		       free
+
+
+Description:	StrBlkDel (m) removes leading spaces from a string.  StrBlkDel
+		removes the space in the specified string, modifying that
+		string.  StrBlkDelm creates a new copy of the string (on the
+		heap) without the leading spaces.
+
+Include:               stdlib.a or strings.a
+
+
+Routine:  StrRev, StrRevm
+-------------------------
+
+Author:               Michael Blaszczak (.B  ekiM)
+
+Category:             String Handling Routine
+
+Registers on Entry:   ES:DI - pointer to string
+
+Registers on return:  ES:DI - pointer to new string (StrRevm only).
+
+Flags affected:       Carry  = 1 if memory allocation error, 0 if okay
+		      (StrRevm only).
+
+Example of Usage:
+
+Description:  StrRev reverses the characters in a string.  StrRev reverses,
+	      in place, the characters in the string that ES:SI points at.
+	      StrRevm creates a new string on the heap (which contains the
+	      characters in the string ES:DI points at, only reversed) and
+	      returns a pointer to the new string in ES:DI.  If StrRevm
+	      cannot allocate sufficient memory for the string, it returns
+	      with the carry flag set.
+
+
+Include:              stdlib.a or strings.a
+
+Routine:  StrBDel (m)
+---------------------
+
+Author:               Randall Hyde
+
+Category:             String Handling Routine
+
+Registers on Entry:   ES:DI - pointer to string
+
+Registers on return:  ES:DI - pointer to new string (StrBDelm only).
+
+Flags affected:       Carry  = 1 if memory allocation error, 0 if okay
+		      (StrBDelm only).
+
+Example of Usage:
+
+Description:	StrBDel(m) deletes leading blanks from a string.  StrBDel
+		operates on the string in place, StrBDelm creates a copy
+		(on the heap) of the string without the leading blanks.
+
+Include:              stdlib.a or strings.a
+
+
+Routine:  ToHex
+---------------
+
+Category:             String Handling Routine/ Conversion Routine
+
+Registers on Entry:   ES:DI - pointer to byte array
+		      BX-     memory base address for bytes
+		      CX-     number of entries in byte array
+
+Registers on return:  ES:DI - pointer to Intel Hex format string.
+
+Flags affected:       Carry  = 1 if memory allocation error, 0 if okay
+
+
+Example of Usage:
+
+		mov	bx, 100h	;Put data at address 100h in hex file.
+		mov	cx, 10h		;Total of 16 bytes in this array.
+		les	di, Buffer	;Pointer to data bytes
+		ToHex			;Convert to Intel HEX string format.
+		puts			;Print it.
+
+Description:
+
+ToHex converts a stream of binary values to Intel Hex format.  Intel HEX format
+is a common ASCII data interchange format for binary data.  It takes the
+following form:
+
+	: BB HHLL RR DDDD...DDDD SS <cr> <lf>
+
+(Note:spaces were added for clarity, they are not actually present in the
+hex string)
+
+BB is a pair of hex digits which represent the number of data bytes (The DD
+entries) and is the value passed in CX.
+
+HHLL is the hexadecimal load address for these data bytes (passed in BX).
+
+RR is the record type.  ToHex always produces data records with the RR field
+containing "00".  If you need to output other field types (usually just an
+end record) you must create that string yourself.  ToHex will not do it.
+
+DD...DD is the actual data in hex form.  This is the number of bytes specified
+in the BB field.
+
+SS is the two's complement of the checksum (which is the sum of the binary
+values of the BB, HH, LL, RR, and all DD fields).
+
+This routine allocates storage for the string on the heap and returns a pointer
+to that string in ES:DI.
+
+Include:              stdlib.a or strings.a
+

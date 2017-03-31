@@ -1,0 +1,329 @@
+unit Converts;
+interface
+
+uses
+  SysUtils, WinTypes, WinProcs, Messages, Classes, Graphics, Controls,
+  Forms, Dialogs, StdCtrls, ExtCtrls;
+
+function CheckHex(const hex:string):boolean;
+function CheckDec(const dec:string):boolean;
+function CheckUnsigned(const dec:string):boolean;
+function CheckBin(const bin:string):boolean;
+function BinToInt(const bin:string):integer;
+function IntToBin(Value:LongInt; Digits:cardinal):TCaption;
+function IntToHex(Value:LongInt; Digits:cardinal):TCaption;
+function HexToInt(const hex:string):integer;
+
+
+
+
+implementation
+{ The following function returns true if the string parameter contains }
+{ a legal representation of a 16-bit hexadecimal value.                }
+{ Keep in mind that "Result" is where Delphi functions return their    }
+{ function result.                                                     }
+
+function CheckHex(const hex:string):boolean;
+const
+     HexVals = ['0'..'9', 'A'..'F', 'a'..'f'];
+var
+     index:integer;
+     len:  integer;
+begin
+
+     len := length(hex);
+     Result := (len <> 0) and (len <= 4);
+     for index := 1 to len do begin
+
+         Result := Result and (hex[index] in HexVals);
+
+     end;
+end;
+
+
+
+
+
+{ The following function checks its parameter to see if it is a string }
+{ that properly represents a signed decimal value.                     }
+
+function CheckDec(const dec:string):boolean;
+const
+     DecVals = ['0'..'9'];
+var
+     index:integer;
+     len:  integer;
+     Start:integer;
+begin
+
+     len := length(dec);
+
+     { First, check for total bail-out conditions; this would be any value }
+     { greater than +32767 or less than -32768; a string that is just too  }
+     { long, a zero length string, or a string containing only the '-'.    }
+
+     Result := false;
+     Start := 1;
+     if (len = 0) then exit;
+     if (dec[1] = '-') then begin
+
+        if (len = 1) then exit;
+        if (len > 6) then exit;
+        if (len = 6) and (dec > '-32768') then exit;
+
+        Start := 2;  { Skip over '-' when testing characters }
+
+     end
+     else begin
+
+          if (len >= 6) then exit;
+          if (len = 5) and (dec > '32767') then exit;
+
+     end;
+
+
+
+     { Okay, if the length is five or six, it is not a numeric value that  }
+     { is out of range.  However, the string could still contain illegal   }
+     { characters.  We'll check for that down here.                        }
+
+     Result := true;
+     for index := Start to len do
+         Result := Result and (dec[index] in DecVals);
+end;
+
+
+
+
+{ CheckUnsigned is the same operation as CheckDec except it does not have  }
+{ to worry about negative numbers.                                         }
+
+function CheckUnsigned(const dec:string):boolean;
+const
+     DecVals = ['0'..'9'];
+var
+     index:integer;
+     len:  integer;
+begin
+
+     len := length(dec);
+
+     { Check for totally illegal values here }
+
+     Result := false;
+     if (len = 0) then exit;
+     if (len >= 6) then exit;
+     if (len = 5) and (dec > '65535') then exit;
+
+
+     { If the tests above succeeded, check the individual characters here. }
+
+     Result := true;
+     for index := 1 to len do
+         Result := Result and (dec[index] in DecVals);
+end;
+
+
+
+
+{ CheckBin checks the "bin" string to see if it is a valid binary number.  }
+{ This particular function allows spaces in binary numbers;  this lets the }
+{ use separate nibbles in a long binary string for readability.  Note that }
+{ this function allows spaces to occur in arbitrary places in the string,  }
+{ it simply ignores the spaces.                                            }
+
+function CheckBin(const bin:string):boolean;
+const
+     BinVals = ['0','1',' '];
+var
+     index:integer;
+     len:  integer;
+     Bits: integer;
+begin
+
+     len := length(bin);
+
+     { if the string's length is zero or greater than 19 (16 digits plus   }
+     { three spaces to separate the nibbles) then immediately return an    }
+     { error.                                                              }
+
+     Result := (len <> 0) and (len <= 19);
+     if (not Result) then exit;
+
+     { If the length of the string is okay, then check each character in   }
+     { the string to make sure it is a zero, one, or a space.              }
+
+     Bits := 0;
+     for index := 1 to len do begin
+
+         Result := Result and (bin[index] in BinVals);
+         Bits := Bits + ord((bin[index] = '0') or (bin[index] = '1'));
+
+     end;
+     Result := Result and (Bits <=16) and (Bits > 0);
+end;
+
+
+
+
+
+
+{ IntToBin-                                                           }
+{                                                                     }
+{    This function converts an integer value to a string of zeros and }
+{    ones -- the binary representation of that integer.  The integer  }
+{    to convert is the first parameter passed to this function.  The  }
+{    second parameter specifies the number of digits to place in the  }
+{    output string (maximum 16);  If the Digits value is less than    }
+{    the number of bits actually present in the first parameter, this }
+{    function outputs the L.O. 'Digits' bits.  Note that this routine }
+{    inserts space between each group of four digits in order to make }
+{    the output more readable.                                        }
+
+function IntToBin(
+                    Value:LongInt;
+                    Digits:cardinal
+                 ):TCaption;
+var
+   Mask: cardinal;
+   Count:integer;
+begin
+
+
+     { Result will hold the string this function produces }
+
+     Result := '';
+
+     { Create a mask value with a single bit in the H.O. bit position }
+     { so we can use it to see if the current value contains a zero   }
+     { or one in its H.O. bit.                                        }
+
+     Mask := $8000;
+
+     { Eliminate the bits we're not interested in outputting.  This   }
+     { adjusts the value so the first bit we want to test is located  }
+     { in bit #15 of Value.                                           }
+
+     Value := Value shl (16-Digits);
+
+     { For each of the bits we want in the output string, test the    }
+     { current value to see if it's H.O. bit is zero or one.  Append  }
+     { the corresponding character to the end of the result string.   }
+     { If the bit position is an even multiple of four, append a      }
+     { a space as well, although this code will not append a space to }
+     { the end of the string.                                         }
+
+     Count := 16-Digits;        {# of bits we're going to test.       }
+
+     While (true) do begin      {Really a loop..endloop construct.    }
+
+         if ((Value and Mask) <> 0) then
+              AppendStr(Result, '1')
+         else AppendStr(Result,'0');
+
+         inc(Count);
+         if (Count > 15) then break;
+
+         { After bits 3, 7, and 11, append a space to the string.     }
+
+         if (Count mod 4) = 0 then AppendStr(Result,' ');
+
+         { Adjust the Mask for the next loop iteration.  This moves   }
+         { the single one bit in Mask one position to the right so it }
+         { tests the next lower bit in Value.                         }
+
+         Mask := Mask shr 1;
+
+     end;
+end;
+
+
+
+
+
+{ IntToHex-                                                           }
+{                                                                     }
+{    This function converts an integer value to a string of hex       }
+{    characters.  The integer to convert is the first parameter.      }
+{    The second parameter specifies the number of digits to place in  }
+{    the output string (maximum 4);  If the Digits value is less than }
+{    the number of bits actually present in the first parameter, this }
+{    function outputs the L.O. digits.                                }
+
+function IntToHex(Value:LongInt; Digits:cardinal):TCaption;
+const
+     HexChars:array [0..$f] of char =
+                            ('0','1','2','3','4','5','6','7','8','9',
+                             'A','B','C','D','E','F');
+var
+   Count:integer;
+begin
+
+
+     { Result will hold the string this function produces }
+
+     Result := '';
+
+
+     { For each of the nibbles we want to output, append the corres-   }
+     { ponding hex digit.                                              }
+
+     for Count := Digits-1 downto 0 do begin
+
+         AppendStr(Result, HexChars[ (Value shr (Count*4)) and $f]);
+
+     end;
+end;
+
+
+
+
+
+{ HexToInt-                                                           }
+{                                                                     }
+{ This routine converts a string of characters that represent a hexa- }
+{ decimal value into the corresponding integer value.  This routine   }
+{ assumes that the string is a valid representation of a hexadecimal  }
+{ value.  One should call "CheckHex" prior to this routine if not     }
+{ absolutely sure that the string is valid.                           }
+
+function HexToInt(const hex:string):integer;
+var
+   index:integer;
+begin
+
+     Result := StrToInt('$'+hex);
+
+end;
+
+
+
+{ BinToInt-                                                           }
+{                                                                     }
+{ The following routine converts a string containing a sequence of    }
+{ ones and zeros (i.e., a binary number representation) into an inte- }
+{ ger value.  Note that this routine ignores any spaces appearing in  }
+{ the binary string;  this allows the user to place spaces in the     }
+{ binary number to make it more readable.                             }
+
+function BinToInt(const bin:string):integer;
+var
+   index:integer;
+begin
+
+     Result := 0;
+     for index := 1 to length(bin) do
+         if bin[index] <> ' ' then
+            Result := (Result shl 1) + (ord(bin[index]) and $1);
+
+end;
+
+
+
+
+
+
+
+
+end.
+ 

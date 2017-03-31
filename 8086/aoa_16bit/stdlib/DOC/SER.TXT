@@ -1,0 +1,706 @@
+Interrupt-Driven Serial Port I/O Package
+========================================
+
+One major problem the the PC's BIOS is the lack of good interrupt driven
+I/O support for the serial port.  The BIOS provides a mediocre set of polled
+I/O facilities, but completely drops the ball on interrupt driven I/O.
+
+This set of routines in the standard library provides polled I/O support
+to read and set the registers on the 8250 (or other comparable chip, e.g.,
+16450) as well as read and write data (polled).  In addition, there are
+a pair of routines to initialize and disable the interrupt system as well
+as perform I/O using interrupts.
+
+Typical polled I/O session:
+
+1. Initialize chip using polled I/O routines.
+2. Read and write data using ComRead and ComWrite routines.
+
+Typical interrupt driven I/O session:
+
+1. Initialize chip using polled I/O routines.
+2. Read and write data using ComIn and ComOut routines.
+
+Of course, all the details of serial communications cannot be discussed
+here- it's far too broad a subject.  These routines, like most in the
+library, assume you know what you're doing.  They just make it a little
+easier on you.  If you don't understand anything about serial communications,
+you *might* be able to use these routines, but they were not written with
+that audience in mind.  There are several good references on serial communi-
+cations; "C Programmer's Guide to Serial Communications" comes to mind.  If
+you've never looked at the 8250 or comparable chips before, you might want
+to take a look at a reference such as this one if the routines in this
+section don't make much sense.
+
+Note: This routines are set up to use the COM1: hardware port.  See the
+source listings if you want to access a different serial port.  Perhaps in
+a future release we will modify this code to work with any serial port.
+
+
+Routine:  ComBaud
+-----------------
+
+Author:		      	Randall Hyde
+
+Category:		Serial Communications
+
+Registers on entry:   	AX-	BPS (baud rate): 110, 150, 300, 600, 1200,
+						 2400, 4800, 9600, 19200
+
+Registers on return:  	None
+
+Flags affected:       	None
+
+Example of Usage:
+			mov	ax, 9600	;Set system to 9600 bps
+			ComBaud
+Description:
+
+ComBaud programs the serial chip to change its "baud rate" (technically,
+it's "bits per second" not baud rate).  You load AX with the appropriate
+bps value and call ComBaud, as above.  Note: if AX is not one of the legal
+values, ComBaud defaults to 19.2kbps.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComStop
+-----------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	AX-	# of stop bits (1 or 2)
+
+Registers on return:  	None
+
+Flags affected:       	None
+
+Example of Usage:
+			mov	ax, 2		;Set system to send 2 stop bits
+			ComStop
+Description:
+
+ComStop programs the serial chip to transmit the specifed number of stop
+bits when sending data.  You load AX with the appropriate value and call
+ComStop, as above.  Note that this only affects the output data stream. The
+serial chip on the PC will always work with one incoming stop bit, regardless
+of the setting.  Since additional stop bits slow down your data transmission
+(by about 10%) and most devices work fine with one stop bit, you should
+normally program the chip with one stop bit unless you encounter some
+difficulties.  The setting of this value depends mostly on the system you
+are connecting to.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComSize
+-----------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	AX-	# of data bits to transmit (5, 6, 7, or 8)
+
+Registers on return:  	None
+
+Flags affected:       	None
+
+Example of Usage:
+			mov	ax, 8	;Set system to send 8 data bits
+			ComSize
+Description:
+
+ComSize programs the serial chip to transmit the specifed number of data
+bits when sending data.  You load AX with the appropriate value and call
+ComSize, as above.  The setting of this value depends mostly on the system
+you are connecting to.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComParity
+-------------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	AX-    Bits 0, 1, and 2 are defined as follows:
+			       bit 0- 1 to enable parity, 0 to disable.
+			       bit 1- 0 for odd parity, 1 for even.
+			       bit 2- Stuck parity bit.  If 1 and bit 0 is 1, then the parity bit
+				      is always set to the inverse of bit 1.
+
+Registers on return:  	None
+
+Flags affected:       	None
+
+Example of Usage:
+			mov	ax, 0	;Set NO parity
+			ComParity
+			 .
+			 .
+			 .
+			mov	ax, 11b	;Set even parity
+			ComParity
+Description:
+
+ComParity programs the serial chip to use various forms of parity error
+checking.  If bit zero of AX is zero, then this routine disables parity
+checking and transmission.  In this case, ComParity ignores the other
+two bits (actually, the 8250 ignores them, ComParity just passes them
+through).  If bit zero is a one, and bit two is a zero, then bit #1
+defines even/odd parity during transmission and receiving.  If bit #0
+is a one and bit two is a one, then the 8250 will always transmit bit #1
+as the parity bit (forced on or off).
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComRead
+-----------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	None
+
+Registers on return:  	AL-	Character read from port
+
+Flags affected:       	None
+
+Example of Usage:
+			ComRead
+			mov	Buffer, al
+
+Description:
+
+ComRead polls the port to see if a character is available in the on-chip
+data register.  If not, it waits until a character is available.  Once
+a character is available, ComRead reads it and returns this character in
+the AL register.
+
+Warning: do *not* use this routine while operating in the interrupt mode.
+This routine is for polled I/O only.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComWrite
+------------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	AL-	Character to write to port
+
+Registers on return:  	None
+
+Flags affected:       	None
+
+Example of Usage:
+			mov	al, 'a'
+			ComWrite
+
+Description:
+
+ComWrite polls the port to see if the transmitter is busy.  If so, it waits
+until the current transmission is through.  Once the 8250 is done with the
+current character, ComWrite will put the character in AL into the 8250
+transmit register.
+
+Warning: do *not* use this routine while operating in the interrupt mode.
+This routine is for polled I/O only.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComTstIn
+------------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	None
+
+Registers on return:  	AL=0 if no char available, 1 if char available
+
+Flags affected:       	None
+
+Example of Usage:
+
+		Wait4Data:	ComTstIn
+				cmp	al, 0
+				je	Wait4Data
+
+Description:
+
+ComTstIn polls the port to see if any input data is available.  If so,
+it returns a one in AL, else it returns a zero.
+
+Warning: do *not* use this routine while operating in the interrupt mode.
+This routine is for polled I/O only.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComTstOut
+-------------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	None
+
+Registers on return:  	AL = 1 if xmitr available, 0 if not
+
+Flags affected:       	None
+
+Example of Usage:
+
+		WriteData:	<Do Something>
+				ComTstOut
+				cmp	al, 0
+				je	WriteData
+				mov	al, 'a'
+				ComWrite
+
+Description:
+
+ComTstIn polls the port to see if the transmitter is currently busy.  If so,
+it returns a zero in AL, else it returns a one.
+
+Warning: do *not* use this routine while operating in the interrupt mode.
+This routine is for polled I/O only.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComGetLSR
+-------------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	None
+
+Registers on return:  	AL = LSR value
+
+Flags affected:       	None
+
+Example of Usage:
+
+			ComGetLSR
+			<do something with value in LSR>
+Description:
+
+Reads the LSR (line status register) and returns this value in AL.  The
+LSR using the following layout.
+
+ Line Status Register (LSR):
+
+ bit 0-	Data Ready
+ bit 1-	Overrun error
+ bit 2-	Parity error
+ bit 3-	Framing error
+ bit 4-	Break Interrupt
+ bit 5-	Transmitter holding register is empty.
+ bit 6-	Transmit shift register is empty.
+ bit 7-	Always zero.
+
+Warning: In general, it is not a good idea to call this routine while
+the interrupt system is active.  It won't hurt anything, but the value
+you get back may not reflect properly upon the last/next character you
+read.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComGetMSR
+-------------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	None
+
+Registers on return:  	AL = MSR value
+
+Flags affected:       	None
+
+Example of Usage:
+
+			ComGetMSR
+			<do something with value in MSR>
+Description:
+
+The MSR (modem status register) bits are defined as follows:
+
+ Modem Status Register (MSR):
+
+ bit 0-	Delta CTS
+ bit 1-	Delta DSR
+ bit 2-	Trailing edge ring indicator
+ bit 3-	Delta carrier detect
+ bit 4-	Clear to send
+ bit 5-	Data Set Ready
+ bit 6-	Ring indicator
+ bit 7-	Data carrier detect
+
+
+Warning: In general, it is not a good idea to call this routine while
+the interrupt system is active.  It won't hurt anything, but the value
+you get back may not reflect properly upon the last/next character you
+read.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComGetMCR
+-------------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	None
+
+Registers on return:  	AL = MCR value
+
+Flags affected:       	None
+
+Example of Usage:
+
+			ComGetMCR
+			<do something with value in MCR>
+Description:
+
+The MCR (modem control register) bits are defined as follows:
+
+ Modem Control Register (MCR):
+
+ bit 0-		Data Terminal Ready (DTR)
+ bit 1-		Request to send (RTS)
+ bit 2-		OUT 1
+ bit 3-		OUT 2
+ bit 4-		Loop back control.
+ bits 5-7-	Always zero.
+
+
+The DTR and RTS bits control the function of these lines on the 8250.
+They are useful mainly for polled I/O handshake operations (though they
+*could* be used with interrupt I/O, it's rarely necessary unless your
+main application is *really* slow and the data is coming in real fast.
+
+Out1 and Out2 control output pins on the 8255.  Keep in mind that the OUT1
+pin enables/disables the serial port interrupts.  Play with this *only* if
+you want to control the interrupt enable.
+
+Loop back control is mainly useful for testing the serial port or checking
+to see if a serial chip is present.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComSetMCR
+-------------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	AL = new MCR value
+
+Registers on return:  	None
+
+Flags affected:       	None
+
+Example of Usage:
+
+			mov	al, NewMCRValue
+			ComSetMCR
+
+Description:
+
+This routine writes the value in AL to the modem control register.  See
+ComGetMCR for details on the MCR register.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComGetLCR
+-------------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	None
+
+Registers on return:  	AL = LCR value
+
+Flags affected:       	None
+
+Example of Usage:
+
+			ComGetLCR
+			<do something with value in LCR>
+Description:
+
+The LCR (line control register) bits are defined as follows:
+
+ Line Control Register (LCR):
+
+ bits 0,1-	Word length (00=5, 01=6, 10=7, 11=8 bits).
+ bit 2-		Stop bits (0=1, 1=2 stop bits [1-1/2 if 5 data bits]).
+ bit 3-		Parity enabled if one.
+ bit 4-		0 for odd parity, 1 for even parity (assuming bit 3 = 1).
+ bit 5-		1 for stuck parity.
+ bit 6-		1=force break.
+ bit 7-		1=Divisor latch access bit.  0=rcv/xmit access bit.
+
+Since the standard library provides routines to initialize the serial chip
+(which is the purpose of this port) you shouldn't really mess with this
+port at all.  You may, however, use ComGetLCR to see what the current
+settings are before making any changes.
+
+Warning: (applies mainly to ComSetLCR) DO NOT, UNDER ANY CIRCUMSTANCES,
+CHANGE THE DIVISOR LATCH ACCESS BIT WHILE OPERATING IN INTERRUPT MODE.
+The interrupt service routine assumes the rcv/xmit register is mapped in
+whenever an interrupt occurs.  If you must play with the divisor latch,
+turn off interrupts before changing it.  Always set the divisor latch
+access bit back to zero before turning interrupts back on.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComSetLCR
+-------------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	AL = new LCR value
+
+Registers on return:  	None
+
+Flags affected:       	None
+
+Example of Usage:
+
+; If this maps in the divisor latch, be sure we're not operating with
+; serial interrupts!
+
+			mov	al, NewLCRValue
+			ComSetLCR
+
+Description:
+
+This routine writes the value in AL to the line control register.  See
+ComGetLCR for details on the LCR register.  Especially note the warning
+about the divisor latch access bit.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComGetIIR
+-------------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	None
+
+Registers on return:  	AL = IIR value
+
+Flags affected:       	None
+
+Example of Usage:
+
+			ComGetIIR
+			<do something with value in IIR>
+Description:
+
+The IIR (interrupt identification register) bits are defined as follows:
+
+ Interrupt ID Register (IIR):
+
+ bit 0-		No interrupt is pending (interrupt pending if zero).
+ bits 1,2-	Binary value denoting source of interrupt:
+			00-Modem status
+			01-Transmitter Hold Register Empty
+			10-Received Data Available
+			11-Receiver line status
+ bits 3-7	Always zero.
+
+This value is of little use to anyone except the interrupt service routine.
+The ISR is the only code which should really access this port.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComGetIER
+-------------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	None
+
+Registers on return:  	AL = IER value
+
+Flags affected:       	None
+
+Example of Usage:
+
+			ComGetIER
+			<do something with value in IER>
+Description:
+
+The IER (line control register) bits are defined as follows:
+
+ Interupt enable register (IER):
+
+		If one:
+ bit 0-		Enables received data available interrupt.
+ bit 1-		Enables transmitter holding register empty interrupt.
+ bit 2-		Enables receiver line status interrupt.
+ bit 3-		Enables the modem status interrupt.
+ bits 4-7-	Always set to zero.
+
+Normally, the interrupt initialization procedure sets up this port.  You may
+read or change its value as you deem necessary to control the types of
+interrupts the system generates.  Note that the interrupt service routine
+(ISR) in the library ignores errors.  You will need to modify the ISR if you
+need to trap errors.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComSetIER
+-------------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	AL = new IER value
+
+Registers on return:  	None
+
+Flags affected:       	None
+
+Example of Usage:
+
+			mov	al, NewIERValue
+			ComSetIER
+
+Description:
+
+Writes the value in AL to the IER.  See ComGetIER for more details.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComInitIntr
+---------------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	None
+
+Registers on return:  	None
+
+Flags affected:       	None
+
+Example of Usage:
+
+			ComInitIntr
+
+Description:
+
+Sets up the chip to generate interrupts and programs the PC to transfer
+control to the library serial interrupt service routine when an interrupt
+occurs.  Note that other than interrupt initialization, this code does not
+initialize the 8250 chip.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComDisIntr
+--------------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	None
+
+Registers on return:  	None
+
+Flags affected:       	None
+
+Example of Usage:
+
+			ComDisIntr
+
+Description:
+
+This routine uninstalls the ISR and programs the chip to stop the generation
+of interrupts.  You must call ComInitIntr after calling this routine to
+turn the interrupt system back on.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComIn
+---------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	None
+
+Registers on return:  	AL=character read from buffer or port
+
+Flags affected:       	None
+
+Example of Usage:
+
+			ComIn
+			<Do something with AL>
+
+Description:
+
+ComIn is the input routine associated with interrupt I/O.  It reads the
+next available character from the serial input buffer.  If no characters
+are avialable in the buffer, it waits until the system receives one before
+returning.
+
+Include:	ser.a or stdlib.a
+
+Routine:  ComOut
+----------------
+
+Author:		      	Randall Hyde
+
+Category:             	Serial Communications
+
+Registers on entry:   	AL=Character to output
+
+Registers on return:  	None
+
+Flags affected:       	None
+
+Example of Usage:
+
+			<Get character to write into AL>
+			ComOut
+
+Description:
+
+ComOut is the output routine associated with interrupt I/O.  If the serial
+transmitter isn't currently busy, it will immediately write the data to the
+serial port.  If it is busy, it will buffer the character up.  In most cases
+this routine returns quickly to its caller.  The only time this routine
+will delay is if the buffer is full can you cannot add any additional
+characters to it.
+
+Include:	ser.a or stdlib.a
+

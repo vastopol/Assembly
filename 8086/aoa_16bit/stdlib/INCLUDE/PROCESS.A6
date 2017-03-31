@@ -1,0 +1,103 @@
+StdGrp		group	stdlib, stddata
+
+stddata		segment	para public 'sldata'
+stddata		ends
+
+stdlib		segment	para public 'slcode'
+
+; # 10 routines in this package
+
+externdef	sl_prcsinit:far, sl_prcsquit:far, sl_fork:far, sl_kill:far,
+		sl_die:far, sl_yield:far, sl_coinit:far, sl_cocall:far,
+		sl_cocalll:far, sl_WaitSemaph:far, sl_RlsSemaph:far
+stdlib		ends
+
+
+prcsinit	macro
+		call	far ptr sl_prcsinit
+		endm
+
+prcsquit	macro
+		call	far ptr sl_prcsquit
+		endm
+
+fork		macro
+		call	far ptr sl_fork
+		endm
+
+
+kill		macro
+		call	far ptr sl_kill
+		endm
+
+die		macro
+		call	far ptr sl_die
+		endm
+
+yield		macro
+		call	far ptr sl_yield
+		endm
+
+
+coinit		macro
+		call	far ptr sl_coinit
+		endm
+
+
+cocall		macro	adrs
+		ifb	<adrs>
+		call	far ptr sl_cocall
+		else
+		call	far ptr sl_cocalll
+		dd	adrs
+		endif
+		endm
+
+WaitSemaph	macro	adrs
+		call	far ptr sl_WaitSemaph
+		endm
+
+RlsSemaph	macro	adrs
+		call	far ptr sl_RlsSemaph
+		endm
+
+; Process data structures:
+;
+; Process control block.
+; NextProc field must be the first field in this structure since the dispatcher
+; code assumes that it is at offset zero from a pointer to this structure.
+; The regsp and regssfields appear next since they are the
+; fields most often initialized in the structure.
+; regip and regcs follow the regss entry since, for coroutines, they
+; need to be initialized as well.  Most of the remaining fields do not
+; normally need initialization.
+
+pcb		struc
+NextProc	dd	?
+regsp		dw	?
+regss		dw	?
+regip		dw	?
+regcs		dw	?
+
+regax		dw	?
+regbx		dw	?
+regcx		dw	?
+regdx		dw	?
+regsi		dw	?
+regdi		dw	?
+regbp		dw	?
+regds		dw	?
+reges		dw	?
+regflags	dw	?
+PrcsID		dw	?
+StartingTime	dd	?
+StartingDate	dd	?
+CPUTime		dd	?
+pcb		ends
+
+
+semaphore	struc
+SemaCnt		dw	1
+smaphrLst	dd	?
+endsmaphrlst	dd	?
+semaphore	ends

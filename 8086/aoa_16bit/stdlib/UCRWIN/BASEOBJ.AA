@@ -1,0 +1,8 @@
+extern baseobj__new:FAR
+extern baseobj__constructor:FAR
+extern baseobj__destructor:FAR
+extern baseobj__delete:FAR
+extern baseobj__printself:FAR
+extern baseobj__nameof:FAR
+extern baseobj__error:FAR
+extern baseobj__regs:FAR

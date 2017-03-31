@@ -1,0 +1,29 @@
+#data
+
+; The following code tests the time difference between loading ES:BX
+; from a memory variable and ES:BX with a constant.
+
+ESBXVar		dd	ESBXVar
+
+#enddata
+
+#repetitions 480000
+#unravel 256
+
+#code ("LES BX, ESBXVar")
+%do
+		les	bx, ESBXVar
+#endcode
+
+#code ("LESI ESBXVar")
+%init
+; 	This is the code which does the following:
+;		mov	bx, seg ESBXVar
+;		mov	es, bx
+;		mov	bx, offset ESBXVar
+
+%do
+		lesi	ESBXVar
+#endcode
+#end
+

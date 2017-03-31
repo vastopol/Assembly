@@ -1,0 +1,18 @@
+	mov	bx, 1000
+	mov	cx, 10
+a:	mov	dx, 0
+	cmp	ax, 8000
+	jb	b
+	mov	dx, 1
+b:	mov	[bx], dx
+	add	bx, 1
+	add	ax, ax
+	sub	cx, 1
+	cmp	cx, 0
+	ja	a
+	jmp	0
+
+
+
+
+

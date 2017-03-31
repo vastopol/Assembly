@@ -1,0 +1,79 @@
+StdGrp		group	stdlib, stddata
+
+stddata		segment	para public 'sldata'
+stddata		ends
+
+stdlib		segment	para public 'slcode'
+stdlib		ends
+
+slcall		macro	adrs
+		db	09ah			;Far call
+		dd	stdgrp:adrs		;Address of routine to call
+		endm
+
+
+TTOA		macro
+		ifndef	sl_TTOA
+stdlib		segment	para public 'slcode'
+		extrn	sl_TTOA:far
+stdlib		ends
+		endif
+		slcall	sl_TTOA
+		endm
+
+TTOAm		macro
+		ifndef	sl_TTOAm
+stdlib		segment	para public 'slcode'
+		extrn	sl_TTOAm:far
+stdlib		ends
+		endif
+		slcall	sl_TTOAm
+		endm
+
+TTOA2		macro
+		ifndef	sl_TTOA2
+stdlib		segment	para public 'slcode'
+		extrn	sl_TTOA2:far
+stdlib		ends
+		endif
+		slcall	sl_TTOA2
+		endm
+
+
+xTTOA		macro
+		ifndef	sl_xTTOA
+stdlib		segment	para public 'slcode'
+		extrn	sl_xTTOA:far
+stdlib		ends
+		endif
+		slcall	sl_xTTOA
+		endm
+
+xTTOAm		macro
+		ifndef	sl_xTTOAm
+stdlib		segment	para public 'slcode'
+		extrn	sl_xTTOAm:far
+stdlib		ends
+		endif
+		slcall	sl_xTTOAm
+		endm
+
+xTTOA2		macro
+		ifndef	sl_xTTOA2
+stdlib		segment	para public 'slcode'
+		extrn	sl_xTTOA2:far
+stdlib		ends
+		endif
+		slcall	sl_xTTOA2
+		endm
+
+
+ATOT		macro
+		ifndef	sl_ATOT
+stdlib		segment	para public 'slcode'
+		extrn	sl_ATOT:far
+stdlib		ends
+		endif
+		slcall	sl_ATOT
+		endm
+

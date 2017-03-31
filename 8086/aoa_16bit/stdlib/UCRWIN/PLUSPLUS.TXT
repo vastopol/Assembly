@@ -1,0 +1,163 @@
+MASM++ OVERVIEW:
+
+MASM++ is a methodology used to make Microsoft (c) Macro Assembler 6.00
+behave as if it supported object oriented programming (OOP).   MASM was
+chosen for this project because, regardless of its shortcomings, MASM
+is going to be around for a long time.  It is also a well funded project,
+that has received many important upgrades.  One particularly useful
+advantage that MASM 6.00 has, is local identifiers.
+
+Local identifiers within procedures and structures is much of what
+makes MASM++ possible.  Though this might not seem like much to the
+assembly language programmer, this feature is crucial to the success
+of OOP.  
+
+Some of the object oriented features that we currently support are:
+
+- virtual functions
+- inheritance
+- data and method encapsulation
+- name overloading
+
+As we know, assembly language has not traditionally been thought of
+as a target for OOP, but there really is no reason that it shouldn't
+be.  It only requires that the programmer use a little restraint to
+avoid defeating the features of object oriented programming. 
+
+The real key to the system is the .a files.  These are similar to 
+the .h files of C++, in that they contain the class specification,
+but not the class implementation.   A typical MASM++ file will look 
+something like this:
+
+include  c:\stdlib\stdlib.a
+
+;
+; sample : baseobj	A MASM++ object that explains .a files
+;			Written by Michael A. Griffith
+;
+; Modification List:
+;
+; 26 Oct 91  Michael A. Griffith:
+;	     Created.
+;
+
+
+sample__methods		STRUC
+			new		DW	PROC PTR sample__new
+			constructor	DW	PROC PTR sample__constructor
+			destructor	DW	PROC PTR sample__destructor
+			delete		DW	PROC PTR baseobj__delete
+			printself	DW	PROC PTR sample__print
+			name		DW	PROC PTR sample__name
+			; Keep these in the same order as in baseobj.
+			; All classes need this primative set of operations.
+			; Add additional methods here.
+			addedmethod1	DW	PROC PTR sample__addedmethod1
+			addedmethod2	DW	PROC PTR sample__addedmethod2
+sample__methods		ENDS
+
+sample__data		STRUC
+			; Add any class data objects here
+			; 
+			data1		DB	?
+			data2		DB	?
+			data3		DB	?
+sample__data		ENDS
+
+sample			STRUC
+			methods		sample__methods	
+			data		sample__data
+			parent		baseobj__data
+sample			ENDS
+
+
+All MASM++ requires the stdlib package for assembly, available via
+anonymous ftp from ucrmath.ucr.edu.  We include the header for
+it in all files. 
+
+The methods STRUC contains PROC PTRs to each of the functions in the
+class.   Note that all objects have the minimal set of methods that
+are defined in baseobj.a.  The order must be the same for all classes,
+so it is best to just copy the baseobj.a file and add to it as necessary.
+We can either write methods for the class, as we did with new,
+or inherit them as we did with delete.  The name with the underscores
+is the real name of the function, as it is written, while the
+shorter name is the virtual name which it is called with.
+
+The data STRUC contains all of the class data.  Three examples have
+been included.
+
+The object STRUCT defines what the object looks like.  It has three
+components for all objects, regardless of what they do:
+
+- methods
+- data
+- parent information
+
+The order is important due to the ways that we do virtual functions,
+and inheritance.
+
+Assume that we have the .a file written as above.  We would still
+need to write the methods in our .asm file.  A trivial example would
+contain:
+
+.
+.
+.
+Sample__addedmethod1	PROC
+			ret
+Sample__addedmethod1	ENDP
+
+
+Sample__addedmethod2	PROC
+			ret
+Sample__addedmethod2	ENDP
+.
+.
+.
+
+At least minimal functions would have to be written (or inherited) for
+all methods defined in the .a file.  Assuming that we had completed that,
+we would be ready to use our object:
+
+
+_EXPRESSD	SEGMENT PARA PUBLIC 'DATA'
+		sobjptr		DWORD PTR	;Pointer to object
+		sobj		sample		;Static object
+_EXPRESSD	ENDS
+
+_EXPRESSC	SEGMENT PARA PUBLIC 'CODE'
+
+		les	di, sobj		;Static example
+		call	es:di.constructor
+		.
+		.
+		.
+		call	es:di.name
+		call	es:di.addedmethod1
+		.
+		.
+		.
+		call	es:di.destructor
+
+
+
+		les	di, sobjptr
+		call	sample__new		;Dynamic example
+		call	es:di.constructor
+		.
+		.
+		.
+		call	es:di.name
+		call	es:di.addedmethod1
+		.
+		.
+		.
+		call	es:di.destructor
+		call	es:di.delete
+	
+_EXPRESSC	ENDS
+
+
+
+

@@ -1,0 +1,188 @@
+StdGrp		group	stdlib, stddata
+;
+stddata		segment	para public 'sldata'
+stddata		ends
+stdlib		segment	para public 'slcode'
+
+slcall	macro	adrs
+	db	09ah			;Far call
+	dd	stdgrp:adrs		;Address of routine to call
+	endm
+
+;
+; Character set stuff
+;
+set		macro	n0,n1,n2,n3,n4,n5,n6,n7
+n0		db	1
+n1		db	2
+n2		db	4
+n3		db	8
+n4		db	10h
+n5		db	20h
+n6		db	40h
+n7		db	80h
+		db	264 dup (0)
+		endm
+;
+;
+CreateSets	macro
+		ifndef	sl_CreateSets
+stdlib		segment	para public 'slcode'
+		extrn	sl_CreateSets:far
+stdlib		ends
+		endif
+		slcall	sl_CreateSets
+		endm
+;
+;
+EmptySet	macro
+		ifndef	sl_EmptySet
+stdlib		segment	para public 'slcode'
+		extrn	sl_EmptySet:far
+stdlib		ends
+		endif
+		slcall	sl_EmptySet
+		endm
+;
+;
+RangeSet	macro
+		ifndef	sl_RangeSet
+stdlib		segment	para public 'slcode'
+		extrn	sl_RangeSet:far
+stdlib		ends
+		endif
+		slcall	sl_RangeSet
+		endm
+;
+;
+AddStr		macro
+		ifndef	sl_AddStr
+stdlib		segment	para public 'slcode'
+		extrn	sl_AddStr:far
+stdlib		ends
+		endif
+		slcall	sl_AddStr
+		endm
+;
+;
+AddStrl		macro
+		ifndef	sl_AddStrl
+stdlib		segment	para public 'slcode'
+		extrn	sl_AddStrl:far
+stdlib		ends
+		endif
+		slcall	sl_AddStrl
+		endm
+;
+;
+RmvStr		macro
+		ifndef	sl_RmvStr
+stdlib		segment	para public 'slcode'
+		extrn	sl_RmvStr:far
+stdlib		ends
+		endif
+		slcall	sl_RmvStr
+		endm
+;
+;
+RmvStrl		macro
+		ifndef	sl_RmvStrl
+stdlib		segment	para public 'slcode'
+		extrn	sl_RmvStrl:far
+stdlib		ends
+		endif
+		slcall	sl_RmvStrl
+		endm
+;
+;
+AddChar		macro
+		ifndef	sl_AddChar
+stdlib		segment	para public 'slcode'
+		extrn	sl_AddChar:far
+stdlib		ends
+		endif
+		slcall	sl_AddChar
+		endm
+;
+;
+RmvChar		macro
+		ifndef	sl_RmvChar
+stdlib		segment	para public 'slcode'
+		extrn	sl_RmvChar:far
+stdlib		ends
+		endif
+		slcall	sl_RmvChar
+		endm
+;
+;
+Member		macro
+		ifndef	sl_member
+stdlib		segment	para public 'slcode'
+		extrn	sl_member:far
+stdlib		ends
+		endif
+		slcall	sl_member
+		endm
+;
+;
+CopySet		macro
+		ifndef	sl_CopySet
+stdlib		segment	para public 'slcode'
+		extrn	sl_CopySet:far
+stdlib		ends
+		endif
+		slcall	sl_CopySet
+		endm
+;
+;
+setunion	macro
+		ifndef	sl_union
+stdlib		segment	para public 'slcode'
+		extrn	sl_union:far
+stdlib		ends
+		endif
+		slcall	sl_union
+		endm
+;
+;
+SetIntersect	macro
+		ifndef	sl_Intersect
+stdlib		segment	para public 'slcode'
+		extrn	sl_Intersect:far
+stdlib		ends
+		endif
+		slcall	sl_Intersect
+		endm
+;
+;
+SetDifference	macro
+		ifndef	sl_Difference
+stdlib		segment	para public 'slcode'
+		extrn	sl_Difference:far
+stdlib		ends
+		endif
+		slcall	sl_Difference
+		endm
+;
+;
+NextItem	macro
+		ifndef	sl_NextItem
+stdlib		segment	para public 'slcode'
+		extrn	sl_NextItem:far
+stdlib		ends
+		endif
+		slcall	sl_NextItem
+		endm
+;
+;
+RmvItem		macro
+		ifndef	sl_RmvItem
+stdlib		segment	para public 'slcode'
+		extrn	sl_RmvItem:far
+stdlib		ends
+		endif
+		slcall	sl_RmvItem
+		endm
+;
+stdlib		ends
+

@@ -1,0 +1,27 @@
+StdGrp		group	stdlib, stddata
+;
+stddata		segment	para public 'sldata'
+stddata		ends
+stdlib		segment	para public 'slcode'
+stdlib		ends
+
+
+
+
+;
+		include		consts.a6
+		include		stdout.a6
+		include		stdin.a6
+		include		memory.a6
+		include		conv.a6
+		include		strings.a6
+		include		charsets.a6
+		include		fp.a6
+		include		misc.a6
+		include		lists.a6
+		include		ser.a6
+		include		pattern.a6
+		include		date.a6
+		include		time.a6
+		include		file.a6
+		include		process.a6

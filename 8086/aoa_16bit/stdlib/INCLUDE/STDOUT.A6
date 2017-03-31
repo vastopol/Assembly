@@ -1,0 +1,116 @@
+StdGrp		group	stdlib, stddata
+;
+stddata		segment	para public 'sldata'
+stddata		ends
+
+stdlib		segment	para public 'slcode'
+
+;# 21 routines in this package.
+
+externdef	sl_putc:far, sl_putcr:far, sl_PutcStdOut:far,
+		sl_PutcBIOS:far, sl_SetOutAdrs:far, sl_GetOutAdrs:far,
+		sl_PushOutAdrs:far, sl_PopOutAdrs:far,
+		sl_PutISize:far, sl_PutUSize:far,
+		sl_PutLSize:far, sl_PutULSize:far,
+		sl_puts:far, sl_puth:far, sl_putw:far,
+		sl_puti:far, sl_putu:far, sl_putl:far, sl_putul:far,
+		sl_print:far, sl_printf:far, sl_printff:far
+
+
+Putc		macro
+		call	sl_putc
+		endm
+
+Putcr		macro
+		call	sl_putcr
+		endm
+
+PutcStdOut	macro
+		call	sl_putcStdOut
+		endm
+
+PutcBIOS	macro
+		call	sl_putcBIOS
+		endm
+
+SetOutAdrs	macro
+		call	sl_SetOutAdrs
+		endm
+
+GetOutAdrs	macro
+		call	sl_GetOutAdrs
+		endm
+
+PushOutAdrs	macro
+		call	sl_PushOutAdrs
+		endm
+
+PopOutAdrs	macro
+		call	sl_PopOutAdrs
+		endm
+
+PutISize	macro
+		call	sl_putisize
+		endm
+
+PutUSize	macro
+		call	sl_putusize
+		endm
+
+PutLSize	macro
+		call	sl_putlsize
+		endm
+
+PutULSize	macro
+		call	sl_putulsize
+		endm
+
+Puts		macro
+		call	sl_puts
+		endm
+
+Puth		macro
+		call	sl_puth
+		endm
+
+Putw		macro
+		call	sl_putw
+		endm
+
+Puti		macro
+		call	sl_puti
+		endm
+
+Putu		macro
+		call	sl_putu
+		endm
+
+Putl		macro
+		call	sl_putl
+		endm
+
+PutUL		macro
+		call	sl_putul
+		endm
+
+Print		macro
+		call	sl_print
+		endm
+
+Printf		macro
+		ifdef	Has_sl_printff
+		%out	Warning: You're using both PRINTFF and PRINTF, just use PRINTFF
+		endif
+Has_sl_printf	=	0
+		call	sl_printf
+		endm
+
+printff		macro
+		ifdef	Has_sl_printf
+		%out	Warning: You're using both PRINTFF and PRINTF, just use PRINTFF
+		endif
+Has_sl_printff	=	0
+		call	sl_Printff
+		endm
+
+stdlib		ends

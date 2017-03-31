@@ -1,0 +1,392 @@
+=====================
+Date & Time  Routines
+=====================
+
+These routines convert DOS system times and dates to/from ASCII strings.
+They appear in this section rather than conversions because we eventually
+intend to add date and time arithmetic to the package.
+
+Note the time to string conversion routines do not output the hundredths of
+a second.  Most applications do not need (or want) this.  If you want
+hundredths of a second you can easily write a routine (using this code) or
+modify the existing code to suit your purposes.
+
+
+
+
+Routine:  DTOA (2,m)
+--------------------
+
+Category:       Date/Time Routines
+
+Author:		Randall Hyde
+
+Registers on Entry:
+			CX-	Current year (in the range 1980-2099)
+			DL-	Current day
+			DH-	Current month
+			ES:DI-	Points at buffer with room for at least
+				nine bytes (DTOA/DTOA2 only).
+
+
+Registers on Return: 	ES:DI-	DTOA sticks a string of the form MM/DD/YY
+				into a buffer allocated on the heap (DTOAM
+				only).
+
+			ES:DI-	Points at the zero terminating byte at the
+				end of the string (DTOA2 only).
+
+Flags Affected:       carry-	Set if memory allocation error (DTOAM only).
+
+
+Example of Usage:
+
+			mov	ah, 2ah		;Call DOS to get the system
+			int	21h		; time (also see xDTOA)
+			lesi	TodaysDate	;Buffer to store string.
+			DTOA			;Convert date to string.
+
+			mov	ah, 2ah
+			int	21h
+			lesi	TodaysDate2
+			DTOA2
+
+			mov	ah, 2ah
+			int	21h
+			DTOAM			;ES:DI is allocated on heap.
+
+Description:
+
+DTOA converts a DOS system date (in CX/DX) to an ASCII string and deposits
+the characters into a buffer specified by ES:DI on input.  ES:DI must be at
+least nine bytes long (eight bytes for mm/dd/yy plus the zero terminating
+byte).
+
+DTOA2 converts a DOS system date to an ASCII string just like DTOA above.
+The only difference is that it does not preserve DI.  It leaves DI pointing
+at the zero terminating byte at the end of the string.  This routine is use-
+ful for building up long strings with a date somewhere in the middle.
+
+DTOAM works like DTOA except you do not pass the pointer to a buffer in ES:DI.
+Instead, DTOAM allocates nine bytes for the string on the heap.  It returns
+a pointer to this new string in ES:DI.
+
+Include:              stdlib.a or date.a
+
+Routine:  xDTOA (2,m)
+---------------------
+
+Category:       Date/Time Routines
+
+Author:		Randall Hyde
+
+Registers on Entry:
+			ES:DI-	Points at buffer with room for at least
+				nine bytes (xDTOA/xDTOA2 only).
+
+
+Registers on Return: 	ES:DI-	DTOA sticks a string of the form MM/DD/YY
+				into a buffer allocated on the heap (xDTOAM
+				only).
+
+			ES:DI-	Points at the zero terminating byte at the
+				end of the string (xDTOA2 only).
+
+Flags Affected:       carry-	Set if memory allocation error (xDTOAM only).
+
+
+Example of Usage:
+
+			lesi	TodaysDate	;Buffer to store string.
+			xDTOA			;Convert date to string.
+
+			lesi	TodaysDate2
+			xDTOA2
+
+			mov	ah, 2ah
+			int	21h
+			xDTOAM			;ES:DI is allocated on heap.
+
+Description:
+
+These routines work just like DTOA, DTOA2, and DTOAM except you do not pass
+in the date to them, they call DOS to read the current system date and
+convert that to a string.
+
+Include:              stdlib.a or date.a
+
+
+Routine:  LDTOA (2,m)
+---------------------
+
+Category:       Date/Time Routines
+
+Author:		Randall Hyde
+
+Registers on Entry:
+			CX-	Current year (in the range 1980-2099)
+			DL-	Current day
+			DH-	Current month
+			ES:DI-	Points at buffer with room for at least
+				nine bytes (DTOA/DTOA2 only).
+
+
+Registers on Return: 	ES:DI-	DTOA sticks a string of the form "mmm dd, yyyy"
+				into a buffer allocated on the heap (LDTOAM
+				only).
+
+			ES:DI-	Points at the zero terminating byte at the
+				end of the string (LDTOA2 only).
+
+Flags Affected:       carry-	Set if memory allocation error (LDTOAM only).
+
+
+Example of Usage:
+
+			mov	ah, 2ah		;Call DOS to get the system
+			int	21h		; time (also see xDTOA)
+			lesi	TodaysDate	;Buffer to store string.
+			LDATE			;Convert date to string.
+
+			mov	ah, 2ah
+			int	21h
+			lesi	TodaysDate2
+			LDTOA2
+
+			mov	ah, 2ah
+			int	21h
+			LDTOAM			;ES:DI is allocated on heap.
+
+Description:
+
+These routines work just like the DTOA, DTOA2, and DTOAM routines except they
+output their date in the form "mmm dd, yyyy", e.g., Jan 1, 1980.
+
+Include:              stdlib.a or date.a
+
+Routine:  xLDTOA (2,m)
+---------------------
+
+Category:       Date/Time Routines
+
+Author:		Randall Hyde
+
+Registers on Entry:
+			ES:DI-	Points at buffer with room for at least
+				nine bytes (xLDTOA/xLDTOA2 only).
+
+
+Registers on Return: 	ES:DI-	Sticks a string of the form MMM DD, YYYY
+				into a buffer allocated on the heap (xLDTOAM
+				only).
+
+			ES:DI-	Points at the zero terminating byte at the
+				end of the string (xLDTOA2 only).
+
+Flags Affected:       carry-	Set if memory allocation error (xLDTOAM only).
+
+
+Example of Usage:
+
+			lesi	TodaysDate	;Buffer to store string.
+			xLDTOA			;Convert date to string.
+
+			lesi	TodaysDate2
+			xLDTOA2
+
+			mov	ah, 2ah
+			int	21h
+			xLDTOAM			;ES:DI is allocated on heap.
+
+Description:
+
+Similar to xDTOA, xDTOA2, and xDTOAM except these routines produce strings of
+the form "MMM DD, YYYY".
+
+Include:              stdlib.a or date.a
+
+Routine:  ATOD (2)
+------------------
+
+Category:       Date/Time Routines
+
+Author:		Randall Hyde
+
+Registers on Entry:
+			ES:DI-	Points at string containing date to convert.
+
+
+Registers on Return: 	CX-	Year (1980-2099)
+			DH-	Month (1-12)
+			DL-	Day (1-31)
+			ES:DI-	Points at first non-date string (ATOD2 only)
+
+Flags Affected:       	carry-	Set if bad date format.
+
+
+Example of Usage:
+
+			lesi	TodaysDate	;Buffer containing string.
+			ATOD			;Convert string to date.
+			jc	Error
+
+			lesi	TodaysDate	;Buffer containing string.
+			ATOD2			;Convert string to date.
+			jc	Error
+
+Description:
+
+ATOD converts an ASCII string of the form "mm/dd/yy" or "mm-dd-yy" to a DOS
+format date.  It returns the carry flag set if there is a parse error (that
+is, the string is not in one of these two forms) or if the month, date, or
+year values are out of range (including specifying Feb 29th on non-leap years).
+
+ATOD2 works just like ATOD except it does not preserve DI.  It leaves DI
+pointing at the first non-date character encountered in the string.
+
+Include:              stdlib.a or date.a
+
+Routine:  ATOT (2)
+------------------
+
+Category:       Date/Time Routines
+
+Author:		Randall Hyde
+
+Registers on Entry:
+			ES:DI-	Points at string containing time to convert.
+
+
+Registers on Return: 	CH-	Hour (0..23)
+			CL-	Minutes (0..59)
+			DH-	Seconds (0..59)
+			DL-	Seconds/100 (0..99)
+
+			ES:DI-	Points at first character which is not a part
+				of the parsed time (ATOT2 only).
+
+Flags Affected:       	carry-	Set if bad time format.
+
+
+Example of Usage:
+
+			lesi	CurrentTime	;Buffer containing string.
+			ATOT			;Convert string to time.
+			jc	Error
+
+			lesi	CurrentTime	;Buffer containing string.
+			ATOT2			;Convert string to time.
+			jc	Error
+
+
+Description:
+
+ATOT converts an ASCII string of the form "hh:mm:ss" or "hh:mm:ss.xxx" to a DOS
+format date.  It returns the carry flag set if there is a parse error (that
+is, the string is not in one of these two forms) or if the hours, minutes,
+seconds, or hundredth values are out of range.  If the string does not contain
+1/100ths of a second, this routine returns zero in DL.
+
+ATOT2 works just like ATOT except it does not preserve DI.  It leaves DI
+pointing at the first character beyond the time characters.
+
+Include:              stdlib.a or time.a
+
+Routine:  TTOA (2,m)
+--------------------
+
+Category:       Date/Time Routines
+
+Author:		Randall Hyde
+
+Registers on Entry:
+			CH-	Hour (0..23)
+			CL-	Minutes (0..59)
+			DH-	Seconds (0..59)
+			DL-	1/100 seconds (0..99)
+			ES:DI-	Points at buffer with room for at least
+				nine bytes (TTOA/TTOA2 only).
+
+
+Registers on Return: 	ES:DI-	Sticks a string of the form hh:mm:ss
+				into a buffer allocated on the heap (TTOAM
+				only).
+
+			ES:DI-	Points at the zero terminating byte at the
+				end of the string (TTOA2 only).
+
+Flags Affected:       carry-	Set if memory allocation error (TTOAM only).
+
+
+Example of Usage:
+
+			mov	ah, 2ch		;Call DOS to get the system
+			int	21h		; time (also see xTTOA)
+			lesi	CurrentTime	;Buffer to store string.
+			TTOA			;Convert Time to string.
+
+			mov	ah, 2ch
+			int	21h
+			lesi	CurTime2
+			TTOA2
+
+			mov	ah, 2ch
+			int	21h
+			TTOAM			;ES:DI is allocated on heap.
+
+Description:
+
+TTOA converts the DOS system time in CX/DX to a string and stores the string
+at the location specified by ES:DI.  ES:DI must point at a buffer with at
+least nine characters in it (for a string of the form hh:mm:ss followed by
+a zero terminating byte).
+
+TTOA2 works like TTOA except it does not preserve DI.  It leaves DI pointing
+at the zero terminating byte in the string.  This is useful for generating
+long strings in memory of which TTOA is one component.
+
+TTOAM is like TTOA except it automatically allocates storage for the string
+on the heap.
+
+Include:              stdlib.a or time.a
+
+Routine:  xTTOA (2,m)
+---------------------
+
+Category:       Date/Time Routines
+
+Author:		Randall Hyde
+
+Registers on Entry:
+			ES:DI-	Points at buffer with room for at least
+				nine bytes (xTTOA/xTTOA2 only).
+
+
+Registers on Return: 	ES:DI-	Sticks a string of the form HH:MM:SS
+				into a buffer allocated on the heap xTTOAM
+				only).
+
+			ES:DI-	Points at the zero terminating byte at the
+				end of the string (xTTOA2 only).
+
+Flags Affected:       carry-	Set if memory allocation error (xTTOAM only).
+
+
+Example of Usage:
+
+			lesi	CurrentTime	;Buffer to store string.
+			xTTOA			;Convert time to string.
+
+			lesi	CurTime2
+			xTTOA2
+
+			xTTOAM			;ES:DI is allocated on heap.
+
+Description:
+
+These routines work just like TTOA, TTOA2, and TTOAM except you do not pass
+in the time to them, they call DOS to read the current system time and
+convert that to a string.
+
+Include:              stdlib.a or time.a
+

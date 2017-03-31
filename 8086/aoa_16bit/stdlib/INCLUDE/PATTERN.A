@@ -1,0 +1,93 @@
+; Pattern is a data structure used to match one particular type of pattern.
+; MatchFunction is the address of the function which does the actual
+; comparison (e.g., Spancset, MatchStr, etc.).
+; MatchParm is the primary parameter passed to the MatchFunction (e.g., the
+; character set for Spancset).
+; MatchAlternate is the address of a secondary pattern structure to try if
+; this pattern fails (NULL/0 denotes no alternate).
+; NextPattern is a pointer to the next pattern in a list of patterns.
+; PrevPattern is a pointer to the previous patter in a list of patterns.
+; If the pattern match succeeds, StartPattern will contain the starting
+; offset of the characters in the string matched by the pattern and EndPattern
+; will contain the ending offset (+1) of the string matched by the pattern.
+
+Pattern		struc
+MatchFunction	dd	?
+MatchParm	dd	?
+MatchAlternate	dd	0
+NextPattern	dd	0
+EndPattern	dw	?
+StartPattern	dw	?		;StartPattern/StrSeg must be in
+StrSeg		dw	?		; this order!
+Pattern		ends
+
+
+
+StdGrp		group	stdlib, stddata
+
+stddata		segment	para public 'sldata'
+stddata		ends
+stdlib		segment	para public 'slcode'
+
+slcall	macro	adrs
+	db	09ah			;Far call
+	dd	stdgrp:adrs		;Address of routine to call
+	endm
+
+Match		macro
+		ifndef	sl_Match
+stdlib		segment	para public 'slcode'
+		extrn	sl_Match:far
+stdlib		ends
+		endif
+		slcall	sl_Match
+		endm
+
+
+
+Match2		macro
+		ifndef	sl_Match2
+stdlib		segment	para public 'slcode'
+		extrn	sl_Match2:far
+stdlib		ends
+		endif
+		slcall	sl_Match2
+		endm
+
+
+
+
+patgrab		macro
+		ifndef	sl_grab
+stdlib		segment	para public 'slcode'
+		extrn	sl_grab:far
+stdlib		ends
+		endif
+		slcall	sl_grab
+		endm
+
+MatchFuncs	macro
+stdlib		segment	para public 'slcode'
+		extrn	Spancset:far
+		extrn	Brkcset:far
+		extrn	MatchStr:far
+		extrn	MatchiStr:far
+		extrn	MatchToStr:far
+		extrn	MatchChar:far
+		extrn	MatchToChar:far
+		extrn	MatchChars:far
+		extrn	MatchToPat:far
+		extrn	Anycset:far
+		extrn	NotAnycset:far
+		extrn	EOS:far
+		extrn	ARB:far
+		extrn	ARBNUM:far
+		extrn	Skip:far
+		extrn	POS:far
+		extrn	RPOS:far
+		extrn	GOTOpos:far
+		extrn	RGOTOpos:far
+		extrn	sl_Match2:far
+stdlib          ends
+		endm
+stdlib		ends

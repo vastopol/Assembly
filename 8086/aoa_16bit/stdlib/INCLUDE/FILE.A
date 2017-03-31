@@ -1,0 +1,96 @@
+StdGrp		group	stdlib, stddata
+
+
+FileVar		struc
+fvHandle	dw	?
+fvMode		dw	0
+fvIndex		dw	0
+fvByteCount	dw	0
+fvBuffer	db	512 dup (?)
+FileVar		ends
+
+stddata		segment	para public 'sldata'
+stddata		ends
+
+stdlib		segment	para public 'slcode'
+stdlib		ends
+
+slcall		macro	adrs
+		db	09ah			;Far call
+		dd	stdgrp:adrs		;Address of routine to call
+		endm
+
+
+fcreate		macro
+		ifndef	sl_fcreate
+stdlib		segment	para public 'slcode'
+		extrn	sl_fcreate:far
+stdlib		ends
+		endif
+		slcall	sl_fcreate
+		endm
+
+fopen		macro
+		ifndef	sl_fopen
+stdlib		segment	para public 'slcode'
+		extrn	sl_fopen:far
+stdlib		ends
+		endif
+		slcall	sl_fopen
+		endm
+
+fclose		macro
+		ifndef	sl_fclose
+stdlib		segment	para public 'slcode'
+		extrn	sl_fclose:far
+stdlib		ends
+		endif
+		slcall	sl_fclose
+		endm
+
+fflush		macro
+		ifndef	sl_fflush
+stdlib		segment	para public 'slcode'
+		extrn	sl_fflush:far
+stdlib		ends
+		endif
+		slcall	sl_fflush
+		endm
+
+fgetc		macro
+		ifndef	sl_fgetc
+stdlib		segment	para public 'slcode'
+		extrn	sl_fgetc:far
+stdlib		ends
+		endif
+		slcall	sl_fgetc
+		endm
+
+fputc		macro
+		ifndef	sl_fputc
+stdlib		segment	para public 'slcode'
+		extrn	sl_fputc:far
+stdlib		ends
+		endif
+		slcall	sl_fputc
+		endm
+
+fread		macro
+		ifndef	sl_fread
+stdlib		segment	para public 'slcode'
+		extrn	sl_fread:far
+stdlib		ends
+		endif
+		slcall	sl_fread
+		endm
+
+fwrite		macro
+		ifndef	sl_fwrite
+stdlib		segment	para public 'slcode'
+		extrn	sl_fwrite:far
+stdlib		ends
+		endif
+		slcall	sl_fwrite
+		endm
+
+

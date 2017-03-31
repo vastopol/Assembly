@@ -1,0 +1,54 @@
+StdGrp		group	stdlib, stddata
+;
+stddata		segment	para public 'sldata'
+stddata		ends
+stdlib		segment	para public 'slcode'
+
+
+;# 9 routines in this package.
+
+externdef	sl_MemInit:far, sl_MemInit2:far, sl_malloc:far,
+		sl_realloc:far, sl_dupptr:far, sl_free:far,
+		sl_IsInHeap:far, sl_IsPtr:far, sl_HeapStart:far
+
+
+
+MemInit		macro
+		call	sl_MemInit
+		endm
+
+MemInit2	macro
+		call	sl_MemInit2
+		endm
+
+
+
+malloc		macro
+		call	sl_malloc
+		endm
+
+realloc		macro
+		call	sl_realloc
+		endm
+
+DupPtr		macro
+		call	sl_dupptr
+		endm
+
+free		macro
+		call	sl_free
+		endm
+
+IsInHeap	macro
+		call	sl_IsInHeap
+		endm
+
+IsPtr		macro
+		call	sl_IsPtr
+		endm
+
+HeapStart	macro
+		call	sl_HeapStart
+		endm
+
+stdlib		ends

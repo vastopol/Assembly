@@ -1,0 +1,308 @@
+Utility Routines
+----------------
+
+The following routines are all Utility Routines.  The first routines listed
+below compute the number of print positions required by a 16-bit and 32-bit
+signed and unsigned integer value.  UlSize is like the LSize except it treats
+the value in DX:AX as an unsigned long integer.  The next set of routines in
+this section check the character in the AL register to see whether it is a
+hexidecimal digit, if it alphabetic, if it is a lower case alphabetic, if it
+is a upper case alphabetic, and if it is numeric.  Then there are some
+miscellaneous routines (macros) which process command line parameters, invoke
+DOS and exit the program.
+
+
+
+Routine:  ISize
+---------------
+
+Category:            Utility Routine
+
+Register on entry:   AX- 16-bit value to compute the
+				output size for.
+
+Register on return:  AX- Number of print positions
+				required by this number (including
+				the minus sign, if necessary).
+
+Flags affected:      None
+
+Example of usage:
+		     mov     ax, I
+		     ISize
+		     puti                    ;Prints positions
+					     ;req'd by I.
+
+
+Description:         This routine computes the number of print positions
+		     required by a 16-bit signed integer value.  ISize computes
+		     the minimum number of character positions it takes to print
+		     the signed decimal value in the AX register.  If the number
+		     is negative, it will include space for the minus sign in
+		     the count.
+
+
+Include:             stdlib.a or util.a
+
+
+
+
+Routine:  USize
+---------------
+
+Category:            Utility Routine
+
+Register on entry:   AX- 16 bit value to compute the
+				output size for
+
+Register on return:  AX- number of print positions
+			 required by this number (including
+			 the minus sign, if necessary)
+
+Flags affected:      None
+
+Example of usage:
+		     mov     ax, I
+		     USize
+		     puti                    ;prints position
+					     ;required by I
+
+
+Description:         This routine computes the number of print positions
+		     required by a 16-bit signed integer value.  It also
+		     computes the number of print positions required by a
+		     16-bit unsigned value.  USize computes the minimum number
+		     of character positions it will take to print an unsigned
+		     decimal value in the AX register.  If the number is
+		     negative, it will include space for the minus sign in the
+		     count.
+
+
+Include:             stdlib.a or util.a
+
+
+Routine:  LSize
+---------------
+
+Category:            Utility Routine
+
+Register on entry:   DX:AX   - 32-bit value to compute the
+			       output size for.
+
+Register on return:  AX - Number of print positions
+			  required by this number (including
+			  the minus sign, if necessary).
+
+Flags affected:      None
+
+Example of Usage:
+		     mov     ax, word ptr L
+		     mov     dx, word ptr L+2
+		     LSize
+		     puti                    ;Prints positions
+					     ;req'd by L.
+
+
+Description:         This routine computes the number of print positions
+		     required by a 32-bit signed integer value.  LSize computes
+		     the minimum number of character positions it will take to
+		     print the signed decimal value in the DX:AX registers.  If
+		     the number is negative, it will include space for the minus
+		     sign in the count.
+
+
+Include:             stdlib.a or util.a
+
+
+
+Routine:  ULSize
+----------------
+
+Category:             Utility Routine
+
+Registers on Entry:   DX:AX - 32-bit value to compute the output size for.
+
+Registers on return:  AX - number of print positions required by this number
+
+Flags affected:       None
+
+Example of Usage:
+		      mov     ax, word ptr L
+		      mov     dx, word ptr L+2
+		      ULSize
+		      puti                    ; Prints positions req'd by L
+
+
+Description:          ULSize computes the minimum number of character
+		      positions it will take to print an unsigned decimal
+		      value in the DX:AX registers.
+
+
+Include:              stdlib.a or util.a
+
+
+
+Routine:  IsAlNum
+-----------------
+
+Category:             Utility routine
+
+Register on entry:    AL - character to check.
+
+Register on return:   None
+
+Flags affected:       Zero flag - set if character is alphanumeric,
+		      clear if not.
+
+
+Example of usage :    mov al, char
+		      IsAlNum
+		      je IsAlNumChar
+
+
+Description :         This routine checks the character in the AL register to
+		      see if it is in the range A-Z, a-z, or 0-9.  Upon return,
+		      you can use the JE instruction to check to see if the
+		      character was in this range (or, conversely, you can use
+		      JNE to see if it is not in range).
+
+
+Include:              stdlib.a or util.a
+
+
+Routine:  IsXDigit
+------------------
+
+Category:               Utility Routine
+
+Register on Entry:     AL- character to check
+
+Registers on Return:    None
+
+Flags Affected:         Zero flag-  Set if character is a hex digit, clear if not
+
+
+Example of Usage:       mov    al, char
+			IsXDigit
+			je     IsXDigitChar
+
+
+Description:            This routine checks the character in the AL register to
+			see if it is in the range A-F, a-f, or 0-9.  Upon
+			return, you can use the JE instruction to check to see
+			if the character was in this range (or, conversely,
+			you can use jne to see if it is not in the range).
+
+
+Include:                stdlib.a or util.a
+
+
+Routine:   IsDigit
+------------------
+
+Category:            Utility Routine
+
+Register on entry:   AL- Character to check
+
+Register on return:  None
+
+Flags affected:	     Zero flag- set if character is numeric, clear if not.
+
+Example of Usage:    mov   al, char
+		     IsDigit
+		     je  IsDecChar
+
+
+Description:         This routine checks the character in the AL register to
+		     see if it is in the range 0-9.  Upon return, you can use
+		     the JE instruction to check to see if the character was
+		     in the range (or, conversely, you can use JNE to see if it
+		     is not in the range).
+
+
+Include:             stdlib.a or util.a
+
+
+Routine:   IsAlpha
+------------------
+
+Category:            Utility Routine
+
+Register on entry:   AL- Character to check
+
+Register on return:  None
+
+Flags affected:	     Zero flag- set if character is alphabetic, clear if not.
+
+Example of Usage:    mov   al, char
+		     IsAlpha
+		     je   IsAlChar
+
+
+Description:         This routine checks the character in the AL register to
+		     see if it is in the range A-Z or a-z.  Upon return, you
+		     can use the JE instruction to check to see if the character
+		     was in the range (or, conversely, you can use JNE to see
+		     if it is not in the range).
+
+Include:             stdlib.a or util.a
+
+
+
+
+Routine: IsLower
+----------------
+
+Category:             Utility Routine
+
+Registers on Entry:   AL- character to test
+
+Registers on Return:  None
+
+
+Flags Affected:       Zero = 1 if character is a lower case alphabetic character
+		      Zero = 0 if character is not a lower case alphabetic
+		      character
+
+Example of Usage:     mov  AL, char        ; put char in AL
+		      IsLower              ; is char lower a-z?
+		      je  IsLowerChar      ; if yes, jump to IsLowerChar
+
+
+Description:          This routine checks the character in the AL register to
+		      see if it is in the range a-z.  Upon return, you can use
+		      the JE instruction to check and see if the character was
+		      in this range (or you can use JNE to check and see if
+		      the character was not in this range).  This procedure is
+		      implemented as a macro for high performance.
+
+
+Include:              stdlib.a or util.a
+
+
+Routine:  IsUpper
+-----------------
+
+Category:             Utility Routine
+
+Registers on Entry:   AL- character to check
+
+Registers on Return:  None
+
+Flags Affected:       Zero flag - set if character is uppercase alpha, clear
+				  if not.
+
+
+Example of Usage:     mov al, char
+		      IsUpper
+		      je IsUpperChar
+
+
+Description:          This routine checks the character in the AL register to
+		      see if it is in the ranger A-Z.  Upon return, you can use
+		      the JE instruction to check to see if it not in the
+		      range).  It uses macro implementation for high performance.
+
+
+Include:              stdlib.a or util.a
+

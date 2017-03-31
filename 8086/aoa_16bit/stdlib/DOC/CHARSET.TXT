@@ -1,0 +1,484 @@
+Character Set Routines
+----------------------
+
+The character set routines let you deal with groups of characters as a set
+rather than a string.  A set is an unordered collection of objects where
+membership (presence or absence) is the only important quality.  The stdlib
+set routines were designed to let you quickly check if an ASCII character is
+in a set, to quickly add characters to a set or remove characters from a set.
+These operations are the ones most commonly used on character sets.  The
+other operations (like union, intersection, difference, etc.) are useful, but
+are not as popular as the former routines.  Therefore, the data structure
+has been optimized for sets to handle the membership and add/delete operations
+at the slight expense of the others.
+
+Character sets are implemented via bit vectors.  A "1" bit means that an item
+is present in the set and a "0" bit means that the item is absent from the
+set.  The most common implementation of a character set is to use thirty-two 
+consecutive bytes, eight bytes per, giving 256 bits (one bit for each char-
+acter in the character set).  While this makes certain operations (like 
+assignment, union, intersection, etc.) fast and convenient, other operations
+(membership, add/remove items) run much slower.  Since these are the more 
+important operations, a different data structure is used to represent sets.
+A faster approach is to simply use a byte value for each item in the set.  
+This offers a major advantage over the thirty-two bit scheme:  for operations 
+like membership it is very fast (since all you have got to do is index into 
+an array and test the resulting value).  It has two drawbacks:  first, oper-
+ations like set assignment, union, difference, etc., require 256 operations 
+rather than thirty-two; second, it takes eight times as much memory.
+
+The first drawback, speed, is of little consequence.  You will rarely use the
+the operations so affected, so the fact that they run a little slower will be
+of little consequence.  Wasting 224 bytes is a problem, however.  Especially
+if you have a lot of character sets.
+
+The approach used here is to allocate 272 bytes.  The first eight bytes con-
+tain bit masks, 1, 2, 4, 8, 16, 32, 64, 128.  These masks tell you which bit
+in the following 264 bytes is associated with the set.  This facilitates 
+putting eight sets into 272 bytes (34 bytes per character set).  This provides
+almost the speed of the 256-byte set with only a two byte overhead.  In the
+stdlib.a file there is a macro that lets you define a group of character
+sets:  set.  The macro is used as follows:
+
+	set set1, set2, set3, ... , set8
+
+You must supply between one and eight labels in the operand field.  These are
+the names of the sets you want to create.  The set macro automatically 
+attaches these labels to the appropriate mask bytes in the set.  The actual
+bit patterns for the set begin eight bytes later (from each label).  There-
+fore, the byte corresponding to chr(0) is staggered by one byte for each
+set (which explains the other eight bytes needed above and beyond the 256 
+required for the set).  When using the set manipulation routines, you should
+always pass the address of the mask byte (i.e., the seg/offset of one of the 
+labels above) to the particular set manipulation routine you are using. 
+Passing the address of the structure created with the macro above will 
+reference only the first set in the group.
+
+Note that you can use the set operations for fast pattern matching appli-
+cations.  The set membership operation for example, is much faster that the 
+strspan routine found in the string package.  Proper use of character sets
+can produce a program which runs much faster than some of the equivalent
+string operations.
+
+
+Note: there is a special include file in the INCLUDE directory, STDSETS.A,
+which contains the bit definitions for eight commonly-used character sets:
+Alpha (upper and lower case alphabetics), lower (lower case alphabetics),
+upper (upper case alphabetics), digits ("0".."9"), xdigits (hexadecimal
+digits: "0"-"9", 'a'-'z', and 'A'-'Z'), alphanum (upper/lower case alpha
+and digits), whitespace (spaces, tabs, carriage returns, and linefeeds),
+and delimiters (whitespace plus ",", ";", "<", ">", and "|").
+
+If you want to use this standard character set in your program you must
+include the STDSETS.A file in an appropriate (data) segment.  Note that
+including STDLIB.A or CHARSETS.A will not give the standard sets.  You must
+explicitly place an include STDSETS.A in your program to have access to
+these sets.
+
+
+Routine:  Createsets
+--------------------
+
+Category:             Character Set Routine
+
+Registers on Entry:   no parameters passed
+
+Registers on return:  ES:DI - pointer to eight sets
+
+Flags affected:       Carry = 0 if no error. Carry = 1 if insufficient
+		      memory to allocate storage for sets.
+
+Example of Usage:
+		      Createsets
+		      jc      NoMemory
+		      mov     word ptr SetPtr,   di
+		      mov     word ptr SetPtr+2, es
+
+Description:  Createsets allocates 272 bytes on the heap.   This is sufficient
+	      room for eight character sets.  It then initializes the first
+	      eight bytes of this storage with the proper mask values for
+	      each set.  Location es:0[di] gets set to 1, location es:1[di]
+	      gets 2, location es:2[di] gets 4, etc.  The Createsets routine
+	      also initializes all of the sets to the empty set by clearing
+	      all the bits to zero.
+
+Include:              stdlib.a or charsets.a
+
+
+Routine:  EmptySet
+------------------
+
+Category:             Character Set Routine
+
+Registers on Entry:   ES:DI - pointer to first byte of desired set
+
+Registers on return:  None
+
+Flags affected:	      None
+
+Example of Usage:
+		      les     di,  SetPtr
+		      add     di,  3          ; Point at 4th set in group.
+		      Emptyset
+
+
+Description:  Emptyset clears out the bits in a character set to zero
+	      (thereby setting it to the empty set).  Upon entry, es:di must
+	      point at the first byte of the character set you want to clear.
+	      Note that this is not the address returned by Createsets.  The
+	      first eight bytes of a character set structure are the
+	      addresses of eight different sets.  ES:DI must point at one of
+	      these bytes upon entry into Emptyset.
+
+Include:              stdlib.a or charsets.a
+
+
+Routine:  Rangeset
+------------------
+
+Category:             Character Set Routine
+
+Registers on entry:   ES:DI (contains the address of the first byte of the set)
+		      AL    (contains the lower bound of the items)
+		      AH    (contains the upper bound of the items)
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+		      lea di, SetPtr
+		      add di, 4
+		      mov al, 'A'
+		      mov ah, 'Z'
+		      rangeset
+
+
+Description:  This routine adds a range of values to a set with ES:DI as the
+	      pointer to the set, AL as the lower bound of the set, and
+	      AH as the upper bound of the set (AH has to be greater than
+	      AL, otherwise, there will an error).
+
+Include:              stdlib.a or charsets.a
+
+
+Routine:  Addstr (l)
+--------------------
+
+Category:             Character Set Routine
+
+Registers on Entry:   ES:DI- pointer to first byte of desired set
+		      DX:SI- pointer to string to add to set (Addstr only)
+		      CS:RET-pointer to string to add to set (Addstrl only)
+
+Registers on Return:  None
+
+Flags Affected:       None
+
+Example of Usage:
+		      les     di, SetPtr
+		      add     di, 1           ;Point at 2nd set in group.
+		      mov     dx, seg CharStr ;Pointer to string
+		      lea     si, CharStr     ; chars to add to set.
+		      addstr                  ;Union in these characters.
+;
+		      les     di, SetPtr      ;Point at first set in group.
+		      addstrl
+		      db      "AaBbCcDdEeFf0123456789",0
+;
+
+
+Description:  Addstr lets you add a group of characters to a set by
+	      specifying a string containing the characters you want in
+	      the set.  To Addstr you pass a pointer to a zero-terminated
+	      string in dx:si.  Addstr will add (union) each character
+	      from this string into the set.
+
+	      Addstrl works the same way except you pass the string as
+	      a literal string constant in the code stream rather than
+	      via ES:DI.
+
+Include:              stdlib.a or charsets.a
+
+
+Routine:  Rmvstr (l)
+--------------------
+
+
+Category:             Character Set Routine
+
+
+Registers on entry:   ES:DI contains the address of first byte of a set
+		      DX:SI contains the address of string to be removed
+			     from a set (Rmvstr only)
+		      CS:RET pointer to string to add to set (Rmvstrl only)
+
+
+Registers on return:  None
+
+
+Flags affected:       None
+
+
+Example of Usage:
+		      les 	di, SetPtr
+		      mov 	dx, seg CharStr
+		      lea 	si, CharStr
+		      rmvstr
+
+		      mov 	dx, seg CharStr
+		      lea 	si, CharStr
+		      rmvstrl
+		      db      	"ABCDEFG",0
+
+
+Description:  This routine is to remove a string from a set with ES:DI
+	      pointing to its first byte, and DX:SI pointing to the
+	      string to be removed from the set.
+
+	      For Rmvstrl, the string of characters to remove from the
+	      set follows the call in the code stream.
+
+Include:              stdlib.a or charsets.a
+
+
+Routine:  AddChar
+-----------------
+
+Category:             Character Set Routine
+
+Registers on Entry:   ES:DI- pointer to first byte of desired set
+		      AL- character to add to the set
+
+Registers on Return:  None
+
+Flags affected:       None
+
+Example of Usage:
+		      les     di, SetPtr
+		      add     di, 1           ;Point at 2nd set in group.
+		      mov     al, Ch2Add      ;Character to add to set.
+		      addchar
+
+
+Description:  AddChar lets you add a single character (passed in AL)
+	      to a set.
+
+Include:              stdlib.a or charsets.a
+
+
+Routine:  Rmvchar
+-----------------
+
+Category:             Character Set Routine
+
+Registers on entry:   ES:DI (contains the address of first byte of a set)
+		      AL    (contains the character to be removed)
+
+Registers on return:  None
+
+Flags affected:	      None
+
+Example of Usage:
+		      lea di, SetPtr
+		      add di, 7		;Point at eighth set in group.
+		      mov al, Ch2Rmv
+		      Rmvchar
+
+Description:  This routine removes the character in AL from a set.
+	      ES:SI points to the set's mask byte. The corresponding
+	      bit in the set is cleared to zero.
+
+Include:              stdlib.a or charsets.a
+
+
+Routine:  Member
+----------------
+
+Category:             Character Set Routine
+
+Registers on entry:   ES:DI (contains the address of first byte of a set)
+		      AL    (contains the character to be compared)
+
+Registers on return:  None
+
+Flags affected:       Zero flag (Zero = 0 if the character is in the set
+				 Zero = 1 if the character is not in the set)
+
+Example of Usage:
+		      les di, SetPtr
+		      add di, 1
+		      mov al, 'H'
+		      member
+		      jne IsInSet
+
+
+Description:  Member is used to find out if the character in AL is in a set
+	      with ES:DI pointing to its mask byte. If the character is in
+	      the set, the zero flag is set to 0. If not, the zero flag is
+	      set to one.
+
+Include:              stdlib.a or charsets.a
+
+
+Routine:  CopySet
+-----------------
+
+Category:            Character Set Routine
+
+Register on entry:   ES:DI- pointer to first byte of destination set.
+		     DX:SI- pointer to first byte of source set.
+
+Register on Return:  None
+
+Flags affected:      None
+
+Example of Usage:
+		     les     di, SetPtr
+		     add     di, 7           ;Point at 8th set in group.
+		     mov     dx, seg SetPtr2 ;Point at first set in group.
+		     lea     si, SetPtr2
+		     copyset
+
+
+Description:  CopySet copies the items from one set to another.  This is a
+	      straight assignment, not a union operation.  After the
+	      operation, the destination set is identical to the source set,
+	      both in terms of the element present in the set and absent
+	      from the set.
+
+
+Include:             stdlib.a or charsets.a
+
+
+Routine:  SetUnion
+------------------
+
+Category:            Character Set Routine
+
+Register on entry:   ES:DI - pointer to first byte of destination set.
+		     DX:SI - pointer to first byte of source set.
+
+Register on return:  None
+
+Flags affected:      None
+
+Example of Usage:    les   di, SetPtr
+		     add   di, 7              ;point at 8th set in group.
+		     mov   dx, seg SetPtr2    ;point at 1st set in group.
+		     lea   si, sSetPtr2
+		     unionset
+
+
+Description:  The SetUnion routine computes the union of two sets.
+	      That is, it adds all of the items present in a source set
+	      to a destination set.  This operation preserves items
+	      present in the destination set before the SetUnion
+	      operation.
+
+Include:             stdlib.a or charsets.a
+
+
+Routine:  SetIntersect
+----------------------
+
+Category:            Character Set Routine
+
+Register on entry:   ES:DI - pointer to first byte of destination set.
+		     DX:SI - pointer to first byte of source set.
+
+Register on return:  None
+
+Flags affected:      None
+
+Example of Usage:
+		     les   di, SetPtr
+		     add   di, 7              ;point at 8th set in group.
+		     mov   dx, seg SetPtr2    ;point at 1st set in group.
+		     lea   si, SetPtr2
+		     setintersect
+
+Description:  SetIntersect computes the intersection of two sets, leaving
+	      the result in the destination set.  The new set consists
+	      only of those items which previously appeared in
+	      both the source and destination sets.
+
+Include:             stdlib.a or charsets.a
+
+
+Routine:  SetDifference
+-----------------------
+
+Category:            Character Set Routine
+
+Register on entry:   ES:DI - pointer to the first byte of destination set.
+		     DX:SI - pointer to the first byte of the source set.
+
+Register on return:  None
+
+Flags affected:      None
+
+Example of Usage:
+		     les   di, SetPtr
+		     add   di, 7               ;point at 8th set in group.
+		     mov   dx, seg SetPtr2     ;point at 1st set in group.
+		     lea   si, SetPtr2
+		     setdifference
+
+
+Description:  SetDifference computes the result of (ES:DI) := (ES:DI) -
+	      (DX:SI).  The destination set is left with its original
+	      items minus those items which are also in the source set.
+
+Include:             stdlib.a or charsets.a
+
+
+Routine:  Nextitem
+------------------
+
+Category:             Character Set Routine
+
+Registers on entry:   ES:DI (contains the address of first byte of the set)
+
+Registers on return:  AL (contains the first item in the set)
+
+Flags affected:       None
+
+Example of Usage:
+		      les di, SetPtr
+		      add di, 7		;Point at eighth set in group.
+		      nextitem
+
+
+Description:  Nextitem is the routine to search the first character (item)
+	      in the set with ES:DI pointing to its mask byte. AL will
+	      return the character in the set. If the set is empty, AL
+	      will contain zero.
+
+Include:              stdlib.a or charsets.a
+
+
+Routine:  Rmvitem
+-----------------
+
+Category:             Character Set Routine
+
+Registers on entry:   ES:DI (contains the address fo first byte of the set)
+
+Registers on return:  AL (contains the first item in the set)
+
+Flags affected:       None
+
+Example of Usage:
+		      les di, SetPtr
+		      add di, 7
+		      rmvitem
+
+Description:  Rmvitem locates the first available item in the set and
+	      removes it with ES:DI pointing to its mask byte. AL will
+	      return the item removed. If the set is empty, AL will
+	      return zero.
+
+Include:              stdlib.a or charsets.a
+
+

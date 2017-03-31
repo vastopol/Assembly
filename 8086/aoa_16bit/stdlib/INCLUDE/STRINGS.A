@@ -1,0 +1,400 @@
+StdGrp		group	stdlib, stddata
+;
+stddata		segment	para public 'sldata'
+stddata		ends
+stdlib		segment	para public 'slcode'
+;
+; String stuff
+;
+;--------------------------------------------------------------------------
+;
+
+slcall	macro	adrs
+	db	09ah			;Far call
+	dd	stdgrp:adrs		;Address of routine to call
+	endm
+
+;
+strcpy		macro
+		ifndef	sl_strcpy
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcpy:far
+stdlib		ends
+		endif
+		slcall	sl_strcpy
+		endm
+;
+;
+;
+;
+strcpyl		macro
+		ifndef	sl_strcpyl
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcpyl:far
+stdlib		ends
+		endif
+		slcall	sl_strcpyl
+		endm
+;
+;
+;
+strdup		macro
+		ifndef	sl_strdup
+stdlib		segment	para public 'slcode'
+		extrn	sl_strdup:far
+stdlib		ends
+		endif
+		slcall	sl_strdup
+		endm
+;
+;
+;
+strdupl		macro
+		ifndef	sl_strdupl
+stdlib		segment	para public 'slcode'
+		extrn	sl_strdupl:far
+stdlib		ends
+		endif
+		slcall	sl_strdupl
+		endm
+;
+;
+strlen		macro
+		ifndef	sl_strlen
+stdlib		segment	para public 'slcode'
+		extrn	sl_strlen:far
+stdlib		ends
+		endif
+		slcall	sl_strlen
+		endm
+;
+;
+strcat		macro
+		ifndef	sl_strcat
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcat:far
+stdlib		ends
+		endif
+		slcall	sl_strcat
+		endm
+;
+;
+strcatl		macro
+		ifndef	sl_strcatl
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcatl:far
+stdlib		ends
+		endif
+		slcall	sl_strcatl
+		endm
+;
+;
+strcatm		macro
+		ifndef	sl_strcatm
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcatm:far
+stdlib		ends
+		endif
+		slcall	sl_strcatm
+		endm
+;
+;
+;
+strcatml	macro
+		ifndef	sl_strcatml
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcatml:far
+stdlib		ends
+		endif
+		slcall	sl_strcatml
+		endm
+;
+;
+;
+strchr		macro
+		ifndef	sl_strchr
+stdlib		segment	para public 'slcode'
+		extrn	sl_strchr:far
+stdlib		ends
+		endif
+		slcall	sl_strchr
+		endm
+;
+;
+strstr		macro
+		ifndef	sl_strstr
+stdlib		segment	para public 'slcode'
+		extrn	sl_strstr:far
+stdlib		ends
+		endif
+		slcall	sl_strstr
+		endm
+;
+;
+;
+strstrl		macro
+		ifndef	sl_strstrl
+stdlib		segment	para public 'slcode'
+		extrn	sl_strstrl:far
+stdlib		ends
+		endif
+		slcall	sl_strstrl
+		endm
+;
+;
+;
+strcmp		macro
+		ifndef	sl_strcmp
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcmp:far
+stdlib		ends
+		endif
+		slcall	sl_strcmp
+		endm
+;
+;
+; stricmp-	As with strcmp above, except it is case insensitive.
+;
+stricmp		macro
+		ifndef	sl_stricmp
+stdlib		segment	para public 'slcode'
+		extrn	sl_stricmp:far
+stdlib		ends
+		endif
+		slcall	sl_stricmp
+		endm
+;
+;
+stricmpl	macro
+		ifndef	sl_stricmpl
+stdlib		segment	para public 'slcode'
+		extrn	sl_stricmpl:far
+stdlib		ends
+		endif
+		slcall	sl_stricmpl
+		endm
+;
+strcmpl		macro
+		ifndef	sl_strcmpl
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcmpl:far
+stdlib		ends
+		endif
+		slcall	sl_strcmpl
+		endm
+;
+;
+strupr		macro
+		ifndef	sl_strupr
+stdlib		segment	para public 'slcode'
+		extrn	sl_strupr:far
+stdlib		ends
+		endif
+		slcall	sl_strupr
+		endm
+;
+;
+struprm		macro
+		ifndef	sl_struprm
+stdlib		segment	para public 'slcode'
+		extrn	sl_struprm:far
+stdlib		ends
+		endif
+		slcall	sl_struprm
+		endm
+;
+;
+strlwr		macro
+		ifndef	sl_strlwr
+stdlib		segment	para public 'slcode'
+		extrn	sl_strlwr:far
+stdlib		ends
+		endif
+		slcall	sl_strlwr
+		endm
+;
+;
+strlwrm		macro
+		ifndef	sl_strlwrm
+stdlib		segment	para public 'slcode'
+		extrn	sl_strlwrm:far
+stdlib		ends
+		endif
+		slcall	sl_strlwrm
+		endm
+;
+;
+strset		macro
+		ifndef	sl_strset
+stdlib		segment	para public 'slcode'
+		extrn	sl_strset:far
+stdlib		ends
+		endif
+		slcall	sl_strset
+		endm
+;
+;
+strsetm		macro
+		ifndef	sl_strsetm
+stdlib		segment	para public 'slcode'
+		extrn	sl_strsetm:far
+stdlib		ends
+		endif
+		slcall	sl_strsetm
+		endm
+;
+;
+strspan		macro
+		ifndef	sl_strspan
+stdlib		segment	para public 'slcode'
+		extrn	sl_strspan:far
+stdlib		ends
+		endif
+		slcall	sl_strspan
+		endm
+;
+;
+;
+strspanl	macro
+		ifndef	sl_strspanl
+stdlib		segment	para public 'slcode'
+		extrn	sl_strspanl:far
+stdlib		ends
+		endif
+		slcall	sl_strspanl
+		endm
+;
+;
+;
+strcspan	macro
+		ifndef	sl_strcspan
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcspan:far
+stdlib		ends
+		endif
+		slcall	sl_strcspan
+		endm
+;
+;
+;
+strcspanl	macro
+		ifndef	sl_strcspanl
+stdlib		segment	para public 'slcode'
+		extrn	sl_strcspanl:far
+stdlib		ends
+		endif
+		slcall	sl_strcspanl
+		endm
+;
+;
+strins		macro
+		ifndef	sl_strins
+stdlib		segment	para public 'slcode'
+		extrn	sl_strins:far
+stdlib		ends
+		endif
+		slcall	sl_strins
+		endm
+;
+strinsl		macro
+		ifndef	sl_strinsl
+stdlib		segment	para public 'slcode'
+		extrn	sl_strinsl:far
+stdlib		ends
+		endif
+		slcall	sl_strinsl
+		endm
+;
+;
+strinsm		macro
+		ifndef	sl_strinsm
+stdlib		segment	para public 'slcode'
+		extrn	sl_strinsm:far
+stdlib		ends
+		endif
+		slcall	sl_strinsm
+		endm
+;
+strinsml	macro
+		ifndef	sl_strinsml
+stdlib		segment	para public 'slcode'
+		extrn	sl_strinsml:far
+stdlib		ends
+		endif
+		slcall	sl_strinsml
+		endm
+;
+strdel		macro
+		ifndef	sl_strdel
+stdlib		segment	para public 'slcode'
+		extrn	sl_strdel:far
+stdlib		ends
+		endif
+		slcall	sl_strdel
+		endm
+;
+strdelm		macro
+		ifndef	sl_strdelm
+stdlib		segment	para public 'slcode'
+		extrn	sl_strdelm:far
+stdlib		ends
+		endif
+		slcall	sl_strdelm
+		endm
+;
+strrev		macro
+		ifndef	sl_strrev
+stdlib		segment	para public 'slcode'
+		extrn	sl_strrev:far
+stdlib		ends
+		endif
+		slcall	sl_strrev
+		endm
+;
+strrevm		macro
+		ifndef	sl_strrevm
+stdlib		segment	para public 'slcode'
+		extrn	sl_strrevm:far
+stdlib		ends
+		endif
+		slcall	sl_strrevm
+		endm
+;
+strblkdelm	macro
+		ifndef	sl_strbdelm
+stdlib		segment	para public 'slcode'
+		extrn	sl_strbdelm:far
+stdlib		ends
+		endif
+		slcall	sl_strbdelm
+		endm
+;
+strblkdel	macro
+		ifndef	sl_strbdel
+stdlib		segment	para public 'slcode'
+		extrn	sl_strbdel:far
+stdlib		ends
+		endif
+		slcall	sl_strbdel
+		endm
+;
+strtrimm	macro
+		ifndef	sl_strtrimm
+stdlib		segment	para public 'slcode'
+		extrn	sl_strtrimm:far
+stdlib		ends
+		endif
+		slcall	sl_strtrimm
+		endm
+;
+strtrim		macro
+		ifndef	sl_strtrim
+stdlib		segment	para public 'slcode'
+		extrn	sl_strtrim:far
+stdlib		ends
+		endif
+		slcall	sl_strtrim
+		endm
+;
+stdlib		ends
+

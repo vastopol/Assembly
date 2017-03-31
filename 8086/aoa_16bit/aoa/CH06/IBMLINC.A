@@ -1,0 +1,108 @@
+		PAGE	60,132
+		NAME	IBMLFILE
+		TITLE	IBM/L Version 2.1
+;============================================
+
+
+
+		include	stdlib.a
+		includelib stdlib.lib
+
+
+;	M A C R O S
+
+
+
+		.XALL
+;============================================
+DSEG		segment	para public 'data'
+;##
+;
+@OuterLoopCtr	dw	?
+@InnerLoopCtr	dw	?
+
+@XTFlag		DW	0	; 0 =AT
+				; 1 =XT -- shr ax,2 will not work
+@TimeStart	DW	0	; in ticks since midnight
+@TimeStop	DW	0
+@Overhead	DW	0
+
+;	M E S S A G E S
+
+
+DSEG		ends
+;
+;
+;
+;
+CSEG		segment
+		assume	cs:cseg, ds:dseg, es:dseg, ss:sseg
+;
+		public	PSP
+PSP		dw	?
+;
+;
+@Main		proc
+		mov	cs:PSP, es		;Save pgm seg prefix
+		mov	ax, seg dseg		;Set up the segment registers
+		mov	ds, ax
+		mov	es, ax
+		mov	dx, 0
+		MemInit				;Initialize Memory Manager
+;
+		mov	ax, seg dseg
+		mov	ds, ax
+		mov	es, ax
+		print
+		db	cr,lf,lf
+		DB 	"           °±²Û IBM/L 2.1 Û²±°",cr,lf,lf
+		DB 	"Public Domain Instruction Benchmarking Language",cr,lf
+		dB 	"   by Randall Hyde,  inspired by Roedy Green",cr,lf
+		DB 	"All times are measured in ticks, accurate "
+		db	"only to ñ 2.",cr,lf
+		db	cr,lf
+		db	"CPU: 80",0
+		cpuident
+		puti
+		putcr
+		putcr
+
+;##
+
+		mov	ax,4C00h	; exit errorlevel = 0
+		int	21h
+@Main		ENDP
+
+;============================================
+
+@GetTicks	PROC	Near
+
+;	Get time of day in 1/18.2 second clock ticks since midnight.
+;	leaves tick count in CX:DX, we will ignore high order part.
+;	For accurate results, don't call this too often.
+;	In some systems the clock gets behind if you call
+;	GetTicks in a tight loop.
+
+		MOV	AH,0
+		INT	1Ah		; BIOS ticks since midnight
+					; CX:DX is count
+					; ignore midnight trouble
+		RET
+@GetTicks	EndP
+
+
+
+CSEG		ends
+;
+;
+sseg		segment	para stack 'stack'
+		dw	256 dup (?)
+sseg		ends
+;
+;
+zzzzzzseg	segment	para public 'zzzzzz'
+LastBytes	db	16 dup (?)
+zzzzzzseg	ends
+		end 	@Main
+;##
+;

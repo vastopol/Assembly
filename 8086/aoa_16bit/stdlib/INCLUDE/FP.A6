@@ -1,0 +1,162 @@
+StdGrp		group	stdlib, stddata
+
+stddata		segment	para public 'sldata'
+stddata		ends
+stdlib		segment	para public 'slcode'
+
+
+;# 35 routines in this package.
+
+externdef	sl_lsfpa:far, sl_ssfpa:far, sl_ldfpa:far, sl_sdfpa:far,
+		sl_lefpa:far, sl_lefpal:far, sl_sefpa:far,
+		sl_lsfpo:far, sl_ldfpo:far, sl_lefpo:far,
+		sl_lefpol:far, sl_itof:far, sl_utof:far, sl_ltof:far,
+		sl_ultof:far, sl_fpadd:far, sl_fpsub:far, sl_fpcmp:far
+
+externdef	sl_fpmul:far, sl_fpdiv:far, sl_ftoa:far, sl_ftoam:far,
+		sl_ftoa2:far, sl_etoa:far, sl_etoam:far, sl_etoa2:far,
+		sl_atof:far, sl_ftoi:far, sl_ftou:far, sl_ftol:far,
+		sl_ftoul:far, sl_AccOp:far, sl_xAccOp:far,
+		sl_putf:far, sl_pute:far
+
+lsfpa		macro
+		call	sl_lsfpa
+		endm
+
+ssfpa		macro
+		call	sl_ssfpa
+		endm
+
+ldfpa		macro
+		call	sl_ldfpa
+		endm
+
+sdfpa		macro
+		call	sl_sdfpa
+		endm
+
+lefpa		macro
+		slcall	sl_lefpa
+		endm
+
+lefpal		macro
+		call	sl_lefpal
+		endm
+
+sefpa		macro
+		call	sl_sefpa
+		endm
+
+lsfpo		macro
+		call	sl_lsfpo
+		endm
+
+ldfpo		macro
+		call	sl_ldfpo
+		endm
+
+lefpo		macro
+		call	sl_lefpo
+		endm
+
+lefpol		macro
+		call	sl_lefpol
+		endm
+
+itof		macro
+		call	sl_itof
+		endm
+
+utof		macro
+		call	sl_utof
+		endm
+
+ultof		macro
+		call	sl_ultof
+		endm
+
+ltof		macro
+		call	sl_ltof
+		endm
+
+fpadd		macro
+		call	sl_fadd
+		endm
+
+fpsub		macro
+		call	sl_fsub
+		endm
+
+fpcmp		macro
+		call	sl_fcmp
+		endm
+
+fpmul		macro
+		call	sl_fmul
+		endm
+
+fpdiv		macro
+		call	sl_fdiv
+		endm
+
+ftoa		macro
+		call	sl_ftoa
+		endm
+
+ftoa2		macro
+		call	sl_ftoa2
+		endm
+
+ftoam		macro
+		call	sl_ftoam
+		endm
+
+etoa		macro
+		call	sl_etoa
+		endm
+
+etoa2		macro
+		call	sl_etoa2
+		endm
+
+etoam		macro
+		call	sl_etoam
+		endm
+
+atof		macro
+		call	sl_atof
+		endm
+
+ftoi		macro
+		call	sl_ftoi
+		endm
+
+ftou		macro
+		call	sl_ftou
+		endm
+
+ftol		macro
+		call	sl_ftol
+		endm
+
+ftoul		macro
+		call	sl_ftoul
+		endm
+
+AccOp		macro
+		call	sl_AccOp
+		endm
+
+XAccOp		macro
+		call	sl_XAccOp
+		endm
+
+putf		macro
+		call	sl_Putf
+		endm
+
+pute		macro
+		call	sl_Pute
+		endm
+
+stdlib		ends

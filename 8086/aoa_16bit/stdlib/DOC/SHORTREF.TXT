@@ -1,0 +1,374 @@
+CHARSETS
+
+Createsets	Creates a set on the heap
+Emptyset	Cleans out set
+Rangeset	Add a range of values to a set
+Addstr		Add a group of characters to a set
+Rmvstr		Remove a string from a set
+AddChar		Add a single character to a set
+Rmvchar		Remove a single character to a set
+Member		Find if a character is in a set
+CopySet		Makes a verbatim copy of a set to another
+SetUnion	Computes the union of two sets
+SetIntersect	Computes the intersection of two sets into a third
+SetDifference	Removes items in second set which are in first
+Nextitem        Searches the first character (item) in the set
+                pointing to its mask byte
+Rmvitem		Removes an item from a set
+
+
+
+UTIL
+
+ISize           Calculate number of spaces needed to print signed integer
+USize           Calculate number of spaces needed to print unsigned integer
+LSize           Calculate number of spaces needed to print signed long integer
+ULSize          Calculate number of spaces needed to print unsigned long integer
+IsAlNum		Checks to see if AL is in the range of A-Z, a-z, 0-9
+IsXDigit	Checks to see if AL is in the range of A-F, a-f, 0-9
+IsDigit		Checks to see if AL is in the range of 0-9
+IsAlpha		Checks to see if AL is in the range of A-Z, a-z
+IsLower		Checks to see if AL is in the range of a-z
+IsUpper		Checks to see if AL is in the range of A-Z
+
+
+
+STRINGS
+
+The following string routines take as many as four different forms: strxxx,
+strxxxl, strxxxm, and strxxxlm.  These routines differ in how they store
+the destination string into memory and where they obtain their source strings.
+
+Routines of the form strxxx generally expect a single source string address
+in ES:DI or a source and destination string in ES:DI & DX:SI.  If these
+routines produce a string, they generally store the result into the buffer
+pointed at by ES:DI upon entry.  They return with ES:DI pointing at the
+first character of the destination string.
+
+Routines of the form strxxxl have a "literal source string".  A literal
+source string follows the call to the routine in the code stream.  E.g.,
+
+			strcatl
+			db	"Add this string to ES:DI",0
+
+Routines of the form strxxxm automatically allocate storage for a source
+string on the heap and return a pointer to this string in ES:DI.
+
+Routines of the form strxxxlm have a literal source string in the code
+stream and allocate storage for the destination string on the heap.
+
+
+
+Strcpy		Copies string. 
+Strcpyl		Copies string literal
+StrDup		Copies string to newly allocated memory
+StrDupl		Copies string to newly allocated memory from literal
+Strlen		Calculate length of string
+Strcat		Concatenate two strings
+Strcatm		Concatenate two strings, allocating enough memory for the final
+		resulting string on the heap
+Strcatl		Concatenate string from literal
+Strcatml	Concatenate string from literal to allocated memory
+Strchr		Searches for first occurence of a character in a string
+Strstr		Searches for the position of a substring within another string
+Strcmp		Compares one string to another
+Strcmpl		Compares one string to literal string
+Stricmp		Compares one string to another disregarding case
+Strupr		Converts a string to uppercase
+Struprm		Copies string to heap, then converts to upper and returns address
+Strlwr		Convert string to lower case
+Strlwrm		Copies string to heap, converts, then returns new string
+Strset		Overwrites data on input string with character in AL
+Strsetm		Allocates new strings, then overwrites with character in AL
+Strspan		Compares strings, returning 1st position not equal
+Strspanl	Compares strings, returning 1st position not equal, literal
+Strcspan	Compares strings, returning 1st position that _IS_ equal
+Strcplanl	Compares strings, returning 1st position that _IS_ equal,literal
+StrIns		Inserts one string into another
+StrInsl		Inserts one string into another, literal
+StrInsm		Inserts one string into another after allocating memory
+StrInsml	Inserts one string into another after allocating memory, literal
+StrDel		Deletes characters from a string
+StrDelm		Deletes characters from a copy of a string
+StrTrim		Removes trailing spaces from a string
+StrTrimm	Removes trailing spaces from a copy of a string
+StrBlkDel	Removes leading spaces from a string
+StrBlkDelm	Removes leading spaces from a copy of a string
+Strrev		Reverses the characters in a string. ie: "BLAH" -> "HALB"
+Strrevm		Reverses the characters in a copy of a string
+StrBDel		Removes leading spaces from a string
+StrBDelm	Removes leading spaces from a copy of a string
+ToHex		Converts a stream of binary vaues into Intel Hex format
+
+
+STDOUT
+
+Putc		Print a character out to stdout
+PutCR		Print a CR/LF to stdout
+PucStdOut	Print a character to stdout
+PutcBIOS	Use BIOS to print a character to the _SCREEN_
+GetOuAdrs	Get the address of the current output routine
+SetOutAdrs	Redirects calls to output routine to user defined
+PushOutAdrs	Pushes current output address to internal stack
+PopOutAdrs	Pops output address from internal stack and sets
+Puts		Print a string to stdout
+Puth		Print a value out in hex format
+Putw		Print a value out in word hex format
+Puti		Print a value out in signed integer format
+Putu		Print a value out in unsigned integer format
+Putl		Print a value out in signed long integer format
+Putul		Print a value out in unsigned long integer format
+PutISize	Print a value out in signed integer format using minimum spaces
+PutUSize	Print a value out in unsigned integer format using minimum spaces
+PutLSize	Print a value out in signed long format using minimum spaces
+PutULSize	Print a value out in unsigned long fomat using minimum spaces
+Print		Print out a literal string
+Printf		Print out a literal string using C library type formatters
+Printff		Print out a literal string using C library type formatters. Also
+		supports printout out floating point values
+
+
+STDIN
+
+Getc		Gets a character from STDIN
+GetcStdIn	Gets a character from STDIN
+GetcBIOS	Gets a character using BIOS. Redirection is not allowed
+SetInAdrs	Sets the address to the routine which you want to use for input
+GetInAdrs	Gets the address which is being used to take input
+PushInAdrs	Pushes the address of the input routine to an internal stack
+PopInAdrs	Pop the address of the input routine from an internal stack
+Gets		Get a string from STDIN
+Getsm		Get a string in STDIN and stuff into newly alloacted buffer
+Scanf		Gets string from STDIN using C library type formatters
+
+
+SERIAL PORT STUFF
+
+ComBaud		Inits the seral port to a user defined speed
+ComStop		Inits number of stop bits to use in transmission
+ComSize		Inits number of data bits to use in transmission
+ComParity	Inits the serial port as to whether or not to use parity checking
+ComRead		Reads character from serial port
+ComWrite	Transmits character to serial port
+ComTstIn	Checks to see if character is availble in buffer. Does not read.
+ComTstOut	Checks if character can be transmitted
+ComGetLSR	Reads current status of Line Status Register
+ComGetMSR	Reads current status of Modem Status Regster
+ComGetMCR	Reads current status of Modem Control Register
+ComGetLCR	Reads current status of Line Control Regiter
+ComGetIIR	Reads current status of Interrupt Identification Register
+ComGetIER	Reads current status of Interupt Enable Register
+ComSetMCR	Writes value to Modem Control Register
+ComSetLCR	Writes value to Line Control Register
+ComSetIER	Writes value to Interrupt Enable Register
+ComInitIntr	Sets up interrupts and progams to control serial chip
+ComDisIntr	Untinstalls all programs installed with ComInitIntr
+ComIn		Reads chracter from serial port. Will wait if none available.
+ComOut		Writes character to serial port, waiting if port is busy.
+
+
+PROCESS
+
+Prcsinit	Starts the process manager
+Prcsquit	Shutsdown the process manager
+Fork		Spawns a new process
+Die		Kills the current process
+Kill		Lets one process terminate another
+Yield		Forces context switch, surrendering rest of current time slice
+CoInit		Inits the CoRoutine package
+CoCall		Switches context between two coroutines
+CoCalll		Switches context between two coroutines, passing info another way
+WaitSemaph	Protects critical regions in memory
+RlsSemaPh	Releases a semaphore that the current process has aquired
+
+
+PATTERN
+
+
+Spancset	Match any number of characters belonging to a character set
+Brkcset		Match any number of characters which are *not* in a character set
+MatchStr	Matches a specified string
+MatchToStr	Match characters in string until specified substring
+MatchChar	Matches a single character
+MatchChars	Matches zero or more occurrences of the same character
+MatchToChar	Matches characters up to and including specified character
+MatchToPat	Matches all characters up to specified characters
+Anycset		Matches single character from a character set
+NotAnycset	Match single character which is not in character set
+EOS		Matches end of string
+ARB		Matches arbitary number of characters
+ARBNUM		Matches arbitary number of strings
+Skip		Matches "n" arbitary characters. 
+POS		Matches at position "n" in the string
+RPOS		Matches at position "n" from the end of the string
+GOTOpos		Moves to position in string
+RGOTOpos	Moves to position "n" from end of string
+
+
+MISC
+
+Random		Generate a random number
+Randomize	Reseed random number generator based on time of day
+cpuid		Identifies CPU
+Argc		Return number of command line parameters
+Argv		Returns address to string of command line parameter specified
+GetEnv		Returns address of environment table information
+DOS		Invokes DOS INT 21h interrupt
+ExitPgm		Exits current program and returns to DOS
+
+
+
+MEMORY
+
+MemInit		Initializes memory manager. Must be called first.
+MemInit2	Initializes another part of memory manager
+Malloc		Dynamically allocate memory
+Realloc		Resize a block of memory already allocated with Malloc
+Free		Deallocate a chunk of memory allocated with Malloc
+DupPtr		Replicate a pointer to a chunk of memory so free won't deallocate
+		it until all the pointers are taken care of
+IsInHeap	Tells you if ES:DI points somewhere in the heap
+IsPtr		Tells you if ES:DI points to a properlly allocated chunk of heap
+BlockSize	Returns size of block currently pointed to in the heap
+MemAvail	Returns size of largest free block on the heap
+MemFree		Returns size of total bytes free on the heap
+
+
+
+LIST
+
+CreateList	Allocates storage for a list variable on the head
+AppendLast	Add a node to the list
+Remove1st	Removes the first item from a list
+Peek1st		Looks at the first item from a list
+Insert1st	Inserts a node at the first node from a list
+RemoveLast	Removes the last node from a list
+PeekLast	Looks at the last item from a list
+InsertCur	Inserts a node into the list
+InsertmCur	Builds a node on the heap, then inserts that into the list
+AppendCur	Inserts a node into the list after the current node pointed to
+AppendmCur	Builds node on heap, then inserts that after current node
+RemoveCur	Removes current node from the list
+Peek		Looks at current node on the list
+SetCur		Sets the specified node as the current node
+Insert		Inserts a new node before a specified node in the list
+Append		Inserts a new node after a specified node in the list
+Remove		Removes the specified node from the list
+
+
+
+
+FLOATING POINT (FP)
+
+lsfpa		Load single percision float value into internal accumulator
+ssfpa		Store single percision float value from accumulator to memory
+ldfpa		Load double percision float value into internal accumulator
+sdfpa		Store double percision float value from accumulator to memory
+lefpa		Load extended percision float value into internal accumulator
+lefpal		lefpa with a literal value after it in the code
+sefpa		Store extended percision float value from accumulator to memory
+lsfpo		lsfpa a value, then convert to extended percision
+ldfpo		ldfpa a value, then convert to extended percision
+lefpo		lefpa a value, then convert to extended percision
+lefpol		lefpo a value, with the value being literal in the code
+itof		Convert a 16bit signed integer to float
+utof		Convert a 16bit unsigned integer to float
+ultof		Convert a 32bit unsigned integer to float
+ltof		Convert a 32bit signed integer to float
+ftoi		Convert float number to signed 16bit integer format
+ftou		Convert float number to unsigned 16bit integer format
+ftol		Convert float number to signed 32bit integer format
+ftoul		Convert float number to unsigned 32bit integer format
+fpadd		Add float accumulator to float operand
+fpsub		Subtract float operand from the float accumulator
+fpsmp		Compare float accumulator to operand and set flags accordingly
+fpmul		Multiply float operand to float accumulator
+fpdiv		Divides float accumulator by operand
+ftoa		Converts float number into string, preserving DI
+ftoa2		Converts float number into string, not preserving DI
+ftoam		Converts float to string, allocating enough space for string
+etoa		Convert float to string using scientific notation
+etoa2		Works like etoa, except not preserving DI
+etoam		Works like etoa, this time allocing space on the heap for string
+atof		Converts string into float
+
+
+
+DATE TIME
+
+Date		Converts DOS system date into string ( mm/dd/yy )
+Date2		Converts DOS system date into string, not preserving DI
+Datem		Converts DOS system date into string allocated from heap
+xDate		Converts current DOS system date into string
+xDate2		Converts current DOS system date into string, killing DI
+xDatem		Converts current DOS system date to string with memory from heap
+lDate		Converts DOS date into string ( mmm, dd, yyyy )
+lDate2		Converts DOS date into string killing DI
+lDatem		Converts DOS date into string, memory allocated from heap
+xlDate		Converts current DOS date into string
+xlDate2		Converts current DOS date into string killing DI
+xlDatem		Converts current DOS date into string allocated from heap
+atod		Converts string (mm/dd/yy or mm-dd-yy) into DOS date
+atod2		Converts string into DOS date, killing DI
+atot		Converts string (hh:mm:ss or hh:mm:ss.xxx) into DOS time
+atot2		Converts string into DOS time killing DI
+time		Converts DOS time to string
+time2		Converts DOS time to string, killing DI
+timem		Converts DOS time to string, allocated from heap
+xtime		Converts current DOS time to string
+xtime2		Converts current DOS time to string, killing DI
+xtimem		Converts current DOS time to string, allocated from heap
+
+
+CONVERSION
+
+atol		Converts string of numbers to signed 32bit integer
+atoul		Converts string of numbers to unsigned 32bit integer
+atou		Converts string of numbers to unsigned 16bit integer
+atoh		Converts string of hex numbers to unsigned 16bit integer
+atoh2		Converts string of hex numbers to unsigned 16bit int killing DI
+atolh		Converts string of hex numbers to unsigned 32bit int
+atolh2		Converts string of hex numbers to unsigned 32bit int killing DI
+atoi		Converts string of numbers to signed 16bit integer
+itoa		Converts signed integer to string
+itoam		Converts signed integer to string, allocting space from heap
+itoa2		Converts signed integer to string, killing DI
+utoa		Converts unsigned integer to string
+utoam		Converts unsigned integer to string, allocating space from heap
+utoa2		Converts unsigned integer to string, killing DI
+htoa		Converts 8bit hex value to string
+htoa2		Converts 8bit hex value to string, killing DI
+htoam		Converts 8bit hex value to string, allocating space from heap
+wtoa		Converts 16bit hex value to string
+wtoa2		Converts 16bit hex value to string, killing DI
+wtoam		Converts 16bit hex value to string, allocating space from heap
+ltoa		Converts 32bit signed integer to string
+ltoa2		Converts 32bit signed integer to string, killing DI
+ltoam		Converts 32bit signed integer to string, getting space from heap
+ultoa		Converts 32bit unsigned int to string
+ultoa2		Converts 32bit unsigned int to string, killing DI
+ultoam		Converts 32bit unsigned int to string, getting space from heap
+sprintf		In memory print formatting
+sprintf2	In memory print formatting, killing DI
+sprintfm	In memory print formatting, getting space from heap
+sscanf		In memory input formatting
+sscanf2		In memory input formatting, killing DI
+sscanfm		In memory input formatting, getting space from heap
+tolower		Converts character to lowercase
+toupper		Converts character to uppercase
+ 		
+
+	
+By: Steve Shah
+	sshah@ucrengr.ucr.edu
+	sshah@watserv.ucr.edu
+	sshah@mozart.ucr.edu
+	
+		Pick one -- any one.......
+Current version:
+	UCRASM 31
+	Compiled 1.0 -- June 7, 1993  10:40a
+
+
+
+

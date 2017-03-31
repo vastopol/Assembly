@@ -1,0 +1,32 @@
+; TREE.A-	Interface file for the tree class.
+
+cseg		segment	para public 'code'
+externdef	$$$$_pSearch:near,
+		$$$$_pInsert:near,
+		$$$$_pDelete:near,
+		$$$$_pPreorder:near,
+		$$$$_pPostorder:near,
+		$$$$_pInorder:near,
+		$$$$_pBreadth1st:near,
+		$$$$_CompareError:near
+cseg		ends
+
+; Here is the class definition for a generic tree
+
+tree		struct
+RootNode	dword	0			;Ptr to root node.
+compare		word	$$$$_CompareError	;Ptr to compare routine.
+search		word	$$$$_pSearch
+insertNode	word	$$$$_pInsert
+deleteNode	word	$$$$_pDelete
+preorder	word	$$$$_pPreorder
+inorder		word	$$$$_pInorder
+postorder	word	$$$$_pPostorder
+breadth1st	word	$$$$_pBreadth1st
+tree		ends
+
+TreeNode	struct
+$$$$_LLink	dword	0
+$$$$_RLink	dword	0
+TreeNode	ends
+

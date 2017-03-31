@@ -1,0 +1,286 @@
+======================
+Miscellaneous Routines
+======================
+
+This routines either defy categorization, or they haven't been properly
+organized yet.
+
+Mostly (like the rest of this library) they have simply been stuck here
+until somebody gets the time to reorganize *everything*.
+
+
+
+
+Routine:  Random
+----------------
+
+Author:		      Unknown.  Copied off a file on one of the networks,
+		      tweaked, and added to the library.  Any info on the
+		      original author would be appreciated.
+
+Category:             Miscellaneous
+
+Registers on entry:   None
+
+Registers on return:  AX-	Contains random number
+
+Flags affected:       None
+
+Example of Usage:
+			random	;Generate random number in AX
+			puti	;Print the random number.
+
+
+Description:    
+
+ This routine computes a 16-bit random number each time you call it.  It
+returns the random number in the AX register.  You may treat this as a signed
+or unsigned value as it utilizes all 16 bits.  This code uses an internal
+table of seed values.  If you are interested in producing repeatable sequences
+of random numbers, please look at the source listings for this file.
+
+ If you are interested in producing truly random values (well, closer than you
+will get from this code by calling it right off the bat) look at the randomize
+routine which tweaks the seed table based on the current time of day clock
+value.
+
+Include:	stdlib.a or misc.a
+
+
+Routine:  Randomize
+-------------------
+
+Author:		      Unknown.  Copied off a file on one of the networks,
+		      tweaked, and added to the library.  Any info on the
+		      original author would be appreciated.
+
+Category:             Miscellaneous
+
+Registers on entry:   None
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+			randomize	;Randomize the seeds.
+			random		;Get a brand new random number
+			puti		;Print it
+
+Description:    
+
+Random's internal seed table is hard coded.  It was designed to produce a
+sequence of random numbers with a very long period.  However, each time you
+run a program using Random, it will generate the exact same sequence of
+random numbers.  This could be distressing, for example, in a game where
+after a while the player(s) could memorize some sequence of events based
+on the random number generator.
+
+ Randomize uses the time of day clock value to scramble the internal random
+seed table.  If you call randomize before using random the first time, you
+will generally get a different sequence of random numbers each time you
+run the program.
+
+ Note that it is dangerous to call randomize more than once inside any program.
+The time of day clock is not a random source when invoked fairly often.
+Furthermore, once the seeds are randomized, random does a pretty good job of
+randomizing the results.
+
+Include:	stdlib.a or misc.a
+
+
+Routine:  cpuident
+------------------
+
+Author:		      Original implementation was supplied by Intel Corp.
+		      Various modifications were made for inclusion into
+		      the UCR Standard Library.
+
+Category:             Miscellaneous
+
+Registers on entry:   None
+
+Registers on return:  AX-	Contains processor ID (86, 286, 386, or
+				486.  Note 8088=86).
+
+		      BX-	Contains coprocessor ID (87, 286, 387,
+				or 487).  Note that a true 486 will have
+				an 80487 built-in, 486sx chips, however, will
+				not.
+
+Flags affected:       None
+
+Example of Usage:
+			cpuident
+			cmp	ax, 8086	;Is this an 8086?
+
+Description:
+
+For those programs which absolutely need to know the CPU in use, CPUIDENT
+does a reasonable job (in DOS real mode) of figuring this out for you.  As
+with all CPU identification routines, there are bound to be some problems
+with this one when operating in protected mode. But for normal DOS appli-
+cations it appears to work great.  This routine came straight from the
+horse's mouth (Intel Corporation) so you can place a little more faith in
+it than most that are floating around.  Intel's blessing doesn't guarantee
+that this routine is perfect, though; always keep that in mind.
+
+Include:	stdlib.a or misc.a
+
+
+Routine:  Argc
+--------------
+
+Category:             Utility Routine
+
+Registers on Entry:   None
+
+Registers on Return:  CX-	Number of command line parameters
+
+Flags Affected:       None
+
+
+Example of Usage:
+			print
+			db	"There were ",0
+			argc
+			mov	ax, cx
+			puti
+			print
+			db	" command line parameters here",cr,lf,0
+
+Description:    This routine returns the number of command line para-
+		meters on the DOS command line.  Note that strings enclosed
+		in quotation marks or apostrophes are counted as a single
+		command line parameter.
+
+
+Include:              stdlib.a or misc.a
+
+
+Routine:  Argv
+--------------
+
+Category:             Utility Routine
+
+Registers on Entry:   AX-	Which parameter to grab (1..n).
+		      PSP-	Global variable containing the DOS program
+				segment prefix value.
+
+Registers on Return:  ES:DI-	Pointer to string on heap containing the
+				specified parameter (empty string if the
+				parameter does not exist).
+
+Flags Affected:       carry-	Set if malloc error.
+
+
+Example of Usage:     
+			mov	ax, 2
+			argv
+			print
+			db	"The second command line parameter is ",0
+			puts
+			free
+
+Description:    
+ This routine returns a string containing the specified command line argument.
+You must pass the position number of the argument in AX; this routine returns
+the specified string on the heap with ES:DI pointing at the string.  Note that
+the command line parameters are numbered starting from one.  If you specify an
+out of range value, this routine returns a pointer to a zero byte (the empty
+string).
+
+
+Include:              stdlib.a or misc.a
+
+
+Routine:  GetEnv
+----------------
+
+Category:             Utility Routine
+
+Registers on Entry:   ES:DI-	Points at a string containing the name of
+				the environment variable you want to find.
+		      PSP-	Global variable containing the DOS program
+				segment prefix value.
+
+Registers on Return:  ES:DI-	Pointer to string in the environment space
+				containing the characters immediately after
+				the name of the environment variable in the
+				environment string space.
+
+Flags Affected:       carry-	Set if malloc error.
+
+
+Example of Usage:     
+			les	di, EnvVarStrPtr
+			getenv
+			print
+			db	"The value of the environment variable is ",0
+			puts
+			free
+
+Description:    
+
+  This routine returns a pointer to the first characters following an
+environment variable in the program's environment variable space.  It points
+at the very first character following the name, so it typically points at
+an equal sign (e.g., the PATH environment variable is typically of the form
+"PATH=xxxxxxxx" and the "=" is the first char past the name).  If this routine
+does not find the specified environment variable, it returns a pointer to
+a single zero byte.  Since the pointer is in the environment space, you should
+not store anything at this address.  Instead, first copy the string with STRDUP
+if you need to modify it.
+
+Include:              stdlib.a or misc.a
+
+
+Routine:  DOS
+-------------
+
+Category:             Utility Routine
+
+Registers on Entry:   AH-	DOS opcode
+
+Registers on Return:  Depends on particular DOS call
+
+Flags Affected:       Depends on DOS call.
+
+
+Example of Usage:     
+			mov	ah, 9
+			DOS
+			 .
+			 .
+			 .
+			DOS	7
+Description:    
+
+  This macro invokes DOS via the INT 21h interrupt.  If there is no parameter
+to the macro, it simply issues the INT 21h instruction.  If a parameter is
+present, it emits "mov ah, operand" followed by the INT 21h instruction.
+
+Include:              stdlib.a or consts.a
+
+
+Routine:  ExitPgm
+-----------------
+
+Category:             Utility Routine
+
+Registers on Entry:  None
+
+Registers on Return:  Doesn't return
+
+Flags Affected:       N/A
+
+
+Example of Usage:
+			ExitPgm
+Description:
+
+  This macro exits the program and returns to DOS.
+
+Include:              stdlib.a or consts.a
+
+

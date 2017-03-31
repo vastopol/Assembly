@@ -1,0 +1,140 @@
+StdGrp		group	stdlib, stddata
+;
+stddata		segment	para public 'sldata'
+stddata		ends
+stdlib		segment	para public 'slcode'
+;
+; Standard Input Stuff:
+;
+;------------------------------------------------
+
+slcall	macro	adrs
+	db	09ah			;Far call
+	dd	stdgrp:adrs		;Address of routine to call
+	endm
+
+;
+getc		macro
+		ifndef	sl_getc
+stdlib		segment	para public 'slcode'
+		extrn	sl_getc:far
+stdlib		ends
+		endif
+		slcall	sl_getc
+		endm
+;
+;
+;
+GetcStdIn	macro
+		ifndef	sl_GetcStdIn
+stdlib		segment	para public 'slcode'
+		extrn	sl_GetcStdIn:far
+stdlib		ends                
+		endif
+		slcall	sl_GetcStdIn
+		endm
+;
+;
+;
+;
+GetcBIOS	macro
+		ifndef	sl_GetcBIOS
+stdlib		segment	para public 'slcode'
+		extrn	sl_GetcBIOS:far
+stdlib		ends
+		endif
+		slcall	sl_GetcBIOS
+		endm
+;
+;
+SetInBIOS	macro
+		ifndef	sl_SetInBIOS
+stdlib		segment	para public 'slcode'
+		extrn	sl_SetInBIOS:far
+stdlib		ends
+		endif
+		slcall	sl_SetInBIOS
+		endm
+;
+SetInStd	macro
+		ifndef	sl_SetInStd
+stdlib		segment	para public 'slcode'
+		extrn	sl_SetInStd:far
+stdlib		ends
+		endif
+		slcall	sl_SetInStd
+		endm
+;
+;
+;
+SetInAdrs	macro
+		ifndef	sl_SetInAdrs
+stdlib		segment	para public 'slcode'
+		extrn	sl_SetInAdrs:far
+stdlib		ends                
+		endif
+		slcall	sl_SetInAdrs
+		endm
+;
+;
+GetInAdrs	macro
+		ifndef	sl_GetInAdrs
+stdlib		segment	para public 'slcode'
+		extrn	sl_GetInAdrs:far
+stdlib		ends                
+		endif
+		slcall	sl_GetInAdrs
+		endm
+;
+;
+PushInAdrs	macro
+		ifndef	sl_PushInAdrs
+stdlib		segment	para public 'slcode'
+		extrn	sl_PushInAdrs:far
+stdlib		ends                
+		endif
+		slcall	sl_PushInAdrs
+		endm
+;
+;
+PopInAdrs	macro
+		ifndef	sl_PopInAdrs
+stdlib		segment	para public 'slcode'
+		extrn	sl_PopInAdrs:far
+stdlib		ends                
+		endif
+		slcall	sl_PopInAdrs
+		endm
+;
+;
+;
+gets		macro
+		ifndef	sl_gets
+stdlib		segment	para public 'slcode'
+		extrn	sl_gets:far
+stdlib		ends
+		endif
+		slcall	sl_gets
+		endm
+;
+getsm		macro
+		ifndef	sl_getsm
+stdlib		segment	para public 'slcode'
+		extrn	sl_getsm:far
+stdlib		ends
+		endif
+		slcall	sl_getsm
+		endm
+;
+;
+Scanf		macro
+		ifndef	sl_scanf
+stdlib		segment	para public 'slcode'
+		extrn	sl_scanf:far
+stdlib		ends
+		endif
+		slcall	sl_scanf
+		endm
+;
+stdlib		ends
+

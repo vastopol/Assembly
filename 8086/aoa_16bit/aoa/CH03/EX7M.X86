@@ -1,0 +1,22 @@
+	mov	ax, 000c
+	mov	[121], ax
+	mov	ax, 1234
+	jmp	100
+	brk
+
+	mov	ax, 0019
+	mov	[121], ax
+	mov	ax, fdeb
+	jmp	100
+	brk
+
+	mov	ax, 26
+	mov	[121], ax
+	mov	ax, 2345
+	jmp	100
+
+	halt
+
+
+
+

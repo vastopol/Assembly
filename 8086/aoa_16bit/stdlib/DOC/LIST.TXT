@@ -1,0 +1,872 @@
+Linked list manipulation routines
+=================================
+
+These routines manipulate items in a linked list.  Internally the system
+represents the data as a doubly linked list, although your program should
+not rely on the internal structure of the data structure.
+
+There are two structures of interest defined in the LISTS.A file: LIST
+and NODE.  Use variables of type LIST to create brand new lists.  Use
+variables of type NODE to hold the entries in the list.
+
+These structures take the following form:
+
+List		struc
+Size		dw	?		;Size, in bytes, of a node in the list
+Head		dd	0		;Ptr to start of list
+Tail		dd	0		;Ptr to end of list
+Current		dd	0		;Pointer to current node
+List		ends
+
+Node		struc
+Next		dd	?		;Ptr to next node in list
+Prev		dd	?		;Ptr to prev node in list
+NodeData	db	??		;Data immediately follows Prev
+Node		ends
+
+
+There are two ways to create a new list: statically or dynamically.
+Consider static allocation first.  In this case, you create a list variable
+by declaring an object of type LIST in a data segment, e.g.,
+
+MyList		list	<25>
+
+You *must* supply the size (in bytes) of a node in the list.  Note that the
+size should *not* include the eight bytes required for the next and prev
+pointers.  This allows you to change the internal structure of the list
+(e.g., to a singly linked list) without having to change other code.  You
+can easily compute this as follows:
+
+MyList		list	<(sizeof MyNode) - (sizeof Node)>
+
+When you declare lists in this fashion, the definition automatically
+initializes the list to an empty list.
+
+You can also create a list dynamically by calling the CreateList routine.
+To CreateList you must pass the size of a Node (not including the pointers)
+in the CX register.  It allocates storage for the list variable on the
+heap and returns a pointer to this new (empty) list in es:di.
+
+		mov	cx, (sizeof MyNode) - (sizeof Node)
+		CreateList
+		mov	word ptr MyListPtr, di
+		mov	word ptr MyListPtr+2, es
+
+
+To create nodes for your list, you should "overload" the NODE definition
+appearing the in LISTS.A file.  This works best under MASM 6.0 and TASM 3.0,
+which support object-oriented programming, though it isn't that difficult to
+accomplish with other assemblers.  A mechanism compatible with *all*
+assemblers follows:
+
+To create a brand new node is easy,  just do the following:
+
+MyNode		struc
+		db	(size Node) dup (0) 	;Inherit all fields from NODE.
+Field1		db	?			;User-supplied fields for this
+Field2		dw	?			; particular node type.
+Field3		dd	?			;  "    "     "    "
+Field4		real4	3.14159			;  "    "     "    "
+MyNode		ends
+
+Note that the NODE fields must appear *first* in the data structure.
+The list manipulation routines assume that the list pointers in NODE appear
+at the beginning of the structure.
+
+The CurrentNode field of the list data structure points at a "current" node
+in the list.  The current node is the last node operated on in the case of
+insert, append, peek, etc.  In the event a node is removed, the current node
+will be the next node after the node removed.  In general, the current node
+can be thought of as a "cursor" which wanders through the list according to
+the operations occuring.  Since most list operations occur on the next node
+in a list, keeping the CurrentNode field updated speeds up access to the
+list.
+
+You can use the following routines to implement the corresponding data
+structures (which can all be implemented using lists):
+
+FIFO Queues:
+
+AppendLastm, AppendLast, Remove1st, and Peek1st (technically, using Peek1st
+is cheating, but so what).
+
+
+
+Deques (double ended queues):
+
+All the FIFO routines plus InsertFirstm, InsertFirst, RemoveLast, and
+PeekLast (PeekLast is cheating too).
+
+
+Lists:
+
+All of the above plus InsertCur, InsertmCur, AppendCur, AppendmCur,
+RemoveCur, Insert, Insertm, Append, Appendm, Remove, SetCur, NextNode,
+and PrevNode.
+
+For those who care about such things, the UCR Standard Library implements
+the list data structure using a doubly linked list.  However, it is a
+true generic (encapsulated) data type and your code needed be at all
+concerned about the internal structure.  Furthermore, assuming you treat
+it like an encapsulated data structure, you can modify the internal list
+structure and not break any programs which use the list data types.
+
+
+
+
+
+Routine:  CreateList
+--------------------
+
+Author:		      Randall Hyde
+
+Category:             List Manipulation
+
+Registers on entry:   	CX-	Size of data (in bytes) to store at each node
+
+Registers on return:  	ES:DI-	Pointer to new list variable on heap
+
+Flags affected:       	Carry set if CreateList cannot allocate sufficient
+			storage on the heap for the list variable.
+
+Example of Usage:
+			mov	cx, (sizeof MyNode) - (sizeof Node)
+			CreateList
+			jc	ListError
+			mov	word ptr ListVarPtr, di
+			mov	word ptr ListVarPtr+2, es
+
+Description:
+
+CreateList allocates storage for a list variable on the head and initializes
+that variable to the empty list.  It also sets up the size field of the
+list variable based on the value passed in the CX register.  It returns
+a pointer to the newly created list in the ES:DI registers.
+
+This routine initializes the CurrentNode field to NIL.  Any node inserted
+before or after the current node will be inserted as the first node in this
+case.
+
+Include:	lists.a or stdlib.a
+
+
+
+Routine:  AppendLast (m)
+------------------------
+
+Author:		      Randall Hyde
+
+Category:             List Manipulation
+
+Registers on entry:   	DX:SI-	Pointer to node to add to list (AppendLast)
+			DX:SI-	Pointer to block of data (sans list stuff)
+				to add to end of list (AppendLastm)
+			ES:DI-	Pointer to list.
+
+Registers on return:  	ES:DI-	Pointer to list.
+
+Flags affected:       	Carry set if AppendLastm cannot allocate sufficient
+			storage on the heap for the list variable.
+
+Examples of Usage:
+
+; Append data statically declared as ANode to the end of the list pointed at
+; by the list variable "ListVar".
+
+			ldxi	ANode
+			les	di, ListVar
+			AppendLast
+
+; Create a node from the data at address "MyData".  Build the node on the
+; heap and append this node to the end of the list pointed at by ListVar.
+
+			ldxi	MyData
+			les	di, ListVar
+			AppendLastm
+			jc	BadListError
+
+Description:
+
+AppendLast and AppendLastm add a node to the end of a list.  AppendLast works
+with whole nodes.  It is useful, for example when moving a node from one
+list to another or when dealing with nodes that were created statically in
+the program.  It requires nodes properly declared using the NODE data type
+in the LIST.A include file.
+
+AppendLastm builds a new node on the heap and appends this node to the end
+of the specified list.  The difference between AppendLastm and AppendLast is
+that AppendLastm does not require a predefined node.  Instead, DX:SI points
+at the data for the node (the number of bytes is specified by the ListSize
+field of the LIST data type).  AppendLastm allocates memory, copies the data
+from DX:SI to the data field of the new node, and then links in the new node
+to the specified list.
+
+The new node added to the list becomes the CurrentNode.
+
+Include:	stdlib.a or lists.a
+
+
+
+Routine:  Remove1st
+-------------------
+
+Author:		      	Randall Hyde
+
+Category:             	List Manipulation
+
+Registers on entry:   	ES:DI-	Pointer to list variable.
+
+Registers on return:	DX:SI-	Pointer to node removed from the front of
+				the list (NIL if nothing in list).
+
+Flags affected:       	Carry set if the list was empty.
+
+Examples of Usage:
+
+; The following loop removes all the items from a list and processes each
+; item.
+
+DoAllOfList:		les	di, MyList
+			Remove1st
+			jc	DidItAll
+			<manipulate this item>
+			jmp	DoAllOfList
+DidItAll:
+
+
+Description:
+
+Remove1st removes the first item from a list and returns a pointer to that
+item in DX:SI.  If the list was empty, then it returns a NIL pointer in
+DX:SI and returns with the carry flag set.
+
+Note that you can use the AppendLast(m) and Remove1st routines to implement
+and manipulate a FIFO queue data structure.  Peek1st is another useful
+routine which returns the first item on a list without removing it from
+the list.
+
+The second node in the list (the one after the node just removed) becomes
+the new CurrentNode.  If there are no additional nodes in the list, the
+CurrentNode variable gets set to NIL.
+
+Include:	stdlib.a or lists.a
+
+
+
+
+Routine:  Peek1st
+-----------------
+
+Author:		      	Randall Hyde
+
+Category:             	List Manipulation
+
+Registers on entry:   	ES:DI-	Pointer to list variable.
+
+Registers on return:	DX:SI-	Pointer to node at the beginning of
+				the list (NIL if nothing in list).
+
+Flags affected:       	Carry set if the list was empty.
+
+Examples of Usage:
+
+			les	di, MyList
+			Peek1st
+			jc	NothingThere
+
+Description:
+
+Peek1st is similar to Remove1st in that it returns a pointer to the first
+item in a list (NIL if the list is empty).  However, it does not remove the
+item from the list.  This is useful for performing a "non-destructive" read
+of the first item in a FIFO queue.
+
+This routine sets the CurrentNode field to the first node in the list.
+
+Include:	stdlib.a or lists.a
+
+
+
+Routine:  Insert1st (m)
+-----------------------
+
+Author:		      Randall Hyde
+
+Category:             List Manipulation
+
+Registers on entry:   	DX:SI-	Pointer to node to add to list (Insert1st)
+			DX:SI-	Pointer to block of data (sans list stuff)
+				to add to end of list (Insert1stm)
+			ES:DI-	Pointer to list.
+
+Registers on return:  	ES:DI-	Pointer to list.
+
+Flags affected:       	Carry set if Insertm cannot allocate sufficient
+			storage on the heap for the list variable.
+
+Examples of Usage:
+
+; Insert data statically declared as ANode to the beginning of the list
+; pointed at by the list variable "ListVar".
+
+			ldxi	ANode
+			les	di, ListVar
+			Insert1st
+
+; Create a node from the data at address "MyData".  Build the node on the
+; heap and insert this node to the beginning of the list pointed at by
+; ListVar.
+
+			ldxi	MyData
+			les	di, ListVar
+			Insert1stm
+			jc	BadListError
+
+Description:
+
+Insert1st and Insert1stm add a node to the beginning of a list.  Insert1st
+works with whole nodes.  It is useful, for example when moving a node from one
+list to another or when dealing with nodes that were created statically in
+the program.  It requires nodes properly declared using the NODE data type
+in the LISTS.A include file.
+
+Insert1stm builds a new node on the heap and inserts this node to the start
+of the specified list.  The difference between Insert1stm and Insert1st is
+that Insert1stm does not require a predefined node.  Instead, DX:SI points
+at the data for the node (the number of bytes is specified by the ListSize
+field of the LIST data type).  Insert1stm allocates memory, copies the data
+from DX:SI to the data field of the new node, and then links in the new node
+to the specified list.
+
+Note that Insert1st/Insert1stm can be used to create Deque data structures.
+
+The newly inserted node becomes the CurrentNode in the list.
+
+Include:	stdlib.a or lists.a
+
+
+
+Routine:  RemoveLast
+--------------------
+
+Author:		      	Randall Hyde
+
+Category:             	List Manipulation
+
+Registers on entry:   	ES:DI-	Pointer to list variable.
+
+Registers on return:	DX:SI-	Pointer to node removed from the end of
+				the list (NIL if nothing in list).
+
+Flags affected:       	Carry set if the list was empty.
+
+Examples of Usage:
+
+; The following loop removes all the items from a list and processes each
+; item.
+
+DoAllOfList:		les	di, MyList
+			RemoveLast
+			jc	DidItAll
+			<manipulate this item>
+			jmp	DoAllOfList
+DidItAll:
+
+
+Description:
+
+RemoveLast removes the last item from a list and returns a pointer to that
+item in DX:SI.  If the list was empty, then it returns a NIL pointer in
+DX:SI and returns with the carry flag set.
+
+Note that you can use the Insert1st(m) and RemoveLast routines to implement
+and manipulate a DEQUE queue data structure (along with the FIFO routines:
+AppendLast(m), Rmv1st, and Peek1st).  PeekLast is another useful
+routine which returns the last item on a list without removing it from
+the list.
+
+The last node in the list (the one before the node just removed) becomes the
+new CurrentNode in the list.  If the list is empty, CurrentNode gets set to
+NIL.
+
+Include:	stdlib.a or lists.a
+
+
+
+
+Routine:  PeekLast
+------------------
+
+Author:		      	Randall Hyde
+
+Category:             	List Manipulation
+
+Registers on entry:   	ES:DI-	Pointer to list variable.
+
+Registers on return:	DX:SI-	Pointer to node at the end of
+				the list (NIL if nothing in list).
+
+Flags affected:       	Carry set if the list was empty.
+
+Examples of Usage:
+
+			les	di, MyList
+			PeekLast
+			jc	NothingThere
+
+Description:
+
+PeekLast is just like Peek1st except it looks at the last node on the list
+rather than the first.  It does the same job as RemoveLast except it does
+not remove the node from the list.  Great for implementing Deques.
+
+This routine also sets the CurrentNode field to point at the last node in
+the list.
+
+Include:	stdlib.a or lists.a
+
+
+
+
+Routine:  InsertCur
+-------------------
+
+Author:		      	Randall Hyde
+
+Category:             	List Manipulation
+
+Registers on entry:   	ES:DI-	Pointer to list.
+			DX:SI-	Pointer to node to insert
+
+Examples of Usage:
+
+			les	di, MyList
+			ldxi	NewNode
+			InsertCur
+
+Description:
+
+InsertCur inserts the node pointed at by DX:SI before the "current" node in
+the list.  The current node is the last one operated on by the software.
+
+The newly inserted node becomes the CurrentNode in the list.
+
+Include:	stdlib.a or lists.a
+
+
+
+
+Routine:  InsertmCur
+--------------------
+
+Author:		      	Randall Hyde
+
+Category:             	List Manipulation
+
+Registers on entry:   	ES:DI-	Pointer to list.
+			DX:SI-	Pointer to data for node to insert
+
+Flags on exit:		Carry flag is set if malloc error occurs.
+
+Examples of Usage:
+
+			les	di, MyList
+			ldxi	DataBlock
+			InsertmCur
+			jc	Error
+
+Description:
+
+InsertmCur builds a new node on the heap (using the block of data pointed at
+by DX:SI and the size of a node in the size field of the list variable) and
+then inserts the new node before the "current" node in the list.  The current
+node is the last one operated on by the software.
+
+This code treats the newly inserted node as the current node.
+
+Include:	stdlib.a or lists.a
+
+
+
+Routine:  AppendCur
+-------------------
+
+Author:		      	Randall Hyde
+
+Category:             	List Manipulation
+
+Registers on entry:   	ES:DI-	Pointer to list.
+			DX:SI-	Pointer to node to append
+
+Examples of Usage:
+
+			les	di, MyList
+			ldxi	NewNode
+			AppendCur
+
+Description:
+
+AppendCur inserts the node pointed at by DX:SI after the "current" node in
+the list.  The current node is the last one operated on by the software.
+
+The newly inserted node becomes the CurrentNode in the list.
+
+Include:	stdlib.a or lists.a
+
+
+
+
+Routine:  AppendmCur
+--------------------
+
+Author:		      	Randall Hyde
+
+Category:             	List Manipulation
+
+Registers on entry:   	ES:DI-	Pointer to list.
+			DX:SI-	Pointer to data for node to insert.
+
+Flags on exit:		Carry flag is set if malloc error occurs.
+
+Examples of Usage:
+
+			les	di, MyList
+			ldxi	DataBlock
+			AppendmCur
+			jc	MallocError
+
+Description:
+
+AppendmCur builds a new node on the heap (using the block of data pointed at
+by DX:SI and the size of a node in the size field of the list variable) and
+then inserts the new node after the "current" node in the list.  The current
+node is the last one operated on by the software.
+
+This code treats the newly inserted node as the current node.
+
+Include:	stdlib.a or lists.a
+
+
+
+Routine:  RemoveCur
+-------------------
+
+Author:		      	Randall Hyde
+
+Category:             	List Manipulation
+
+Registers on entry:   	ES:DI-	Pointer to list.
+
+Registers on exit:	DX:SI-	Points at node removed from list (NIL if
+				no such node).
+
+Flags on return:	Carry set if the list was empty.
+
+Examples of Usage:
+
+			les	di, MyList
+			RemoveCur
+			jc	EmptyList
+
+Description:
+
+RemoveCur removes the current node (pointed at by CurrentNode) from the list
+and returns a pointer to this node in DX:SI.  If the list was empty, RemoveCur
+returns NIL in DX:SI and sets the carry flag.
+
+This routine modifies CurrentNode so that it points at the next item in the
+list (the node normally following the current node).  If there is no such
+node (i.e., CurrentNode pointed at the last node in the list upon calling
+RemoveCur) then this routine stores the value of the *previous* node into
+CurrentNode.  If you use this routine to delete the last node in the list,
+it sets CurrentNode to NIL before leaving.
+
+Include:	stdlib.a or lists.a
+
+
+
+Routine:  PeekCur
+-----------------
+
+Author:		      	Randall Hyde
+
+Category:             	List Manipulation
+
+Registers on entry:   	ES:DI-	Pointer to list.
+
+Registers on exit:	DX:SI-	Points at the current node (i.e., contains
+				a copy of CurrentNode), NIL if the list
+				is empty.
+
+Flags on return:	Carry set if the list was empty.
+
+Examples of Usage:
+
+			les	di, MyList
+			PeekCur
+			jc	EmptyList
+
+Description:
+
+PeekCur simply returns CurrentNode in DX:SI (assuming the list is not empty).
+If the list is empty, it returns the carry flag set and NIL in DX:SI.
+It does not affect the value of CurrentNode.
+
+Include:	stdlib.a or lists.a
+
+
+
+Routine:  SetCur
+----------------
+
+Author:		      	Randall Hyde
+
+Category:             	List Manipulation
+
+Registers on entry:   	ES:DI-	Pointer to list.
+			CX-	Node number of new current node.
+
+Registers on exit:	DX:SI-	Returned pointing at selected node.
+				NIL if the list is empty.  Points at the
+				last node in the list if the value in CX
+				is greater than the number of nodes in the
+				list.
+
+Flags on return:	Carry set if the list was empty.
+
+Examples of Usage:
+
+			les	di, MyList
+			mov	cx, NodeNum
+			SetCur
+			jc	EmptyList
+
+Description:
+
+SetCur locates the specified node in the list and sets CurrentNode to the
+address of that node. It also returns a pointer to that node in DX:SI.
+If CX is greater than the number of nodes in the list (or zero) then
+SetCur sets CurrentNode to the last node in the list.  If the list is
+empty, SetCur returns NIL in DX:SI and returns with the carry flag set.
+
+Include:	stdlib.a or lists.a
+
+
+
+Routine:  NextNode
+------------------
+
+Author:		      	Randall Hyde
+
+Category:             	List Manipulation
+
+Registers on entry:   	ES:DI-	Pointer to list.
+
+Registers on exit:	DX:SI-	Returned pointing at selected node.
+				NIL if the list is empty.  Points at the
+				last node in the list if the current node
+				was the last node in the list
+
+Flags on return:	Carry set if the current node was the last node
+			or the list was empty.
+
+Examples of Usage:
+
+			les	di, MyList
+			NextNode
+			jc	EmptyOrEnd
+
+Description:
+
+NextNode modifies the CurrentNode pointer so that it points to the next
+node in the list, if there is one. It also returns a pointer to that node
+in DX:SI.  If the list is empty, or CurrentNode points at the last node
+in the list, NextNode returns with the carry flag set.
+
+Include:	stdlib.a or lists.a
+
+
+
+Routine:  PrevNode
+------------------
+
+Author:		      	Randall Hyde
+
+Category:             	List Manipulation
+
+Registers on entry:   	ES:DI-	Pointer to list.
+
+Registers on exit:	DX:SI-	Returned pointing at selected node.
+				NIL if the list is empty.  Points at the
+				1st node in the list if the current node
+				was the 1st node in the list
+
+Flags on return:	Carry set if the current node was the 1st node
+			or the list was empty.
+
+Examples of Usage:
+
+			les	di, MyList
+			PrevNode
+			jc	EmptyOr1st
+
+Description:
+
+PrevNode modifies the CurrentNode pointer so that it points to the previous
+node in the list, if there is one. It also returns a pointer to that node
+in DX:SI.  If the list is empty, or CurrentNode points at the 1st node
+in the list, PrevNode returns with the carry flag set.
+
+Include:	stdlib.a or lists.a
+
+
+
+Routine:  Insert (m)
+--------------------
+
+Author:		      	Randall Hyde
+
+Category:             	List Manipulation
+
+Registers on entry:   	ES:DI-	Pointer to list.
+			DX:SI-	Address of node to insert (Insert)
+			DX:SI-	Pointer to data block to create node from
+				(Insertm).
+			CX-	Number of node to insert DX:SI in front of;
+				Note that the list is one-based.  That is,
+				the number of the first node in the list is
+				one.  Zero corresponds to the last node in
+				the list.
+
+
+Flags on return:	Carry set if malloc error occurs (Insertm only).
+
+Examples of Usage:
+
+			les	di, MyList
+			ldxi	NewNode
+			mov	cx, 5
+			Insert			;Inserts before Node #5.
+
+; The following example builds a new node on the heap from the data at
+; location "RawData" and inserts this before node #5 in MyList.
+
+			les	di, MyList
+			ldxi	RawData
+			mov	cx, 5
+			Insertm
+			jc	MallocError
+
+Description:
+
+Insert(m) inserts a new node before a specified node in the list.  The node to
+insert in front of is specified by the value in the CX register.  The first
+node in the list is node #1, the second is node #2, etc.  If the value in
+CX is greater than the number of nodes in the list (in particular, if CX
+contains zero, which gets treated like 65,536) then Insert(m) appends the
+new node to the end of the list.
+
+Insertm allocates a new node on the heap (DX:SI points at the data fields
+for the node).  If a malloc error occurs, Insertm returns the carry flag
+set.
+
+CurrentNode gets set to the newly inserted node.
+
+Include:	stdlib.a or lists.a
+
+
+
+Routine:  Append (m)
+--------------------
+
+Author:		      	Randall Hyde
+
+Category:             	List Manipulation
+
+Registers on entry:   	ES:DI-	Pointer to list.
+			DX:SI-	Address of node to insert (Append)
+			DX:SI-	Pointer to data block to create node from
+				(Appendm).
+			CX-	Number of node to insert DX:SI after;
+				Note that the list is one-based.  That is,
+				the number of the first node in the list is
+				one.  Zero corresponds to the last node in
+				the list.
+
+
+Flags on return:	Carry set if malloc error occurs (Appendm only).
+
+Examples of Usage:
+
+			les	di, MyList
+			ldxi	NewNode
+			mov	cx, 5
+			Append			;Inserts after Node #5.
+
+; The following example builds a new node on the heap from the data at
+; location "RawData" and inserts this after node #5 in MyList.
+
+			les	di, MyList
+			ldxi	RawData
+			mov	cx, 5
+			Appendm
+			jc	MallocError
+
+Description:
+
+Append(m) inserts a new node after a specified node in the list.  The node to
+insert in front of is specified by the value in the CX register.  The first
+node in the list is node #1, the second is node #2, etc.  If the value in
+CX is greater than the number of nodes in the list (in particular, if CX
+contains zero, which gets treated like 65,536) then Insert(m) appends the
+new node to the end of the list.
+
+Appendm allocates a new node on the heap (DX:SI points at the data fields
+for the node).  If a malloc error occurs, Appendm returns the carry flag
+set.
+
+CurrentNode gets set to the newly inserted node.
+
+Include:	stdlib.a or lists.a
+
+
+
+
+Routine:  Remove
+----------------
+
+Author:		      	Randall Hyde
+
+Category:             	List Manipulation
+
+Registers on entry:   	ES:DI-	Pointer to list.
+			CX-	# of node to delete from list.
+
+Registers on exit:	DX:SI-	Points at node removed from list (NIL if
+				no such node).
+
+Flags on return:	Carry set if the list was empty.
+
+Examples of Usage:
+
+			les	di, MyList
+			mov	cx, NodeNumbr
+			Remove
+			jc	EmptyList
+
+Description:
+
+Remove removes the specified node (given by CX) from the list
+and returns a pointer to this node in DX:SI.  If the list was empty, Remove
+returns NIL in DX:SI and sets the carry flag.
+
+This routine modifies CurrentNode so that it points at the next item in the
+list (the node normally following the current node).  If there is no such
+node (i.e., CurrentNode pointed at the last node in the list upon calling
+Remove) then this routine stores the value of the *previous* node into
+CurrentNode.  If you use this routine to delete the last node in the list,
+it sets CurrentNode to NIL before leaving.
+
+Include:	stdlib.a or lists.a
+
+

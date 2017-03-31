@@ -1,0 +1,478 @@
+***************************************************************************
+***************************************************************************
+
+
+
+The UCR Standard Library for Assembly Language Programmers,
+Written By Randall Hyde and others, is
+
+  sssssss      ss     ss       ss       sssssss     sssssss
+  ss           ss     ss      ssss      ss    ss    ss
+  ss           ss     ss     ss  ss     ss    ss    ss
+  sssssss      sssssssss    ssssssss    sssssss     sssss        ssssssss
+       ss      ss     ss    ss    ss    ss  ss      ss
+       ss      ss     ss    ss    ss    ss   ss     ss
+  sssssss      ss     ss    ss    ss    ss    ss    sssssss
+
+
+
+  ww                  ww       ww       sssssss     sssssss
+   ww                ww       wwww      ss    ss    ss
+    ww      ww      ww       ww  ww     ss    ss    ss
+     ww    wwww    ww       wwwwwwww    sssssss     sssss
+      ww  ww  ww  ww        ww    ww    ss  ss      ss
+       wwww    wwww         ww    ww    ss   ss     ss
+        ww      ww          ww    ww    ss    ss    sssssss
+
+
+
+
+We do not want any registration fees for this software.
+
+Now for the catch...  It is more blessed to give than to receive.  
+If this software saves you time and effort and you enjoy using it, 
+our lives will be enriched knowing that others have appreciated our work.  
+We would like to share this wonderful feeling with you.  If you like this 
+software and use it, we would like you to contribute at least one routine to 
+the library.  Perhaps you think this library has some neat-o routines in it.  
+Imagine how nice it would become if everyone used their imagination to 
+contribute something useful to it.
+
+We hereby release this software to the public domain.  You can use it in any
+way you see fit.  However, we would appreciate it if you share this software 
+with others as much as it has been shared it with you.  That is not to suggest
+that you give away software you have written with this package (We're not 
+quite as crazy as Richard Stallman, bless his heart), but if someone else would 
+like a copy of this library, please help them out.  Naturally, we would be 
+tickeled pink to receive credit in software that uses these routines (which is 
+the honorable thing to do) but we understand the way many corporations operate 
+and won't be terribly put off if you use it without giving due credit.  
+
+Enjoy!
+
+If you have comments, bug reports, new code to contribute, etc., you can 
+reach us through (address and email are circa 1993, if you read this in
+1999, don't count on it!):
+
+		rhyde@cs.ucr.edu		(On Internet).
+
+or
+
+		Randall Hyde
+		Dept of Computer Science
+		100 University Office Bldg
+		University of California
+		Riverside, Ca. 92521
+
+
+COMMENTS ABOUT THE CODE:
+************************
+
+Please don't expect super optimal code here.  Most of it is fairly mediocre
+(from a size/speed point of view).  Hopefully, you'll agree, it's the idea
+that counts.  If you do not like something I have done, you have got the
+sources -- have at it.  (Of course, it would be appreciated if you would
+send any modifications to one of the E-MAIL addresses above.)
+
+
+****************+******************** NOTE ************************************
+
+Please understand the purpose of this code!  This library is here to make
+assembly language programming easy.  The nature of this library encourages
+people to write code in a fashion similar to that employed when they write
+programs in a high level language like C.  While this familiar style of
+programming does make the task easier, it is not the most appropriate
+approach to use when flat-out performance is what you're seeking.  "C code
+written with MOV instructions" is never as fast as pure assembly language
+code employing the proper programming paradigm.  Why mention this?  Well,
+some readers may have heard about assembly language's legendary performance
+and they're expecting to achieve that using this library.  While programs
+written with this library may very well run faster than a comparable program
+written in a HLL, you will not get fantastic performance improvement until
+you stop thinking in HLLs and starting "thinking" in assembly.  The purpose
+of this library is to help you *avoid* thinking in assembly language.  There-
+fore, this code will not help you achieve those fantastic performance levels
+you've been hearing about; indeed, this library may stand in the way of that
+goal.  It's not that these routines are terribly slow, mind you.  They just
+encourage an inappropriate programming style if speed is what you're after.
+
+On the other hand, since only 10-20% of the code of any given program
+represents the time critical stuff (an argument long employed by HLL
+supporters), there is nothing wrong with judicious use of this code within
+a program that has to be fast.  As usual, if performance is your primary
+goal, you must study the problem and the program you generate very carefully
+to isolate the time critical portions.  If you are interested in high-
+performance programming at the "micro-algorithm" level, you should take a look
+at Michael Abrash's text "Zen of Assembly."  This excellent book will explain
+many ways to improve the performance of your code at the sub-algorithm level
+(where assembly language really shines).
+
+
+
+COMMENTS ABOUT THIS DOCUMENTATION:
+**********************************
+
+You will have to forgive us for the inconsistent style appearing throughout
+this document.  Keep in mind that this document has been prepared by many
+different people.  Keeping the styles consistent is a time consuming and
+difficult task.
+
+Whenever a routine's description claims that the flags are not affected,
+you should not interpret this to mean that the routine preserves the flags.
+Most routines do *not* preserve any of the flags.  Such a statement simply
+means that the routine does not *explicitly* return a value in one (or more)
+of the flag bits.
+
+Note that proper credit has been given to the author of each of the various
+routines appearing in this library *except* for many written by Randall
+Hyde.  All routines without an author by-line were probably written by
+Randall Hyde (unless we screwed up somewhere and forgot to put a name
+in the documentation).  Most of these routines were tested and documented
+by various students in Randy Hyde's CS 13 (assembly language) and CS 191X /
+CS 185 courses (Commercial Software Development).  There are too many names
+to mention here, but these students definitely deserve the credit for locating
+numerous bugs in the code, providing many suggestions, and doing other work.
+
+Of course, there have been numerous suggestions and bug notices from helpful
+souls on BIX and the Internet, as well.  Thank you all.
+
+*NOTICE* We have noticed, from time to time, that there are routines in the
+library which have not been documented.  Perusing the source listings will
+help you locate some library routines which have slipped through the cracks.
+Also keep in mind that there isn't a one to one correspondence between
+source files and library routines.  Many of the source files contain
+two or more library routines.  Someday we will attempt to document which
+files contain which routines, but that's in the future for now.
+
+=============================================================================
+
+Version History:
+
+Version 00- 	Initial release as "Randy Hyde's Standard Library for 80x86
+		Assembly Language programmers"
+
+Version 10-	Initial release as "UCR Standard Library..."  CS 191X
+		students did some testing and documentation in this release.
+
+Version 20-	More testing on several routines.  Added floating point
+		library and several other routines.
+
+Version 21-	Fixed *MAJOR* bugs in floating point package.  Added
+11-1-91		several new routines.  Included new "TEST" files with
+		the library.  Also included SHELL.ASM file inadvertently
+		left out of Version 2.0.
+
+Version 22-	Made some minor modifications to puth, putl, ltoa, and htoa
+11-14-91	as per suggestions made by David Holm and Terje Maithesen
+
+Version 23-	Made a small but *major* modification to the stdlib.a and
+11-22-91	stdlib.a6 files to force library calls into the STDGRP group.
+		Otherwise the linker substitued bad segment addresses for
+		the far calls to the library routines.  A real problem when
+		accessing variables in StdData.
+
+Version 24-	Yet more changes to fix the stupid MASM group/segment:offset
+12-7-91		bug.  Made various changes to the STDLIB.A file.  Also fixed
+		a problem in the FP routines- forgot to declare sl_sefpa
+		public.  Finally, created batch file to automatically unpack
+		everything from DOS (assuming presence of PKUNZIP somewhere
+		in the current path).
+
+Version 25-	Some new macros (DOS, ExitPgm), fixed a problem with the
+12-25-91	PUTI routine, added some SmartArray items.  Also added the
+		GetEnv routine.
+
+Version 26-	Maintenance release coinciding with the Dr. Dobb's article
+2/20/92		in the March 1992 issue.
+
+Version 27-	SmartLists and interrupt driven serial routines added to
+6/19/92		the libraries.  Also created smaller include files for
+		each of the standard library categories. (note: the serial
+		routines actually existed prior to this release, they were
+		cleaned up and documented for this release).  Fixed a couple
+		of truly disgusting bugs in the floating point package
+		(wouldn't properly print values like 8100 and hung whenever
+		encountering a zero value in FADD/FSUB).
+
+Version 28-	Modified MemInit to allow the programmer to specify how many
+8/20/92		pages to reserve for the heap and the location of the heap.
+
+Version 29-	Added HeapStart routine to the memory management code so an
+10/5/92		application could get the segment address of the start of
+		the heap.  This is useful when you want to deallocate the
+		heap (by calling DOS' deallocate routine), for example, to
+		free up the heap memory so you can run another application.
+		What really needs to be done here is to write a dealloc
+		routine, but HeapStart offered some flexibility.
+
+Version 30-	Fixed bug in ATOH2 routine (it incremented DI once too far).
+10/11/92-	Also fixed the same bug in ATOI2, ATOU2, ATOL2, ATOUL2, etc.
+3/16/93		Added StrTrim (m) and StrBlkDel (m) to the library.  Added
+		the pattern matching package to the library. Added the date
+		and time routines (ATOD, DTOA, DTOA2, DTOAm xDTOA, xDTOAm,
+		xDTOA2, ATOT, TTOA, TTOA2, TTOAm xTTOA, xTTOAm xTTOA2) to
+		the library.  Fixed a bug in ATOI and ATOL which passed off
+		the ":" character as a numeric digit.  Broke the MemInit
+		routine into two separate routines: MemInit & MemInit2 which
+		let the user specify the location of the heap or use all the
+		available memory.  Also, no longer require that PSP be a
+		global variable (However, the library does require DOS 3.3
+		or later).  Fixed a bug in PRINTF/PRINTFF (it did not
+		properly restore the flags and BP). Fixed a bug in the
+		LSFPO routine (thanks to Tim Farley for pointing this out).
+		Added the process manager package to the library.
+
+Version 31-	Fixed a bug in strstr which prevented it from matching a
+6/10/93		substring at the beginning of a string.  Added file
+7/24/93		routines to the library.  Added macros for strbdel and
+8/1/93		strtrim to string.a.  Fixed a bug in stricmpl, forgot to
+		copy a pointer into SI within the routine.  Fixed a bug in
+		CPUID which crashed the machine if a 486.
+
+Version 32-	Fixed several bugs in the list routines.  Added some actual
+3/24/94		file routines to the library.  Updated the documentation.
+
+Version 33-	Fixed some bugs in the floating point code.  Fixed a bug
+7/15/94		a bug in the pattern matching code.  Added new pattern
+		match routines.  Changed the name of CPUID because it
+		conflicts with the Pentium instrucion of the same name.
+		Fixed several bugs in the processes package.  Fixed some
+		problems in the documentation (certain routines were listed
+		by the wrong name).
+
+Version 34-	Fixed several problems in the documentation.  Some other
+11/18/94	minor bug fixes including changing the CPUID name to
+		CPUIDENT (to avoid conflict with Pentium CPUID instruction).
+		Also modified IBML to use CPUIDENT rather than CPUID.
+
+Version 35-	Fixed a problem with a signed comparison in the pattern
+		matching code.  It turned out that if you failed on the
+		first character of a string, it bombed the system.  Also
+		changed the doc on patterns to fix an error.
+
+Version 36-	Fixed a bug in the FREAD routine.  There are known bugs in
+4/4/95		the floating point package, but cannot get a sample example
+		to determine cause.
+
+==============================================================================
+
+
+ROUTINES WE WOULD LIKE TO HAVE:
+*******************************
+
+If you're interested in adding some routines to this
+package, GREAT!  Here are some suggestions.
+
+1) Routines which manipulate directories (read/write/etc.)
+2) We did it already!
+3) Length-prefixed strings package.
+4) A graphics package.
+5) An object-oriented programming class library.
+6) Floating point functions (e.g., SIN, COS, etc.)
+7) Just about anything else appearing in a HLL "standard" library.
+If you've got any ideas, we would  love to discuss them with you.  The best
+way to reach us is through the E-MAIL addresses above.
+
+
+MISSING ROUTINES TO BE SUPPLIED IN THE FUTURE:
+**********************************************
+
+
+	Table Package
+TblInit-	Initializes a particular table.
+TblEnter-	Enters an item into a table.
+TblLookup-	Looks up an item in a table.
+TblFree-	Free up memory in use by a table.
+
+	Tree Package
+<pretty much the same routines as the list package>
+
+	Set Package
+<Generic set routines (not just character set routines) similar to cset pkg>
+
+
+	Processes Package
+Sleep-		Delays a process for some period of time.
+YieldTo-	Transfers control to a specific process.
+Forkm-		Allocates new PCB on the heap.
+Sync-		Halts a process until another process dies.
+Join-		Merges two processes together.
+wait & release-	Semaphore/synchronization primitives.
+
+
+	80386 Optimized Code
+Despite the disclaimer about speed earlier in this document, we do have
+plans to rewrite this routine for speed at some point in the future.
+At that time we will write the code specifically for 80386 and later
+processors (the code will probably be optimized for Pentium/586 processors
+at that time).  Stay tuned.
+
+
+HOW TO USE THE STANDARD LIBRARY:
+********************************
+
+When you are ready to begin programming with the library, you should
+copy the shell.asm file, provided in the package, to another file in
+which you will be working, i.e. myprog.asm.  The shell.asm file sets
+up the machine (segments, etc.) as the UCR Standard Library expects
+them.  Results are undefined for other setups.  Therefore, I strongly
+suggest, that when you begin using these routines, you follow the
+shell.asm format.  Later, when you are familiar with the software,
+you may wish to create your own shell.asm file, but it is wise to
+initially use the one provided.  The shell.asm file has comments which
+tell you where to place your code, variables, etc.
+
+There is an include file stdlib.a which
+you should include in every assembly you perform which calls the stdlib
+routines.  SHELL.ASM already includes this file.  *YOU MUST PLACE THE
+INCLUDE STATEMENT OUTSIDE OF ANY SEGMENTS IN YOUR PROGRAM*.  Preferably
+as the first line of your program (just like SHELL.ASM).  If you place
+this include directive inside a segment, certain assemblers/linkers
+(especially MASM) will not properly assemble and link your programs.
+They will assemble and link without error, but the resulting program
+will not execute correctly.
+
+The STDLIB.A file contains macros you can use to call each of the routines
+in the standard library.  For example, to call PRINTF you would use the
+statement
+		printf
+		db	"format string",0
+		db	other,vars
+
+rather than "calling" printf.  Printf is actually a macro, you cannot call
+it directly (all of the standard library routines have names like "sl_printf"
+and the macro issues a call to the appropriate routine).  These macros have
+two main purposes-- first, the differentiate calls to the standard library
+routines (i.e., no "call" instruction is the difference); and second, they
+contain some extra code to perform "smart linking" with MASM 5.1 & earlier,
+TASM, and OPTASM.  MASM 6.0 supports a new directive, extrndef, which
+eliminates the need for this extra code, but the extra code works nonetheless.
+
+Starting with version 27, many of the standard library macros were separated
+into smaller files.  This speeds up assembly when you don't need *all* of
+the routines in the library (the macro file is getting quite large).
+STDLIB.A still exists and still loads everything, but you should get in the
+habit of specifying the smaller files instead.  For MASM 6.0 users, a
+special set of include files "*.a6" are now available.  MASM 6.0 seems to
+run out of memory if you include "stdlib.a6" (which includes everything) so
+you may have to include only those files you actually use.
+
+
+All of the standard library routines, and most of their local data values,
+are in a segment named "stdlib".  You should not create such a segment unless
+you plan on adding new routines to the standard library.
+
+
+Note: 	if you want to use the pattern matching functions provided in the
+	pattern matching package, you will need to include the following
+	statement somewhere *after* the "include stdlib.a" or
+	"include pattern.a" statement:
+
+			matchfunc
+
+	This declares the necessary external names required by the pattern
+	matching operations.  The SHELL.ASM file contains a commented-out
+	line with this statement.  If you use pattern matching in programs
+	which start out as SHELL.ASM you can simply uncomment this line.
+
+
+
+HOW THE STANDARD LIBRARY IS ORGANIZED:
+**************************************
+
+The documentation spec sheets for each of the standard library routines appear
+in other files provided with the standard library.  We've organized these
+routines by category.  The categories supported to date include
+
+	Standard Input Routines
+	Standard Output Routines
+	Conversion Routines
+	Utility Routines
+	String Handling Routines
+	Memory Management Routines
+	Character Set Routines
+	Floating Point Routines
+	File I/O
+	Miscellaneous Routines
+	Time & Date Routines
+	Smart List Routines
+	Serial Port I/O
+	Pattern Matching Package
+	Process Package
+
+
+
+IF YOU WANT TO PLAY WITH THE SOURCE LISTINGS
+********************************************
+
+Most users will probably use the standard library routines in object form
+and never worry about the actual implementation.  If you, on the other hand,
+want to get "under the hood" and take a look at how this code was written
+(perhaps to fix a bug), all the source listings are provided with this
+release.
+
+We assemble the library for final distribution using TASM 3.0 with the
+"/M3",  "/jjumps", and "/ic:\stdlib\include" command line options.  If you
+do not specify these options you will probably get an assembly error.
+
+All initial development of these routines was done with MASM.  By writing the
+code with MASM and then assembling the final release version with TASM we
+could verify that the code worked with both assemblers.
+
+That is, at least, until MASM 6.0 came along.  All new routines written since
+the introduction of MASM 6.0 were developed with MASM 6.0 and assembled with
+TASM 3.0.  They should compile with MASM 5.1 as well (though we haven't
+verified this).  HOWEVER, older routines written before the release of MASM 6
+will probably not assemble properly under MASM 6.0 unless you specify the
+MASM 5.1 compatibility options.  Furthermore, routines written after the
+release of MASM 6.0 take advantage of MASM/TASM's "branch out of range"
+automatic correction and may produce errors when assembled under MASM 5.1.
+
+Moral of the story-- If you're still using MASM 5.1 (or earlier) or TASM 2.0
+(or earlier), *upgrade*!
+
+Given the divergent paths that MASM 6.0 and TASM 3.0 are taking, it is
+unlikely that we will continue to provide all future code in a form which
+compiles under both assemblers.  The windowing package we've created (but
+have not released), for example, will only assemble under MASM 6.0.  We will
+always make sure that the object code works with any assembler/linker out
+there, but it's unlikely we will continue to support both MASM and TASM
+at the source level for TASM indefinitely (unless BORLAND gives us good
+reason to do otherwise, like having a MASM 6.x compatibility mode).  Sorry,
+it's just too much work for so little return.
+
+Of course, if you would volunteer to translate our MASM 6 code to TASM,
+we'd be more than happy to give you full credit for your work.
+
+Currently (6/93), MASM 6.0 and MASM 6.1 have some severe bugs which create
+some major problems.  As soon as a stable release appears we will convert
+specifically to MASM 6.x.
+
+Acknowledgements
+================
+
+There are far too many people who have their fingers in this package to
+give full credit to everyone involved.  Futhermore, this section was
+added long after many hard-working people's efforts were forgotten.
+If you are one of these people, send me (rhyde) email and I will
+certainly rectify this situation.
+
+Most of the routines in the library were written by Randy Hyde.
+Those routines authored by someone else contain appropriate notes in the
+comments found in the source listing.
+
+Many thanks to those who have found problems in routines in the library.
+This includes the students in CS 191x, CS 185, CS 162ABC, and CS 13 at
+UC Riverside.  They have made important contributions to this library
+and their efforts are not forgotten.
+
+Special thanks to the CS 191x class at UC Riverside who reorganized the
+documentation from its original sorry state.  Special thanks to Steve
+Shah for his quick reference guide.
+
+Last, but certainly not least, praise and glory to our Lord for giving us
+all the talent to achieve this...
+
+In the future, I will endeavor to keep this section up to date and provide
+personal acknowledgements to those who have contributed to the success of
+this library.

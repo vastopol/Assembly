@@ -1,0 +1,183 @@
+StdGrp		group	stdlib, stddata
+;
+stddata		segment	para public 'sldata'
+stddata		ends
+stdlib		segment	para public 'slcode'
+
+;# 38 routines in this package.
+
+
+externdef	sl_strcpy:far, sl_strcpyl:far, sl_strdup:far,
+		sl_strdupl:far, sl_strlen:far,
+		sl_strcat:far, sl_strcatm:far, sl_strcatl:far
+
+externdef	sl_strcatml:far, sl_strchr:far,
+		sl_strstr:far, sl_strstrl:far
+
+externdef	sl_strcmp:far, sl_strcmpl:far, sl_stricmp:far,
+		sl_stricmpl:far, sl_strupr:far, sl_struprm:far,
+		sl_strlwr:far, sl_strlwrm:far
+
+externdef	sl_strset:far, sl_strsetm:far,
+		sl_strspan:far, sl_strspanl:far,
+		sl_strcspan:far, sl_strcspanl:far,
+		sl_strins:far, sl_strinsl:far, sl_strinsm:far, sl_strinsml:far
+
+externdef	sl_strdel:far, sl_strdelm:far,
+		sl_strrev:far, sl_strrevm:far,
+		sl_strbdel:far, sl_strbdelm:far,
+		sl_strtrim:far, sl_strtrimm:far
+
+strcpy		macro
+		call	sl_strcpy
+		endm
+
+strcpyl		macro
+		call	sl_strcpyl
+		endm
+
+strdup		macro
+		call	sl_strdup
+		endm
+
+strdupl		macro
+		call	sl_strdupl
+		endm
+
+strlen		macro
+		call	sl_strlen
+		endm
+
+strcat		macro
+		call	sl_strcat
+		endm
+
+strcatl		macro
+		call	sl_strcatl
+		endm
+
+strcatm		macro
+		call	sl_strcatm
+		endm
+
+strcatml	macro
+		call	sl_strcatml
+		endm
+
+strchr		macro
+		call	sl_strchr
+		endm
+
+strstr		macro
+		call	sl_strstr
+		endm
+
+strstrl		macro
+		call	sl_strstrl
+		endm
+
+strcmp		macro
+		call	sl_strcmp
+		endm
+
+stricmp		macro
+		call	sl_stricmp
+		endm
+
+stricmpl	macro
+		call	sl_stricmpl
+		endm
+
+strcmpl		macro
+		call	sl_strcmpl
+		endm
+
+strupr		macro
+		call	sl_strupr
+		endm
+
+struprm		macro
+		call	sl_struprm
+		endm
+
+strlwr		macro
+		call	sl_strlwr
+		endm
+
+strlwrm		macro
+		call	sl_strlwrm
+		endm
+
+strset		macro
+		call	sl_strset
+		endm
+
+strsetm		macro
+		call	sl_strsetm
+		endm
+
+strspan		macro
+		call	sl_strspan
+		endm
+
+strspanl	macro
+		call	sl_strspanl
+		endm
+
+strcspan	macro
+		call	sl_strcspan
+		endm
+
+strcspanl	macro
+		call	sl_strcspanl
+		endm
+
+strins		macro
+		call	sl_strins
+		endm
+
+strinsl		macro
+		call	sl_strinsl
+		endm
+
+strinsm		macro
+		call	sl_strinsm
+		endm
+
+strinsml	macro
+		call	sl_strinsml
+		endm
+
+strdel		macro
+		call	sl_strdel
+		endm
+
+strdelm		macro
+		call	sl_strdelm
+		endm
+
+strrev		macro
+		call	sl_strrev
+		endm
+
+strrevm		macro
+		call	sl_strrevm
+		endm
+
+strbdelm	macro
+		call	sl_strbdelm
+		endm
+;
+strbdel		macro
+		call	sl_strbdel
+		endm
+;
+strtrimm	macro
+		call	sl_strtrimm
+		endm
+;
+strtrim		macro
+		call	sl_strtrim
+		endm
+;
+stdlib		ends
