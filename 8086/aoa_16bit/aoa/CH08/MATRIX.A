@@ -1,0 +1,86 @@
+; MATRIX.A
+;
+; This include file provides the external definitions
+; and data type definitions for the matrix sample program
+; in Chapter Eight
+;
+; Some useful type definitions:
+
+Integer		typedef	word
+Char		typedef	byte
+
+
+; Some common constants:
+
+Bell		equ	07	;ASCII code for the bell character.
+
+
+; A "Dope Vector" is a structure containing information about arrays that
+; a program allocates dynamically during program execution.  This particular
+; dope vector handles two dimensional arrays.  It uses the following fields:
+;
+;	TTL-	Points at a zero terminated string containing a description
+;		of the data in the array.
+;
+;	Func-	Pointer to function to compute for this matrix.
+;
+;	Data-	Pointer to the base address of the array.
+;
+;	Dim1-   This is a word containing the number of rows in the array.
+;
+;	Dim2-	This is a word containing the number of elements per row
+;		in the array.
+;
+;	ESize-	Contains the number of bytes per element in the array.
+
+DopeVec		struct
+TTL		dword	?
+Func		dword	?
+Data		dword	?
+Dim1		word	?
+Dim2		word	?
+ESize		word	?
+DopeVec		ends
+
+
+; Some text equates the matrix code commonly uses:
+
+Base		textequ	<es:[di]>
+
+byp		textequ	<byte ptr>
+wp		textequ	<word ptr>
+dp		textequ	<dword ptr>
+
+
+; Procedure declarations.
+
+InpSeg		segment	para public 'input'
+
+		externdef geti:far
+		externdef getarray:far
+
+InpSeg		ends
+
+
+cseg		segment	para public 'code'
+
+		externdef CrossProduct:near
+
+cseg		ends
+
+
+; Variable declarations
+
+dseg		segment	para public 'data'
+
+		externdef InputLine:byte
+
+dseg		ends
+
+
+; Uncomment the following equates if you want to turn on the
+; debugging statements or if you want to include the MODULO function.
+
+
+;debug		equ	0
+;DoMOD		equ	0

@@ -1,0 +1,441 @@
+Memory Management Routines
+--------------------------
+
+The stdlib memory management routines let you dynamically allocate storage on
+the heap.  These routines are somewhat similar to those provided by the "C"
+programming language.  However, these routines do not perform garbage
+collection, as this would introduce too many restrictions and have a very
+adverse effect on speed.
+
+The following paragraph gives a description of how the memory management
+routines work.  These routines may be updated in future revisions, however,
+so you should never make assumptions about the structure of the memory
+management record (described below) or else your code may not work on the
+next revision.
+
+The allocation/deallocation routines should be fairly fast.  Malloc and free
+use a modified first/next fit algorithm which lets the system quickly find a
+memory block of the desired size without undue fragmentation problems (average
+case).  The memory manager data structure has an overhead of eight bytes
+(meaning each malloc operation requires at least eight more bytes than you ask
+for) and a granularity of 16 bytes.  The overhead (eight bytes) per allocated
+block may seem rather high, but that is part of the price to pay for faster
+malloc and free routines.  All pointers are far pointers and each new item is
+allocated on a paragraph boundary.  The current memory manager routines always
+allocate (n+8) bytes, rounding up to the next multiple of 16 if the result is
+not evenly divisible by sixteen.  The first eight bytes of the structure are
+used by the memory management routines, the remaining bytes are available for
+use by the caller (malloc, et. al., return a pointer to the first byte beyond
+the memory management overhead structure).
+
+NOTE: There was a major change in the way this package works starting with
+version 30 of the library.  Prior to version 30, MemInit required a parameter
+in the DX register to determine where to allocate the heap and how much
+storage to allocate.  Furthermore, the older versions called DOS to deallocate
+memory then reallocate it for the heap.  Finally, the older versions required
+that you set up a global variable "PSP" containing the program segment
+prefix value.
+
+As of version 30, MemInit was split into two routines: MemInit and MemInit2.
+MemInit allocates all of available memory (like the standard version of the
+earlier MemInit) whereas MemInit2 lets you specify the location and size
+of the heap.  The new version calls DOS to get the PSP (so you don't need
+to declare the PSP variable just for MemInit).  The new version does not
+reallocate memory blocks with DOS calls (which created some problems,
+especially with debugger programs).  Finally the new versions work fine
+with ".EXE" files which do not get all leftover memory allocated to them.
+
+Most older STDLIB programs will work just fine with the new MemInit routine.
+If you relied on MemInit to reallocate memory for you, or if you specified
+the location of the heap, you will need to modify your program to use these
+new versions of the MemInit routine.
+
+
+Routine:  MemInit
+-----------------
+
+Category:               Memory Management Routine
+
+Registers on Entry:     Nothing
+Globals Affected:       zzzzzzseg - segment name of the last segment in your
+				    program
+
+Registers on return:    CX - number of paragraphs actually reserved by MemInit
+
+
+Flags affected:         None
+
+Example of Usage:
+						; Don't forget to set up
+						; zzzzzzseg before calling
+						; MemInit
+			MemInit
+
+
+Description:  This routine initializes the memory manager system.  You must
+	      call it before using any routines which call any of the memory
+	      manager procedures (since a good number of the stdlib routines
+	      call the memory manager, you should get in the habit of always
+	      calling this routine.)  The system will "die a horrible death"
+	      if you call a memory manager routine (like malloc) without first
+	      calling MemInit.
+
+	      This routine expects you to define (and set up) a global
+	      names: zzzzzzseg.  "zzzzzzseg" is a dummy segment which
+	      must be the name of the very last segment defined in your
+	      program.  MemInit uses the name of this segment to determine the
+	      address of the last byte in your program.  If you do not
+	      declare this segment last, the memory manager will overwrite
+	      anything which follows zzzzzzseg.  The "shell.asm" file
+	      provides you with a template for your programs which properly
+	      defines this segment.
+
+	      On return from MemInit, the CX register contains the number of
+	      paragraphs actually allocated.
+
+
+Include:                stdlib.a or memory.a
+
+Routine:  MemInit2
+------------------
+
+Category:               Memory Management Routine
+
+Registers on Entry:     ES-	segment address of the start of the heap.
+			CX-	Number of paragraphs to allocate for the heap.
+
+Registers on return:    None
+Flags affected:         None
+
+Example of Usage:
+			mov	cx, seg HeapSeg
+			mov	es, cx
+			mov	cx, HeapSize		;In paragraphs!
+			MemInit2
+
+
+Description:  This routine initializes the memory manager system.  You must
+	      call it before using any routines which call any of the memory
+	      manager procedures (since a good number of the stdlib routines
+	      call the memory manager, you should get in the habit of always
+	      calling this routine.)  The system will "die a horrible death"
+	      if you call a memory manager routine (like malloc) without first
+	      calling MemInit2 (or MemInit).
+
+	      This routine lets you decide where the heap lies in memory
+	      (as opposed to MemInit which uses all available bytes from
+	      the end of your program to the end of memory).
+
+	      Note: you should only call MemInit or MemInit2 once in your
+	      program.
+
+Include:                stdlib.a or memory.a
+
+Routine:  Malloc
+----------------
+
+Category:              Memory Management Routine
+
+Registers on Entry:    CX - number of bytes to reserve
+
+Registers on return:   CX - number of bytes actually reserved by Malloc
+		       ES:DI - ptr to 1st byte of memory allocated by Malloc
+
+Flags affected:        Carry=0 if no error.
+		       Carry=1 if insufficient memory.
+
+Example of Usage:
+		       mov     cx, 256
+		       Malloc
+		       jnc     GoodMalloc
+		       print   db    "Insufficient memory to continue.",cr,lf,0
+		       jmp   Quit
+	  GoodMalloc:  mov   es:[di], 0          ;Init string to NULL
+
+
+Description:  Malloc is the workhorse routine you use to allocate a block of
+	      memory.  You give it the number of bytes you need and if it
+	      finds a block large enough, it will  allocate the requested
+	      amount and return a pointer to that block.
+
+	      Most memory managers require  a small amount of overhead for each
+	      block they allocate.  Stdlib's (current) memory manager requires
+	      an overhead of eight bytes.  Furthermore, the grainularity is 16
+	      bytes.  This means that Malloc always allocates blocks of memory
+	      in paragraph multiples.  Therefore, Malloc may actually reserve
+	      more storage than you specify. Therefore, the value returned in
+	      CX may be somewhat greater than the requested value.  By setting
+	      the minimum allocation size to a paragraph, however, the
+	      overhead is reduced and the speed of Malloc is improved by a
+	      considerable amount.
+
+	      Stdlib's memory management does not do any garbage collection.
+	      Doing so would place too many demands on Malloc's users.
+	      Therefore, it is quite possible for you to fragment memory with
+	      multiple calls to maloc, realloc, and free.  You could wind up in
+	      a situation where there is enough free memory to satisfy your
+	      request, but there isn't a single contiguous block large enough
+	      for the request.  Malloc treats this as an insufficient memory
+	      error and returns with the carry flag set.
+
+	      If Malloc cannot allocate a block of the requested size, it
+	      returns with the carry flag set.  In this situation, the contents
+	      of ES:DI is undefined.  Attempting to dereference this pointer
+	      will produce erratic and, perhaps, disasterous results.
+
+Include:              stdlib.a or memory.a
+
+
+Routine:  Realloc
+-----------------
+
+Category:  Memory Management Routine
+
+Registers on Entry:   CX - number of bytes to reserve
+		      ES:DI - pointer to block to  reallocate.
+
+Registers on return:  CX - number of bytes actually reserved by Realloc.
+		      ES:DI - pointer to first byte of memory allocated by
+			      Realloc.
+
+Flags affected:       Carry = 0 if no error.
+		      Carry = 1 if insufficient memory.
+
+Example of Usage:
+			mov	cx, 1024	;Change block size to 1K
+			les	di, CurPtr	;Get address of block into ES:DI
+			realloc
+			jc	BadRealloc
+			mov	word ptr CurPtr, di
+			mov	word ptr CurPtr+2, es
+
+
+Description:  Realloc lets you change the size of an allocated block in the
+	      heap.  It allows you to make the block larger or smaller.
+	      If you make the  block smaller, Realloc simply frees (returns
+	      to the heap) any leftover bytes at the end of the block.  If
+	      you make the block larger, Realloc goes out and allocates a
+	      block of the requested size, copies the bytes form the old
+	      block to the beginning of the new block (leaving the bytes at
+	      the end of the new block uninitialized)), and then frees the
+	      old block.
+
+
+Include:               stdlib.a or memory.a
+
+
+Routine:  Free
+--------------
+
+Category:               Memory Management Routine
+
+Registers on Entry:     ES:DI - pointer to block to deallocate
+
+Registers on return:    None
+
+Flags affected:         Carry = 0 if no error.
+			Carry = 1 if ES:DI doesn't point at a Free block.
+
+Example of Usage:
+			les     di, HeapPtr
+			Free
+
+Description:  Free (possibly) deallocates storage allocated on the heap by
+	      malloc or Realloc.  Free returns this storage to heap so other
+	      code can reuse it later.  Note, however, that Free doesn't
+	      always return storage to the heap.  The memory manager data
+	      structure keeps track of the number of pointers currently
+	      pointing at a block on the heap (see DupPtr, below).  If you've
+	      set up several pointers such that they point at the same block,
+	      Free will not deallocate the storage until you've freed all of
+	      the pointers which point at the block.
+
+	      Free usually returns an error code (carry flag = 1) if you
+	      attempt to Free a block which is not currently allocated or if
+	      you pass it a memory address which was not returned by malloc
+	      (or Realloc).  By no means is this routine totally robust.
+	      If you start calling free with arbitrary pointers in es:di
+	      (which happen to be pointing into the heap) it is possible,
+	      under certain circumstances, to confuse Free and it will attempt
+	      to free a block it really should not.
+
+	      This problem could be solved by adding a large amount of extra
+	      code to the free routine, but it would slow it down considerably.
+	      Therefore, a little safety has been sacrificed for a lot of
+	      speed.  Just make sure your code is correct and everything will
+	      be fine!
+
+
+Include:               stdlib.a or memory.a
+
+
+Routine:  DupPtr
+----------------
+
+Category:             Memory Manager Routine
+
+Registers on Entry:   ES:DI - pointer to block
+
+Registers on return:  None
+
+Flags affected:       Carry = 0 if no error.
+		      Carry = 1 if es:di doesn't point at a free block.
+
+Example of Usage:
+		      les     di,  Ptr
+		      DupPtr
+
+
+Description:  DupPtr increments the pointer count for the block at the
+	      specifiied address.  Malloc sets this counter to one.  Free
+	      decrements it by one.  If free decrements the value and it
+	      becomes zero, free will release the storage to the heap for
+	      other use.  By using DupPtr you can tell the memory manager
+	      that you have several pointers pointing  at the same block
+	      and that it shouldn't deallocate the storage until you free
+	      all of those pointers.
+
+
+Include:              stdlib.a or memory.a
+
+
+Routine:  IsInHeap
+------------------
+
+Category:             Memory Management Routine
+
+Registers on Entry:   ES:DI - pointer to a block
+
+Registers on return:  None
+
+Flags affected:       Carry = 0 if ES:DI is a valid pointer.
+		      Carry = 1 if not.
+
+Example of Usage:
+			les	di, MemPtr
+			IsInHeap
+			jc	NotInHeap
+
+Description:  This routine lets you know if es:di contains the address of
+	      a byte in the heap somewhere.  It does not tell you if es:di
+	      contains a valid pointer returned by malloc (see IsPtr, below).
+	      For example, if es:di contains the address of some particular
+	      element of an array (not necessarily the first element)
+	      allocated on the heap, IsInHeap will return with the carry clear
+	      denoting that the es:di points somewhere in the heap.  Keep in
+	      mind that calling this routine does not validate the pointer;
+	      it could be pointing at a byte which is part of the memory
+	      manager data structure rather than at actual data (since the
+	      memory manager maintains that informatnion within the
+	      bounds of the heap). This routine is mainly useful for seeing
+	      if something is allocated on the heap as opposed to somewhere
+	      else (like your code, data, or stack segment).
+
+
+Include:              stdlib.a or memory.a
+
+Routine:  IsPtr
+---------------
+
+Category:               Memory Management Routine
+
+Registers on Entry:     ES:DI - pointer to block
+
+Registers on return:    None
+
+Flags affected:         Carry = 0 if es:di is a valid pointer.
+			Carry = 1 if not.
+
+Example of Usage:
+			les	di, MemPtr
+			IsPtr
+			jc	NotAPtr
+
+
+
+Description:  IsPtr is much more specific than IsInHeap.  This routine returns
+	      the carry flag clear if and only if es:di contains the address
+	      of a properly allocated (and currently allocated) block on the
+	      heap.  This pointer must be a value returned by Malloc, Realloc,
+	      or DupPtr and that block must be currently allocated for IsPtr
+	      to return the carry flag clear.
+
+
+Include:                stdlib.a or memory.a
+
+Routine:  BlockSize
+-------------------
+
+Category:               Memory Management Routine
+
+Registers on Entry:     ES:DI - pointer to block
+
+Registers on return:    CX-	Size of specifed block (in bytes). Returns
+				zero if ES:DI does not point at a legal block.
+
+Flags affected:		None
+
+Example of Usage:
+			les	di, MemPtr
+			BlockSize
+
+
+
+Description:
+
+BlockSize returns the size (in bytes) of a block allocated on the heap.
+If the block is not in the heap, this code returns zero in CX.
+This routine does NOT verify that the block was actually allocated and
+is still allocated.  It just makes sure that the pointer points at a valid
+location somewhere in the heap and returns the block size from the data
+structure at the specified address.  You are responsible for ensuring that
+you do not use a deallocated memory block.
+
+Include:                stdlib.a or memory.a
+
+Routine:  MemAvail
+------------------
+
+Category:               Memory Management Routine
+
+Registers on Entry:     None
+
+Registers on return:    CX-	Size of largest free block on the heap
+Flags affected:		None
+
+Example of Usage:
+			MemAvail
+
+
+
+Description:
+
+MemAvail returns the size (in paragraphs) of the largest free block on the
+heap.  You can use this call to determine if there is sufficient storage
+for an object on the heap.
+
+Include:                stdlib.a or memory.a
+
+Routine:  MemFree
+-----------------
+
+Category:               Memory Management Routine
+
+Registers on Entry:     None
+
+Registers on return:    CX-	Size of all free blocks on the heap.
+Flags affected:		None
+
+Example of Usage:
+			MemFree
+
+
+
+Description:
+
+MemFree returns the size (in paragraphs) of the the free storage on the
+heap.  Note that this storage might be fragmented and not all of it may
+be available for use by Malloc.  To determine the largest free block
+available use MemAvail.
+
+Include:                stdlib.a or memory.a

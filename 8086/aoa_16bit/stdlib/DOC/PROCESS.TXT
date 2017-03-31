@@ -1,0 +1,604 @@
+Process Manager Routines
+------------------------
+
+The UCR Standard Library Process package provides a simple preemptive
+multitasking package for 8086 assembly language programmers.  It also
+provides a coroutine package and support for semaphores.
+
+First,  *AND THIS IS VERY IMPORTANT*, this package only supports the
+8086, 8088, 80188, 80186, and 80286 processors operating in real mode.
+You will need to make some minor modifications to the process package if
+you wish to support the 32-bit x86 processors.  The current process manager
+only saves 16-bit registers, not the 32-bit registers of the 80386 and later.
+You will, however, find it a relatively minor task to go in and modify this
+code to support the 386 and later processors.  We will probably add support
+for these processors at a later date when time allows.
+
+Second, *THIS IS ALSO VERY IMPORTANT*, keep in mind that DOS, BIOS, and many
+of the routines in the standard library ARE NOT REENTRANT. Two processes
+executing at the (apparent) same time cannot both be executing DOS, BIOS, or
+the same standard library routines.  It is unlikely that DOS or BIOS will
+ever be made reentrant, and you shouldn't ever expect the standard library
+to be made reentrant (far too much work).  The standard library provides
+semaphore support through which you can control access to critical resources
+including DOS, BIOS, and the UCR Standard Library.  If you are unfamiliar
+with terms like reentrancy, semaphores, synchronization, and deadlock, you
+should probably pick up a good text on operating systems and familiarize
+yourself with these terms before attempting to use this package.
+
+This process package provides three facilities to your assembly language
+programs: A preemptive multitasking process manager, coroutine support, and
+semaphore support.  There are six routines associated with the preemptive
+multitasking system: PRCSINIT, PRCSQUIT, FORK, KILL, DIE, and YIELD.  There
+are three routines associated with the coroutines package: COINIT, COCALL,
+and COCALLL (though you'll rarely refer to COCALLL directly).  Finally, there
+are two routines to support semaphores: WAITSEMAPH and RLSSEMAPH.
+
+The PRCSINIT and PRCSQUIT routines initialize and deinitialize the interrupt
+system for the multitasking system.  You must call PRCSINIT prior to
+executing any of the preemptive multitasking routines or any of the semaphore
+routines (the semaphore routines make sense only in the context of preemptive
+multitasking).  This initializes various internal variables and patches the
+INT 8 interrupt vector (timer interrupt) to point at an internal routine
+in the process manager.  You must call PRCSQUIT when you are done with the
+preemptive multitasking system; certainly you must call it before your
+program terminates *FOR ANY REASON*.  If you do not call PRCSQUIT, the system
+will probably crash shortly after you try anything else after returning to
+DOS since the timer interrupt will still be calling the routine left in
+memory when your program terminates.
+
+The process manager patches into the 1/18th second clock on the PC.  There-
+fore, the system will automatically perform an context switch every 55ms
+or so.  If your application reprograms the timer chip, this may produce
+unexpected results.  This may be particularly bothersome if you are running
+a TSR which plays with the timer chip.  Absolutely no attempt was made to
+make this code robust enough to work in all cases with other code which
+ties into the timer interrupt.  Most well-written code will work fine, but
+there are not guarantees.
+
+The FORK routine lets you spawn a new process.  For each call to FORK your
+code makes, the FORK routine returns twice- once as the parent process and
+once as the child process.  FORK returns process ID information in the AX
+and BX registers so that the code immediately following the FORK can figure
+out if it's the parent or child process.  FORK provides the basic (and only!)
+mechanism for starting a second process.
+
+The KILL and DIE routines let you terminate a process.  KILL lets one process
+terminate some other process (generally a child process).  DIE lets a
+process terminate itself.
+
+The YIELD routine gives up the current process' time slice and lets some other
+process take over.
+
+The semaphore routines, WaitSemaph and RlsSemaph, let you wait on a semaphore
+or signal that semaphore, respectively.  The PROCESS.A and PROCESS.A6
+include files contain the definition of a semaphore type, it is
+
+		semaphore	struc
+		SemaCnt		dw	1
+		smaphrLst	dd	?
+		endsmaphrlst	dd	?
+		semaphore	ends
+
+The only field you should ever play around with is the SemaCnt field.  This
+value is the number of processes which are allowed to be in the critical
+region controlled by the semaphore at one time.  For most mutual exclusion
+problems, this value should always be one.  Do not modify this value once
+the program starts running.  The process package increments and decrements
+this number to keep track of the number of processes waiting to use a
+resource.  If you want to allow two processes to share a resource at the
+same time, you should declare your semaphore variable as follows:
+
+		MySemaPh	semaphore	<2>
+
+You execute the WaitSemaPh routine to see if a semaphore is currently busy.
+When you get back from the WaitSemaPh call, the resource protected by the
+semaphore is exclusively yours until you execute the RlsSemaPh routine.
+Note that when you call the WaitSemaPh routine, the specified resource may
+already be in use, in which case your process will be suspended until the
+resource is freed (and anyone waiting in line ahead of you has had their
+shot at the resource).  If you do not call the RlsSemaPh routine to free
+the semaphore, any other process waiting on that resource will wait
+indefinitely.  Also note that if you call WaitSemaPh twice on a semaphore
+without releasing it inbetween, your process and any other process which
+waits on that resource will deadlock.
+
+While semaphores solve a large number of synchronization and mutual exclusion
+problems, their primary use in the UCR Standard Library is to prevent re-
+entrancy problems in DOS, BIOS, and the Standard Library itself.  For example,
+if you have two processes which print values to the display, attempting to
+run both processes concurrently will crash the system if they both attempt
+to print at the same time (since this will cause DOS to be reentered).  A
+simple solution is to use a DOS semaphore as follows:
+
+In the data segment:
+
+DOS		semaphore	{}
+
+In Process 1:
+
+		lesi	DOS
+		WaitSemaPh
+		print
+		db	"Printed from process #1.",cr,lf,0
+		lesi	DOS
+		RlsSemaPh
+
+In Process 2:
+
+		lesi	DOS
+		WaitSemaPh
+		print
+		db	"Printed from process #2.",cr,lf,0
+		lesi	DOS
+		RlsSemaPh
+
+Semaphore guarantee mutual exclusion between the WaitSemaPh and RlsSemaPh
+calls (for a particular semaphore variable, DOS in this case).  Hence, once
+process #1 enters its *CRITICAL REGION* by executing the WaitSemaPh call,
+any attempt by process two to enter its critical region will cause process
+two to suspend execution until process one executes the RlsSemaPh routine.
+
+Coroutines provide "simulated" multitasking where the processes themselves
+determine when to perform a context switch.  This is quite similar to the
+"cooperative multitasking" systems provided by Apple, Microsoft, and others
+("cooperative multitasking" is a hyped up term to hide the fact that their
+systems provide only multiprogramming, not multitasking).  There are many
+advantages and disadvantages to coroutines vs. multitasking.  First of all,
+reentrancy problems do not exist in a system using coroutines.  Since you
+control when one process switches to another, you can make sure that such
+context switches do not occur in critical regions.  Another advantage to
+coroutines is that the processes themselves can determine which other process
+gets the next access to the CPU.  Finally, when a coroutine is executing,
+it gets full access to the CPU to handle a time-critical operation without
+fear of being preempted.  On the other hand, poorly designed coroutines
+provide a very crude approximation to multitasking and may actually hurt
+the overall performance of the system.
+
+The UCR Standard Library provides three routines to support coroutines:
+COINIT, COCALL, and COCALLL.  Generally, you'll only see COINIT and COCALL
+in a program, the standard library automatically generates COCALLL calls
+for certain types of COCALL statements.  The COINIT routine initializes the
+coroutine package and creates a process control block (PCB) for the currently
+active routine.  COCALL switches context to some other process.  When one
+process COCALLs another and that second process COCALLs the first, the first
+process continues execution immediately after the first COCALL instruction
+(so it behaves more like a return than a call).  In general, you should not
+think of COCALL as a "call" but rather as a "switch to some other process."
+
+You may have coroutines and multitasking active at the same time, but you
+should not make a COCALL to a process which is being time-sliced by the
+multitasking system.  I won't guarantee that this *won't* work, but it
+seems sufficiently weird that something is bound to go wrong.
+
+For those who are interested, the coroutine and multitasking packages
+maintain the state of a process in a process control block (PCB) which
+is the following structure:
+
+
+
+		pcb		struc
+		NextProc	dd	?
+		regsp		dw	?
+		regss		dw	?
+		regip		dw	?
+		regcs		dw	?
+
+		regax		dw	?
+		regbx		dw	?
+		regcx		dw	?
+		regdx		dw	?
+		regsi		dw	?
+		regdi		dw	?
+		regbp		dw	?
+		regds		dw	?
+		reges		dw	?
+		regflags	dw	?
+		PrcsID		dw	?
+		StartingTime	dd	?
+		StartingDate	dd	?
+		CPUTime		dd	?
+		pcb		ends
+
+As mentioned earlier, this code does not maintain the full state of the
+80386 and later processors since it only saves the 16-bit register set.
+If you like, you can easily change the definition of the PCB, and all the
+code in the PROCESS.ASM file which refers to the PCB, and support full
+32-bit operation.  As usual, you should rarely, if ever, play around with
+the internal fields of a PCB.  That is for the process manager to do and you
+could mess things up pretty back if you're not careful.
+
+Routine: prcsinit
+-----------------
+
+Category:             Processes
+
+Registers on entry:   None
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+
+			prcsinit
+
+
+Description:
+
+Prcsinit initializes the process manager.  Note that if you make a call to
+the process manager, you *MUST* make a call to prcsquit before your program
+quits.  Failure to do so will crash the system in short order.  Note that
+you must even handle the case where the user types control-C or encounters
+a critical error and aborts back to DOS.
+
+This routine patches into the timer interrupt vector (INT 08) and may not
+work properly with code in the system which is also messing around with the
+timer interrupt.
+
+Include:	stdlib.a or process.a
+
+Routine: prcsquit
+-----------------
+
+Category:             Processes
+
+Registers on entry:   None
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+
+			prcsquit
+
+
+Description:
+
+Prcsquit deinitializes the process manager.  It detaches the timer interrupt
+from the internal routine and performs various other clean up chores.  You
+must call this routine before your program terminates if you've called
+prcsinit somewhere in your program.
+
+Note that you cannot call prcsquit twice in a row, although you can call
+the prcsinit/prcsquit combinations as many times as you like in your code.
+
+Include:	stdlib.a or process.a
+
+Routine: fork
+-------------
+
+Category:             Processes
+
+Registers on entry:   	ES:DI-	Points at a PCB to hold the process info
+				for the new process.  The regss and regsp
+				fields of this PCB must be initialized to
+				the top of a new stack for the new process.
+
+Registers on return:  	AX-	<Parent process> Returned containing zero.
+				<Child  process> Child process ID.
+
+			BX-     <Parent process> Child's process ID.
+				<Child  process> Returned containing zero.
+
+Flags affected:       	None
+
+Example of Usage:
+
+ChildPCB		pcb	{0, offset endstk, seg endstk}
+			 .
+			 .
+			 .
+
+			lesi	ChildPCB
+			fork
+			cmp	ax, 0
+			jne	DoChildProcess
+			<Parent process continues here>
+			 .
+			 .
+			 .
+ChildsStack		db	1024 dup (?)
+EndStk			dw	0
+
+
+
+Description:
+
+Fork spawns a new process.  You make a single call to fork but it returns
+twice- once for the parent process (the original caller to fork) and once
+for the child process (the new process created by fork).  On entry to fork
+ES:DI must point at a PCB for the new process which has the REGSP and
+REGSS fields initialized to point at the last word in a stack set aside for
+the child process.  *THIS IS VERY IMPORTANT!*
+
+On return, the code following the call to FORK can test to see whether the
+parent is returning or the child is returning by looking at the value in
+the AX register.  AX will contain zero upon return to the parent process.
+It will contain a non-zero value, which is the process ID, when returning
+to the child process.  When the parent process returns, FORK returns the
+process ID of the child process in the BX register.  The parent process can
+use this value to kill the child process, should that become necessary later
+on.  If the child needs access to the parent's process ID, the parent process
+should store away its process ID in a variable before calling the FORK
+routine.  Note that with the exception of the AX, BX, SP, and SS registers,
+FORK preserves all register values and returns the same set of values to both
+the parent and child processes.  In particular, it preserves the value of
+the DS register so the child will have access to any global variables in
+use by the parent process.
+
+FORK does *not* copy the parent's stack data to the child's stack.  Upon
+return from FORK, the child's stack is empty.  If you call FORK after
+pushing something on the stack (e.g., a return address because you've called
+FORK inside some other procedure), that information will not be placed on the
+stack of the child process.  If you such information pushed on the child's
+stack, you will need to save SS:SP prior to calling FORK (in a global
+variable) and then push the data pointed at by this saved value onto the
+child's stack upon return.  Of course, it's a whole lot easier if you simply
+don't count on anything being on the child's stack when you get back from
+FORK.  In particular, don't call FORK from inside some nested routine and
+expect the child process to return to the caller of the routine containing
+FORK.
+
+Include:	stdlib.a or process.a
+
+Routine: die
+------------
+
+Category:             Processes
+
+Registers on entry:   None
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+
+			die
+
+Description:
+
+Die kills the current process.  Control is transferred to some other process
+in the process manager's ready-to-run queue.  Control never returns back to
+the current process.
+
+Note: if the current process is the only process running, calling DIE may
+crash the system.
+
+Include:	stdlib.a or process.a
+
+Routine: kill
+-------------
+
+Category:             	Processes
+
+Registers on entry:   	AX-	Process ID of process to terminate.
+
+Registers on return:  	None
+
+Flags affected:       	None
+
+Example of Usage:
+
+			mov	ax, ProcessID
+			kill
+
+Description:
+
+KILL lets one process terminate another.  Typically, a parent might kill a
+child process, although any process which knows the process ID of some other
+process can kill that other process.
+
+If a process passes its own ID to KILL, the system behaves exactly as though
+the process called the DIE routine.
+
+If a process passes its own ID to KILL and it is the only process in the
+system, the system may crash.
+
+Include:	stdlib.a or process.a
+
+Routine: yield
+--------------
+
+Category:             	Processes
+
+Registers on entry:   	None
+
+Registers on return:  	None
+
+Flags affected:       	None
+
+Example of Usage:
+
+			yield
+
+Description:
+
+YIELD voluntarily gives up the CPU.  The remainder of the current time slice
+is given to some other process and the current process goes to the end of the
+process manager's ready to run queue.  This call is particularly useful for
+passing control between two cooperating process where one process needs to
+wait for some action to complete and you don't feel like using semaphores
+to synchronize the two activies.  This call is roughly equivalent to
+"COCALL <next available process>".
+
+Include:	stdlib.a or process.a
+
+Routine: coinit
+---------------
+
+Category:             	Processes
+
+Registers on entry:   	ES:DI-	Points at an empty PCB for the current process.
+
+Registers on return:  	None
+
+Flags affected:       	None
+
+Example of Usage:
+
+MainProcess		pcb	{}
+			 .
+			 .
+			 .
+			lesi	MainProcess
+			coinit
+
+
+Description:
+
+COINIT initializes the coroutine package and sets up an internal pointer
+to the PCB specified by ES:DI (the "current coroutine" pcb).  On the next
+COCALL, the process state will be saved in the pcb you've specified on the
+COINIT call.  Note that you do not have to initialize this pcb in any way,
+that will all be taken care of by COINIT and the COCALL.
+
+Include:	stdlib.a or process.a
+
+Routine: cocall/cocalll
+-----------------------
+
+Category:             	Processes
+
+Registers on entry:   	ES:DI-	Points at a PCB for the new coroutine
+				(COCALL only).
+			CS:IP-	Points at a pointer to a PCB for the new
+				coroutine (COCALLL only).
+
+Registers on return:  	None
+
+Flags affected:       	None
+
+Example of Usage:
+
+OtherProcess		pcb	{----}
+YetAnotherProcess	pcb	{----}
+			 .
+			 .
+			 .
+			lesi	OtherProcess
+			cocall
+			 .
+			 .
+			 .
+			cocall	YetAnotherProcess
+
+Description:
+
+COCALL switches context between two coroutines.  There are two versions of
+this call, although you use COCALL to invoke both of them: COCALL and COCALLL.
+For COCALL, you must pass the address of a PCB in ES:DI.  When calling COCALL
+in this fashion, the operand field of the COCALL instruction must be blank
+(see the example above).  COCALLL expects the address of the pcb to follow
+in the code stream.  The COCALL macro looks for an operand and, if one is
+present, it automatically creates the appropriate call to COCALLL and inserts
+the address of the PCB in the code stream (again, see the example above).
+
+Before you start a coroutine for the first time by calling COCALL, you must
+properly initialize the pcb for that coroutine.  You must provide initial
+values for the regsp, regss, regip, and regcs fields of the pcb (fields two
+through five in the pcb structure).  Regsp and regss must point at the last
+word of an appropriately sized stack for that coroutine; regip and regcs
+must point at the initial entry point for the coroutine.  For example, if you
+want to switch between the current process and a coroutine named "CORTN", you
+could use the following code:
+
+MainCoRtn	pcb	{}
+CoRtnPCB	pcb	{0,offset CoRtnStk, seg CoRtnStk,
+						offset CoRtn, seg CoRtn}
+		 .
+		 .
+		 .
+		lesi	MainCoRtn
+		coinit
+		 .
+		 .
+		 .
+		cocall	CoRtnPCB
+		 .
+		 .
+		 .
+CoRtn		proc
+		 .
+		 .
+		 .
+		cocall	MainCoRtn
+		 .
+		 .
+		 .
+CoRtn		endp
+		 .
+		 .
+		 .
+		db	1024 dup (?)
+CoRtnStk	dw	0
+
+
+Include:	stdlib.a or process.a
+
+Routine: waitsemaph
+-------------------
+
+Category:             	Processes
+
+Registers on entry:   	ES:DI-	Points at a semaphore variable
+
+Registers on return:  	None
+
+Flags affected:       	None
+
+Example of Usage:
+
+DOSsemaph		semaphore	{}
+			 .
+			 .
+			 .
+			lesi	DOSsemaph
+			WaitSemaPh
+			 .
+			 . <This is the critical section>
+			 .
+			lesi	DOSsemaph
+			RlsSemaPh
+
+Description:
+
+WaitSemaPh and RlsSemaPh protect critical regions in a multitasking
+environment. WaitSemaPh expects you to pass the address of a semaphore
+variable in ES:DI.  If that particular semaphore is not currently in use,
+WaitSemaPh marks the semaphore "in use" and immediately returns.  If the
+semaphore is already in use, the WaitSemaPh queues up the current process
+on a waiting queue and lets some other process start running.  Once a process
+is done with the resource protected by a semaphore, it must call RlsSemaPh
+to release the semaphore back to the system.  If any processes are waiting
+on that semaphore, the call to RlsSemaPh will activate the first such process.
+Note that a process must not make two successive calls to WaitSemaPh on a
+particular semaphore variable without calling RlsSemaPh between the calls.
+Doing so will cause a deadlock.
+
+Include:	stdlib.a or process.a
+
+Routine: rlssemaph
+------------------
+
+Category:             	Processes
+
+Registers on entry:   	ES:DI-	Points at a semaphore variable
+
+Registers on return:  	None
+
+Flags affected:       	None
+
+Example of Usage:	See WaitSemaPh
+
+Description:
+
+RlsSemaPh releases a semaphore (also known as "signalling") that the current
+process has aquired via a call to WaitSemaPh.  Please see the WaitSemaPh
+explaination for more details.  You should not call RlsSemaPh without first
+calling WaitSemaPh.  Doing so may cause some inconsistencies in the system.
+
+Include:	stdlib.a or process.a
+

@@ -1,0 +1,139 @@
+StdGrp		group	stdlib, stddata
+
+stddata		segment	para public 'sldata'
+stddata		ends
+
+stdlib		segment	para public 'slcode'
+
+
+List		struc
+ListSize	dw	?
+Head		dd	0		;Ptr to start of list
+Tail		dd	0		;Ptr to end of list
+CurrentNode	dd	0		;Ptr to current node
+List		ends
+
+Node		struc
+Next		dd	?		;Ptr to next node in list
+Prev		dd	?		;Ptr to prev node in list
+Node		ends
+
+
+;# 21 routines in this package.
+
+externdef	sl_CreateList:far, sl_AppendLast:far, sl_AppendLastm:far,
+		sl_Remove1st:far, sl_Insert1st:far, sl_Peek1st:far,
+		sl_Insert1stm:far, sl_RemoveLast:far, sl_PeekLast:far,
+		sl_InsertCur:far, sl_InsertCurm:far
+
+externdef	sl_AppendCur:far, sl_AppendCurm:far,
+		sl_RemoveCur:far, sl_PeekCur:far,
+		sl_insert:far, sl_insertm:far, sl_Append:far, sl_Appendm:far,
+		sl_Remove:far,	sl_SetCur:far, sl_NextNode:far,
+		sl_PrevNode:far
+
+
+CreateList	macro
+		call	sl_CreateList
+		endm
+
+AppendLast	macro
+		call	sl_AppendLast
+		endm
+
+AppendLastm	macro
+		call	sl_AppendLastm
+		endm
+
+Remove1st	macro
+		call	sl_Remove1st
+		endm
+
+Peek1st		macro
+		call	sl_Peek1st
+		endm
+
+
+Insert1st	macro
+		call	sl_Insert1st
+		endm
+
+Insert1stm	macro
+		call	sl_Insert1stm
+		endm
+
+RemoveLast	macro
+		call	sl_RemoveLast
+		endm
+
+PeekLast	macro
+		call	sl_PeekLast
+		endm
+
+InsertCur	macro
+		call	sl_InsertCur
+		endm
+
+InsertCurm	macro
+		call	sl_InsertCurm
+		endm
+
+AppendCur	macro
+		call	sl_AppendCur
+		endm
+
+
+AppendCurm	macro
+		call	sl_AppendCurm
+		endm
+
+
+RemoveCur	macro
+		call	sl_RemoveCur
+		endm
+
+PeekCur		macro
+		call	sl_PeekCur
+		endm
+
+
+Insert		macro
+		call	sl_Insert
+		endm
+
+
+Insertm		macro
+		call	sl_Insertm
+		endm
+
+Append		macro
+		call	sl_Append
+		endm
+
+
+Appendm		macro
+		call	sl_Appendm
+		endm
+
+
+
+Remove		macro
+		call	sl_Remove
+		endm
+
+SetCur		macro
+		call	sl_SetCur
+		endm
+
+NextNode	macro
+		call	sl_NextNode
+		endm
+
+PrevNode	macro
+		call	sl_PrevNode
+		endm
+
+
+
+stdlib		ends
+

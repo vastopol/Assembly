@@ -1,0 +1,207 @@
+StdGrp		group	stdlib, stddata
+
+stddata		segment	para public 'sldata'
+stddata		ends
+
+stdlib		segment	para public 'slcode'
+;
+
+
+slcall	macro	adrs
+	db	09ah			;Far call
+	dd	stdgrp:adrs		;Address of routine to call
+	endm
+
+
+
+ComBaud		macro
+		ifndef	sl_Com1Baud
+stdlib		segment	para public 'slcode'
+		extrn	sl_Com1Baud:far
+stdlib		ends
+		endif
+		slcall	sl_Com1Baud
+		endm
+
+ComStop		macro
+		ifndef	sl_Com1Stop
+stdlib		segment	para public 'slcode'
+		extrn	sl_Com1Stop:far
+stdlib		ends
+		endif
+		slcall	sl_Com1Stop
+		endm
+
+ComSize		macro
+		ifndef	sl_Com1Size
+stdlib		segment	para public 'slcode'
+		extrn	sl_Com1Size:far
+stdlib		ends
+		endif
+		slcall	sl_Com1Size
+		endm
+
+ComParity	macro
+		ifndef	sl_Com1Parity
+stdlib		segment	para public 'slcode'
+		extrn	sl_Com1Parity:far
+stdlib		ends
+		endif
+		slcall	sl_Com1Parity
+		endm
+
+ComRead		macro
+		ifndef	sl_ReadCom1
+stdlib		segment	para public 'slcode'
+		extrn	sl_ReadCom1:far
+stdlib		ends
+		endif
+		slcall	sl_ReadCom1
+		endm
+
+ComWrite	macro
+		ifndef	sl_WriteCom1
+stdlib		segment	para public 'slcode'
+		extrn	sl_WriteCom1:far
+stdlib		ends
+		endif
+		slcall	sl_WriteCom1
+		endm
+
+ComTstIn	macro
+		ifndef	sl_TstInpCom1
+stdlib		segment	para public 'slcode'
+		extrn	sl_TstInpCom1:far
+stdlib		ends
+		endif
+		slcall	sl_TstInpCom1
+		endm
+
+ComTstOut	macro
+		ifndef	sl_TstOutCom1
+stdlib		segment	para public 'slcode'
+		extrn	sl_TstOutCom1:far
+stdlib		ends
+		endif
+		slcall	sl_TstOutCom1
+		endm
+
+ComGetLSR	macro
+		ifndef	sl_GetLSRCom1
+stdlib		segment	para public 'slcode'
+		extrn	sl_GetLSRCom1:far
+stdlib		ends
+		endif
+		slcall	sl_GetLSRCom1
+		endm
+
+ComGetMSR	macro
+		ifndef	sl_GetMSRCom1
+stdlib		segment	para public 'slcode'
+		extrn	sl_GetMSRCom1:far
+stdlib		ends
+		endif
+		slcall	sl_GetMSRCom1
+		endm
+
+ComGetMCR	macro
+		ifndef	sl_GetMCRCom1
+stdlib		segment	para public 'slcode'
+		extrn	sl_GetMCRCom1:far
+stdlib		ends
+		endif
+		slcall	sl_GetMCRCom1
+		endm
+
+ComSetMCR	macro
+		ifndef	sl_SetMCRCom1
+stdlib		segment	para public 'slcode'
+		extrn	sl_SetMCRCom1:far
+stdlib		ends
+		endif
+		slcall	sl_SetMCRCom1
+		endm
+
+ComGetLCR	macro
+		ifndef	sl_GetLCRCom1
+stdlib		segment	para public 'slcode'
+		extrn	sl_GetLCRCom1:far
+stdlib		ends
+		endif
+		slcall	sl_GetLCRCom1
+		endm
+
+ComSetLCR	macro
+		ifndef	sl_SetLCRCom1
+stdlib		segment	para public 'slcode'
+		extrn	sl_SetLCRCom1:far
+stdlib		ends
+		endif
+		slcall	sl_SetLCRCom1
+		endm
+
+ComGetIIR	macro
+		ifndef	sl_GetIIRCom1
+stdlib		segment	para public 'slcode'
+		extrn	sl_GetIIRCom1:far
+stdlib		ends
+		endif
+		slcall	sl_GetIIRCom1
+		endm
+
+ComGetIER	macro
+		ifndef	sl_GetIERCom1
+stdlib		segment	para public 'slcode'
+		extrn	sl_GetIERCom1:far
+stdlib		ends
+		endif
+		slcall	sl_GetIERCom1
+		endm
+
+ComSetIER	macro
+		ifndef	sl_SetIERCom1
+stdlib		segment	para public 'slcode'
+		extrn	sl_SetIERCom1:far
+stdlib		ends
+		endif
+		slcall	sl_SetIERCom1
+		endm
+
+ComInitIntr	macro
+		ifndef	sl_InitCom1Int
+stdlib		segment	para public 'slcode'
+		extrn	sl_InitCom1Int:far
+stdlib		ends
+		endif
+		slcall	sl_InitCom1Int
+		endm
+
+ComDisIntr	macro
+		ifndef	sl_IntsOffCom1
+stdlib		segment	para public 'slcode'
+		extrn	sl_IntsOffCom1:far
+stdlib		ends
+		endif
+		slcall	sl_IntsOffCom1
+		endm
+
+ComIn		macro
+		ifndef	sl_InCom1
+stdlib		segment	para public 'slcode'
+		extrn	sl_InCom1:far
+stdlib		ends
+		endif
+		slcall	sl_InCom1
+		endm
+
+ComOut		macro
+		ifndef	sl_OutCom1
+stdlib		segment	para public 'slcode'
+		extrn	sl_OutCom1:far
+stdlib		ends
+		endif
+		slcall	sl_OutCom1
+		endm
+
+stdlib		ends
+

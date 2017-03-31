@@ -1,0 +1,21 @@
+#repetitions 1280000
+#unravel 16
+
+#code ("shl by 8")
+%do
+		rept	8
+		shl	ax, 1
+                endm
+#endcode
+#code ("shl 8 by mov")
+%do
+		mov	ah, al
+		mov	al, 0
+#endcode
+#code ("shl 8 by immediate mode")
+%init
+		.286
+%do
+		shl	ax, 8
+#endcode
+#end

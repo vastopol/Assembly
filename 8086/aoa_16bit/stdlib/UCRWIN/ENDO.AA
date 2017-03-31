@@ -1,0 +1,17 @@
+extern endo__new:FAR
+extern endo__constructor:FAR
+extern endo__destructor:FAR
+extern endo__printself:FAR
+extern endo__nameof:FAR
+extern endo__putchar:FAR
+extern endo__putstr:FAR
+extern endo__putwin:FAR
+extern endo__up:FAR
+extern endo__down:FAR
+extern endo__left:FAR
+extern endo__right:FAR
+extern endo__movecursor:FAR
+extern endo__scrup:FAR
+extern endo__scrdown:FAR
+extern endo__scrleft:FAR
+extern endo__scrright:FAR

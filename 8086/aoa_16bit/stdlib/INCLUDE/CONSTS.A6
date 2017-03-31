@@ -1,0 +1,42 @@
+; Common constants and equates:
+
+NULL		=	0
+bell		=	07h
+bs		=	08h
+tab		=	09h
+lf		=	0ah
+cr		=	0dh
+
+
+
+
+; Some moderately useful macros:
+
+
+
+DOS	macro	opcode
+	ifnb	opcode
+	mov	ah, opcode
+	endif
+	int	21h
+	endm
+
+ExitPgm	macro
+	mov	ah, 4ch
+	int	21h
+	endm
+
+
+lesi		macro	adrs
+		mov     di, seg adrs
+		mov	es, di
+		mov	di, offset adrs
+		endm
+;
+ldxi		macro	adrs
+		mov	dx, seg adrs
+		mov	si, offset adrs
+		endm
+
+
+

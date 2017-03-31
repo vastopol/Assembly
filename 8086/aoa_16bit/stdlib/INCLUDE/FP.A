@@ -1,0 +1,393 @@
+StdGrp		group	stdlib, stddata
+;
+stddata		segment	para public 'sldata'
+stddata		ends
+stdlib		segment	para public 'slcode'
+;
+;---------------------------------------------------------------------------
+;
+
+slcall	macro	adrs
+	db	09ah			;Far call
+	dd	stdgrp:adrs		;Address of routine to call
+	endm
+
+;
+; Macros for floating point arithmetic.
+;
+; Load single precision value into FPACC:
+;
+lsfpa		macro
+		ifndef	sl_lsfpa
+stdlib		segment	para public 'slcode'
+		extrn	sl_lsfpa:far
+stdlib		ends
+		endif
+		slcall	sl_lsfpa
+		endm
+;
+;
+; Store FPACC to a single precision value:
+;
+ssfpa		macro
+		ifndef	sl_ssfpa
+stdlib		segment	para public 'slcode'
+		extrn	sl_ssfpa:far
+stdlib		ends
+		endif
+		slcall	sl_ssfpa
+		endm
+;
+; Load double precision value into FPACC:
+;
+ldfpa		macro
+		ifndef	sl_ldfpa
+stdlib		segment	para public 'slcode'
+		extrn	sl_ldfpa:far
+stdlib		ends
+		endif
+		slcall	sl_ldfpa
+		endm
+;
+;
+; Store FPACC into a double precision variable:
+;
+sdfpa		macro
+		ifndef	sl_sdfpa
+stdlib		segment	para public 'slcode'
+		extrn	sl_sdfpa:far
+stdlib		ends
+		endif
+		slcall	sl_sdfpa
+		endm
+;
+;
+; Load extended precision value into FPACC:
+;
+lefpa		macro
+		ifndef	sl_lefpa
+stdlib		segment	para public 'slcode'
+		extrn	sl_lefpa:far
+stdlib		ends
+		endif
+		slcall	sl_lefpa
+		endm
+;
+; Load double precision value into FPACC:
+;
+lefpal		macro
+		ifndef	sl_lefpal
+stdlib		segment	para public 'slcode'
+		extrn	sl_lefpal:far
+stdlib		ends
+		endif
+		slcall	sl_lefpal
+		endm
+;
+; Store FPACC into an extended precision variable:
+;
+sefpa		macro
+		ifndef	sl_sefpa
+stdlib		segment	para public 'slcode'
+		extrn	sl_sefpa:far
+stdlib		ends
+		endif
+		slcall	sl_sefpa
+		endm
+;
+; Load single precision value into FPOP:
+;
+lsfpo		macro
+		ifndef	sl_lsfpo
+stdlib		segment	para public 'slcode'
+		extrn	sl_lsfpo:far
+stdlib		ends
+		endif
+		slcall	sl_lsfpo
+		endm
+;
+; Load double precision value into FPOP:
+;
+ldfpo		macro
+		ifndef	sl_ldfpo
+stdlib		segment	para public 'slcode'
+		extrn	sl_ldfpo:far
+stdlib		ends
+		endif
+		slcall	sl_ldfpo
+		endm
+;
+; Load extended precision value into FPOP:
+;
+lefpo		macro
+		ifndef	sl_lefpo
+stdlib		segment	para public 'slcode'
+		extrn	sl_lefpo:far
+stdlib		ends
+		endif
+		slcall	sl_lefpo
+		endm
+;
+; Load extended precision value into FPOP:
+;
+lefpol		macro
+		ifndef	sl_lefpol
+stdlib		segment	para public 'slcode'
+		extrn	sl_lefpol:far
+stdlib		ends
+		endif
+		slcall	sl_lefpol
+		endm
+;
+; ITOF-	Convert integer to floating point.
+;
+itof		macro
+		ifndef	sl_itof
+stdlib		segment	para public 'slcode'
+		extrn	sl_itof:far
+stdlib		ends
+		endif
+		slcall	sl_itof
+		endm
+;
+; UTOF-	Convert unsigned integer to floating point.
+;
+utof		macro
+		ifndef	sl_utof
+stdlib		segment	para public 'slcode'
+		extrn	sl_utof:far
+stdlib		ends
+		endif
+		slcall	sl_utof
+		endm
+;
+; ULTOF-	Convert unsigned 32-bit integer to floating point.
+;
+ultof		macro
+		ifndef	sl_ultof
+stdlib		segment	para public 'slcode'
+		extrn	sl_ultof:far
+stdlib		ends
+		endif
+		slcall	sl_ultof
+		endm
+;
+; LTOF-	Convert 32-bit signed integer to floating point.
+;
+ltof		macro
+		ifndef	sl_ltof
+stdlib		segment	para public 'slcode'
+		extrn	sl_ltof:far
+stdlib		ends
+		endif
+		slcall	sl_ltof
+		endm
+;
+; ADD FPOP to FPACC:
+;
+fpadd		macro
+		ifndef	sl_fadd
+stdlib		segment	para public 'slcode'
+		extrn	sl_fadd:far
+stdlib		ends
+		endif
+		slcall	sl_fadd
+		endm
+;
+; Subtract FPOP from FPACC:
+;
+fpsub		macro
+		ifndef	sl_fsub
+stdlib		segment	para public 'slcode'
+		extrn	sl_fsub:far
+stdlib		ends
+		endif
+		slcall	sl_fsub
+		endm
+;
+;
+; Compare FPACC to FPOP:
+;
+fpcmp		macro
+		ifndef	sl_fcmp
+stdlib		segment	para public 'slcode'
+		extrn	sl_fcmp:far
+stdlib		ends
+		endif
+		slcall	sl_fcmp
+		endm
+;
+;
+; Multiply FPACC by FPOP:
+;
+fpmul		macro
+		ifndef	sl_fmul
+stdlib		segment	para public 'slcode'
+		extrn	sl_fmul:far
+stdlib		ends
+		endif
+		slcall	sl_fmul
+		endm
+;
+;
+; Divide FPACC by FPOP:
+;
+fpdiv		macro
+		ifndef	sl_fdiv
+stdlib		segment	para public 'slcode'
+		extrn	sl_fdiv:far
+stdlib		ends
+		endif
+		slcall	sl_fdiv
+		endm
+;
+;
+; Convert FPACC to a string of digits.
+;
+ftoa		macro
+		ifndef	sl_ftoa
+stdlib		segment	para public 'slcode'
+		extrn	sl_ftoa:far
+stdlib		ends
+		endif
+		slcall	sl_ftoa
+		endm
+;
+ftoa2		macro
+		ifndef	sl_ftoa2
+stdlib		segment	para public 'slcode'
+		extrn	sl_ftoa2:far
+stdlib		ends
+		endif
+		slcall	sl_ftoa2
+		endm
+;
+ftoam		macro
+		ifndef	sl_ftoam
+stdlib		segment	para public 'slcode'
+		extrn	sl_ftoam:far
+stdlib		ends
+		endif
+		slcall	sl_ftoam
+		endm
+;
+;
+; Convert FPACC to a string of digits (scientific notation)
+;
+etoa		macro
+		ifndef	sl_etoa
+stdlib		segment	para public 'slcode'
+		extrn	sl_etoa:far
+stdlib		ends
+		endif
+		slcall	sl_etoa
+		endm
+;
+etoa2		macro
+		ifndef	sl_etoa2
+stdlib		segment	para public 'slcode'
+		extrn	sl_etoa2:far
+stdlib		ends
+		endif
+		slcall	sl_etoa2
+		endm
+;
+etoam		macro
+		ifndef	sl_etoam
+stdlib		segment	para public 'slcode'
+		extrn	sl_etoam:far
+stdlib		ends
+		endif
+		slcall	sl_etoam
+		endm
+;
+;
+;
+; Convert a string of digits (scientific notation) to FPACC
+;
+atof		macro
+		ifndef	sl_atof
+stdlib		segment	para public 'slcode'
+		extrn	sl_atof:far
+stdlib		ends
+		endif
+		slcall	sl_atof
+		endm
+;
+;
+;
+;
+ftoi		macro
+		ifndef	sl_ftoi
+stdlib		segment	para public 'slcode'
+		extrn	sl_ftoi:far
+stdlib		ends
+		endif
+		slcall	sl_ftoi
+		endm
+;
+ftou		macro
+		ifndef	sl_ftou
+stdlib		segment	para public 'slcode'
+		extrn	sl_ftou:far
+stdlib		ends
+		endif
+		slcall	sl_ftou
+		endm
+;
+ftol		macro
+		ifndef	sl_ftol
+stdlib		segment	para public 'slcode'
+		extrn	sl_ftol:far
+stdlib		ends
+		endif
+		slcall	sl_ftol
+		endm
+;
+ftoul		macro
+		ifndef	sl_ftoul
+stdlib		segment	para public 'slcode'
+		extrn	sl_ftoul:far
+stdlib		ends
+		endif
+		slcall	sl_ftoul
+		endm
+;
+AccOp		macro
+		ifndef	sl_AccOp
+stdlib		segment	para public 'slcode'
+		extrn	sl_AccOp:far
+stdlib		ends
+		endif
+		slcall	sl_AccOp
+		endm
+;
+XAccOp		macro
+		ifndef	sl_XAccOp
+stdlib		segment	para public 'slcode'
+		extrn	sl_XAccOp:far
+stdlib		ends
+		endif
+		slcall	sl_XAccOp
+		endm
+;
+putf		macro
+		ifndef	sl_Putf
+stdlib		segment	para public 'slcode'
+		extrn	sl_Putf:far
+stdlib		ends
+		endif
+		slcall	sl_Putf
+		endm
+;
+pute		macro
+		ifndef	sl_Pute
+stdlib		segment	para public 'slcode'
+		extrn	sl_Pute:far
+stdlib		ends
+		endif
+		slcall	sl_Pute
+		endm
+;
+stdlib		ends
+

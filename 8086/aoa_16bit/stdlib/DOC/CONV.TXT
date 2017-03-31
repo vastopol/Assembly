@@ -1,0 +1,564 @@
+Conversion Routines
+-------------------
+
+
+The stdlib conversion routines follow a uniform format of storing the data
+to be converted and returned.  Most routines accept input and return data
+of either an ASCII string of characters, stored in the ES:DI register, or
+integers, stored in the DX:AX register.  If a value is just a 16 or 8-bit
+value then it will be stored in AX or AL.
+
+Since there is a possibility of an error in the input values to be converted,
+such as it does not contain a proper value to convert, we use the
+carry flag to show error status.  If the error flag is set then an error has
+occured and things are okay if the carry flag is clear.
+
+
+
+
+
+Routine:  ATOL (2)
+------------------
+
+
+Category:             Conversion Routine
+
+Registers on Entry:   ES:DI- Points at string to convert
+
+Registers on Return:  DX:AX- Long integer converted from string
+		      ES:DI- Points at first non-digit (ATOL2 only)
+
+Flags Affected:       Carry flag- Error status
+
+Examples of Usage:
+		      gets         ;Get a string from user
+		      ATOL         ;Convert to a value in DX:AX
+
+
+Description:  ATOL converts the string of digits that ES:DI points at to a
+	      long (signed) integer value and returns this value in DX:AX.
+	      Note that the routine stops on the first non-digit.
+	      If the string does not begin with a digit, this routine returns
+	      zero.  The only exception to the "string of digits" only rule is
+	      that the number can have a preceding minus sign to denote a
+	      negative number.  Note that this routine does not allow leading
+	      spaces.  ATOL2 works in a similar fashion except it doesn't
+	      preserve the DI register.  That is, ATOL2 leaves DI pointing at
+	      the first character beyond the string of digits.  ATOL/ATOL2 both
+	      return the carry flag clear if it  translated the string of
+	      digits without error.  It returns the carry flag set if overflow
+	      occurred.
+
+
+Include:              	stdlib.a or conv.a
+
+
+
+Routine:  AtoUL (2)
+-------------------
+
+Category:            Conversion Routine
+
+Register on entry:   ES:DI- address of the string to be converted
+
+Register on return:  DX:AX- 32-bit unsigned integer
+		     ES:DI- Points at first character beyond digits (ATOUL2
+			    only)
+
+Flags affected:      Carry flag- Set if error, clear if okay.
+
+Examples of Usage:
+		     les InputString
+		     AtoUL
+
+
+Description:  AtoUL converts the string pointed by ES:DI to a 32-bit unsigned
+	      integer.  It places the 32-bit unsigned integer into the memory
+	      address pointed by DX:AX. If there is an error in conversion,
+	      the carry flag will set to one. If there is not an error, the
+	      carry flag will be set to zero.
+
+	      ATOUL2 does not preserve DI.  It returns with DI pointing at
+	      the first non-digit character in the string.
+
+Include:        stdlib.a or conv.a
+
+
+
+Routine:    ATOU (2)
+--------------------
+
+Category:            Conversion Routine
+
+Register on entry:   ES:DI points at string to convert
+
+Register on return:  AX-    unsigned 16-bit integer
+		     ES:DI- points at first non-digit (ATOU2 only)
+
+Flags affected:      carry flag - error status
+
+Example of Usage:
+
+Description:    ATOU converts an ASCII string of digits, pointed to by ES:DI,
+		to unsigned integer format. It places the unsigned 16-bit
+		integer, converted from the string, into the AX register.
+		ATOI works the same, except it handle unsigned 16-bit integers
+		in the range 0..65535.
+
+		ATOU2 leaves DI pointing at the first non-digit in the string.
+
+Include:        stdlib.a or conv.a
+
+
+
+Routine: ATOH (2)
+-----------------
+
+Category:             Conversion Routine
+
+Registers on Entry:   ES:DI- Points to string to convert
+
+Registers on Return:  AX- Unsigned 16-bit integer converted from hex string
+		      DI (ATOH2)- First character beyond string of hex digits
+
+Flags Affected:       Carry = Error status
+
+Example of Usage:
+		      les  DI, Str2Convrt
+		      atoh                  ;Convert to value in AX.
+		      putw                  ;Print word in AX.
+
+
+Description:  ATOH converts a string of hexadecimal digits, pointed to by
+	      ES:DI, into unsigned 16-bit numeric form. It returns the value in
+	      the AX register.  If there is an error in conversion, the carry
+	      flag will set to one.  If there is not an error, the carry flag
+	      will be clear.  ATOH2 works the same except it leaves DI
+	      pointing at the first character beyond the string of hex digits.
+
+Include:        stdlib.a or conv.a
+
+
+Routine: ATOLH (2)
+------------------
+
+Category:             Conversion Routine
+
+Registers on Entry:   ES:DI- Points to string to convert
+
+Registers on Return:  DX:AX- Unsigned 32-bit integer converted from hex string
+		      DI (ATOLH2)- First character beyond string of hex digits
+
+Flags Affected:       Carry = Error status
+
+Example of Usage:
+		      les  DI, Str2Convrt
+		      atolh                 ;Convert to value in DX:AX
+
+Description:  ATOLH converts a string of hexadecimal digits, pointed to by
+	      ES:DI, into unsigned 32-bit numeric form. It returns the value in
+	      the DX:AX register.  If there is an error in conversion, the carry
+	      flag will set to one.  If there is not an error, the carry flag
+	      will be clear.  ATOLH2 works the same except it leaves the DI
+	      register pointing at the first non-hex digit.
+
+
+Include:        stdlib.a or conv.a
+
+
+
+Routine:   ATOI (2)
+-------------------
+
+Category:             Conversion Routine
+
+Register on entry:    ES:DI- Points at string to convert.
+
+Register on return:   AX- Integer converted from string.
+		      DI (ATOI2)- First character beyond string of digits.
+
+Flags affected:       Error status
+
+Examples of Usage:
+		      les  DI, Str2Convrt
+		      atoi                 ;Convert to value in AX
+
+
+Description:   Works just like ATOL except it translates the string to a
+	       signed 16-bit integer rather than a 32-bit long integer.
+
+
+Include:              stdlib.a or conv.a
+
+
+Routine ITOA (2,M)
+------------------
+
+Category:             Conversion Routine
+
+Registers on Entry:   AX- Signed 16-bit value to convert to a string
+		      ES:DI- Pointer to buffer to hold result (ITOA/ITOA2
+			     only).
+
+Registers on Return:  ES:DI- Pointer to string containing converted
+		      characters (ITOA/ITOAM only).
+		      ES:DI- Pointer to zero-terminating byte of converted
+			     string (ITOA2 only).
+
+Flags Affected:       Carry flag is set on memory allocation error (ITOAM only)
+
+Examples of Usage:
+		      mov     ax, -1234
+		      ITOAM                   ;Convert to string.
+		      puts                    ;Print it.
+		      free                    ;Deallocate string.
+
+		      mov     di, seg buffer
+		      mov     es, di
+		      lea     di, buffer
+		      mov     ax, -1234
+		      ITOA		      ;Leaves string in BUFFER.
+
+		      mov     di, seg buffer
+		      mov     es, di
+		      lea     di, buffer
+		      mov     ax, -1234
+		      ITOA2		      ;Leaves string in BUFFER and
+					      ;ES:DI pointing at end of string.
+
+
+Description:	These routines convert an integer value to a string of
+		characters which represent that integer.  AX contains the
+		signed integer you wish to convert.
+
+		ITOAM automatically allocates storage on the heap for the
+		resulting string, you do not have to pre-allocate this
+		storage.  ITOAM returns a pointer to the (zero-terminated)
+		string in the ES:DI registers.  It ignores the values in
+		ES:DI on input.
+
+		ITOA requires that the caller allocate the storage for the
+		string (maximum you will need is seven bytes) and pass a
+		pointer to this buffer in ES:DI.  ITOA returns with ES:DI
+		pointing at the beginning of the converted string.
+
+		ITOA2 also requires that you pass in the address of a buffer
+		in the ES:DI register pair.  However, it returns with ES:DI
+		pointing at the zero-terminating byte of the string.  This
+		lets you easily build up longer strings via multiple calls
+		to routines like ITOA2.
+
+Include:        stdlib.a or conv.a
+
+
+
+Routine:   UTOA (2,M)
+---------------------
+
+Category:            Conversion Routine
+
+Registers on entry:   AX - unsigned 16-bit integer to convert to a string
+		      ES:DI- Pointer to buffer to hold result (UTOA/UTOA2
+			     only).
+
+Registers on Return:  ES:DI- Pointer to string containing converted
+		      characters (UTOA/UTOAM only).
+		      ES:DI- Pointer to zero-terminating byte of converted
+			     string (UTOA2 only).
+
+Flags affected:       Carry set denotes malloc error (UTOAM only)
+
+Example of Usage:
+		      mov     ax, 65000
+		      utoa
+		      puts
+		      free
+
+		      mov     di, seg buffer
+		      mov     es, di
+		      lea     di, buffer
+		      mov     ax, -1234
+		      ITOA		      ;Leaves string in BUFFER.
+
+		      mov     di, seg buffer
+		      mov     es, di
+		      lea     di, buffer
+		      mov     ax, -1234
+		      ITOA2		      ;Leaves string in BUFFER and
+					      ;ES:DI pointing at end of string.
+
+
+Description:    UTOAx converts a 16-bit unsigned integer value in AX to a
+		string of characters which represents that value.  UTOA,
+		UTOA2, and UTOAM behave in a manner analogous to ITOAx.  See
+		the description of those routines for more details.
+
+
+Include:       stdlib.a or conv.a
+
+
+
+Routine:   HTOA (2,M)
+---------------------
+
+Category:            Conversion Routine
+
+Registers on entry:   AL - 8-bit integer to convert to a string
+		      ES:DI- Pointer to buffer to hold result (HTOA/HTOA2
+			     only).
+
+Registers on Return:  ES:DI- Pointer to string containing converted
+		      characters (HTOA/HTOAM only).
+		      ES:DI- Pointer to zero-terminating byte of converted
+			     string (HTOA2 only).
+
+Flags affected:      Carry set denotes memory allocation error (HTOAM only)
+
+
+Description:    The HTOAx routines convert an 8-bit value in AL to the two-
+		character hexadecimal representation of that byte.  Other
+		that that, they behave just like ITOAx/UTOAx.  Note that
+		the resulting buffer must have at least three bytes for
+		HTOA/HTOA2.
+
+
+Include:        stdlib.a or conv.a
+
+
+Routine:  WTOA (2,M)
+--------------------
+
+Category:             Conversion Routine
+
+Registers on Entry:   AX- 16-bit value to convert to a string
+		      ES:DI- Pointer to buffer to hold result (WTOA/WTOA2
+			     only).
+
+Registers on Return:  ES:DI- Pointer to string containing converted
+		      characters (WTOA/WTOAM only).
+		      ES:DI- Pointer to zero-terminating byte of converted
+			     string (WTOA2 only).
+
+Flags Affected:       Carry set denotes memory allocation error (WTOAM only)
+
+Example of Usage:
+		      Like WTOA above
+
+
+Description:  WTOAx converts the 16-bit value in AX to a string of four
+	      hexadecimal digits. It behaves exactly like HTOAx except
+	      it outputs four characters (and requires a five byte buffer).
+
+
+Include:        stdlib.a or conv.a
+
+
+
+Routine:  LTOA (2,M)
+--------------------
+
+Category:             Conversion Routine
+
+Registers on entry:   DX:AX (contains a signed 32 bit integer)
+		      ES:DI- Pointer to buffer to hold result (LTOA/LTOA2
+			     only).
+
+Registers on Return:  ES:DI- Pointer to string containing converted
+		      characters (LTOA/LTOAM only).
+		      ES:DI- Pointer to zero-terminating byte of converted
+			     string (LTOA2 only).
+
+Flags affected:       Carry set if memory allocation error (LTOAM only)
+
+
+Example of Usage: 
+			mov	di, seg buffer	;Get address of storage
+			mov	es, di		; buffer.
+			lea	di, buffer
+			mov	ax, word ptr value
+			mov	dx, word ptr value+2
+			ltoa
+
+Description:    LtoA converts the 32-bit signed integer in DX:AX to a string
+		of characters.  LTOA stores the string at the address specified
+		in ES:DI (there must be at least twelve bytes available at
+		this address) and returns with ES:DI pointing at this buffer.
+		LTOA2 works the same way, except it returns with ES:DI
+		pointing at the zero terminating byte.  LTOAM allocates
+		storage for the string on the heap and returns a pointer
+		to the string in ES:DI.
+
+Include:        stdlib.a or conv.a
+
+
+
+Routine:  ULTOA (2,M)
+---------------------
+
+Category:             Conversion Routine
+
+Registers on Entry:   DX:AX- Unsigned 32-bit value to convert to a string
+		      ES:DI- Pointer to buffer to hold result (LTOA/LTOA2
+			     only).
+Registers on Return:  ES:DI- Pointer to string containing converted
+		      characters (LTOA/LTOAM only).
+		      ES:DI- Pointer to zero-terminating byte of converted
+			     string (LTOA2 only).
+
+Flags Affected:       Carry is set if malloc error (ULTOAM only)
+
+Example of Usage:  
+                      Like LTOA
+
+
+Description:  Like LTOA except this routine handles unsigned integer values.
+
+Include:	stdlib.a or conv.a
+
+
+
+Routine:  SPrintf (2,M)
+-----------------------
+
+Category:            Conversion Routine
+		     In-Memory Formatting Routine
+
+Registers on entry:  CS:RET - Pointer to format string and operands of the
+			      sprintf routine
+		     ES:DI-   Address of buffer to hold output string
+			      (sprintf/sprintf2 only)
+
+Register on return:  ES:DI register - pointer to a string containing
+				      output data (sprintf/sprintfm only).
+				      Pointer to zero-terminating byte at the
+				      end of the converted string (sprintf2
+				      only).
+
+Flags affected:      Carry is set if memory allocation error (sprintfm only).
+
+Example of Usage:
+		     sprintfm
+		     db      "I=%i, U=%u, S=%s",13,10,0
+		     db      i,u,s
+		     puts
+		     free
+
+
+Description:   SPrintf is an in-memory formatting routine. It is similar to
+	       C's sprintf routine.
+
+	       The programmer selects the maximum length of the output string.
+	       SPrintf works in a manner quite similar to printf, except sprintf
+	       writes its output to a string variable rather than to the stdlib
+	       standard output.
+
+	       SPrintfm, by default, allocates 2048 characters for the string
+	       and then deallocates any unnecessary storage.  An external
+	       variable, sp_MaxBuf, holds the number of bytes to allocate upon
+	       entry into sprintfm.  If you wish to allocate more or less than
+	       2048 bytes when calling sprintf, simply change the value of this
+	       public variable (type is word).  Sprintfm calls malloc to
+	       allocate the storage dynamically.  You should call free to
+	       return this buffer to the heap when you are through with it.
+
+	       Sprintf and Sprintf2 expect you to pass the address of a buffer
+	       to them.  You are responsible for supplying a sufficiently
+	       sized buffer to hold the result.
+
+Include:             stdlib.a or conv.a
+
+
+
+Routine:  SScanf
+----------------
+
+Category:              Conversion Routine
+		       Formatted In-Memory Conversion Routine
+
+Registers on Entry:    ES:DI - points at string containing values to convert
+
+Registers on return:   None
+
+Flags affected:	       None
+
+Example of Usage:
+
+	      ; this code reads the values for i, j, and s from the characters
+	      ; starting at memory location Buffer.
+
+		       les   di, Buffer
+		       SScanf
+		       db    "%i %i %s",0
+		       dd     i, j, s
+
+
+Description:  SScanf provides formatted input in a fashion analogous to scanf.
+              The difference is that scanf reads in a line of text from the
+              stdlib standard input whereas you pass the address of a sequence
+              of characters to SScanf in es:di.
+
+
+Include:                stdlib.a or conv.a
+
+
+
+
+Routine:  ToLower
+-----------------
+
+Category:            Conversion Routine
+
+Register on entry:   AL- Character to (possibly) convert
+				to lower case.
+
+Register on return:  AL- Converted character.
+
+Flags affected:      None
+
+Example of usage:
+		     mov     al, char
+		     ToLower
+
+
+Description:  ToLower checks the character in the AL register, if it is upper
+	      case it converts it to lower case.  If it is anything else,
+	      ToLower leaves the value in AL unchanged.  For high performance
+	      this routine is implemented as a macro rather than as a
+	      procedure call.  This routine is so short you would spend more
+	      time actually calling the routine than executing the code inside.
+	      However, the code is definitely longer than a (far) procedure
+	      call, so if space is critical and you're invoking this code
+	      several times, you may want to convert it to a procedure call to
+	      save a little space.
+
+
+Include:             stdlib.a or conv.a
+
+
+
+Routine:   ToUpper
+------------------
+
+Category:             Conversion Routine
+
+Registers on Entry:   AL- Character to (possibly) convert to upper case
+
+Registers on Return:  AL- Converted character
+
+Flags Affected:       None
+
+Example of Usage:
+		      mov  al, char
+		      ToUpper
+
+
+Description:  ToUpper checks the character in the AL register, if it is lower
+	      case it converts it to upper case.  If it is anything else,
+	      ToUpper leaves the value in AL unchanged.  For high performance
+	      this routine is implemented as a macro rather than as a
+	      procedure call (see ToLower, above).
+
+
+Include:              stdlib.a or conv.a
+
+

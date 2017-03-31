@@ -1,0 +1,136 @@
+StdGrp		group	stdlib, stddata
+
+stddata		segment	para public 'sldata'
+stddata		ends
+
+stdlib		segment	para public 'slcode'
+stdlib		ends
+
+slcall		macro	adrs
+		db	09ah			;Far call
+		dd	stdgrp:adrs		;Address of routine to call
+		endm
+
+
+DTOA		macro
+		ifndef	sl_DTOA
+stdlib		segment	para public 'slcode'
+		extrn	sl_DTOA:far
+stdlib		ends
+		endif
+		slcall	sl_DTOA
+		endm
+
+DTOAm		macro
+		ifndef	sl_DTOAm
+stdlib		segment	para public 'slcode'
+		extrn	sl_DTOAm:far
+stdlib		ends
+		endif
+		slcall	sl_DTOAm
+		endm
+
+DTOA2		macro
+		ifndef	sl_DTOA2
+stdlib		segment	para public 'slcode'
+		extrn	sl_DTOA2:far
+stdlib		ends
+		endif
+		slcall	sl_DTOA2
+		endm
+
+
+xDTOA		macro
+		ifndef	sl_xDTOA
+stdlib		segment	para public 'slcode'
+		extrn	sl_xDTOA:far
+stdlib		ends
+		endif
+		slcall	sl_xDTOA
+		endm
+
+xDTOAm		macro
+		ifndef	sl_xDTOAm
+stdlib		segment	para public 'slcode'
+		extrn	sl_xDTOAm:far
+stdlib		ends
+		endif
+		slcall	sl_xDTOAm
+		endm
+
+xDTOA2		macro
+		ifndef	sl_xDTOA2
+stdlib		segment	para public 'slcode'
+		extrn	sl_xDTOA2:far
+stdlib		ends
+		endif
+		slcall	sl_xDTOA2
+		endm
+
+
+LDTOA		macro
+		ifndef	sl_LDTOA
+stdlib		segment	para public 'slcode'
+		extrn	sl_LDTOA:far
+stdlib		ends
+		endif
+		slcall	sl_LDTOA
+		endm
+
+LDTOAm		macro
+		ifndef	sl_LDTOAm
+stdlib		segment	para public 'slcode'
+		extrn	sl_LDTOAm:far
+stdlib		ends
+		endif
+		slcall	sl_LDTOAm
+		endm
+
+LDTOA2		macro
+		ifndef	sl_LDTOA2
+stdlib		segment	para public 'slcode'
+		extrn	sl_LDTOA2:far
+stdlib		ends
+		endif
+		slcall	sl_LDTOA2
+		endm
+
+
+xLDTOA		macro
+		ifndef	sl_xLDTOA
+stdlib		segment	para public 'slcode'
+		extrn	sl_xLDTOA:far
+stdlib		ends
+		endif
+		slcall	sl_xLDTOA
+		endm
+
+xLDTOAm		macro
+		ifndef	sl_xLDTOAm
+stdlib		segment	para public 'slcode'
+		extrn	sl_xLDTOAm:far
+stdlib		ends
+		endif
+		slcall	sl_xLDTOAm
+		endm
+
+xLDTOA2		macro
+		ifndef	sl_xLDTOA2
+stdlib		segment	para public 'slcode'
+		extrn	sl_xLDTOA2:far
+stdlib		ends
+		endif
+		slcall	sl_xLDTOA2
+		endm
+
+
+
+ATOD		macro
+		ifndef	sl_ATOD
+stdlib		segment	para public 'slcode'
+		extrn	sl_ATOD:far
+stdlib		ends
+		endif
+		slcall	sl_ATOD
+		endm
+

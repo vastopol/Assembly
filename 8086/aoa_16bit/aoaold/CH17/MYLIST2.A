@@ -1,0 +1,46 @@
+; LIST.A
+;
+; Include file which contains the global definitions for the
+; list abstract data type.
+;
+; Warning: application programs should not use the symbols which
+;	   begin with "$$$$_" since these are reserved for use
+;	   by the abstract data type.
+
+
+$$$$_node	struct
+Link		dword	?
+$$$$_node	ends
+
+node		struct
+		byte	(sizeof $$$$_node) dup (0)
+node		ends
+
+; Methods:
+
+cseg		segment	para public 'code'
+
+		externdef	list_insert:near
+		externdef	list_remove:near
+		externdef	list_count:near
+		externdef	list_getitem:near
+
+GetListCnt	macro
+		call		list_count
+		endm
+
+
+GetItem		macro
+		call		list_getitem
+		endm
+
+
+InsertItem	macro
+		call		list_insert
+		endm
+
+RemoveItem	macro
+		call		list_remove
+		endm
+
+cseg		ends

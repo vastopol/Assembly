@@ -1,0 +1,44 @@
+StdGrp		group	stdlib, stddata
+
+stddata		segment	para public 'sldata'
+stddata		ends
+
+stdlib		segment	para public 'slcode'
+
+;# 7 routines in this package.
+
+externdef	sl_ttoa:far, sl_ttoam:far, sl_ttoa2:far,
+		sl_xttoa:far, sl_xttoam:far, sl_xttoa2:far,
+		sl_atot:far
+
+TTOA		macro
+		call	sl_TTOA
+		endm
+
+TTOAm		macro
+		call	sl_TTOAm
+		endm
+
+TTOA2		macro
+		call	sl_TTOA2
+		endm
+
+
+xTTOA		macro
+		call	sl_xTTOA
+		endm
+
+xTTOAm		macro
+		call	sl_xTTOAm
+		endm
+
+xTTOA2		macro
+		call	sl_xTTOA2
+		endm
+
+
+ATOT		macro
+		call	sl_ATOT
+		endm
+
+stdlib		ends

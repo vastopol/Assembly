@@ -1,0 +1,42 @@
+StdGrp		group	stdlib, stddata
+;
+stddata		segment	para public 'sldata'
+stddata		ends
+stdlib		segment	para public 'slcode'
+
+;# 7 routines in package.
+
+externdef	sl_ToHex:far, sl_Argc:far, sl_Argv:far,
+		sl_GetEnv:far, sl_Randomize:far, sl_Random:far,
+		sl_CPUID:far
+
+
+ToHex		macro
+		call	sl_ToHex
+		endm
+
+Argc		macro
+		call	sl_Argc
+		endm
+
+Argv		macro
+		call	sl_Argv
+		endm
+
+GetEnv		macro
+		call	sl_GetEnv
+		endm
+
+Randomize	macro
+		call	sl_randomize
+		endm
+
+Random		macro
+		call	sl_random
+		endm
+
+CPUIDENT	macro
+		call	sl_cpuid
+		endm
+
+stdlib		ends

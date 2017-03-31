@@ -1,0 +1,107 @@
+StdGrp		group	stdlib, stddata
+
+stddata		segment	para public 'sldata'
+stddata		ends
+
+stdlib		segment	para public 'slcode'
+
+;# 21 routines in this package.
+
+externdef	sl_Com1Baud:far, sl_Com1Stop:far, sl_Com1Size:far,
+		sl_Com1Parity:far, sl_ReadCom1:far, 		
+		sl_WriteCom1:far, sl_TstInpCom1:far, sl_TstOutCom1:far,
+		sl_GetLSRCom1:far, sl_GetMSRCom1:far, sl_GetMCRCom1:far,
+		sl_SetMCRCom1:far, sl_GetLCRCom1:far, sl_SetLCRCom1:far,
+		sl_GetIIRCom1:far, sl_GetIERCom1:far, sl_SetIERCom1:far,
+		sl_InitCom1Int:far, sl_IntsOffCom1:far, 
+		sl_InCom1:far, sl_OutCom1:far
+
+
+
+ComBaud		macro
+		call	sl_Com1Baud
+		endm
+
+ComStop		macro
+		call	sl_Com1Stop
+		endm
+
+ComSize		macro
+		call	sl_Com1Size
+		endm
+
+ComParity	macro
+		call	sl_Com1Parity
+		endm
+
+ComRead		macro
+		call	sl_ReadCom1
+		endm
+
+ComWrite	macro
+		call	sl_WriteCom1
+		endm
+
+ComTstIn	macro
+		call	sl_TstInpCom1
+		endm
+
+ComTstOut	macro
+		call	sl_TstOutCom1
+		endm
+
+ComGetLSR	macro
+		call	sl_GetLSRCom1
+		endm
+
+ComGetMSR	macro
+		call	sl_GetMSRCom1
+		endm
+
+ComGetMCR	macro
+		call	sl_GetMCRCom1
+		endm
+
+ComSetMCR	macro
+		call	sl_SetMCRCom1
+		endm
+
+ComGetLCR	macro
+		call	sl_GetLCRCom1
+		endm
+
+ComSetLCR	macro
+		call	sl_SetLCRCom1
+		endm
+
+ComGetIIR	macro
+		call	sl_GetIIRCom1
+		endm
+
+ComGetIER	macro
+		call	sl_GetIERCom1
+		endm
+
+ComSetIER	macro
+		call	sl_SetIERCom1
+		endm
+
+ComInitIntr	macro
+		call	sl_InitCom1Int
+		endm
+
+ComDisIntr	macro
+		call	sl_IntsOffCom1
+		endm
+
+ComIn		macro
+		call	sl_InCom1
+		endm
+
+ComOut		macro
+		call	sl_OutCom1
+		endm
+
+stdlib		ends
+
+

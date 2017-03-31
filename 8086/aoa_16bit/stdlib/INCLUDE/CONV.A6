@@ -1,0 +1,249 @@
+StdGrp		group	stdlib, stddata
+;
+stddata		segment	para public 'sldata'
+stddata		ends
+stdlib		segment	para public 'slcode'
+;
+; Conversions and test routines:
+;
+;# 45 routine and macro definitions.
+
+externdef	sl_atol:far, sl_atoul:far, sl_atol2:far, sl_atoul2:far,
+		sl_atoi:far, sl_atoi2:far, sl_atou:far, sl_atou2:far,
+		sl_atoh:far, sl_atolh:far, sl_atoh2:far, sl_atolh2:far,
+		sl_isize:far,sl_usize:far, sl_lsize:far, sl_ulsize:far,
+		sl_SPrintf:far, BufSize:far, sl_sprintfm:far, sl_sscanf:far
+
+externdef	sl_itoa:far, sl_itoam:far, sl_itoa2:far,
+		sl_utoa:far, sl_utoam:far, sl_utoa2:far,
+		sl_htoa:far, sl_htoam:far, sl_htoa2:far,
+		sl_wtoa:far, sl_wtoam:far, sl_wtoa2:far,
+		sl_ltoa:far, sl_ltoam:far, sl_ltoa2:far,
+		sl_ultoa:far, sl_ultoam:far, sl_ultoa2:far
+
+externdef	sl_IsAlNum:far, sl_IsXDigit:far
+
+
+atol		macro
+		call	sl_atol
+		endm
+
+atoul		macro
+		call	sl_atoul
+		endm
+
+atol2		macro
+		call	sl_atol2
+		endm
+
+atoul2		macro
+		call	sl_atoul2
+		endm
+
+atoi		macro
+		call	sl_atoi
+		endm
+
+atou		macro
+		call	sl_atou
+		endm
+
+atoi2		macro
+		call	sl_atoi2
+		endm
+
+atou2		macro
+		call	sl_atou2
+		endm
+
+atoh		macro
+		call	sl_atoh
+		endm
+
+atolh		macro
+		call	sl_atolh
+		endm
+
+atoh2		macro
+		call	sl_atoh2
+		endm
+
+atolh2		macro
+		call	sl_atolh2
+		endm
+
+ISize		macro
+		call	sl_Isize
+		endm
+
+USize		macro
+		call	sl_USize
+		endm
+
+LSize		macro
+		call	sl_Lsize
+		endm
+
+ULSize		macro
+		call	sl_ULSize
+		endm
+
+SPrintf		macro
+		call	sl_sprintf
+		endm
+
+SPrintfm	macro
+		call	sl_sprintfm
+		endm
+
+SScanf		macro
+		call	sl_sscanf
+		endm
+
+itoa		macro
+		call	sl_itoa
+		endm
+
+itoam		macro
+		call	sl_itoam
+		endm
+
+itoa2		macro
+		call	sl_itoa2
+		endm
+
+utoa		macro
+		call	sl_utoa
+		endm
+
+utoam		macro
+		call	sl_utoam
+		endm
+
+utoa2		macro
+		call	sl_utoa2
+		endm
+
+htoa		macro
+		call	sl_htoa
+		endm
+
+htoam		macro
+		call	sl_htoam
+		endm
+
+htoa2		macro
+		call	sl_htoa2
+		endm
+
+wtoa		macro
+		call	sl_wtoa
+		endm
+
+wtoam		macro
+		call	sl_wtoam
+		endm
+
+wtoa2		macro
+		call	sl_wtoa2
+		endm
+
+ltoa		macro
+		call	sl_ltoa
+		endm
+
+ltoam		macro
+		call	sl_ltoam
+		endm
+
+ltoa2		macro
+		call	sl_ltoa2
+		endm
+
+ultoa		macro
+		call	sl_ultoa
+		endm
+
+ultoam		macro
+		call	sl_ultoam
+		endm
+
+ultoa2		macro
+		call	sl_ultoa2
+		endm
+
+IsAlNum		macro
+		call	sl_IsAlNum
+		endm
+
+IsxDigit	macro
+		call	sl_IsxDigit
+		endm
+
+ToLower		macro
+		local	NoCnvrt
+		cmp	al, 'A'
+		jb	NoCnvrt
+		cmp	al, 'Z'
+		ja	NoCnvrt
+		or	al, 20h
+NoCnvrt:
+		endm
+
+ToUpper		macro
+		local	NoCnvrt
+		cmp	al, 'a'
+		jb	NoCnvrt
+		cmp	al, 'z'
+		ja	NoCnvrt
+		and	al, 05fh
+NoCnvrt:
+		endm
+
+IsDigit		macro
+		local	NotDigit, IsDigit
+		cmp	al, '0'
+		jb	NotDigit 		;Note: this also clears ZF.
+		cmp	al, '9'
+		ja	NotDigit		;Also clears ZF.
+		cmp	al, al			;Set Zero flag
+NotDigit:
+		endm
+
+IsAlpha		macro
+		local	IsAl, NotAlpha
+		cmp	al, 'A'
+		jb	NotAlpha		;Also clears ZF.
+		cmp	al, 'Z'
+		jbe	IsAl
+		cmp	al, 'a'
+		jb	NotAlpha
+		cmp	al, 'z'
+		ja	NotAlpha
+IsAl:		cmp	al, al			;Set ZF.
+NotAlpha:
+		endm
+
+IsLower		macro
+		local	NotLower
+		cmp	al, 'a'
+		jb	NotLower
+		cmp	al, 'z'
+		ja	NotLower
+		cmp	al, al			;Set ZF.
+NotLower:
+		endm
+
+
+IsUpper		macro
+		local	NotUpper
+		cmp	al, 'A'
+		jb	NotUpper
+		cmp	al, 'Z'
+		ja	NotUpper
+		cmp	al, al			;Set ZF.
+NotUpper:
+		endm
+
+stdlib		ends
+

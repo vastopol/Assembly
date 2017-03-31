@@ -1,0 +1,27 @@
+d:	mov	cx, 0
+	mov	[1000], cx
+
+a:	mov	cx, [1000]
+	cmp	cx, 0
+	jne	c
+
+	mov	ax, [fff0]
+	cmp	ax, 0
+	je	a
+	halt
+
+
+c:	mov	bx, 1002
+	mov	ax, 0
+b:	add	ax, [bx]
+	add	bx, 2
+	sub	cx, 1
+	cmp	cx, 0
+	jne	b
+
+	put
+	jmp	d
+	
+	
+
+

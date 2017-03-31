@@ -1,0 +1,72 @@
+#repetitions 2000000
+#unravel 100
+
+#code	("ABS:Sequence 1 w/positive value")
+%discount
+		mov	ax, 1		;Our positive value
+%do
+		local	ispos
+
+		cmp	ax, 0
+		jge	ispos
+		neg	ax
+ispos:
+#endcode
+
+#code	("ABS:Sequence 2 w/positive value")
+%discount
+		mov	ax, 1		;Our positive value
+%do
+		local	ispos
+
+		neg	ax
+		jns	ispos
+		neg	ax
+ispos:
+#endcode
+
+#code	("ABS:Sequence 3 w/positive value")
+%discount
+		mov	ax, 1		;Our positive value
+%do
+		cwd
+		xor	ax, dx
+		and	dx, 1
+		add	ax, dx
+#endcode
+
+#code	("ABS:Sequence 1 w/negative value")
+%discount
+		mov	ax, -1		;Our negative value
+%do
+		local	ispos
+
+		cmp	ax, 0
+		jge	ispos
+		neg	ax
+ispos:
+#endcode
+
+#code	("ABS:Sequence 2 w/negative value")
+%discount
+		mov	ax, -1		;Our negative value
+%do
+		local	ispos
+
+		neg	ax
+		jns	ispos
+		neg	ax
+ispos:
+#endcode
+
+#code	("ABS:Sequence 3 w/negative value")
+%discount
+		mov	ax, -1		;Our negative value
+%do
+		cwd
+		xor	ax, dx
+		and	dx, 1
+		add	ax, dx
+#endcode
+
+#end

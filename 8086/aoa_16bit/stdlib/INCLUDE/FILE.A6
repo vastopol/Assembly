@@ -1,0 +1,54 @@
+StdGrp		group	stdlib, stddata
+
+stddata		segment	para public 'sldata'
+stddata		ends
+
+stdlib		segment	para public 'slcode'
+
+FileVar		struc
+fvHandle	dw	?
+fvMode		dw	0
+fvIndex		dw	0
+fvByteCount	dw	0
+fvBuffer	db	512 dup (?)
+FileVar		ends
+
+;# 8 routines in this package.
+
+externdef	sl_fcreate:far, sl_fopen:far, sl_fclose:far, sl_fflush:far,
+		sl_fputc:far, sl_fgetc:far, sl_fwrite:far, sl_fread:far
+
+fcreate		macro
+		call	sl_fcreate
+		endm
+
+fopen		macro
+		call	sl_fopen
+		endm
+
+fclose		macro
+		call	sl_fclose
+		endm
+
+fflush		macro
+		call	sl_fflush
+		endm
+
+fputc		macro
+		call	sl_fputc
+		endm
+
+fgetc		macro
+		call	sl_fgetc
+		endm
+
+fread		macro
+		call	sl_fread
+		endm
+
+fwrite		macro
+		call	sl_fwrite
+		endm
+
+
+stdlib		ends

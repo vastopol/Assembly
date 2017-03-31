@@ -1,0 +1,114 @@
+"ART OF Assembly Language Programming" support files.
+These are the source and sample files to accompany 
+Randy Hyde's text "The Art of Assembly Language Programming".
+
+(c) Copyright 1995 by Randall L. Hyde.
+
+Permission is hereby granted to copy these files by individuals
+for the purposes of learning 80x86 assembly language programming.
+Institutions, corporations, etc. may obtain permission by sending
+a copyright request to
+
+	rhyde@cs.ucr.edu
+
+explaining the need for these files.
+
+Note that the Standard Library files (stdlib directory) 
+are public domain.  There is no need to request permission
+for their use.
+
+
+
+-----------------------------------------------------------------------------
+
+RPTEDIT Word Processing Program.
+
+This package includes a simple word processing program (RPTEDIT.EXE) that
+allows you to prepare laboratory reports in the event you do not have
+access to another word processor.  This program was written with Borland
+Delphi using the Visual Solutions Pack.  Unfortunately, Borland's
+License agreement does not allow distributing source code for this product
+(since it includes quite a bit of some of their sample code).  Those
+who are interested in writing their own word processor (similar to RPTEDIT)
+should obtain a copy of the Borland RAD pack for Delphi.
+
+The RPTEDIT program is a fairly straight-forward word processor.  Anyone who
+has ever used a Windows-based word processor will feel right at home with
+RPTEDIT.  By default, RPTEDIT reads and writes files in its own format
+(using the ".RPT" filename suffix).  It can also read and write files in the
+rich text format (files with the ".RTF" suffix).
+
+In addition to the options available in the menus and on the ruler, RPTEDIT
+supports the following mouse and keyboard operations:
+
+Mouse Assignment
+
+Mouse Action		Reaction of Text-Control
+
+Click			Moves cursor to point of click or selects an image.
+
+Shift+Click		Extends the selection to the point of click.
+
+Double-click		Selects the word that is clicked on or opens a modal 
+			dialog box to select an image alignment.
+
+Drag			Selects text from point of button down to point where 
+			button is released.
+
+Double-click and drag	Extends the selection from word to word.
+
+Triple-click and drag	Extends the selection from row to row.
+
+PgUp/PgDown		Scrolls the text up or down one client area height 
+			minus the height of one line of text. Active only 
+			if a vertical scrollbar exists.
+
+
+Moving the caret while SHIFT is pressed extends the current selection to 
+the new caret position. 
+
+Keyboard Assignment
+
+Key type		Reaction of Text-Control
+
+HOME			Moves the caret to the beginning of the line.
+
+END			Moves the caret to the end of the line.
+
+(Left Arrow)		Moves the caret one character to the left.
+
+(Right Arrow)		Moves the caret one character to the right.
+
+(Up Arrow)		Moves the caret one line up.
+
+(Down Arrow)		Moves the caret one line down.
+
+CTRL+(Left Arrow)	Moves the caret to the beginning of the current word.
+
+CTRL+(Right Arrow)	Moves the caret to the beginning of the next word.
+
+CTRL+HOME		Moves the caret to start of text.
+
+CTRL+END		Moves the caret to end of text.
+
+CTRL+ENTER		Inserts a new page.
+
+SHIFT+ENTER		Creates a line feed.
+
+CTRL+(-)		Inserts an end-of-line hyphen.
+
+DEL			Deletes selected text.
+
+SHIFT+DEL		Copies selected text to the Clipboard and deletes 
+			the selection.
+
+CTRL+INS		Copies selected text to the clipboard.
+
+SHIFT+INS		Inserts text from the clipboard.
+
+CTRL+SHIFT+(Spacebar)	Inserts a non-breaking space.
+
+CTRL+(Backspace)	Deletes the previous word.
+
+Moving the caret while SHIFT is pressed extends the current selection to 
+the new caret position. 

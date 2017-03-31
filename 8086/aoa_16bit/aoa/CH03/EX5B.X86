@@ -1,0 +1,8 @@
+c:	mov	ax, [1000]
+	add	ax, 1
+	mov	[1000], ax
+	iret
+
+	
+
+

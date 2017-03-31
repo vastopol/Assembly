@@ -1,0 +1,12 @@
+a 0
+get cx
+get bx
+load dx, 0
+load ax, dx
+ifeq cx, dx, 13
+store ax, [bx]
+add bx, 2
+sub cx, 1
+goto 6
+halt
+

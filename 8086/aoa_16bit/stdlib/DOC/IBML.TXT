@@ -1,0 +1,319 @@
+              IBM/L 1.0
+(Instruction Benchmarking Language)
+
+This program lets you time sequences of instructions to see how much time
+they *really* take to execute.  The cycle timings in most 80x86 assembly
+language books are horribly inaccurate as they assume the absolute best
+case.  IBM/L lets you try out some instruction sequences and see how
+much time they really take.
+
+IBM/L uses the system 1/18th second clock and measures most executions
+in terms of clock ticks.  Therefore, it would be totally useless for
+measure the speed of a single instruction (since all instructions execute
+in *much* less than 1/18th second).  IBM/L works by repeatedly executing
+a code sequence thousands (or millions) of times and measuring that amount
+of time.  IBM/L automatically subtracts away the loop overhead time.
+
+IBM/L is a very crude program, something like the "Zen Timer" (from
+Michael Abrash's book "Zen of Assembly") would be more appropriate
+if you need absolutely accurate timings.  The intent of this program
+is to give you a good feeling for which instructions are faster than
+others.
+
+IBM/L programs begin with an optional data section. The data section begins
+with a line containing "#DATA" and ends with a line containing "#ENDDATA".
+All lines between these two lines are copied to an output assembly language
+program inside the DSEG data segment.  Typically you would put global
+variables into the program at this point.  As a general rule, you should not
+use names which begin with a period.  IBM/L prefaces all its names with a
+period and you could run into a conflict were you to use such names.
+Note:if you are using MASM 6.0 or later, you must select the option which
+allows identifiers to begin with a period.  MASM 5.1 and earlier do not
+have a problem with such identifiers.
+
+Example of a data section:
+
+#DATA
+I	dw	?
+J	dw	?
+K	dd	?
+ch	db	?
+ch2	db	?
+#ENDDATA
+
+These lines would be copied to a data segment in the created program.
+Note that these names would be available to *all* code sequences you
+place in the following code sections.
+
+
+Following the data section are one or more code sections.  A code section
+consists of optional #REPETITION and #UNRAVEL statements followed by the
+actual #CODE / #ENDCODE sections.
+
+The #REPETITION statement takes the following form:
+
+	#REPETITION value1, value2
+
+(The "#" must be in column one).  "value1" and "value2" must be 16-bit integer
+constants (less than or equal to 65,535).
+
+This statement instructs IBM/L to generate a loop which repeats the following
+code segment (value1 * value2) times.  I used two values so I could use 16-bit
+arithmetic (easy to perform in C/FLEX/BISON).  If you do not specify any
+repetitions at all, the default is value1=65535 and value2=5.  Once you set
+a repetitions value, that value remains in effect for all following code
+sequences until you explicitly change it again.
+
+In general, the bigger the value you choose, the more accurate the timing will
+be.  However, as you choose larger and larger values for the repetitions, the
+program code segments will take longer and longer to execute.  Remember,
+the generated assembly language program will repeat the code seqences in a
+loop the specified (value1*value2) number of times.  Short, simple, instruction
+sequences will execute much faster than long, complex, instruction sequences.
+
+If you are interested in the straight-line execution times for some
+instruction(s), placing those instructions in a tight loop may dramatically
+affect IBM/L's accuracy.  Don't forget, executing a control transfer instruct-
+ion (necessary for a loop) flushes the pre-fetch queue and has a big effect
+on execution times.  The "#UNRAVEL" statement lets you copy a block of code
+several times in place (like unravelling a loop) thereby reducing the overhead
+of the conditional jump instructions controlling the loop.  The "#UNRAVEL"
+statement takes the following form:
+
+	#UNRAVEL count
+
+(The "#" must be in column one).  "count" is a 16-bit integer constant
+denoting the number of times IBM/L is to repeat the code in place.
+
+Note that the specified code sequence in the #CODE section will actually
+be executed (count*value1*value2) times, since the #UNRAVEL statement
+repeats the code sequence "count" times inside the loop.
+
+In its most basic form, the #CODE section looks like the following:
+
+	#CODE ("Title")
+	%DO
+
+		<assembly statements>
+
+	#ENDCODE
+
+The title can be any string you choose.  IBM/L will display this title
+when printing the timing results for this code section.  IBM/L will take
+the specified assembly statements and output them (multiple times if the
+#UNRAVEL statement specifies) inside a loop.  At run time the generated
+assembly language source file will time this code and present a count,
+in ticks, for one execution of this sequence.
+
+Example:
+
+#unravel 16			Execute the sequence 16 times inside the loop
+#repetitions 32, 30000		Do this 32*30000 times
+#code ("MOV AX, 0  Instruction")
+%do
+		mov	ax, 0
+#endcode
+
+The above code would generate an assembly language program which executes
+the MOV AX, 0 instruction 16 * 32 * 30000 times and report the amount of
+time that it would take.
+
+Most IBM/L programs have multiple code sections.  New code sections can
+immediately follow the previous ones, e.g.,
+
+#unravel 16			Execute the sequence 16 times inside the loop
+#repetitions 32, 30000		Do this 32*30000 times
+#code ("MOV AX, 0  Instruction")
+%do
+		mov	ax, 0
+#endcode
+
+#code ("XOR AX, AX Instruction")
+%do
+		xor	ax, ax
+#ENDCODE
+
+The above sequence would execute the MOV AX, 0 and XOR AX, AX instructions
+16*32*30000 times and report the amount of time necessary to perform
+these instructions.  By comparing the results you can determine which
+instruction sequence is fastest.
+
+All IBM/L programs must end with a "#END" statement.  Therefore, the
+correct form of the instruction above is
+
+#unravel 16			Execute the sequence 16 times inside the loop
+#repetitions 32, 30000		Do this 32*30000 times
+#code ("MOV AX, 0  Instruction")
+%do
+		mov	ax, 0
+#endcode
+
+#code ("XOR AX, AX Instruction")
+%do
+		xor	ax, ax
+#ENDCODE
+#END
+
+
+
+An example of a complete IBM/L program using all of the techniques we've
+seen so far is
+
+#data
+	even
+i	dw	?
+	db	?
+j	db	?
+#enddata
+#unravel 16			Execute the sequence 16 times inside the loop
+#repetitions 32, 30000		Do this 32*30000 times
+#code ("Aligned Word MOV")
+%do
+		mov	ax, i
+#endcode
+
+#code ("Unaligned word MOV")
+%do
+		mov	ax, j
+#ENDCODE
+#END
+
+
+
+
+There are a couple of optional sections which may appear between the
+"#CODE" and the "%DO" statements.  The first of these is "%INIT" which begins
+an initialization section.  IBM/L emits initialization sections before the
+loop and does not count their execution time when timing the loop.  This lets
+you set up important values prior to running a test which do not count
+towards the timing.  E.g.,
+
+#data
+i		dd	?
+#enddata
+
+#repetitions 5,20000
+#unravel 1
+#code
+%init
+		mov	word ptr i, 0
+		mov	word ptr i+2, 0
+%do
+		mov	cx, 200
+lbl:		inc	word ptr i
+		jnz	NotZero
+		inc	word ptr i+2
+NotZero:	loop	lbl
+#endcode
+#end
+
+The code in the "%INIT" section executes only once and does not affect the
+timing.
+
+
+Sometimes you may want to use the "#UNRAVELS" statement to repeat a section
+of code several times.  However, there may be some statements which you
+only want to execute once on each loop (that is, without copying the code
+several times in the loop).  The "%eachloop" section allows this.  Note that
+the code executed in the "%eachloop" section is not counted in the final
+timing.
+
+Example:
+
+#data
+i		dw	?
+j		dw	?
+#enddata
+
+#repetitions 2,20000
+#unravel 128
+#code
+%init      -- The following is executed only once
+
+		mov	i, 0
+		mov	j, 0
+
+%eachloop  -- The following is executed only 40000 times, not 128*40000 times
+		
+		inc	j
+
+%do
+		inc	i
+
+#endcode
+#end
+
+In the above code, IBM/L only counts the time required to increment i.  It does
+not time the instructions in the %init or %eachloop sections.
+
+The code in the %eachloop section only executes once per loop iteration.  Even
+if you use the "#unravel" statement (the "inc i" instruction above, for
+example, executes 128 times per loop iteration because of #UNRAVEL).  Sometimes
+you may want some sequence of instructions to execute like those in the %do
+section, but not get timed.  The "%discount" section allows for this.
+Here is the full form of an IBM/L source file:
+
+#DATA
+	<data declarations>
+#ENDDATA
+
+#REPETITIONS value1, value2
+#UNRAVEL count
+#CODE
+%INIT
+	<Initialization code, executed only once>
+%EACHLOOP
+	<Loop initialization code, executed once on each pass through the loop>
+%DISCOUNT
+	<Untimed statements, executed each time the %DO section executes>
+%DO
+	<The statements you want to time>
+#ENDCODE
+
+<additional code sections>
+
+#END
+
+There are several sample files which demonstrate each of these sections
+included with this package.
+
+
+--------------------------------
+
+How to use IBM/L
+
+IBM/L was created using FLEX and BISON.  As per FSF's license (indeed, going
+beyond what they request) this package includes all the sources (C, ASSEMBLY,
+FLEX, and BISON) for the program.  Feel free to modify it as you see fit.
+
+To use this package you need several files.  IBML.EXE is the executable
+program.  You run it as follows:
+
+	c:> IBML filename.IBM
+
+This reads an IBML source file (filename.IBM, above) and writes an assembly
+language program to the standard output.  Normally you would use I/O
+redirection to capture this program as follows:
+
+	c:> IBML filename.IBM >filename.ASM
+
+Once you create the assembly language source file, you can assemble and run
+it.  The resulting EXE file will display the timing results.
+
+To properly run the IBML program, you must have the "IBMLINC.A" file in the
+current working directory.  This is a skeleton assembly language source file
+into which IBM/L inserts your assembly source code.  Feel free to modify this
+file as you see fit.  Keep in mind, however, that IBM/L expects certain
+markers in the file (currently ";##") where it will insert the code.
+Be careful how you deal with these existing markers if you modify the
+IBMLINC.A file.
+
+The output assembly language source file assumes the presence of the
+UCR Standard Library for 80x86 Assembly Language Programmers.  In particular,
+it needs the STDLIB include files (stdlib.a) and the library file (stdlib.lib).
+
+These must be present (or in your INCLUDE/LIB environment paths) or MASM
+will not be able to properly assemble the output assembly language file.
+
+There is a batch file included in this package which demonstrates the steps
+necessary to run IBM/L on a test file.

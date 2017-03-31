@@ -1,0 +1,51 @@
+; IBML Sample program #6.
+; This code compares the execution
+; time of the MUL instruction vs.
+; various shift and add equivalents.
+
+#repetitions 480000
+#unravel 1
+
+; The following check checks to see how
+; long it takes to multiply two values
+; using the IMUL instruction.
+
+#code ("Multiply by 15 using IMUL")
+%do
+		.286
+		mov	cx, 128
+		mov	bx, 15
+MulLoop1:	mov	ax, cx
+		imul	bx
+		loop	MulLoop1
+
+#endcode
+
+; Do the same test using the extended IMUL
+; instruction on 80286 and later processors.
+
+#code ("Multiplying by 15 using IMUL")
+%do
+		mov	cx, 128
+MulLoop2:	mov	ax, cx
+		imul	ax, 15
+		loop	MulLoop2
+
+#endcode
+
+
+; Now multiply by 15 using a shift by four
+; bits and a subtract.
+
+#code ("Multiplying by 15 using shifts and sub")
+%init
+%do
+		mov	cx, 128
+MulLoop3:	mov	ax, cx
+		mov	bx, ax
+		shl	ax, 4
+		sub	ax, bx
+		loop	MulLoop3
+
+#endcode
+#end

@@ -1,0 +1,153 @@
+StdGrp		group	stdlib, stddata
+
+stddata		segment	para public 'sldata'
+stddata		ends
+
+stdlib		segment	para public 'slcode'
+stdlib		ends
+
+slcall		macro	adrs
+		db	09ah			;Far call
+		dd	stdgrp:adrs		;Address of routine to call
+		endm
+
+
+prcsinit	macro
+		ifndef	sl_prcsinit
+stdlib		segment	para public 'slcode'
+		extrn	sl_prcsinit:far
+stdlib		ends
+		endif
+		slcall	sl_prcsinit
+		endm
+
+prcsquit	macro
+		ifndef	sl_prcsquit
+stdlib		segment	para public 'slcode'
+		extrn	sl_prcsquit:far
+stdlib		ends
+		endif
+		slcall	sl_prcsquit
+		endm
+
+fork		macro
+		ifndef	sl_fork
+stdlib		segment	para public 'slcode'
+		extrn	sl_fork:far
+stdlib		ends
+		endif
+		slcall	sl_fork
+		endm
+
+
+kill		macro
+		ifndef	sl_kill
+stdlib		segment	para public 'slcode'
+		extrn	sl_kill:far
+stdlib		ends
+		endif
+		slcall	sl_kill
+		endm
+
+die		macro
+		ifndef	sl_die
+stdlib		segment	para public 'slcode'
+		extrn	sl_die:far
+stdlib		ends
+		endif
+		slcall	sl_die
+		endm
+
+yield		macro
+		ifndef	sl_yield
+stdlib		segment	para public 'slcode'
+		extrn	sl_yield:far
+stdlib		ends
+		endif
+		slcall	sl_yield
+		endm
+
+
+coinit		macro
+		ifndef	sl_coinit
+stdlib		segment	para public 'slcode'
+		extrn	sl_coinit:far
+stdlib		ends
+		endif
+		slcall	sl_coinit
+		endm
+
+
+cocall		macro	adrs
+		ifndef	sl_cocall
+stdlib		segment	para public 'slcode'
+		extrn	sl_cocall:far
+		extrn	sl_cocalll:far
+stdlib		ends
+		endif
+		ifb	<adrs>
+		slcall	sl_cocall
+		else
+		slcall	sl_cocalll
+		dd	adrs
+		endif
+		endm
+
+WaitSemaph	macro	adrs
+		ifndef	sl_WaitSemaph
+stdlib		segment	para public 'slcode'
+		extrn	sl_WaitSemaph:far
+stdlib		ends
+		endif
+		slcall	sl_WaitSemaph
+		endm
+
+RlsSemaph	macro	adrs
+		ifndef	sl_RlsSemaph
+stdlib		segment	para public 'slcode'
+		extrn	sl_RlsSemaph:far
+stdlib		ends
+		endif
+		slcall	sl_RlsSemaph
+		endm
+
+; Process data structures:
+;
+; Process control block.
+; NextProc field must be the first field in this structure since the dispatcher
+; code assumes that it is at offset zero from a pointer to this structure.
+; The regsp and regss fields appear next since they are the
+; fields most often initialized in the structure.
+; regip and regcs follow the regss entry since, for coroutines, they
+; need to be initialized as well.  Most of the remaining fields do not
+; normally need initialization.
+
+pcb		struc
+NextProc	dd	?
+regsp		dw	?
+regss		dw	?
+regip		dw	?
+regcs		dw	?
+
+regax		dw	?
+regbx		dw	?
+regcx		dw	?
+regdx		dw	?
+regsi		dw	?
+regdi		dw	?
+regbp		dw	?
+regds		dw	?
+reges		dw	?
+regflags	dw	?
+PrcsID		dw	?
+StartingTime	dd	?
+StartingDate	dd	?
+CPUTime		dd	?
+pcb		ends
+
+
+semaphore	struc
+SemaCnt		dw	1
+smaphrLst	dd	?
+endsmaphrlst	dd	?
+semaphore	ends

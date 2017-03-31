@@ -1,0 +1,744 @@
+Floating Point Routines
+-----------------------
+
+The floating point routines provide a basic floating point package for
+80x86 assembly language users.  The floating point package deals with
+four different floating point formats: IEEE 32-bit, 64-bit, and 80-bit
+formats, and an internal 81-bit format.  The external formats mostly
+support the IEEE standard except for certain esoteric values such as
+denormalized numbers, NaNs, infinities, and other such cases.
+
+The package provides two "pseudo-registers", a floating point accumulator
+and a floating point operand.  It provides routines to load and store these
+pseudo-registers from memory operands (using the various formats) and then
+all other operations apply to these two operands.  All computations use the
+internal 81-bit floating point format.  The package automatically converts
+between the internal format and the external format when loading and storing
+values.
+
+Do not write code which assumes the internal format is 81 bits.  This format
+will change in the near future when I get a chance to add guard bits to
+all the computations.  If your code assumes 81 bits, it will break at that
+point.  Besides, there is no reason your code should count on the size of
+the internal operations anyway.  Stick with the IEEE formats and you'll
+be much better off (since your code can be easily upgraded to deal with
+numeric coprocessors).
+
+WARNING: These routines have not been sufficiently tested as of 10/10/91.
+Use them with care.  Report any problems with these routines to Randy Hyde
+via the electronic addresses provided in this document or by sending a
+written report to UC Riverside.  As I get more time, I will further test
+these routines and add additional functions to the package.
+
+					*** Randy Hyde
+
+
+
+Routine:  lsfpa
+---------------
+
+Category:             Floating point Routine
+
+Registers on entry:   ES:DI points at a single precision (32-bit) value to load
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+			les di, FPValue
+			lsfpa
+
+Description:	LSFPA loads a single precision floating point value into the
+		internal floating point accumulator.  It also converts the
+		32-bit format to the internal 81-bit format used by the
+		floating point package.
+
+Include:	stdlib.a or fp.a
+
+Routine:  ssfpa
+---------------
+
+Category:             Floating point Routine
+
+Registers on entry:   ES:DI points at a single precision (32-bit) value where
+		      this routine should store the floating point acc.
+
+Registers on return:  None
+
+Flags affected:       Carry set if conversion error.
+
+Example of Usage:
+			les di, FPValue
+			ssfpa
+
+Description:	SSFPA stores the floating point accumulator into a single
+		precision variable in memory (pointed at by ES:DI).  It
+		converts the value from the 81-bit format to the 32-bit
+		value before storing the result.   The 64-bit mantissa used
+		by the FP package is rounded to 24 bits during the store.
+		The exponent could be out of range.  If this occurs, SSFPA
+		returns with the carry flag set.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  ldfpa
+---------------
+
+Category:             Floating point Routine
+
+Registers on entry:   ES:DI points at a double precision (64-bit) value to load
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+			les di, FPValue
+			ldfpa
+
+Description:	LDFPA loads a double precision floating point value into the
+		internal floating point accumulator.  It also converts the
+		64-bit format to the internal 81-bit format used by the
+		floating point package.
+
+Include:	stdlib.a or fp.a
+
+Routine:  sdfpa
+---------------
+
+Category:             Floating point Routine
+
+Registers on entry:   ES:DI points at a double precision (64-bit) value where
+		      this routine should store the floating point acc.
+
+Registers on return:  None
+
+Flags affected:       Carry set if conversion error.
+
+Example of Usage:
+			les di, FPValue
+			sdfpa
+
+Description:	SDFPA stores the floating point accumulator into a double
+		precision variable in memory (pointed at by ES:DI).  It
+		converts the value from the 81-bit format to the 64-bit
+		value before storing the result.   The 64-bit mantissa used
+		by the FP package is rounded to 51 bits during the store.
+		The exponent could be out of range.  If this occurs, SDFPA
+		returns with the carry flag set.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  lefpa
+---------------
+
+Category:             Floating point Routine
+
+Registers on entry:   ES:DI points at an extended precision (80-bit) value to
+		      load
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+			les di, FPValue
+			lefpa
+
+Description:	LEFPA loads an extended precision floating point value into
+		the internal floating point accumulator.  It also converts the
+		80-bit format to the internal 81-bit format used by the
+		floating point package.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  lefpal
+----------------
+
+Category:             Floating point Routine
+
+Registers on entry:   CS:RET points at an extended precision (80-bit) value to
+		      load
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+			lefpal
+			dt	1.345e-3
+
+Description:	LEFPAL loads an extended precision floating point value into
+		the internal floating point accumulator.  It also converts the
+		80-bit format to the internal 81-bit format used by the
+		floating point package.
+
+		Unlike LEFPA, LEFPAL gets its operand directly from the code
+		stream.  You must follow the call to lefpal with a ten-byte
+		(80-bit) floating point constant.
+Include:	stdlib.a or fp.a
+
+Routine:  sefpa
+---------------
+
+Category:             Floating point Routine
+
+Registers on entry:   ES:DI points at an extended precision (80-bit) value
+		      where this routine should store the floating point acc.
+
+Registers on return:  None
+
+Flags affected:       Carry set if conversion error.
+
+Example of Usage:
+			les di, FPValue
+			sefpa
+
+Description:	SEFPA stores the floating point accumulator into an extended
+		precision variable in memory (pointed at by ES:DI).  It
+		converts the value from the 81-bit format to the 80-bit
+		value before storing the result.
+
+		The exponent could be out of range.  If this occurs, SEFPA
+		returns with the carry flag set.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  lsfpo
+---------------
+
+Category:             Floating point Routine
+
+Registers on entry:   ES:DI points at a single precision (32-bit) value to load
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+			les di, FPValue
+			lsfpo
+
+Description:	LSFPA loads a single precision floating point value into the
+		internal floating point operand.  It also converts the
+		32-bit format to the internal 81-bit format used by the
+		floating point package.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  ldfpo
+---------------
+
+Category:             Floating point Routine
+
+Registers on entry:   ES:DI points at a double precision (64-bit) value to load
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+			les di, FPValue
+			ldfpo
+
+Description:	LDFPO loads a double precision floating point value into the
+		internal floating point operand.  It also converts the
+		64-bit format to the internal 81-bit format used by the
+		floating point package.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  lefpo
+---------------
+
+Category:             Floating point Routine
+
+Registers on entry:   ES:DI points at an extended precision (80-bit) value to
+		      load
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+			les di, FPValue
+			lefpo
+
+Description:	LEFPO loads an extended precision floating point value into
+		the internal floating point operand.  It also converts the
+		80-bit format to the internal 81-bit format used by the
+		floating point package.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  lefpol
+----------------
+
+Category:             Floating point Routine
+
+Registers on entry:   CS:RET points at an extended precision (80-bit) value to
+		      load
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+			lefpal
+			dt	1.345e-3
+
+Description:	LEFPOL loads an extended precision floating point value into
+		the internal floating point operand.  It also converts the
+		80-bit format to the internal 81-bit format used by the
+		floating point package.
+
+		Unlike LEFPO, LEFPOL gets its operand directly from the code
+		stream.  You must follow the call to lefpal with a ten-byte
+		(80-bit) floating point constant.
+Include:	stdlib.a or fp.a
+
+
+Routine:  itof
+--------------
+
+Category:             Floating point Routine
+
+Registers on entry:   AX contains a signed integer value
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+			mov	ax, -1234
+			itof
+
+Description:	ITOF converts the 16-bit signed integer in AX to a floating
+		point value, storing the result in the floating point
+		accumuator.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  utof
+--------------
+
+Category:             Floating point Routine
+
+Registers on entry:   AX contains an unsigned integer value
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+			mov	ax, -1234
+			itof
+
+Description:	UTOF converts the 16-bit unsigned integer in AX to a floating
+		point value, storing the result in the floating point
+		accumuator.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  ultof
+---------------
+
+Category:             Floating point Routine
+
+Registers on entry:   DX:AX contains an unsigned 32-bit integer value
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+			mov	dx, word ptr val32+2
+			mov	ax, word ptr val32
+			ultof
+
+Description:	ULTOF converts the 32-bit unsigned integer in DX:AX to a
+		floating point value, storing the result in the floating
+		point accumuator.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  ltof
+--------------
+
+Category:             Floating point Routine
+
+Registers on entry:   DX:AX contains a signed 32-bit integer value
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+			mov	dx, word ptr val32+2
+			mov	ax, word ptr val32
+			ltof
+
+Description:	LTOF converts the 32-bit signed integer in DX:AX to a
+		floating point value, storing the result in the floating
+		point accumuator.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  ftoi
+--------------
+
+Category:             Floating point Routine
+
+Registers on entry:   None
+
+Registers on return:  AX contains 16-bit signed integer
+
+Flags affected:       Carry is set if conversion error occurs.
+
+Example of Usage:
+			ftoi
+			puti		;Print AX as integer value
+
+
+Description:	FTOI converts the floating point accumulator value to a
+		16-bit signed integer and returns the result in AX.  If
+		the floating point number will not fit in AX, FTOI returns
+		with the carry flag set.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  ftou
+--------------
+
+Category:             Floating point Routine
+
+Registers on entry:   None
+
+Registers on return:  AX contains 16-bit unsigned integer
+
+Flags affected:       Carry is set if conversion error occurs.
+
+Example of Usage:
+			ftou
+			putu		;Print AX as an unsigned value
+
+
+Description:	FTOU converts the floating point accumulator value to a
+		16-bit unsigned integer and returns the result in AX.  If
+		the floating point number will not fit in AX, FTOU returns
+		with the carry flag set.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  ftol
+--------------
+
+Category:             Floating point Routine
+
+Registers on entry:   None
+
+Registers on return:  DX:AX contains a 32-bit signed integer
+
+Flags affected:       Carry is set if conversion error occurs.
+
+Example of Usage:
+			ftol
+			putl		;Print DX:AX as integer value
+
+
+Description:	FTOL converts the floating point accumulator value to a
+		32-bit signed integer and returns the result in DX:AX.  If
+		the floating point number will not fit in DX:AX, FTOL returns
+		with the carry flag set.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  ftoul
+---------------
+
+Category:             Floating point Routine
+
+Registers on entry:   None
+
+Registers on return:  DX:AX contains a 32-bit unsigned integer
+
+Flags affected:       Carry is set if conversion error occurs.
+
+Example of Usage:
+			ftoul
+			putul		;Print DX:AX as an integer value
+
+
+Description:	FTOUL converts the floating point accumulator value to a
+		32-bit unsigned integer and returns the result in DX:AX.  If
+		the floating point number will not fit in DX:AX, FTOUL returns
+		with the carry flag set.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  fpadd
+---------------
+
+Category:             Floating point Routine
+
+Registers on entry:   None
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+			fpadd
+
+Description:	FPADD adds the floating point operand to the floating point
+		accumulator leaving the result in the floating point
+		accumulator.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  fpsub
+---------------
+
+Category:             Floating point Routine
+
+Registers on entry:   None
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+			fpsub
+
+Description:	FPSUB subtracts the floating point operand from the floating
+		point accumulator leaving the result in the floating point
+		accumulator.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  fpcmp
+---------------
+
+Category:             Floating point Routine
+
+Registers on entry:   None
+
+Registers on return:  AX contains result of comparison.
+
+Flags affected:       As appropriate for a comparison.  You can use the
+		      conditional branches to check the comparison after
+		      calling this routine.  Be sure to use the *signed*
+		      conditional jumps (e.g., JG, JGE, etc.).
+
+Example of Usage:
+			fpcmp
+			jge	FPACCgeFPOP
+
+Description:	FPCMP compares the floating point accumulator to the
+		floating point operand and sets the flags according to the
+		result of the comparison.  It also returns a value in AX
+		as follows:
+
+			AX	Result
+			-1	FPACC < FPOP
+			 0	FPACC = FPOP
+			 1	FPACC > FPOP
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  fpmul
+--------------
+
+Category:             Floating point Routine
+
+Registers on entry:   None
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+			fpmul
+
+Description:	FPMUL multiplies the floating point accumulator by the floating
+		point operand and leaves the result in the floating point
+		accumulator.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  fpdiv
+---------------
+
+Category:             Floating point Routine
+
+Registers on entry:   None
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+			fpdiv
+
+Description:	FPDIV divides the floating point accumulator by the floating
+		point operand and leaves the result in the floating point
+		accumulator.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  ftoa (2,m)
+--------------------
+
+Category:             Floating point Routine
+
+Registers on entry:   ES:DI points at buffer to hold result (ftoa/ftoa2 only)
+		      AL- Field width for floating point value.
+		      AH- Number of positions to the right of the dec pt.
+
+Registers on return:  ES:DI points at beginning of string (ftoa/ftoam only)
+		      ES:DI points at zero terminating byte (ftoa2 only)
+
+Flags affected:       Carry is set if malloc error (ftoam only)
+
+Example of Usage:
+			mov	di, seg buffer
+			mov	es, di
+			lea	di, buffer
+			mov	ah, 2		;Two digits after "."
+			mov	al, 10		;Use a total of ten positions
+			ftoa
+
+
+
+Description:	FTOA (2,M) converts the value in the floating point accumulator
+		to a string of characters which represent that value.  These
+		routines use a decimal representation.  The value in AH is
+		the number of digits to put after the decimal point, AL
+		contains the total field width (including room for the sign
+		and decimal point).  The field width specification works
+		just like Pascal or FORTRAN.  If the number will not fit in
+		the specified field width, FTOA outputs a bunch of "#"
+		characters.
+
+		FTOA stores the converted string at the address specified by
+		ES:DI upon entry.  There must be at least AL+1 bytes at this
+		address.  It returns with ES:DI pointing at the start of this
+		buffer.
+
+		FTOA2 works just like FTOA except it does not preserve DI.
+		It returns with DI pointing at the zero terminating byte.
+
+		FTOAM allocates storage for the string on the heap and returns
+		a pointer to the converted string in ES:DI.
+
+		Note: this routine preserves the value in the floating point
+		accumulator but it wipes out the value in the floating point
+		operand.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  etoa (2,m)
+--------------------
+
+Category:             Floating point Routine
+
+Registers on entry:   ES:DI points at buffer to hold result (etoa/etoa2 only)
+		      AL- Field width for floating point value.
+
+Registers on return:  ES:DI points at beginning of string (etoa/etoam only)
+		      ES:DI points at zero terminating byte (etoa2 only)
+
+Flags affected:       Carry is set if malloc error (etoam only)
+
+Example of Usage:
+			mov	al, 14		;Use a total of 14 positions
+			etoam
+			puts
+			putcr
+			free
+
+
+
+Description:	ETOA (2,M) converts the value in the floating point accumulator
+		to a string of characters which represent that value.  These
+		routines use an exponential (scientific notation)
+		representation.  AL contains the field width.  It contains
+		the number of print position to use when outputting the
+		number.  The field width specification works just like Pascal
+		or FORTRAN.  If the number will not fit in the specified
+		field width, ETOA outputs a bunch of "#" characters.
+
+		ETOA stores the converted string at the address specified by
+		ES:DI upon entry.  There must be at least AL+1 bytes at this
+		address.  It returns with ES:DI pointing at the start of this
+		buffer.
+
+		ETOA2 works just like ETOA except it does not preserve DI.
+		It returns with DI pointing at the zero terminating byte.
+
+		ETOAM allocates storage for the string on the heap and returns
+		a pointer to the converted string in ES:DI.
+
+		Note: this routine preserves the value in the floating point
+		accumulator but it wipes out the value in the floating point
+		operand.
+
+Include:	stdlib.a or fp.a
+
+
+Routine:  atof
+--------------
+
+Category:             Floating point Routine
+
+Registers on entry:   ES:DI points at a string containing the representation
+		      of a floating point number in ASCII form.
+
+Registers on return:  None
+
+Flags affected:       None
+
+Example of Usage:
+			les	di, FPStr
+			atof
+
+
+Description:    ATOF converts the string pointed at by ES:DI into a floating
+		point value and leaves this value in the floating point
+		accumulator.  Legal floating point values are described
+		by the following regular expression:
+
+
+		{" "}* {+ | -} ( ([0-9]+ {"." [0-9]*}) | ("." [0-9]+)}
+				{(e | E) {+ | -} [0-9] {[0-9]*}}
+
+ "{}" denote optional items.
+ "|"  denotes OR.
+ "()" groups items together.
+
+
+
+Include:	stdlib.a or fp.a
+

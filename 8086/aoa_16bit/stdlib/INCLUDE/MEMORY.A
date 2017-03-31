@@ -1,0 +1,108 @@
+StdGrp		group	stdlib, stddata
+;
+stddata		segment	para public 'sldata'
+stddata		ends
+stdlib		segment	para public 'slcode'
+
+
+slcall	macro	adrs
+	db	09ah			;Far call
+	dd	stdgrp:adrs		;Address of routine to call
+	endm
+
+;
+; Memory Manager stuff
+;
+;
+MemInit		macro
+		ifndef	sl_MemInit
+stdlib		segment	para public 'slcode'
+		extrn	sl_MemInit:far
+stdlib		ends
+		endif
+		slcall	sl_MemInit
+		endm
+
+MemInit2	macro
+		ifndef	sl_MemInit2
+stdlib		segment	para public 'slcode'
+		extrn	sl_MemInit2:far
+stdlib		ends
+		endif
+		slcall	sl_MemInit2
+		endm
+
+
+
+malloc		macro
+		ifndef	sl_malloc
+stdlib		segment	para public 'slcode'
+		extrn	sl_malloc:far
+stdlib		ends
+		endif
+		slcall	sl_malloc
+		endm
+;
+;
+realloc		macro
+		ifndef	sl_realloc
+stdlib		segment	para public 'slcode'
+		extrn	sl_realloc:far
+stdlib		ends
+		endif
+		slcall	sl_realloc
+		endm
+;
+;
+DupPtr		macro
+		ifndef	sl_dupptr
+stdlib		segment	para public 'slcode'
+		extrn	sl_dupptr:far
+stdlib		ends
+		endif
+		slcall	sl_dupptr
+		endm
+;
+;
+free		macro
+		ifndef	sl_free
+stdlib		segment	para public 'slcode'
+		extrn	sl_free:far
+stdlib		ends
+		endif
+		slcall	sl_free
+		endm
+;
+;
+;
+;
+IsInHeap	macro
+		ifndef	sl_IsInHeap
+stdlib		segment	para public 'slcode'
+		extrn	sl_IsInHeap:far
+stdlib		ends
+		endif
+		slcall	sl_IsInHeap
+		endm
+;
+;
+IsPtr		macro
+		ifndef	sl_IsPtr
+stdlib		segment	para public 'slcode'
+		extrn	sl_IsPtr:far
+stdlib		ends
+		endif
+		slcall	sl_IsPtr
+		endm
+;
+HeapStart	macro
+		ifndef	sl_HeapStart
+stdlib		segment	para public 'slcode'
+		extrn	sl_HeapStart:far
+stdlib		ends
+		endif
+		slcall	sl_HeapStart
+		endm
+;
+		purge	slcall
+stdlib		ends

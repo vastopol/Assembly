@@ -1,0 +1,11 @@
+a 0
+load cx, 20
+load bx, 100
+load ax, 0
+add ax, 100[bx]
+add bx, 2
+ifeq bx, cx, 15
+goto 9
+put ax
+halt
+

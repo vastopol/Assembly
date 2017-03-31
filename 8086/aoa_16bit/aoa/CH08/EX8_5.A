@@ -1,0 +1,14 @@
+; Header file for Ex8_5 project.
+; This file includes the EXTERNDEF
+; directive which makes the PrintVowels
+; name public/external.  It also includes
+; the PrtVowels macro which lets us call
+; the PrintVowels routine in a manner
+; similar to the UCR Standard Library
+; routines.
+
+		externdef PrintVowels:near
+
+PrtVowels	macro
+		call	PrintVowels
+		endm

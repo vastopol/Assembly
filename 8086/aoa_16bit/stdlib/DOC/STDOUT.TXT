@@ -1,0 +1,889 @@
+Character Output Routines
+-------------------------
+
+
+The stdlib character output routines allow you to print to the 
+standard output device.  Although the processing of non-ASCII 
+characters is undefined, most output devices handle these characters
+properly.  In particular, they can handle return, line feed, back space, 
+and tab.  
+
+Most of the output routines in the standard library output data 
+through the Putc routine.  They generally use the AX register upon 
+entry and print the character(s) to the standard output device by
+calling DOS by default. The  output is redirectable to the 
+user-written routine.  However, the PutcBIOS routine prints doesn't 
+use DOS.  Instead it uses BIOS routines to print the character in AL 
+using the INT command for teletype-like output. 
+
+The print routines are similar to those in C, however, they differ
+in their implementation. The print routine returns to the address
+immediately following the terminating byte, therefore, it is important
+to remember to terminate your string with zero or you will print an
+unexpected sequence of characters.
+
+
+
+Routine:  Putc
+--------------
+
+Category:             Character Output Routine
+
+Registers on Entry:   AL- character to output
+
+Registers on Return:  None
+
+Flags affected:       None
+
+Example of Usage:
+                       mov     al, 'C'
+                       putc                    ;Prints "C" to std output.
+
+
+Description:  Putc is the primitive character output routine.  Most other
+              output routines in the standard library output data through
+              this procedure.  It prints the ASCII character in AL register.  
+              The processing of control codes is undefined although most output
+              routines this routine links to should be able to handle return, 
+              line feed, back space, and tab.  By default, this routine calls
+              DOS to print the character to the standard output device.  The
+              output is redirectable to to user-written routine.
+
+
+Include:                stdlib.a or stdout.a
+
+
+
+Routine:  PutCR
+---------------
+
+Category:             Character Output Routine 
+
+Register on entry:    None
+
+Register on return:   None
+
+Flags affected:       None
+
+Example of Usage:     PutCR
+
+
+Description:  Using PutCR is an easy way of printing a newline to the stdlib 
+              standard output. It prints a newline (carriage return/line feed) 
+              to the current standard output device.
+
+
+Include:                stdlib.a or stdout.a
+
+
+Routine: PutcStdOut
+-------------------
+
+Category:              Character Output Routine
+
+Registers on Entry:    AL- character to output
+
+Registers on Return:   None
+
+Flags Affected:        None
+
+Example of Usage:
+                       mov AL, 'C'
+                       PutcStdOut        ; Writes "C" to standard output
+
+
+Description:  PutcStdOut calls DOS to print the character in AL to the standard
+              output device.  Although processing of non-ASCII characters and
+              control characters is undefined, most output devices handle these
+              characters properly.  In particular, most output devices properly
+              handle return, line feed, back space, and tab.  The output is
+              redirectable via DOS I/O redirection.
+
+
+Include:                stdlib.a or stdout.a
+
+
+
+Routine: PutcBIOS
+-----------------
+
+Category:              Character Output Routine
+
+Registers on Entry:    AL- character to print
+
+Registers on Return:   None
+
+Flags Affected:        None
+
+Example of Usage:
+                       mov AL, "C"
+                       PutcBIOS
+
+
+Description:  PutcBIOS prints the character in AL using the BIOS routines,
+              using INT 10H/AH=14 for teletype-like output.  Output through
+              this routine cannot be redirected; such output is always sent
+              to the video display on the PC (unless, of course, someone has
+              patched INT 10h).  Handles return, line feed, back space, and
+              tab.  Prints other control characters using the IBM Character
+	      set.
+
+
+Include:     	stdlib.a or stdout.a
+
+
+
+Routine: GetOutAdrs
+-------------------
+
+Category:             Character Output Routine
+
+Registers on Entry:   None
+
+Registers on Return:  ES:DI- address of current output routine (called by Putc)
+
+Flags Affected:       None
+
+Example of Usage: 
+                      GetOutAdrs
+                      mov word ptr SaveOutAdrs, DI
+                      mov word ptr SaveOutAdrs+2, ES
+
+Description:  GetOutAdrs gets the address of the current output routine, perhaps
+              so you can save it or see if it is currently pointing at some
+              particular piece of code.  If you want to temporarily redirect
+              the output and then restore the original output routine, consider
+              using PushOutAdrs/PopOutAdrs described later.
+
+Include:	stdlib.a or stdout.a
+
+
+
+
+Routine:  SetOutAdrs
+--------------------
+
+Category:               Character Output Routine
+
+Registers on Entry:     ES:DI - address of new output routine
+
+Registers on return:    None 
+
+Flags affected:         None
+
+Example of Usage:
+
+                        mov     es, seg NewOutputRoutine
+                        mov     di, offset NewOutputRoutine
+                        SetOutAdrs
+                        les     di, RoutinePtr
+                        SetOutAdrs
+
+Description:  This routine redirects the stdlib standard output so that it
+              calls the routine who's address you pass in es:di.  This routine
+              expects the character to be in AL and must preserve all registers.
+              It handles the printable ASCII characters and the four control
+              characters return, line feed, back space, and tab.  (The routine
+              may be modified in the case that you wish to handle these codes
+              in a different fashion.)
+
+
+Include:        stdlib.a or stdout.a
+
+
+Routine:  PushOutAdrs
+---------------------
+
+Category:              Character Output Routine 
+
+Registers on Entry:    ES:DI- Address of new output routine
+
+Registers on Return:   None
+
+Flags Affected:        Carry = 0 if operation is successful
+                       Carry = 1 if there were already 16 items on the stack
+
+Example of Usage:  
+                       mov  ES, seg NewOutputRoutine
+                       mov  DI, offset NewOutputRoutine
+                       PushOutAdrs
+                          .
+                          .
+                          . 
+                       les  DI, RoutinePtr
+                       PushOutAdrs
+
+
+Description:  This routine "pushes" the current output address onto an internal
+              stack and then uses the value in es:di as the current output
+              routine address.  The PushOutAdrs and PopOutAdrs routines let you
+              easily save and redirect the standard output and then restore the
+              original output routine address later on.  If you attempt to push
+	      more than 16 items on the stack, PushOutAdrs will ignore your
+              request and return with the carry flag set.  If PushOutAdrs is
+              successful, it will return with the carry flag clear.
+
+
+Include:      	stdlib.a or stdout.a
+
+
+
+Routine:  PopOutAdrs
+--------------------
+
+Category:             Character Output Routine 
+
+Registers on Entry:   None
+
+Registers on Return:  ES:DI- Points at the previous stdout routine before
+                      the pop
+
+Flags Affected:       None
+
+Example of Usage:  
+                      mov ES, seg NewOutputRoutine
+                      mov DI, offset NewOutputRoutine
+                      PushOutAdrs
+                         .
+                         .
+                         .
+                      PopOutAdrs
+
+
+Description:  PopOutAdrs undoes the effects of PushOutAdrs.  It pops an item off
+              the internal stack and stores it into the output routine pointer.
+              The previous value in the output pointer is returned in es:di.
+              Defaults to PutcStdOut if you attempt to pop too many items off
+              the stack.
+
+Include:	stdlib.a or stdout.a
+
+
+
+
+Routine:  Puts
+--------------
+
+Category:            Character Output Routine 
+
+Register on entry:   ES:DI register - contains the address of the string
+
+Register on return:  None
+
+Flags affected:      None
+
+Example of Usage:
+                     les     di, StrToPrt
+                     puts
+                     putcr
+
+
+Description:   Puts prints a zero-terminated string whose address appears
+	       in es:di.  Each character appearing in the string is printed
+               verbatim.  There are no special escape characters.  Unlike
+               the "C" routine by the same name, puts does not print a
+               newline after printing the string.  Use putcr if you want
+               to print the newline after printing a string with puts.
+
+
+Include:        stdlib.a or stdout.a
+
+
+
+Routine:  Puth
+--------------
+
+Category:             Character Output Routine
+
+Register on entry:    AL 
+
+Register on return:   AL
+
+Flags affected:       None
+
+Example of Usage:
+                      mov     al, 1fh
+                      puth
+
+
+Description:    The Puth routine Prints the value in the AL register as two
+                hexadecimal digits.  If the value in AL is between 0 and 0Fh, 
+                puth will print a leading zero.  This routine calls the stdlib
+                standard output routine (putc) to print all characters.
+
+
+Include:        stdlib.a or stdout.a
+
+
+
+Routine:  Putw
+--------------
+
+Category:             Character Output Routine
+
+Registers on Entry:   AX- Value to print
+
+Registers on Return:  None
+
+Flags Affected:       None
+
+Example of Usage: 
+                      mov AX, 0f1fh
+                      putw
+
+
+Description:  The Putw routine prints the value in the AX register as four
+              hexadecimal digits (including leading zeros if necessary).  
+              This routine calls the stdlib standard output routine (putc) 
+              to print all characters.
+
+Include:        stdlib.a or stdout.a
+
+
+
+Routine:  Puti
+--------------
+
+Category:             Character Output Routine
+
+Registers on Entry:   AX- Value to print
+
+Registers on Return:  None
+
+Flags Affected:       None
+
+Example of Usage: 
+                      mov AX, -1234
+                      puti
+
+
+Description:  Puti prints the value in the AX register as a decimal integer.
+              This routine uses the exact number of screen positions required
+	      to print the number (including a position for the minus sign, if
+              the number is negative).  This routine calls the stdlib standard
+              output routine (putc) to print all characters.
+
+
+Include:        stdlib.a or stdout.a
+
+
+
+Routine:  Putu
+--------------
+
+Category:             Character Output Routine
+
+Register on entry:    AX- Unsigned value to print.
+
+Register on return:   None
+
+Flags affected:       None
+
+Example of Usage:
+                      mov     ax, 1234
+                      putu
+
+
+Description:  Putu prints the value in the AX register as an unsigned integer.
+              This routine uses the exact number of screen positions required
+              to print the number.  This routine calls the stdlib standard
+              output routine (putc) to print all characters.
+
+
+Include:        stdlib.a or stdout.a
+
+
+
+
+Routine:  Putl
+--------------
+
+Category:            Character Output Routine
+
+Register on entry:   DX:AX- Value to print
+
+Register on return:  None
+
+Flags affected:      None
+
+Example of Usage:
+                     mov     dx, 0ffffh
+                     mov     ax, -1234
+                     putl
+
+
+Description:   Putl prints the value in the DX:AX registers as an integer.
+               This routine uses the exact number of screen positions
+               required to print the number (including a position for the
+               minus sign, if the number is negative).  This routine calls
+               the stdlib standard output routine (putc) to print all
+               characters.
+
+
+Include:        stdlib.a or stdout.a
+
+
+
+Routine:  Putul
+---------------
+
+Category:             Character Output Routine
+
+Register on entry:    DX:AX register
+
+Register on return:   None
+
+Flags affected:       None
+
+Example of Usage:
+                      mov     dx, 12h
+                      mov     ax, 1234
+                      putul
+
+
+Description:    Putul prints the value in the DX:AX registers as an unsigned
+                integer.  This routine uses the exact number of screen
+                positions required to print the number.  This routine calls 
+		the stdlib standard output routine (putc) to print all
+		characters.
+
+
+Include:        stdlib.a or stdout.a
+
+
+Routine:  PutISize
+------------------
+
+Category:              Character Output Routine
+
+Registers on Entry:    AX - Integer value to print
+                       CX - Minimum number of print positions to use
+
+Registers on return:   None
+
+Flags affected:
+
+Example of Usage:
+                       mov     cx, 5
+                       mov     ax, I
+                       PutISize
+                           .
+                           . 
+                           .
+                       mov     cx, 12
+                       mov     ax, J
+                       PutISize
+
+
+Description:    PutISize prints the signed integer value in AX to the
+                stdlib standard output device using a minimum of n print
+                positions.  CX contains n, the minimum field width for the
+                output value.  The number (including any necessary minus sign)
+		is printed right justified in the output field.
+                If the number in AX requires more print positions than
+                specified by CX, PutISize uses however many print positions
+                are necessary to actually print the number.  If you specify
+                zero in CX, PutISize uses the minimum number of print positions
+                required.  Of course, PutI will also use the minimum number
+                of print positions without disturbing the value in the CX
+                register.
+
+                Note that, under no circumstances, will the number in AX
+                ever require more than 6 print positions (-32,767 requires
+                the most print positions).
+
+
+Include:        stdlib.a or stdout.a
+
+
+
+Routine:  PutUSize
+------------------
+
+Category:              Character Output Routine
+
+Registers on entry:    AX- Value to print
+		       CX- Minimum field width
+
+Registers on return:   None
+
+Flags affected:        None
+
+Example of usage: 
+                       mov     cx, 8
+                       mov     ax, U
+                       PutUSize
+
+
+Description:  PutUSize prints the value in AX as an unsigned decimal integer.
+              The minimum field width specified by the value in CX.
+              Like PutISize above except this one prints unsigned values.  
+              Note that the maximum number of print positions required by any 
+	      number (e.g., 65,535) is five.
+
+
+Include:        stdlib.a or stdout.a
+
+
+
+Routine:  PutLSize
+------------------
+
+Category:            Character Output Routine
+
+Register on entry:   DX:AX-32 bit value to print
+		     CX- Minimum field width
+
+Register on return:  None
+
+Flags affected:      None
+
+Example of Usage:
+		     mov     cx, 16
+                     mov     dx, word ptr L+2
+                     mov     ax, word ptr L
+                     PutLSize
+
+
+Description:   PutLSize is similar to PutISize, except this prints the long 
+               integer value in DX:AX.  Note that there may be as many as 
+               11 print positions (e.g., -1,000,000,000).
+
+Include:        stdlib.a or stdout.a
+
+
+
+
+Routine:  PutULSize
+-------------------
+
+
+Category:            Character Output Routine
+
+
+Register on entry:   AX : DX and CX
+
+
+Register on return:  None
+
+
+Flags affected:      None
+
+
+Example of usage:    mov     cx, 8
+                     mov     dx, word ptr UL+2
+                     mov     ax, word ptr UL
+                     PutULSize
+
+
+Description:  Prints the value in DX:AX as a long unsigned decimal integer.
+              Prints the number in a minimum field width specified by the
+              value in CX.  Just like PutLSize above except this one prints
+	      unsigned numbers rather than signed long integers.  The largest
+              field width for such a value is 10 print positions.
+
+
+Include:        stdlib.a or stdout.a
+
+
+Routine:   Print
+----------------
+
+Category:             Character Output Routine
+
+Register on entry:    CS:RET - Return address points at the string to print.
+
+Register on return:   None
+
+Flags affected:       None
+
+Examples of Usage:    print
+                      db      "Print this string to the display device"
+		      db      13,10
+                      db      "This appears on a new line"
+                      db      13,10
+                      db      0
+
+
+Description:   Print lets you print string literals in a convenient
+               fashion.  The string to print immediately follows the call
+               to the print routine.  The string must contain a
+               zero terminating byte and may not contain any intervening
+               zero bytes.  Since the print routine returns to the address
+               immediately following the zero terminating byte, forgetting
+               this byte or attempting to print a zero byte in the middle
+               of a literal string will cause print to return to an
+               unexpected instruction.  This usually hangs up the machine.
+               Be very careful when using this routine!
+
+
+Include:        stdlib.a or stdout.a
+
+
+Routine:        Printf
+----------------------
+
+Category:             Character Output Routine
+
+Register on entry:    CS:RET - Return address points at the format string
+
+Register on return:   None
+
+Flags affected:       None
+
+Example of Usage:
+                      printf
+                      db      "Indirect access to i: %^d",13,10,0
+                      dd      IPtr;
+                      printf
+                      db      "A string allocated on the heap: %-\.32^s"
+                      db      13,10,0
+                      dd      SPtr
+
+
+
+Descriptions:   Printf, like its "C" namesake, provides formatted output
+                capabilities for the stdlib package.  A typical call to printf
+                always takes the following form:
+
+                        printf
+                        db              "format string",0
+                        dd              operand1, operand2, ..., operandn
+
+                The format string is comparable to the one provided in the
+                "C" programming language.  For most characters, printf simply
+                prints the characters in the format string up to the
+                terminating zero byte.  The two exceptions are characters
+                prefixed by a backslash ("\") and characters prefixed by a
+                percent sign ("%").  Like C's printf, stdlib's printf uses
+                the backslash as an escape character and the percent sign as
+                a lead-in to a format string.
+
+		Printf uses the escape character ("\") to print special
+                characters in a fashion similar to, but not identical to C's
+                printf.  Stdlib's printf routine supports the following
+                special characters:
+
+                *  r     Print a carriage return (but no line feed)
+                *  n     Print a new line character (carriage return/line feed).
+                *  b     Print a backspace character.
+                *  t     Print a tab character.
+                *  l     Print a line feed character (but no carriage return).
+                *  f     Print a form feed character.
+                *  \     Print the backslash character.
+                *  %     Print the percent sign character.
+                *  0xhh  Print ASCII code hh, represented by two hex digits.
+
+                C users should note a couple of differences between stdlib's
+                escape sequences and C's.  First, use "\%" to print a percent
+                sign within a format string, not "%%".  C doesn't allow the
+                use of "\%" because the C compiler processes "\%" at compile
+                time (leaving a single "%" in the object code) whereas printf
+		processes the format string at run-time.  It would see a single
+                "%" and treat it as a format lead-in character.  Stdlib's
+                printf, on the other hand, processes both the "\" and "%" and
+                run-time, therefore it can distinguish "\%".
+
+                Strings of the form "\0xhh" must contain exactly two hex
+                digits.  The current printf routine isn't robust enough to
+                handle sequences of the form "\0xh" which contain only a
+                single hex digit.  Keep this in mind if you find printf
+                chopping off characters after you print a value.
+
+                There is absolutely no reason to use any escape character
+                sequences except "\0x00".  Printf grabs all characters
+                following the call to printf up to the terminating zero byte
+                (which is why you'd need to use "\0x00" if you want to print
+                the null character, printf will not print such values).
+                Stdlib's printf routine doesn't care how those characters got
+                there.  In particular, you are not limited to using a single
+                string after the printf call.  The following is perfectly
+		legal:
+
+
+                printf
+                db      "This is a string",13,10
+                db      "This is on a new line",13,10
+                db      "Print a backspace at the end of this line:"
+                db      8,13,10,0
+
+
+                Your code will run a tiny amount faster if you avoid the use
+                of the escape character sequences.  More importantly, the
+                escape character sequences take at least two bytes.  You can
+                encode most of them as a single byte by simply embedding the
+                ASCII code for that byte directly into the code stream.
+                Don't forget, you cannot embed a zero byte into the code
+                stream.  A zero byte terminates the format string.  Instead,
+                use the "\0x00" escape sequence.
+
+                Format sequences always between with "%".  For each format
+                sequence you must provide a far pointer to the associated
+		data immediately following the format string, e.g.,
+
+	                printf
+        	        db      "%i %i",0
+                	dd      i,j
+
+                Format sequences take the general form "%s\cn^f" where:
+
+                *       "%" is always the "%" character.  Use "\%" if you
+                        actually want to print a percent sign.
+                *       s is either nothing or a minus sign ("-").
+                *       "\c" is also optional, it may or may not appear in
+                        the format item.  "c" represents any printable
+                        character.
+                *       "n" represents a string of 1 or more decimal digits.
+                *       "^" is just the caret (up-arrow) character.
+                *       "f" represents one of the format characters: i, d, x,
+                        h, u, c, s, ld, li, lx, or lu.
+
+                The "s", "\c", "n", and "^" items are optional, the "%" and
+		"f" items must be present.  Furthermore, the order of these
+                items in the format item is very important.  The "\c" entry,
+                for example, cannot precede the "s" entry.  Likewise, the "^"
+                character, if present, must follow everything except the "f"
+                character(s).
+
+                The format characters i, d, x, h, u, c, s, ld, li, lx, and
+                lu control the output format for the data.  The i and d
+                format characters perform identical functions, they tell
+                printf to print the following value as a 16-bit signed
+                decimal integer.  The x and h format characters instruct
+                printf to print the specified value as a 16-bit or 8-bit
+                hexadecimal value (respectively).  If you specify u, printf
+                prints the value as a 16-bit unsigned decimal integer.
+                Using c tells printf to print the value as a single character.
+                S tells printf that you're supplying the address of a
+                zero-terminated character string, printf prints that string.
+                The ld, li, lx, and lu entries are long (32-bit) versions of
+                d/i, x, and u.  The corresponding address points at a 32-bit
+                value which printf will format and print to the standard output.
+		The following example demonstrates these format items:
+
+                printf
+                db      "I= %i, U= %u, HexC= %h, HexI= %x, C= %c, "
+                db      "S= %s",13,10
+                db      "L= %ld",13,10,0
+                dd      i,u,c,i,c,s,l
+
+                The number of far addresses (specified by operands to the "dd"
+                pseudo-opcode) must match the number of "%" format items in
+                the format string.  Printf counts the number of "%" format
+                items in the format string and skips over this many far
+                addresses following the format string.  If the number of
+                items do not match, the return address for printf will be
+                incorrect and the program will probably hang or otherwise
+                malfunction.  Likewise (as for the print routine), the format
+                string must end with a zero byte.  The addresses of the items
+                following the format string must point directly at the memory
+                locations where the specified data lies.
+
+		When used in the format above, printf always prints the
+                values using the minimum number of print positions for each
+                operand.  If you want to specify a minimum field width, you
+                can do so using the "n" format option.  A format item of the
+                format "%10d" prints a decimal integer using at least ten
+                print positions.  Likewise, "%16s" prints a string using at
+                least 16 print positions.  If the value to print requires
+                more than the specified number of print positions, printf
+                will use however many are necessary.  If the value to print
+                requires fewer, printf will always print the specified number,
+                padding the value with blanks.  Printf will print the value
+                right justified in the print field (regardless of the data's
+                type).  If you want to print the value left justified in the
+                output file, use the "-" format character as a prefix to the
+                field width, e.g.,
+
+                printf
+                db      "%-17s",0
+                dd      string
+
+		In this example, printf prints the string using a 17 character
+                long field with the string left justified in the output field.
+                By default, printf blank fills the output field if the value
+                to print requires fewer print positions than specified by the
+                format item.  The "\c" format item allows you to change the
+                padding character.  For example, to print a value, right
+                justified, using "*" as the padding character you would use
+                the format item "%\*10d".  To print it left justified you
+                would use the format item "%-\*10d".  Note that the "-" must
+                precede the "\*".  This is a limitation of the current
+                version of the software.  The operands must appear in this
+                order.  Normally, the address(es) following the printf
+                format string must be far pointers to the actual data to print.
+                On occasion, especially when allocating storage on the heap
+                (using malloc), you may not know (at assembly time) the
+                address of the object you want to print.  You may have only
+                a pointer to the data you want to print.  The "^" format
+                option tells printf that the far pointer following the format
+                string is the address of a pointer to the data rather than
+                the address of the data itself.  This option lets you access
+		the data indirectly.
+
+                Note: unlike C, stdlib's printf routine does not support
+                floating point output.  Putting floating point into printf
+		would increase the size of this routine a tremendous amount.
+		Since most people don't need the floating point output
+		facilities, it doesn't appear here.  Check out PRINTFF.
+
+Include:        stdlib.a or stdout.a
+
+
+
+Routine:  PRINTFF
+-----------------
+
+
+Category:             Character Output Routine
+
+Registers on Entry:   CS:RET- Points at format string and other parameters.
+
+Registers on Return:  If your program prints floating point values, this
+		      routine modifies the floating point accumulator and
+		      floating point operand "pseudo-registers" in the
+		      floating point package.
+
+Flags Affected:       None
+
+Examples of Usage:
+			printff
+			db	"I = %d, R = %7.2f  F = 12.5e  G = 9.2gf\n",0
+			dd	i, r, f, g
+
+Description:  
+		This code works just like printf except it also allows the
+		output of floating point values.  The output formats are 
+		the following:
+
+		Single Precision:
+
+		 mm.nnF-	Prints a field width of mm chars with nn digits
+				appearing after the decimal point.
+
+		 nnE-		Prints a floating point value using scientific
+				notation in a field width of nn chars.
+
+		Double Precision:
+
+		 mm.nnGF-	As above, for double precision values.
+		 nnGE-		As above, for double precision values.
+
+		Extended Precision-
+
+		 mm.nnLF-	As above, for extended precision values.
+		 nnLE-		As above, for extended precision values.
+
+
+		Since PRINTFF supports everything PRINTF does, you should not
+		use both routines in the same program (just use PRINTF).  The
+		PRINTF & PRINTFF macros check for this and will print a warning
+		message if you've included both routines.  Using both will not
+		cause your program to fail, but it will make your program
+		unnecessarily larger.  You should not use PRINTFF unless you
+		really need to print floating point values.  When you use
+		PRINTFF, it forces the linker to load in the entire floating
+		point package, making your program considerably larger.
+
+Include:              	stdlib.a or fp.a
+

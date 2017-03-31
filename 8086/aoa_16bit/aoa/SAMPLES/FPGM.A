@@ -1,0 +1,50 @@
+; FPGM.A- Include file with macros and externals for the final project.
+;
+; Randall Hyde.
+;
+; Equates:
+
+NULL		equ	0
+MaxWeight	equ	4	;Max weight user can carry at one time.
+
+
+; Some important data types everyone uses:
+
+Room		struct
+north		word	?	;Near pointers to other structures where
+south		word	?	; we will wind up on the GO NORTH, GO SOUTH,
+west		word	?	; etc., commands.
+east		word	?
+
+ItemList	word	MaxWeight dup (?)
+
+Description	word	?	;Description of room.
+Room		ends
+
+
+Item		struct
+Value		word	?
+Weight		word	?
+Key		word	?
+ShortDesc	word	?
+LongDesc	word	?
+WinDesc		word	?
+Item		ends
+
+
+dseg		segment		para public 'data'
+		externdef	CurRoom:word
+dseg		ends
+
+
+cseg		segment		para public 'code'
+		externdef	CheckPresence:near
+		externdef	RemoveItem:near
+		externdef	InsertItem:near
+		externdef	LongDesc:near
+		externdef	ShortDesc:near
+		externdef	Describe:near
+cseg		ends
+
+
+

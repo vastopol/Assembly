@@ -1,0 +1,8 @@
+	mov	ax, [1000]
+	mov	bx, [1002]
+	add	ax, bx
+	sub	ax, 1
+	mov	bx, ax
+	add	ax, ax
+	add	ax, bx
+	halt

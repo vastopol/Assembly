@@ -1,0 +1,96 @@
+StdGrp		group	stdlib, stddata
+;
+stddata		segment	para public 'sldata'
+stddata		ends
+stdlib		segment	para public 'slcode'
+;
+
+slcall	macro	adrs
+	db	09ah			;Far call
+	dd	stdgrp:adrs		;Address of routine to call
+	endm
+
+;
+;
+; Intel hex conversion routine:
+;
+ToHex		macro
+		ifndef	sl_ToHex
+stdlib		segment	para public 'slcode'
+		extrn	sl_ToHex:far
+stdlib		ends
+		endif
+		slcall	sl_ToHex
+		endm
+
+
+; ARGC- Counts the command line parameters
+
+Argc		macro
+		ifndef	sl_Argc
+stdlib		segment	para public 'slcode'
+		extrn	sl_Argc:far
+stdlib		ends
+		endif
+		slcall	sl_Argc
+		endm
+;
+; Argv-	Returns a specified cmd line parameter
+;
+Argv		macro
+		ifndef	sl_Argv
+stdlib		segment	para public 'slcode'
+		extrn	sl_Argv:far
+stdlib		ends
+		endif
+		slcall	sl_Argv
+		endm
+
+; GetEnv- Searches for an environment string:
+
+GetEnv		macro
+		ifndef	sl_GetEnv
+stdlib		segment	para public 'slcode'
+		extrn	sl_GetEnv:far
+stdlib		ends
+		endif
+		slcall	sl_GetEnv
+		endm
+
+
+; Randomize-	Randomizes the random number generator
+
+Randomize	macro
+		ifndef	sl_randomize
+stdlib		segment	para public 'slcode'
+		extrn	sl_randomize:far
+stdlib		ends
+		endif
+		slcall	sl_randomize
+		endm
+;
+;
+; Random-	Generates a random number and returns this number in AX
+;
+Random		macro
+		ifndef	sl_random
+stdlib		segment	para public 'slcode'
+		extrn	sl_random:far
+stdlib		ends
+		endif
+		slcall	sl_random
+		endm
+;
+;
+; CPUIDENT-	Returns CPU id in AX & BX
+;
+CPUIDENT	macro
+		ifndef	sl_cpuid
+stdlib		segment	para public 'slcode'
+		extrn	sl_cpuid:far
+stdlib		ends
+		endif
+		slcall	sl_cpuid
+		endm
+
+stdlib		ends
