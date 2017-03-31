@@ -7,21 +7,29 @@
 ;;;;;;;;;;;;;;;;;;;;;
 .ORIG x3000 
 
-; LD R1, PTR1 ; BINARY INPUT
-; JSRR R1
-; 
-; LD R1, PTR2 ; BINARY OUTPUT
-; JSRR R1
-; 
-; AND R0, R0, #0
-; ADD R0, R0, x0A ; \n
-; OUT
+LD R1, PTR1 ; BINARY INPUT
+JSRR R1
+ 
+LD R1, PTR2 ; BINARY OUTPUT
+JSRR R1
+ 
+AND R0, R0, #0
+ADD R0, R0, x0A ; \n
+OUT
+
+;---------------------------------
 
 LD R1, PTR3 ; DECIMAL INPUT
 JSRR R1
 
 LD R1, PTR4 ; DECIMAL OUTPUT
 JSRR R1
+
+AND R0, R0, #0
+ADD R0, R0, x0A ; \n
+OUT
+
+;---------------------------------
 
 HALT
 

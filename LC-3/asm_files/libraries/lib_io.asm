@@ -358,8 +358,7 @@ I_D_BKUPR7 .BLKW #1
 ;================================================
 .ORIG x4300
 ;========================
-; EXPECT NUMBER IN R5, 
-; ONLY SAVES R5 AND RELOAD IT AFTER DONE PRINT
+; EXPECT NUMBER IN R2,  MOVES NUM INTO R5 FOR SUBR
 ; R1 - TEMP
 ; R2 - CONVERT TO ASCII
 ; R3 - COUNTER

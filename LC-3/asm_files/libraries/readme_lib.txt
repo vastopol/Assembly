@@ -1,8 +1,14 @@
-LC3 Subroutine Libraies
------------------------
+LC3 Subroutine Libraies:
+--------------------------
 - I/O     -> {BIN_IN, BIN_OUT, DEC_IN, DEC_OUT}
 - Bitwise -> {OR, XOR, NOR, XNOR} 
 - Math    -> {SUB, MUL, DIV, MOD} 
+
+Locations in memory space:
+--------------------------
+* I/O  x4000 to x4300
+* Bits x5000 to x5300
+* Math x6000 to x6300
 
 ====================================================
 
@@ -37,21 +43,7 @@ What this means:
 
 ===========================================================
     
-*** IMPORTANT ***
-- These libraries are probably not portable.
-- They are presented as is (may contain defects, etc...)
-- Don't expect any values to be preserved in their registers (only returns goto R4)
-- Currently most of the routines don't backup anything except the return address
-- Don't expect error checking
-- etc
 
-Locations in memory space:
---------------------------
-* I/O  x4000 to x4300
-* Bits x5000 to x5300
-* Math x6000 to x6300
-
-=============================================================
 
 ** Eventually Write a core I/O library containing
    modified versions of Trap routines
