@@ -1,0 +1,35 @@
+The simpl-2.0.3.bin executable came from centOS 6.6
+
+when trying to run on another OS it displays errors on terminal
+
+./simpl-2.0.3.bin: error while loading shared libraries: <PACKAGE_NAME>: cannot open shared object file: No such file or directory
+
+where <PACKAGE_NAME> is:
+* libqt-mt.so.3
+* libkdeui.so.4
+
+to run on debian wheezy it needs to install:
+
+* libqt3-mt 
+* ...
+
+//------------------------------
+
+
+for older packages use:
+
+Tryphon Debian Repository
+
+How to use this Debian repository:
+You need to add to your /etc/apt/sources.list file these lines (according to your debian release)
+
+For wheezy: 
+deb http://debian.tryphon.eu wheezy main contrib
+deb-src http://debian.tryphon.eu wheezy main contrib
+
+//-------------------------------
+
+alien && dpkg
+
+could also try to find .rpm files for red hat
+convert thme to .deb files using alien -d && install with dpkg
