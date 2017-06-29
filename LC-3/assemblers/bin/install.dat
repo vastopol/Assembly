@@ -1,35 +1,56 @@
-The simpl-2.0.3.bin executable came from centOS 6.6
+simpl assembler on debian
+
+the simpl-2.0.3.bin executable came from centOS 6.6
 
 when trying to run on another OS it displays errors on terminal
 
-./simpl-2.0.3.bin: error while loading shared libraries: <PACKAGE_NAME>: cannot open shared object file: No such file or directory
+./simpl-2.0.3.bin: error while loading shared libraries: <NAME>: cannot open shared object file: No such file or directory
 
-where <PACKAGE_NAME> is:
+needs some old files from centOS KDE stuff
+
+//--------------------------------
+
+NEEDED ITEMS:
+
+APPLICATION
+* dcopserver
+
+FILES:
 * libqt-mt.so.3
 * libkdeui.so.4
+* libkdeinit_dcopserver.so 
+* libDCOP.so.4
+* libkio.so.4
+* libkdecore.so.4
+* libart_lgpl_2.so.2
+* libkdefx.so.4
+* libkdesu.so.4
+* libkwalletclient.so.1
 
-to run on debian wheezy it needs to install:
+//---------------------------------
 
-* libqt3-mt 
-* ...
+HOW TO FIX:
+
+obtain stuff needed from list
+
+to run on debian wheezy it needs to have all the lib files and dcopserver
+
+move dcopserver to /usr/bin
+
+move lib* to /usr/lib
+
+make folders /usr/csshare/bin
+
+move simpl-2.0.3.bin to /usr/csshare/bin
+
+move simpl to /usr/bin
+
+run from command line
+
+$ simpl <file_name.asm>
 
 //------------------------------
 
 
-for older packages use:
-
-Tryphon Debian Repository
-
-How to use this Debian repository:
-You need to add to your /etc/apt/sources.list file these lines (according to your debian release)
-
-For wheezy: 
-deb http://debian.tryphon.eu wheezy main contrib
-deb-src http://debian.tryphon.eu wheezy main contrib
-
-//-------------------------------
-
-alien && dpkg
-
-could also try to find .rpm files for red hat
-convert thme to .deb files using alien -d && install with dpkg
+physically copied the stuff from centos6.6
+included in folder "direct"
