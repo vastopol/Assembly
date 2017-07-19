@@ -1,7 +1,5 @@
 these are the instructions for setting up the virtual machine with vagrant.
 
-** The ASM files will not assemble unless using simpl assembler on the VM **
-
 Requirements:
 - VirtualBox
 - Vagrant
