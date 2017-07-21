@@ -53,3 +53,5 @@ $ simpl <file_name.asm>
 
 
 ***  copied stuff from centos6.6 included in folder "direct" ***
+
+debian/jessie version 8.7.0

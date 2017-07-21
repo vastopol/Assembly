@@ -45,3 +45,11 @@ Some notes on modifying the tools
 simp2.1
 
 never could get it to compile correctly...
+
+*** the binaries from from a different source, centos are in separate folder, 
+
+=====================================================================================
+
+vm_setup
+
+how to set up the ucr cs61 centos vm.

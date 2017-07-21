@@ -3,6 +3,7 @@ LC3 Subroutine Libraies:
 - I/O     -> {BIN_IN, BIN_OUT, DEC_IN, DEC_OUT}
 - Bitwise -> {OR, XOR, NOR, XNOR} 
 - Math    -> {SUB, MUL, DIV, MOD} 
+- Trap
 
 Locations in memory space:
 --------------------------
@@ -45,7 +46,7 @@ What this means:
     
 
 
-** Eventually Write a core I/O library containing
+** A core library containing
    modified versions of Trap routines
 
 Trap x20 GETC read a single character (no echo)
@@ -54,3 +55,4 @@ Trap x22 PUTS write a string to the console
 Trap x23 IN   print prompt to console, read and echo character from keyboard
 Trap x25 HALT halt the program
 
+have: in, out, halt, puts
