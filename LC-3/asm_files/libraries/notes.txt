@@ -1,9 +1,0 @@
-*** IMPORTANT ***
-- These libraries are probably not portable to different assemblers.
-- They are presented as is (may contain defects, etc...)
-- Don't expect any values to be preserved in their registers
-- Currently most of the routines don't backup anything except the return address
-- Don't expect error checking
-- etc
-
-- also the input capture routines most likely append the newline... (probably fix later if need)

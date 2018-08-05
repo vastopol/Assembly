@@ -3,10 +3,7 @@ Assembly language code
 
 * HLA 2.x  --  High Level Assembly
 
-* LC-3  
-  * An educational assembly programming language from Patt and Patel's Introduction to Computing Systems
-
-* MIPS 
+* MIPS
   * Mars assembler 4.4 is a lightweight interactive development environment (IDE) for programming in MIPS assembly language,
     intended for educational-level use with Patterson and Hennessy's Computer Organization and Design.
 
